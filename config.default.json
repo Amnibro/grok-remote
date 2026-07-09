@@ -1,0 +1,10 @@
+{
+  "autostart": false,
+  "autostart_on_session": true,
+  "autostart_on_boot": false,
+  "cwd": "",
+  "ui_port": 2421,
+  "agent_port": 2419,
+  "always_approve": true,
+  "leader": true
+}

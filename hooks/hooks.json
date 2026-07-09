@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cmd /c \"%GROK_PLUGIN_ROOT%\\scripts\\hook-session-start.cmd\"",
+            "timeout": 15
+          }
+        ]
+      }
+    ]
+  }
+}

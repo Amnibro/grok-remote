@@ -55,6 +55,30 @@ Phone browser  --HTTP-->  UI+proxy :2421
                                          tools / files on PC
 ```
 
+## Auto-start (optional)
+
+When **enabled**, Grok-Remote can start itself:
+
+| Mode | When |
+|------|------|
+| **Session** (default if on) | Every new Grok TUI/session (`SessionStart` hook) |
+| **Boot** | Windows logon (`GrokRemoteAutostart` scheduled task) |
+
+```powershell
+# Enable for Grok session start (idempotent; skips if already healthy)
+powershell -File .\scripts\install-autostart.ps1 -Cwd C:\Users\antho\Documents\ai
+
+# Also start at Windows logon
+powershell -File .\scripts\install-autostart.ps1 -Boot -Cwd C:\Users\antho\Documents\ai
+
+# Disable
+powershell -File .\scripts\install-autostart.ps1 -Disable
+```
+
+Or in TUI after plugin install: **`/remote-autostart on`** · **`/remote-autostart boot`** · **`/remote-autostart off`** · **`/remote-autostart status`**
+
+Config lives in `~/.grok/plugin-data/grok-remote/config.json` (`autostart`, `autostart_on_session`, `autostart_on_boot`, `cwd`, ports). Default is **off** until you enable it.
+
 ## Safety
 
 - Prefer same Wi‑Fi / VPN; don’t expose the agent to the open internet without care.

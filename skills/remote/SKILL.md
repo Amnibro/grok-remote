@@ -93,6 +93,21 @@ Start-Process powershell -ArgumentList @('-NoProfile','-ExecutionPolicy','Bypass
 - Auto-approve tools only for the remote agent serve process.
 - Tell the user if firewall blocks inbound 2421.
 
+## Autostart (`/remote-autostart`)
+
+Config: `~/.grok/plugin-data/grok-remote/config.json` (or `GROK_PLUGIN_DATA`).
+
+| Command | Effect |
+|---------|--------|
+| `/remote-autostart on` | `autostart=true`, SessionStart hook + global `~/.grok/hooks/grok-remote-autostart.json` |
+| `/remote-autostart boot` | same + Windows logon task `GrokRemoteAutostart` |
+| `/remote-autostart off` | disable flags, remove task + global hook |
+| `/remote-autostart status` | show config + health |
+
+Scripts: `scripts/install-autostart.ps1`, `scripts/ensure-running.ps1` (idempotent; no-op if `/health` ok).
+
+Default `autostart` is **false** until the user enables it.
+
 ## Example user messages
 
 - `/remote`
@@ -100,3 +115,6 @@ Start-Process powershell -ArgumentList @('-NoProfile','-ExecutionPolicy','Bypass
 - `/remote status`
 - `/remote stop`
 - `/remote start C:\Users\me\project`
+- `/remote-autostart on`
+- `/remote-autostart boot`
+- `/remote-autostart off`

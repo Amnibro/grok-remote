@@ -28,3 +28,5 @@ Write-Host "Enable grok-remote"
 Write-Host ""
 Write-Host "Done. Restart Grok TUI or press r in /plugins to reload." -ForegroundColor Green
 Write-Host "Then run:  /remote" -ForegroundColor Cyan
+Write-Host "Optional auto-start:  /remote-autostart on" -ForegroundColor Cyan
+Write-Host "  or:  powershell -File `"$dst\scripts\install-autostart.ps1`" -Cwd `"$PWD`"" -ForegroundColor DarkGray
