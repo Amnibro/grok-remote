@@ -1,0 +1,6 @@
+logs/
+runtime-config.json
+connect.url
+__pycache__/
+*.pyc
+.DS_Store

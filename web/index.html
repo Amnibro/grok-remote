@@ -1,0 +1,625 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="theme-color" content="#0b0d12"/>
+<title>Grok Remote</title>
+<style>
+:root{--bg:#0b0d12;--panel:#141822;--line:#262c3a;--tx:#e8ecf4;--mut:#8b93a7;--acc:#fbbf24;--ok:#34d399;--bad:#f87171;--you:#38bdf8}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;background:var(--bg);color:var(--tx);font:15px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;overscroll-behavior-y:none}
+body{display:flex;flex-direction:column;max-width:760px;margin:0 auto}
+header{padding:10px 10px;border-bottom:1px solid var(--line);background:var(--panel);display:flex;gap:6px;align-items:center;position:sticky;top:0;z-index:20}
+.logo{font-weight:800;font-size:14px;flex:none}.logo b{color:var(--acc)}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--bad);flex:none}
+.dot.on{background:var(--ok)}.dot.busy{background:var(--acc);animation:pulse 1s infinite}
+@keyframes pulse{50%{opacity:.35}}
+.sub{color:var(--mut);font-size:10px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hdrbtn{background:#1a2030;border:1px solid var(--line);color:var(--tx);border-radius:8px;padding:6px 8px;font-size:11px;font-weight:600;flex:none}
+.hdrbtn.on{border-color:var(--acc);color:var(--acc)}
+main{flex:1;overflow:auto;padding:10px 10px 8px;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain}
+.row{margin:8px 0;display:flex;flex-direction:column;gap:3px}
+.row.me{align-items:flex-end}
+.bub{max-width:94%;padding:9px 11px;border-radius:14px;background:var(--panel);border:1px solid var(--line);white-space:pre-wrap;word-break:break-word}
+.row.me .bub{background:#10222e;border-color:#1c3a4d}
+.bub.thought{border-color:#3b2f5c;background:#14101f;color:#c4b5fd;font-size:12.5px}
+.bub.plan{border-color:#1e3a5f;background:#0c1522;font-size:12.5px;color:#93c5fd}
+.nm{font-size:11px;color:var(--mut)}
+.tool{font-size:12px;color:var(--acc);border:1px dashed #5a4a1a;background:#1a1608;border-radius:10px;padding:8px 10px;margin:6px 0}
+.tool .out{color:var(--mut);margin-top:4px;max-height:100px;overflow:auto;white-space:pre-wrap}
+.chip{text-align:center;color:var(--mut);font-size:11px;margin:8px 0}
+.chip span{border:1px solid var(--line);border-radius:999px;padding:3px 10px;background:var(--panel)}
+.recap{border:1px solid #1f3a2e;background:#0c1a14;border-radius:12px;padding:10px;margin:8px 0;font-size:12.5px;color:var(--ok);white-space:pre-wrap}
+footer{border-top:1px solid var(--line);background:var(--panel);padding:8px 10px calc(8px + env(safe-area-inset-bottom));position:relative}
+.composer{display:flex;gap:8px;align-items:flex-end}
+textarea{flex:1;resize:none;min-height:42px;max-height:120px;background:#0f131b;color:var(--tx);border:1px solid var(--line);border-radius:12px;padding:10px;font:inherit}
+textarea:focus{outline:none;border-color:var(--acc)}
+button.send{background:var(--acc);color:#111;border:none;border-radius:12px;font-weight:800;padding:0 14px;height:42px}
+button.send:disabled{opacity:.45}
+.panel{padding:14px;display:none;flex:1;overflow:auto}
+.panel.on{display:block}
+.panel label{display:block;font-size:12px;color:var(--mut);margin:10px 0 4px}
+.panel input, .panel textarea.field{width:100%;background:#0f131b;color:var(--tx);border:1px solid var(--line);border-radius:10px;padding:10px;font:inherit}
+.rowbtns{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+.rowbtns button{flex:1;min-width:90px;border:1px solid var(--line);background:#1a2030;color:var(--tx);border-radius:10px;padding:11px;font-weight:700}
+.rowbtns button.pri{background:var(--acc);color:#111;border:none}
+.sess{margin-top:8px}
+.sess .item{border:1px solid var(--line);border-radius:12px;padding:10px;margin:8px 0;background:var(--panel)}
+.sess .item:active{border-color:var(--acc)}
+.sess .t{font-weight:700;font-size:13px}
+.sess .m{color:var(--mut);font-size:11px;margin-top:3px;word-break:break-all}
+.badge{display:inline-block;font-size:10px;padding:1px 6px;border-radius:999px;border:1px solid var(--line);margin-right:4px}
+.badge.live{color:var(--ok);border-color:#14532d;background:#0a1f14}
+.badge.idle{color:var(--acc)}
+.hint{color:var(--mut);font-size:11px;margin-top:6px}
+#log{font-size:11px;color:var(--mut);max-height:56px;overflow:auto;white-space:pre-wrap;background:#0f131b;border:1px solid var(--line);border-radius:8px;padding:8px;margin-top:8px}
+.queue{font-size:11px;color:var(--acc);padding:2px 0 6px;min-height:0}
+.perm{border:1px solid #5a3a1a;background:#1a1208;border-radius:12px;padding:10px;margin:8px 0}
+.perm button{margin:6px 6px 0 0;padding:8px 12px;border-radius:8px;border:1px solid var(--line);background:#222;color:var(--tx)}
+.perm button.ok{background:#14532d;border-color:#166534}
+.loading{text-align:center;color:var(--mut);padding:18px;font-size:13px}
+.sheet{display:none;position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.55)}
+.sheet.on{display:flex;flex-direction:column;justify-content:flex-end}
+.sheet .card{background:var(--panel);border-top:1px solid var(--line);border-radius:16px 16px 0 0;max-height:70vh;overflow:auto;padding:12px 12px calc(12px + env(safe-area-inset-bottom))}
+.sheet h3{margin:4px 0 10px;font-size:15px}
+.cmd{border:1px solid var(--line);border-radius:10px;padding:10px;margin:6px 0;background:#0f131b}
+.cmd .n{font-weight:700;color:var(--acc)}
+.cmd .d{font-size:11px;color:var(--mut);margin-top:3px}
+.livebar{font-size:10px;color:var(--mut);padding:0 2px 4px}
+.livebar b{color:var(--ok)}
+</style>
+</head>
+<body>
+<header>
+  <button class="hdrbtn" id="btnBack" style="display:none" title="Sessions">‹</button>
+  <div class="logo">Grok <b>Remote</b></div>
+  <div class="sub" id="status">offline</div>
+  <button class="hdrbtn" id="btnSkills" style="display:none">Skills</button>
+  <button class="hdrbtn" id="btnNewTask" style="display:none">Task</button>
+  <button class="hdrbtn" id="btnSess" style="display:none">Sessions</button>
+  <button class="hdrbtn" id="btnThoughts" style="display:none">Think</button>
+  <div class="dot" id="dot"></div>
+</header>
+
+<div class="panel on" id="setup">
+  <p style="margin:0 0 8px">Phone live controller for Grok Build (history + live stream).</p>
+  <label>WebSocket</label>
+  <input id="wsurl" placeholder="ws://192.168.x.x:2421/ws"/>
+  <label>Default cwd for new sessions / tasks</label>
+  <input id="cwd" placeholder="C:\\Users\\antho\\Documents\\ai"/>
+  <div class="rowbtns">
+    <button class="pri" id="connect">Connect</button>
+    <button id="reloadCfg">Config</button>
+    <button id="pingHealth">Health</button>
+  </div>
+  <div id="log"></div>
+</div>
+
+<div class="panel" id="picker">
+  <p style="margin:0"><b>Sessions</b> · back-swipe returns here</p>
+  <div class="rowbtns">
+    <button class="pri" id="newSess">+ New chat</button>
+    <button id="btnTaskFromList">New task…</button>
+    <button id="refreshSess">Refresh</button>
+  </div>
+  <label>Filter</label>
+  <input id="sessFilter" placeholder="title, cwd, id…"/>
+  <div class="sess" id="sessList"></div>
+</div>
+
+<main id="feed" style="display:none"></main>
+<footer id="foot" style="display:none">
+  <div class="livebar" id="livebar">live: <b>on</b> · catch-up poll 0.8s</div>
+  <div class="queue" id="queue"></div>
+  <div class="composer">
+    <textarea id="box" rows="1" placeholder="Message Grok…"></textarea>
+    <button class="send" id="send">Send</button>
+  </div>
+  <div class="hint" id="hint">Desktop + phone share this session when loaded</div>
+</footer>
+
+<div class="sheet" id="skillsSheet">
+  <div class="card">
+    <h3>Skills / commands</h3>
+    <p class="hint">Tap to send as a slash command to the active session.</p>
+    <div id="cmdList"></div>
+    <div class="rowbtns"><button id="closeSkills">Close</button><button id="refreshCmds">Refresh</button></div>
+  </div>
+</div>
+
+<div class="sheet" id="taskSheet">
+  <div class="card">
+    <h3>New task</h3>
+    <label>Working directory on PC</label>
+    <input id="taskCwd" placeholder="C:\\Users\\antho\\Documents\\ai\\Amni-Ai"/>
+    <label>First message / task (optional)</label>
+    <textarea class="field" id="taskMsg" rows="3" placeholder="Build X, fix Y, explore Z…"></textarea>
+    <div class="rowbtns">
+      <button class="pri" id="taskGo">Start task session</button>
+      <button id="closeTask">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const feed=document.getElementById("feed"),box=document.getElementById("box"),send=document.getElementById("send");
+const dot=document.getElementById("dot"),statusEl=document.getElementById("status"),logEl=document.getElementById("log");
+const setup=document.getElementById("setup"),picker=document.getElementById("picker"),foot=document.getElementById("foot");
+const sessList=document.getElementById("sessList"),queueEl=document.getElementById("queue"),livebar=document.getElementById("livebar");
+const btnSess=document.getElementById("btnSess"),btnThoughts=document.getElementById("btnThoughts");
+const btnBack=document.getElementById("btnBack"),btnSkills=document.getElementById("btnSkills"),btnNewTask=document.getElementById("btnNewTask");
+const skillsSheet=document.getElementById("skillsSheet"),taskSheet=document.getElementById("taskSheet"),cmdList=document.getElementById("cmdList");
+
+let ws=null,sid=null,sidCwd=".",nid=0,pending=new Map(),busy=false,defaultCwd=".",sessions=[];
+let replaying=false,showThoughts=true,stickBottom=true,page="setup";
+let curUser=null,curAgent=null,curThought=null,toolMap={};
+let seenEvents=new Set(),seenUserTexts=new Set(),promptCount=0,commands=[];
+let pollTimer=null,catchupBusy=false,lastLiveAt=0,localEchoUntil=0;
+
+function log(m){logEl.textContent+=(new Date().toLocaleTimeString())+"  "+m+"\n";logEl.scrollTop=logEl.scrollHeight}
+function defaultWs(){return (location.protocol==="https:"?"wss:":"ws:")+"//"+location.host+"/ws"}
+function esc(t){return String(t||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")}
+function atBottom(){return feed.scrollHeight-feed.scrollTop-feed.clientHeight<100}
+function scroll(){if(stickBottom||replaying)feed.scrollTop=feed.scrollHeight}
+feed.addEventListener("scroll",()=>{stickBottom=atBottom()});
+function chip(t){const d=document.createElement("div");d.className="chip";d.innerHTML="<span>"+esc(t)+"</span>";feed.appendChild(d);scroll()}
+function setConn(on,msg,isBusy){dot.classList.toggle("on",!!on);dot.classList.toggle("busy",!!isBusy);statusEl.textContent=msg||(on?"connected":"offline")}
+function setBusy(b){busy=b;send.disabled=!!b&&!replaying;send.textContent=b?"…":"Send"}
+function nextId(){return ++nid}
+function req(method,params,timeoutMs){
+  return new Promise((resolve,reject)=>{
+    if(!ws||ws.readyState!==1)return reject(new Error("socket not open"));
+    const id=nextId();
+    const t=setTimeout(()=>{if(pending.has(id)){pending.delete(id);reject(new Error("timeout: "+method))}},timeoutMs||120000);
+    pending.set(id,{resolve:v=>{clearTimeout(t);resolve(v)},reject:e=>{clearTimeout(t);reject(e)}});
+    ws.send(JSON.stringify({jsonrpc:"2.0",id,method,params}));
+  });
+}
+
+/* -------- history nav: back swipe -> sessions, not leave site -------- */
+function pushPage(name){
+  page=name;
+  try{history.pushState({page:name,sid:sid||null},"", name==="chat"?"#chat":name==="sessions"?"#sessions":"#setup")}catch(e){}
+  updateChrome();
+}
+function updateChrome(){
+  const chat=page==="chat",sess=page==="sessions",on=ws&&ws.readyState===1;
+  btnBack.style.display=chat?"inline-block":"none";
+  btnSess.style.display=on&&chat?"inline-block":"none";
+  btnSkills.style.display=on&&chat?"inline-block":"none";
+  btnNewTask.style.display=on?"inline-block":"none";
+  btnThoughts.style.display=chat?"inline-block":"none";
+}
+function showPage(name,fromPop){
+  page=name;
+  setup.classList.toggle("on",name==="setup");
+  picker.classList.toggle("on",name==="sessions");
+  feed.style.display=name==="chat"?"block":"none";
+  foot.style.display=name==="chat"?"block":"none";
+  if(!fromPop)pushPage(name); else updateChrome();
+}
+function goSessions(fromPop){
+  showPage("sessions",fromPop);
+  fetchSessions().catch(()=>{});
+  // trap further back presses while connected
+  if(!fromPop) try{history.pushState({page:"sessions"},"","#sessions")}catch(e){}
+}
+window.addEventListener("popstate",(e)=>{
+  const st=e.state||{};
+  if(!ws||ws.readyState!==1){showPage("setup",true);return}
+  if(page==="chat"){
+    goSessions(true);
+    // re-seed stack so another swipe doesn't leave
+    try{history.pushState({page:"sessions"},"","#sessions")}catch(x){}
+    return;
+  }
+  if(page==="sessions"){
+    // stay on sessions (don't exit PWA/site)
+    try{history.pushState({page:"sessions"},"","#sessions")}catch(x){}
+    return;
+  }
+  showPage(st.page||"setup",true);
+});
+
+function resetBubbles(){curUser=null;curAgent=null;curThought=null;toolMap={}}
+function closeOpen(){curUser=null;curAgent=null;curThought=null}
+function addRow(who,cls){
+  const row=document.createElement("div");row.className="row"+(who==="You"?" me":"");
+  row.innerHTML='<div class="nm">'+esc(who)+'</div><div class="bub'+(cls?" "+cls:"")+'"></div>';
+  feed.appendChild(row);return row.querySelector(".bub");
+}
+function appendUser(text,opts){
+  const t=text||"";
+  if(!opts||!opts.force){
+    // dedupe local echo vs desktop/live stream
+    const key=t.trim();
+    if(key&&seenUserTexts.has(key)&&Date.now()<localEchoUntil)return;
+    if(key)seenUserTexts.add(key);
+    // cap set
+    if(seenUserTexts.size>400){const a=[...seenUserTexts];seenUserTexts=new Set(a.slice(-200))}
+  }
+  if(!curUser)curUser=addRow("You");
+  curUser.textContent+=t;scroll();
+}
+function appendAgent(text){
+  curThought=null;
+  if(!curAgent)curAgent=addRow("Grok");
+  curAgent.textContent+=(text||"");scroll();
+}
+function appendThought(text){
+  curAgent=null;
+  if(!showThoughts)return;
+  if(!curThought){
+    const row=document.createElement("div");row.className="row thought-row";
+    row.innerHTML='<div class="nm">Thinking</div><div class="bub thought"></div>';
+    feed.appendChild(row);curThought=row.querySelector(".bub");
+  }
+  curThought.textContent+=(text||"");scroll();
+}
+function upsertTool(u){
+  curUser=null;curAgent=null;curThought=null;
+  const id=u.toolCallId||u.title||Math.random().toString(36).slice(2);
+  let el=toolMap[id];
+  if(!el){el=document.createElement("div");el.className="tool";feed.appendChild(el);toolMap[id]=el}
+  let out="";
+  if(Array.isArray(u.content)){
+    out=u.content.map(c=>(c&&c.content&&c.content.text)||(c&&c.text)||"").filter(Boolean).join("\n");
+  }
+  el.innerHTML="<div>⚙ <b>"+esc(u.title||u.kind||id)+"</b> · "+esc(u.status||"")+"</div>"+(out?('<div class="out">'+esc(out.slice(0,1000))+"</div>"):"");
+  scroll();
+}
+function appendPlan(u){
+  closeOpen();
+  const el=document.createElement("div");el.className="row";
+  const entries=u.entries||u.plan||[];
+  let text=Array.isArray(entries)?entries.map(e=>(e.content||e.title||e.text||"")).filter(Boolean).join("\n"):(u.content?.text||"");
+  el.innerHTML='<div class="nm">Plan</div><div class="bub plan"></div>';
+  el.querySelector(".bub").textContent=text||"(plan)";feed.appendChild(el);scroll();
+}
+function appendRecap(u){
+  closeOpen();
+  const el=document.createElement("div");el.className="recap";
+  el.textContent="◆ "+(u.content?.text||u.text||u.summary||"");feed.appendChild(el);scroll();
+}
+function touchLive(){lastLiveAt=Date.now();livebar.innerHTML="live: <b>on</b> · last event "+new Date(lastLiveAt).toLocaleTimeString()}
+
+function handleUpdate(u,sessionId,meta){
+  if(!u)return;
+  // accept events for active session; also accept missing sessionId while in chat
+  if(sid&&sessionId&&sessionId!==sid)return;
+  const eid=meta&&meta.eventId;
+  if(eid){
+    if(seenEvents.has(eid))return;
+    seenEvents.add(eid);
+    if(seenEvents.size>5000){const a=[...seenEvents];seenEvents=new Set(a.slice(-2500))}
+  }
+  if(!replaying)touchLive();
+  const t=u.sessionUpdate;
+  if(t==="user_message_chunk"){curAgent=null;curThought=null;appendUser((u.content&&u.content.text)||"")}
+  else if(t==="agent_message_chunk"){appendAgent((u.content&&u.content.text)||"");if(!replaying)setBusy(true)}
+  else if(t==="agent_thought_chunk"){appendThought((u.content&&u.content.text)||"");if(!replaying)setBusy(true)}
+  else if(t==="tool_call"||t==="tool_call_update"){upsertTool(u);if(!replaying)setBusy(true)}
+  else if(t==="plan")appendPlan(u);
+  else if(t==="session_recap")appendRecap(u);
+  else if(t==="turn_completed"||t==="task_completed"){closeOpen();if(!replaying){setBusy(false);chip(t==="task_completed"?"task done":"turn done")}}
+  else if(t==="task_backgrounded"){if(!replaying)chip("task backgrounded")}
+  else if(t==="available_commands_update"){
+    if(Array.isArray(u.availableCommands))commands=u.availableCommands;
+  }
+  else if(t==="current_mode_update"){if(!replaying&&u.mode)chip("mode · "+u.mode)}
+}
+
+function handleMsg(data){
+  if(data.id!=null&&pending.has(data.id)){
+    const p=pending.get(data.id);pending.delete(data.id);
+    if(data.error)p.reject(new Error(data.error.message||JSON.stringify(data.error)));
+    else p.resolve(data.result||{});
+    if(handleMsg._waitPrompt===data.id){setBusy(false);closeOpen();handleMsg._waitPrompt=null}
+    return;
+  }
+  const method=data.method||"",params=data.params||{};
+  if(method==="session/update"){
+    handleUpdate(params.update,params.sessionId,params._meta||(params.update&&params.update._meta)||data._meta);
+    return;
+  }
+  if(method==="_x.ai/session/update"||method==="x.ai/session/update"){
+    handleUpdate(params.update||params,params.sessionId,params._meta);return;
+  }
+  if(method==="_x.ai/queue/changed"){
+    if(params.sessionId&&sid&&params.sessionId!==sid)return;
+    const entries=params.entries||[];const run=params.runningPromptId;
+    queueEl.textContent=(run?"working… ":"")+(entries.length?("queue: "+entries.map(e=>(e.text||"").slice(0,48)).join(" · ")):"");
+    if(run)setBusy(true); else if(!entries.length&&!replaying)setBusy(false);
+    touchLive();return;
+  }
+  if(method==="_x.ai/session_notification"){
+    touchLive();
+    const kind=params.kind||params.type||Object.keys(params)[0];
+    if(kind&&!replaying){/* soft signal only */}
+    // desktop activity often lands here — schedule catch-up
+    scheduleCatchup(300);
+    return;
+  }
+  if(method==="_x.ai/sessions/changed"){
+    scheduleCatchup(400);
+    return;
+  }
+  if(method.includes("permission")||method.includes("ask_user")||method==="session/request_permission"){
+    const id=data.id;
+    const el=document.createElement("div");el.className="perm";
+    const q=params.question||params.message||params;
+    el.innerHTML="<div><b>Needs input</b></div><div class='hint'>"+esc(typeof q==="string"?q:JSON.stringify(q).slice(0,700))+"</div>";
+    const opts=params.options||[{optionId:"allow",name:"Allow"},{optionId:"reject",name:"Deny"}];
+    (Array.isArray(opts)?opts:[]).forEach(o=>{
+      const b=document.createElement("button");
+      if(String(o.optionId||o.id||"").match(/allow|yes|approve/i))b.className="ok";
+      b.textContent=o.name||o.label||o.optionId||"ok";
+      b.onclick=()=>{ws.send(JSON.stringify({jsonrpc:"2.0",id,result:{outcome:{outcome:"selected",optionId:o.optionId||o.id||"allow"}}}));el.remove()};
+      el.appendChild(b);
+    });
+    const no=document.createElement("button");no.textContent="Cancel";
+    no.onclick=()=>{ws.send(JSON.stringify({jsonrpc:"2.0",id,result:{outcome:{outcome:"cancelled"}}}));el.remove()};
+    el.appendChild(no);feed.appendChild(el);showPage("chat");scroll();
+  }
+}
+
+let catchupTimer=null;
+function scheduleCatchup(ms){
+  if(catchupTimer)clearTimeout(catchupTimer);
+  catchupTimer=setTimeout(()=>softCatchup().catch(()=>{}),ms||500);
+}
+
+async function softCatchup(){
+  if(!sid||!ws||ws.readyState!==1||replaying||catchupBusy)return;
+  catchupBusy=true;
+  try{
+    // 1) new user prompts from any client
+    try{
+      const ph=await req("_x.ai/prompt_history",{sessionId:sid,cwd:sidCwd},15000);
+      const prompts=ph.prompts||[];
+      if(prompts.length>promptCount){
+        // newest-first list in probe; reverse for chronological append of only missing
+        const chron=[...prompts].reverse();
+        for(const p of chron){
+          const t=String(p||"").trim();
+          if(t&&!seenUserTexts.has(t)){
+            closeOpen();appendUser(t,{force:true});closeOpen();
+          }
+        }
+        promptCount=prompts.length;
+        // full fidelity agent side: silent reload deduped by eventId
+        await silentReload();
+      }
+    }catch(e){}
+  }finally{catchupBusy=false}
+}
+
+async function silentReload(){
+  if(!sid||replaying)return;
+  replaying=true;
+  try{
+    await req("session/load",{sessionId:sid,cwd:sidCwd,mcpServers:[]},120000);
+  }catch(e){}
+  finally{replaying=false;closeOpen();scroll()}
+}
+
+function startPoll(){
+  stopPoll();
+  pollTimer=setInterval(()=>{softCatchup().catch(()=>{})},800);
+}
+function stopPoll(){if(pollTimer){clearInterval(pollTimer);pollTimer=null}}
+
+function normalizeSessions(raw){
+  let s=raw;
+  if(s&&s.result&&s.result.sessions)s=s.result.sessions;
+  else if(s&&s.sessions)s=s.sessions;
+  else if(!Array.isArray(s))s=[];
+  return s;
+}
+async function fetchSessions(){
+  const r=await req("_x.ai/sessions/list",{},30000);
+  sessions=normalizeSessions(r);renderSessions();return sessions;
+}
+function renderSessions(){
+  const q=(document.getElementById("sessFilter").value||"").toLowerCase().trim();
+  const items=sessions.filter(s=>{
+    if(!q)return true;
+    return [s.sessionId,s.title,s.cwd,s.modelId,s.activity].join(" ").toLowerCase().includes(q);
+  }).sort((a,b)=>(b.resident?1:0)-(a.resident?1:0));
+  sessList.innerHTML="";
+  items.forEach(s=>{
+    const d=document.createElement("div");d.className="item";
+    d.innerHTML='<div class="t">'+(s.resident?'<span class="badge live">resident</span>':'')+(s.activity?'<span class="badge idle">'+esc(s.activity)+'</span>':'')+esc(s.title||"(untitled)")+'</div><div class="m">'+esc(String(s.cwd||"").replace(/\\\\/g,"\\"))+"<br>"+esc(String(s.sessionId||"").slice(0,36))+"</div>";
+    d.onclick=()=>openSession(s);
+    sessList.appendChild(d);
+  });
+}
+
+async function openSession(s){
+  sid=s.sessionId;
+  sidCwd=(s.cwd||defaultCwd||".").replace(/\\\\/g,"\\");
+  feed.innerHTML="";resetBubbles();seenEvents=new Set();seenUserTexts=new Set();promptCount=0;
+  const loading=document.createElement("div");loading.className="loading";loading.id="loading";
+  loading.textContent="Loading history + arming live stream…";
+  feed.appendChild(loading);
+  showPage("chat");replaying=true;setBusy(true);stickBottom=true;
+  setConn(true,"loading · "+String(sid).slice(0,8),true);
+  try{
+    await req("session/load",{sessionId:sid,cwd:sidCwd,mcpServers:[]},120000);
+    try{
+      const ph=await req("_x.ai/prompt_history",{sessionId:sid,cwd:sidCwd},20000);
+      const prompts=ph.prompts||[];promptCount=prompts.length;
+      prompts.forEach(p=>{if(p)seenUserTexts.add(String(p).trim())});
+      chip("history ready · "+promptCount+" prompts · live on");
+    }catch(e){chip("history ready · live on")}
+    try{await loadCommands()}catch(e){}
+    const ld=document.getElementById("loading");if(ld)ld.remove();
+    document.getElementById("hint").textContent=(s.resident?"RESIDENT · ":"")+sidCwd+" · "+String(sid).slice(0,12);
+    setConn(true,(s.resident?"live · ":"resume · ")+String(sid).slice(0,8),false);
+    startPoll();
+  }catch(e){
+    const ld=document.getElementById("loading");if(ld)ld.remove();
+    chip("load failed: "+e);alert(e);
+  }finally{replaying=false;setBusy(false);closeOpen();scroll()}
+}
+
+async function newSession(cwd,firstMsg){
+  const c=(cwd||document.getElementById("cwd").value||defaultCwd||".").trim();
+  sidCwd=c;feed.innerHTML="";resetBubbles();seenEvents=new Set();seenUserTexts=new Set();promptCount=0;
+  showPage("chat");
+  const r=await req("session/new",{cwd:c,mcpServers:[]},60000);
+  sid=r.sessionId;chip("new session @ "+c);
+  document.getElementById("hint").textContent="NEW · "+c+" · "+String(sid).slice(0,12);
+  setConn(true,"new · "+String(sid).slice(0,8),false);
+  startPoll();
+  try{await loadCommands()}catch(e){}
+  if(firstMsg&&String(firstMsg).trim()){
+    box.value=String(firstMsg).trim();
+    await sendPrompt();
+  }
+}
+
+async function loadCommands(){
+  if(!sid)return;
+  try{
+    const r=await req("_x.ai/commands/list",{sessionId:sid,cwd:sidCwd},20000);
+    commands=r.commands||r.result?.commands||[];
+  }catch(e){commands=commands||[]}
+  renderCommands();
+}
+function renderCommands(){
+  cmdList.innerHTML="";
+  if(!commands.length){cmdList.innerHTML='<div class="hint">No commands yet — open a session first.</div>';return}
+  commands.forEach(c=>{
+    const d=document.createElement("div");d.className="cmd";
+    d.innerHTML='<div class="n">/'+esc(c.name||"")+'</div><div class="d">'+esc(c.description||(c.input&&c.input.hint)||"")+"</div>";
+    d.onclick=()=>{
+      const hint=(c.input&&c.input.hint)||"";
+      const extra=hint?prompt("Args for /"+c.name+"\n("+hint+")","") : "";
+      if(extra===null)return;
+      skillsSheet.classList.remove("on");
+      box.value="/"+c.name+(extra?" "+extra:"");
+      sendPrompt();
+    };
+    cmdList.appendChild(d);
+  });
+}
+
+async function connect(){
+  let url=document.getElementById("wsurl").value.trim()||defaultWs();
+  defaultCwd=document.getElementById("cwd").value.trim()||".";
+  if(url.includes("127.0.0.1")&&location.hostname!=="127.0.0.1"&&location.hostname!=="localhost"){
+    url=defaultWs();document.getElementById("wsurl").value=url;
+  }
+  setConn(false,"connecting…");log("connect "+url);
+  try{ws=new WebSocket(url)}catch(e){setConn(false,"bad url");return}
+  ws.onopen=async()=>{
+    log("open");
+    try{
+      await req("initialize",{protocolVersion:1,clientInfo:{name:"grok-remote-android",version:"3.0"},clientCapabilities:{fs:{readTextFile:true,writeTextFile:true},terminal:true}},30000);
+      setConn(true,"connected",false);
+      await fetchSessions();
+      showPage("sessions");
+      try{history.replaceState({page:"sessions"},"","#sessions")}catch(e){}
+    }catch(e){setConn(false,"init failed");log(String(e))}
+  };
+  ws.onmessage=ev=>{try{handleMsg(JSON.parse(ev.data))}catch(e){}};
+  ws.onclose=()=>{stopPoll();setConn(false,"closed");setBusy(false);sid=null;showPage("setup")};
+  ws.onerror=()=>setConn(false,"error");
+}
+
+async function sendPrompt(){
+  const t=box.value.trim();if(!t||!sid)return;
+  if(busy&&!t.startsWith("/")){/* still allow queue */}
+  box.value="";box.style.height="auto";
+  closeOpen();
+  localEchoUntil=Date.now()+4000;
+  appendUser(t);closeOpen();
+  setBusy(true);
+  const id=nextId();handleMsg._waitPrompt=id;
+  pending.set(id,{resolve:()=>{setBusy(false)},reject:e=>{setBusy(false);chip(String(e))}});
+  ws.send(JSON.stringify({jsonrpc:"2.0",id,method:"session/prompt",params:{sessionId:sid,prompt:[{type:"text",text:t}]}}));
+  promptCount++;
+}
+
+// UI bindings
+document.getElementById("connect").onclick=connect;
+document.getElementById("newSess").onclick=()=>newSession().catch(e=>alert(e));
+document.getElementById("refreshSess").onclick=()=>fetchSessions().catch(e=>alert(e));
+document.getElementById("sessFilter").oninput=renderSessions;
+btnSess.onclick=()=>goSessions();
+btnBack.onclick=()=>goSessions();
+btnThoughts.onclick=()=>{
+  showThoughts=!showThoughts;btnThoughts.classList.toggle("on",showThoughts);
+  document.querySelectorAll(".thought-row").forEach(el=>{el.style.display=showThoughts?"":"none"});
+};
+btnSkills.onclick=async()=>{
+  try{await loadCommands()}catch(e){}
+  skillsSheet.classList.add("on");
+};
+document.getElementById("closeSkills").onclick=()=>skillsSheet.classList.remove("on");
+document.getElementById("refreshCmds").onclick=()=>loadCommands().catch(e=>alert(e));
+skillsSheet.addEventListener("click",e=>{if(e.target===skillsSheet)skillsSheet.classList.remove("on")});
+
+function openTaskSheet(){
+  document.getElementById("taskCwd").value=document.getElementById("cwd").value||defaultCwd||"";
+  document.getElementById("taskMsg").value="";
+  taskSheet.classList.add("on");
+}
+btnNewTask.onclick=openTaskSheet;
+document.getElementById("btnTaskFromList").onclick=openTaskSheet;
+document.getElementById("closeTask").onclick=()=>taskSheet.classList.remove("on");
+taskSheet.addEventListener("click",e=>{if(e.target===taskSheet)taskSheet.classList.remove("on")});
+document.getElementById("taskGo").onclick=async()=>{
+  const c=document.getElementById("taskCwd").value.trim();
+  const m=document.getElementById("taskMsg").value.trim();
+  if(!c){alert("cwd required");return}
+  taskSheet.classList.remove("on");
+  document.getElementById("cwd").value=c;
+  try{await newSession(c,m)}catch(e){alert(e)}
+};
+
+send.onclick=sendPrompt;
+box.addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();sendPrompt()}});
+box.addEventListener("input",()=>{box.style.height="auto";box.style.height=Math.min(box.scrollHeight,120)+"px"});
+
+async function loadCfg(){
+  try{
+    const c=await(await fetch("/config.json",{cache:"no-store"})).json();
+    if(c.ws_url)document.getElementById("wsurl").value=c.ws_url;else document.getElementById("wsurl").value=defaultWs();
+    if(c.cwd){document.getElementById("cwd").value=c.cwd;defaultCwd=c.cwd}
+    log("cfg "+c.ui);return c;
+  }catch(e){document.getElementById("wsurl").value=defaultWs();return null}
+}
+document.getElementById("reloadCfg").onclick=loadCfg;
+document.getElementById("pingHealth").onclick=async()=>{
+  try{const j=await(await fetch("/health",{cache:"no-store"})).json();alert(j.ok?"Agent OK":"Agent down: "+(j.detail||""))}
+  catch(e){alert(e)}
+};
+
+(async()=>{
+  document.getElementById("wsurl").value=defaultWs();
+  const q=new URLSearchParams(location.search);
+  await loadCfg();
+  if(q.get("cwd"))document.getElementById("cwd").value=q.get("cwd");
+  if(q.get("ws"))document.getElementById("wsurl").value=q.get("ws");
+  if(q.get("session"))window.__wantSession=q.get("session");
+  if(q.get("task"))window.__wantTask=q.get("task");
+  if(q.get("auto")==="1"){
+    await connect();
+    setTimeout(async()=>{
+      if(window.__wantSession){
+        const s=sessions.find(x=>String(x.sessionId).startsWith(window.__wantSession));
+        if(s)await openSession(s);
+      }else if(window.__wantTask){
+        await newSession(document.getElementById("cwd").value,window.__wantTask);
+      }
+    },500);
+  }
+})();
+</script>
+</body>
+</html>
