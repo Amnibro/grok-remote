@@ -1,3 +1,23 @@
+## Install as a Grok plugin (/remote) — v1.1.0
+
+**Public repo:** https://github.com/Amnibro/grok-remote
+
+Anyone with Grok Build:
+
+`ash
+grok plugin install Amnibro/grok-remote --trust
+grok plugin enable grok-remote
+`
+
+Then in the TUI: **/remote** · **/remote-stop** · **/remote status**
+
+Local copy / dev:
+
+`powershell
+cd C:\Users\antho\Documents\ai\grok-remote
+.\install-local.ps1
+`
+
 # Grok Remote Control (Android)
 
 Chat with **Grok Build on your PC** from your phone — same agent, full tools, ACP over WebSocket.
