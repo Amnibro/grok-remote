@@ -36,10 +36,21 @@ const DIRECTIONS=[
 function ownerUnlocked(){
   try{
     if(localStorage.getItem("grok_remote_owner")==="1")return true;
-    if(/(^|[\\/])Users[\\/]antho([\\/]|$)/i.test(String(window.__grokCwdHint||"")))return true;
-    if(/(^|[\\/])Users[\\/]antho([\\/]|$)/i.test(String((document.getElementById("cwd")||{}).value||"")))return true;
+    const paths=[
+      String(window.__grokCwdHint||""),
+      String((document.getElementById("cwd")||{}).value||""),
+      String(window.sidCwd||""),
+      String(location.pathname||""),
+      String(location.href||"")
+    ].join("\n");
+    if(/([\\/])Users[\\/]antho([\\/]|$)|Amnibro|amni-scient|Documents[\\/]ai/i.test(paths)){
+      try{localStorage.setItem("grok_remote_owner","1")}catch(e){}
+      return true;
+    }
     const q=new URLSearchParams(location.search);
-    if(q.get("owner")==="1"||q.get("rikku")==="1"||q.get("risk")==="1"){localStorage.setItem("grok_remote_owner","1");return true}
+    if(q.get("owner")==="1"||q.get("rikku")==="1"||q.get("risk")==="1"||q.get("delve")==="1"){
+      localStorage.setItem("grok_remote_owner","1");return true;
+    }
   }catch(e){}
   return false;
 }

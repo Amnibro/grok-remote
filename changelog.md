@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-07-09 — Footer de-clutter + menu fonts + Amni-Delve
+
+- ☰ menu uses UI `--font` / size (no fixed 12px mono)
+- Removed above-composer clutter: no more “not a git repo”, cost strip, or always-on When busy row
+- Git + turns/ctx move into the **livebar** (only when useful); Interject/Queue/FYI only while busy
+- **Amni-Delve** always in ☰ · Voice & wear; owner auto-unlock for Anthony/Amni paths
+
 ## 2026-07-09 — Fix new chat inheriting old user messages
 
 - **Root cause:** `softCatchup` painted full `_x.ai/prompt_history` when `promptCount===0`, so **New chat** filled with prior turns

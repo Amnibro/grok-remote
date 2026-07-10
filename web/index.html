@@ -312,12 +312,12 @@ body.page-chat #chatTop{display:flex}
 #chatTopSearch:focus{outline:none;border-color:var(--acc);box-shadow:0 0 0 2px var(--acc-dim)}
 .hdr-right{display:flex;align-items:center;gap:6px;margin-left:auto;flex:none}
 .more-wrap{position:relative;flex:none}
-.more-menu{display:none;position:fixed;z-index:20050;width:min(300px,92vw);max-height:min(70dvh,560px);overflow:auto;padding:8px;border-radius:14px;background:color-mix(in srgb,var(--panel) 98%,transparent);border:1px solid color-mix(in srgb,var(--acc) 28%,var(--line));box-shadow:var(--elev-3,0 18px 48px rgba(0,0,0,.55));backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
+.more-menu{display:none;position:fixed;z-index:20050;width:min(300px,92vw);max-height:min(70dvh,560px);overflow:auto;padding:8px;border-radius:14px;background:color-mix(in srgb,var(--panel) 98%,transparent);border:1px solid color-mix(in srgb,var(--acc) 28%,var(--line));box-shadow:var(--elev-3,0 18px 48px rgba(0,0,0,.55));backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);font-family:var(--font);font-size:inherit;line-height:inherit}
 .more-menu.on{display:block}
-.more-menu .mm-sec{font:700 10px/1 var(--font-mono);color:var(--mut);letter-spacing:.6px;text-transform:uppercase;padding:8px 10px 4px}
-.more-menu button{display:flex;width:100%;align-items:center;justify-content:space-between;gap:8px;text-align:left;border:1px solid transparent;background:transparent;color:var(--tx);border-radius:8px;padding:9px 11px;font:inherit;font-size:12px;font-weight:650;cursor:pointer}
+.more-menu .mm-sec{font-family:var(--font);font-weight:700;font-size:.72em;color:var(--mut);letter-spacing:.06em;text-transform:uppercase;padding:8px 10px 4px}
+.more-menu button{display:flex;width:100%;align-items:center;justify-content:space-between;gap:8px;text-align:left;border:1px solid transparent;background:transparent;color:var(--tx);border-radius:8px;padding:9px 11px;font-family:inherit;font-size:1em;font-weight:650;line-height:1.35;cursor:pointer}
 .more-menu button:hover,.more-menu button.on{background:var(--acc-dim);border-color:color-mix(in srgb,var(--acc) 30%,var(--line));color:var(--acc)}
-.more-menu button .mm-k{color:var(--mut);font:600 10px/1 var(--font-mono)}
+.more-menu button .mm-k{color:var(--mut);font-family:inherit;font-size:.82em;font-weight:600;opacity:.9}
 .composer-tools{display:none;flex-wrap:wrap;gap:6px;align-items:center;padding:0 0 8px}
 .composer-tools.on{display:flex}
 .composer-tools .git-strip{flex:1 1 100%;min-width:0}
@@ -345,12 +345,23 @@ body.hide-read .tool[data-tool-kind="read"],body.hide-read .tool[data-tool-kind=
 .more-menu .mm-tog .mm-k{opacity:.85}
 .more-menu .mm-tog.on{color:var(--acc)}
 #moreToolsHost,#toolsRow{display:flex;flex-direction:column;gap:0;width:100%}
-#moreToolsHost button,#toolsRow button{width:100%;text-align:left;border:0;background:transparent;color:inherit;padding:10px 12px;font:inherit;cursor:pointer;display:flex;justify-content:space-between;align-items:center}
+#moreToolsHost button,#toolsRow button{width:100%;text-align:left;border:0;background:transparent;color:inherit;padding:10px 12px;font-family:inherit;font-size:1em;font-weight:650;line-height:1.35;cursor:pointer;display:flex;justify-content:space-between;align-items:center}
 #moreToolsHost button:hover,#toolsRow button:hover{background:var(--acc-dim);color:var(--acc)}
-.footer-meta{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:0 0 6px}
-.footer-meta .git-strip{flex:1 1 auto;min-width:0}
-.footer-meta .pin-bar{flex:1 1 100%}
+#moreToolsHost button .mm-k,#toolsRow button .mm-k{font-family:inherit;font-size:.82em;font-weight:600;color:var(--mut)}
+.footer-meta{display:none;flex-wrap:wrap;gap:4px;align-items:center;padding:0 0 4px;min-height:0}
+.footer-meta.has-pins{display:flex}
+.footer-meta .git-strip{display:none}
+.footer-meta .budget-bar{display:none}
+.footer-meta .pin-bar{flex:1 1 100%;min-width:0}
+.footer-meta .pin-bar:empty{display:none}
 .composer-tools{display:none!important}
+.msg-mode-row{display:none;flex-wrap:wrap;gap:4px;align-items:center;padding:0 0 4px;min-height:0}
+body.busy-turn .msg-mode-row,body.msg-mode-force .msg-mode-row{display:flex}
+.msg-mode-row .mm-lab{font-family:var(--font);font-weight:700;font-size:.68em;letter-spacing:.04em;text-transform:uppercase;color:var(--mut);padding:0 2px}
+.msg-mode-row .mode-chip{border:1px solid var(--line);background:var(--panel2);color:var(--tx);border-radius:999px;padding:3px 8px;font-family:var(--font);font-size:.78em;font-weight:700;cursor:pointer}
+.livebar .lb-git,.livebar .lb-cost{font-family:var(--font);font-size:.9em;color:var(--mut);max-width:28vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.livebar .lb-git:empty,.livebar .lb-cost:empty{display:none}
+.livebar .lb-git.git-dirty{color:var(--gold)}
 .font-chips{display:flex;flex-wrap:wrap;gap:6px}
 .font-chips .mode-chip{cursor:pointer}
 #chatStage{--feed-pad-bottom:12px}
@@ -386,9 +397,6 @@ button.cancel-turn.on{display:inline-flex;align-items:center;justify-content:cen
 button.cancel-turn:hover{background:var(--bad);transform:translateY(-1px)}
 .composer-sendcol{display:flex;flex-direction:column;align-items:stretch;gap:4px;flex:none}
 .composer-actions{display:flex;gap:6px;align-items:stretch}
-.msg-mode-row{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:0 0 8px}
-.msg-mode-row .mm-lab{font:700 9px/1 var(--font-mono);letter-spacing:.06em;text-transform:uppercase;color:var(--mut);padding:0 2px}
-.msg-mode-row .mode-chip{border:1px solid var(--line);background:var(--panel2);color:var(--tx);border-radius:999px;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer}
 .msg-mode-row .mode-chip.on{border-color:var(--acc);color:var(--acc);background:var(--acc-dim)}
 .msg-mode-row .mode-chip[data-mode="interject"].on{border-color:var(--bad);color:var(--bad);background:color-mix(in srgb,var(--bad) 14%,var(--panel2))}
 .msg-mode-row .mode-chip[data-mode="fyi"].on{border-color:var(--gold);color:var(--gold);background:color-mix(in srgb,var(--gold) 12%,var(--panel2))}
@@ -406,7 +414,7 @@ button.cancel-turn:hover{background:var(--bad);transform:translateY(-1px)}
 .hdrbtn.stop-remote{border-color:color-mix(in srgb,var(--bad) 45%,var(--line))!important;color:var(--bad)!important}
 .hdrbtn.stop-remote:hover{background:color-mix(in srgb,var(--bad) 16%,var(--panel2))!important;color:var(--bad)!important}
 .rowbtns button.danger{border-color:color-mix(in srgb,var(--bad) 50%,var(--line));color:var(--bad)}
-.git-strip{font:700 11px/1.3 var(--font-mono);color:var(--soft);padding:4px 2px 2px;cursor:pointer;letter-spacing:.02em}
+.git-strip{font-family:var(--font);font-weight:650;font-size:.82em;line-height:1.3;color:var(--soft);padding:0;cursor:pointer;letter-spacing:.01em}
 .git-strip.dirty .git-dirty,.git-dirty{color:var(--gold)}
 .git-clean{color:var(--ok)}.git-branch{color:var(--acc)}.git-sha{color:var(--mut)}.git-muted{color:var(--mut);font-weight:600}
 .git-ahead{color:var(--you)}.git-behind{color:var(--bad)}
@@ -608,7 +616,7 @@ body.privacy #ideStatus,body.privacy .ide-tree-head span{filter:blur(5px)}
 .cockpit-tools button.on{border-color:var(--acc);color:var(--acc);background:var(--acc-dim)}
 .pin-bar{display:flex;flex-wrap:wrap;gap:4px;min-height:0;max-width:100%}
 .pin-chip{border:1px solid color-mix(in srgb,var(--acc) 40%,var(--line));background:var(--acc-dim);color:var(--acc);border-radius:999px;padding:3px 8px;font-size:10px;font-weight:700;cursor:pointer;font-family:var(--font-mono)}
-.budget-bar{font:700 10px/1 var(--font-mono);color:var(--mut)}
+.budget-bar{font-family:var(--font);font-weight:650;font-size:.82em;line-height:1.2;color:var(--mut)}
 .budget-bar.hot{color:var(--bad)}
 .term-pane,.side-pane{display:none;border:1px solid var(--line);border-radius:10px;background:var(--in);overflow:hidden}
 .term-pane.on,.side-pane.on{display:block}
@@ -901,6 +909,8 @@ body.voice-go #voiceHud,body.voice-xr #voiceHud{bottom:calc(var(--stack-h,120px)
         <button type="button" id="btnVoiceMenu" role="menuitem">Go voice <span class="mm-k">hands-free</span></button>
         <button type="button" id="btnXrMenu" role="menuitem">XR / AR <span class="mm-k">auto</span></button>
         <button type="button" id="btnWatch" role="menuitem">Watch companion <span class="mm-k">galaxy</span></button>
+        <button type="button" id="btnDelve" role="menuitem">Amni-Delve <span class="mm-k">hub</span></button>
+        <button type="button" id="btnMsgModeMenu" role="menuitem">Delivery mode <span class="mm-k">queue</span></button>
         <div class="mm-sec">Look &amp; feel</div>
         <button type="button" id="btnTheme" role="menuitem">Theme &amp; UX <span class="mm-k">skin</span></button>
         <button type="button" id="btnFont" role="menuitem">Fonts <span class="mm-k">type</span></button>
@@ -993,14 +1003,12 @@ body.voice-go #voiceHud,body.voice-xr #voiceHud{bottom:calc(var(--stack-h,120px)
 <footer id="foot" class="pulse-frame" style="display:none">
   <div class="queue" id="queue" aria-live="polite"></div>
   <div class="attach-bar" id="attachBar"></div>
-  <div class="footer-meta" id="footerMeta" aria-label="Session meta">
-    <div class="git-strip" id="gitStrip" title="Git branch status — tap to refresh">git …</div>
+  <div class="footer-meta" id="footerMeta" aria-label="Pinned sessions">
     <div class="pin-bar" id="pinBar" title="Pinned sessions"></div>
-    <span id="budgetBar" class="budget-bar" title="Turn / context estimate">cost</span>
   </div>
   <div class="composer-tools" id="composerTools" aria-hidden="true"></div>
-  <div class="msg-mode-row" id="msgModeRow" role="group" aria-label="Message delivery mode">
-    <span class="mm-lab">When busy</span>
+  <div class="msg-mode-row" id="msgModeRow" role="group" aria-label="Message delivery mode" title="Only shown while a turn is running — also in ☰">
+    <span class="mm-lab">Busy</span>
     <button type="button" class="mode-chip" data-mode="interject" title="Cancel current steps and handle this now">Interject</button>
     <button type="button" class="mode-chip on" data-mode="queue" title="Wait for a good pause, then apply your guidance">Queue</button>
     <button type="button" class="mode-chip" data-mode="fyi" title="Extra context only — do not stop the task">FYI</button>
@@ -1025,6 +1033,10 @@ body.voice-go #voiceHud,body.voice-xr #voiceHud{bottom:calc(var(--stack-h,120px)
       <span class="lb-sep">·</span>
       <span class="lb-phase" id="lbPhaseWrap"><span class="lb-dot" aria-hidden="true"></span><span class="lb-phase-t" id="lbPhase">idle</span></span>
       <span class="lb-extra" id="lbExtra"></span>
+      <span class="lb-sep lb-sep-git" id="lbGitSep" hidden>·</span>
+      <span class="lb-git" id="lbGit" title="Git — tap to refresh" hidden></span>
+      <span class="lb-sep lb-sep-cost" id="lbCostSep" hidden>·</span>
+      <span class="lb-cost" id="lbCost" title="Turns / context" hidden></span>
       <span class="lb-sep lb-sep-sess">·</span>
       <span class="lb-sess hint" id="hint">Desktop + phone share this session</span>
     </div>
@@ -1336,6 +1348,10 @@ function applyFont(){
   document.documentElement.style.setProperty("--font",css);
   document.documentElement.style.setProperty("--font-mono",/mono|code|consolas|courier/i.test(css)?css:"ui-monospace,SFMono-Regular,Menlo,Consolas,monospace");
   document.body.style.fontFamily=css;
+  ["moreMenu","orbitMenu"].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el){el.style.fontFamily=css;el.style.fontSize=""}
+  });
   paintFontChips();
   const h=document.getElementById("fontHint"),h2=document.getElementById("fontHint2");
   const lab=fontState.id==="custom"?(fontState.name||"Custom"):(preset.label||fontState.id);
@@ -1695,6 +1711,7 @@ function touchLive(){
 function setBusy(b){
   busy=b;window.busy=!!b;
   const turning=!!b&&!replaying;
+  document.body.classList.toggle("busy-turn",turning);
   if(send){
     send.disabled=false;
     send.classList.remove("is-stop");
@@ -1715,6 +1732,7 @@ function setBusy(b){
   }
   if(!b&&window.grokCockpit&&window.grokCockpit.paintCtxMeter)try{window.grokCockpit.paintCtxMeter()}catch(e){}
   paintMsgQueue();
+  try{if(window.measureBottomStack)measureBottomStack();if(window.updateJump)updateJump()}catch(e){}
 }
 window.setBusy=setBusy;
 window.setPhase=setPhase;
@@ -1726,6 +1744,8 @@ function paintMsgModeChips(){
   const host=document.getElementById("msgModeRow");if(!host)return;
   host.querySelectorAll(".mode-chip[data-mode]").forEach(b=>b.classList.toggle("on",b.getAttribute("data-mode")===msgMode));
   if(send&&busy&&!replaying)send.title="Send ("+msgMode+" mode while busy)";
+  const m=document.getElementById("btnMsgModeMenu");
+  if(m)m.innerHTML='Delivery mode <span class="mm-k">'+msgMode+"</span>";
 }
 function wrapForMode(text,mode,ctx){
   const t=String(text||"");
@@ -3726,6 +3746,18 @@ if(btnVoiceMenu)btnVoiceMenu.onclick=()=>{closeMoreMenu();window.grokVoice?windo
 if(btnXrMenu)btnXrMenu.onclick=()=>{closeMoreMenu();window.grokVoice?window.grokVoice.enterBestXr():chip("voice loading…")};
 const btnWatch=document.getElementById("btnWatch");
 if(btnWatch)btnWatch.onclick=()=>{closeMoreMenu();window.open("/watch","_blank")};
+const btnDelveMenu=document.getElementById("btnDelve");
+if(btnDelveMenu)btnDelveMenu.onclick=()=>{closeMoreMenu();if(window.grokCockpit&&window.grokCockpit.openDelve)window.grokCockpit.openDelve();else if(typeof openDelve==="function")openDelve();else window.open("http://127.0.0.1:8787/","_blank")};
+const btnMsgModeMenu=document.getElementById("btnMsgModeMenu");
+if(btnMsgModeMenu)btnMsgModeMenu.onclick=()=>{
+  const order=["queue","interject","fyi"];
+  const i=order.indexOf(msgMode);
+  msgMode=order[(i+1)%order.length];
+  saveMsgMode();paintMsgModeChips();
+  document.body.classList.add("msg-mode-force");
+  setTimeout(()=>document.body.classList.remove("msg-mode-force"),4000);
+  chip("delivery · "+msgMode);
+};
 const closePersona=document.getElementById("closePersona");
 if(closePersona)closePersona.onclick=()=>closeAllSheets();
 if(personaSheet)personaSheet.addEventListener("click",e=>{if(e.target===personaSheet)closeAllSheets()});

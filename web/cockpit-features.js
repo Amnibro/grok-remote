@@ -60,12 +60,20 @@ function noteContextFromMeta(meta){
  paintCtxMeter();
 }
 function paintBudget(){
- const el=$("budgetBar");if(!el)return;
  const used=S.ctx.used||0;
  const win=S.ctx.window||500000;
  const parts=["turns "+S.budget.turns+(S.budget.maxTurns?"/"+S.budget.maxTurns:""),"ctx "+fmtTok(used)+"/"+fmtTok(win)];
- el.textContent="cost - "+parts.join(" - ");
- el.classList.toggle("hot",!!((S.budget.maxTurns&&S.budget.turns>=S.budget.maxTurns)||(used&&win&&used/win>=0.85)));
+ const text=parts.join(" · ");
+ const hot=!!((S.budget.maxTurns&&S.budget.turns>=S.budget.maxTurns)||(used&&win&&used/win>=0.85));
+ const el=$("budgetBar");
+ if(el){el.textContent=text;el.classList.toggle("hot",hot)}
+ const lb=$("lbCost"),sep=$("lbCostSep");
+ if(lb){
+  const show=!!(S.budget.turns||used);
+  lb.hidden=!show;lb.textContent=show?text:"";
+  lb.classList.toggle("hot",hot);
+  if(sep)sep.hidden=!show;
+ }
 }
 function fmtTok(n){
  n=+n||0;
@@ -410,13 +418,22 @@ function paintPins(){
  b.oncontextmenu=e=>{e.preventDefault();S.pinned.splice(i,1);savePins();paintPins()};
  el.appendChild(b);
  });
+ const meta=$("footerMeta");
+ if(meta)meta.classList.toggle("has-pins",S.pinned.length>0);
 }
 function openDelve(){
- const base=location.origin.replace(/2421/,"8787");
- const urls=["http://127.0.0.1:8787/","http://127.0.0.1:8080/delve","/delve"];
- if(window.grokRemote&&window.grokRemote.openExternal)window.grokRemote.openExternal(urls[0]);
- else window.open(urls[0],"_blank");
- chip("delve - opened local hub if running");
+ const urls=[
+  "http://127.0.0.1:8787/",
+  "http://127.0.0.1:8787/delve",
+  "http://127.0.0.1:8080/delve",
+  "http://127.0.0.1:8080/",
+  location.origin.replace(/:\d+$/,":8787")+"/",
+  "/delve"
+ ];
+ const go=urls[0];
+ if(window.grokRemote&&window.grokRemote.openExternal)window.grokRemote.openExternal(go);
+ else window.open(go,"_blank");
+ chip("Amni-Delve · opening local hub");
 }
 function stopTurn(){
  try{
@@ -427,21 +444,47 @@ function stopTurn(){
  chip("stop - cancel sent");
  }catch(e){chip("stop failed: "+e)}
 }
+function paintGitLive(j){
+ const lb=$("lbGit"),sep=$("lbGitSep");
+ if(!lb)return;
+ if(!j||!j.git){
+  lb.hidden=true;lb.textContent="";lb.classList.remove("git-dirty");
+  if(sep)sep.hidden=true;
+  return;
+ }
+ const bits=[j.branch||"?"];
+ if(j.dirty)bits.push(j.dirty+" dirty");
+ else bits.push("clean");
+ if(j.ahead)bits.push("^"+j.ahead);
+ if(j.behind)bits.push("v"+j.behind);
+ lb.hidden=false;lb.textContent=bits.join(" · ");
+ lb.classList.toggle("git-dirty",!!j.dirty);
+ lb.title=(j.files||[]).slice(0,20).map(f=>(f.code||"")+" "+f.path).join("\n")||j.branch;
+ if(sep)sep.hidden=false;
+}
 async function refreshGit(){
- const el=$("gitStrip");if(!el)return;
  try{
  const j=await jfetch("/api/git/status");
  S.git=j;
- if(!j.git){el.innerHTML="<span class='git-muted'>not a git repo</span>";el.classList.remove("dirty");return}
- const bits=["<b class='git-branch'>"+esc(j.branch||"?")+"</b>"];
- if(j.sha)bits.push("<span class='git-sha'>"+esc(j.sha)+"</span>");
- bits.push("<span class='"+(j.dirty?"git-dirty":"git-clean")+"'>"+(j.dirty?j.dirty+" dirty":"clean")+"</span>");
- if(j.ahead)bits.push("<span class='git-ahead'>^"+j.ahead+"</span>");
- if(j.behind)bits.push("<span class='git-behind'>v"+j.behind+"</span>");
- el.innerHTML=bits.join(" - ");
- el.classList.toggle("dirty",!!j.dirty);
- el.title=(j.files||[]).slice(0,20).map(f=>(f.code||"")+" "+f.path).join("\n")||j.branch;
- }catch(e){el.innerHTML="<span class='git-muted'>git offline</span>";el.title=String(e&&e.message||e)}
+ paintGitLive(j);
+ const el=$("gitStrip");
+ if(el){
+  if(!j.git){el.innerHTML="";el.classList.remove("dirty");el.style.display="none";return}
+  el.style.display="";
+  const bits=["<b class='git-branch'>"+esc(j.branch||"?")+"</b>"];
+  if(j.sha)bits.push("<span class='git-sha'>"+esc(j.sha)+"</span>");
+  bits.push("<span class='"+(j.dirty?"git-dirty":"git-clean")+"'>"+(j.dirty?j.dirty+" dirty":"clean")+"</span>");
+  if(j.ahead)bits.push("<span class='git-ahead'>^"+j.ahead+"</span>");
+  if(j.behind)bits.push("<span class='git-behind'>v"+j.behind+"</span>");
+  el.innerHTML=bits.join(" · ");
+  el.classList.toggle("dirty",!!j.dirty);
+  el.title=(j.files||[]).slice(0,20).map(f=>(f.code||"")+" "+f.path).join("\n")||j.branch;
+ }
+ }catch(e){
+  paintGitLive(null);
+  const el=$("gitStrip");
+  if(el){el.innerHTML="";el.style.display="none"}
+ }
 }
 async function showGitDiff(){
  try{
@@ -621,13 +664,10 @@ function injectChrome(){
   document.body.dataset.cockpitInjected="1";
   const foot=$("foot");
   if(!foot)return;
-  if(!$("gitStrip")){
+  if(!$("pinBar")){
     const meta=$("footerMeta")||(()=>{const d=document.createElement("div");d.id="footerMeta";d.className="footer-meta";const comp=foot.querySelector(".composer");if(comp)foot.insertBefore(d,comp);else foot.appendChild(d);return d})();
-    if(!$("gitStrip")){const g=document.createElement("div");g.className="git-strip";g.id="gitStrip";g.title="Git branch status";g.textContent="git …";meta.appendChild(g)}
-    if(!$("pinBar")){const p=document.createElement("div");p.className="pin-bar";p.id="pinBar";meta.appendChild(p)}
-    if(!$("budgetBar")){const b=document.createElement("span");b.id="budgetBar";b.className="budget-bar";b.textContent="cost";meta.appendChild(b)}
+    const p=document.createElement("div");p.className="pin-bar";p.id="pinBar";meta.appendChild(p);
   }
-  const owner=!!(window.grokPresets&&window.grokPresets.ownerUnlocked&&window.grokPresets.ownerUnlocked());
   const toolsHost=$("moreToolsHost")||$("moreMenu");
   if(toolsHost&&!$("toolsRow")){
     const wrap=document.createElement("div");
@@ -641,8 +681,7 @@ function injectChrome(){
       '<button type="button" id="btnCp" role="menuitem">Save point <span class="mm-k">snap</span></button>'+
       '<button type="button" id="btnExport" role="menuitem">Export <span class="mm-k">html</span></button>'+
       '<button type="button" id="btnAgents" role="menuitem">Project MD <span class="mm-k">ctx</span></button>'+
-      '<button type="button" id="btnBudget" role="menuitem">Limits <span class="mm-k">cost</span></button>'+
-      (owner?'<button type="button" id="btnDelve" role="menuitem">Delve <span class="mm-k">owner</span></button>':'');
+      '<button type="button" id="btnBudget" role="menuitem">Limits <span class="mm-k">cost</span></button>';
     if(toolsHost.id==="moreToolsHost")toolsHost.appendChild(wrap);
     else{
       const sec=document.createElement("div");sec.className="mm-sec";sec.textContent="Tools";
@@ -716,7 +755,8 @@ function injectChrome(){
     if(k===null)return;
     S.budget.maxTurns=+t||0;S.budget.maxEstTokens=+k||0;saveBudget();paintBudget();paintCtxMeter();
   };
-  if($("btnDelve"))$("btnDelve").onclick=()=>{closeMore();openDelve()};
+  const wireDelve=()=>{const d=$("btnDelve");if(d&&!d._wired){d.onclick=()=>{closeMore();openDelve()};d._wired=true}};
+  wireDelve();
   if($("termClose"))$("termClose").onclick=()=>{$("termPane").classList.remove("on");reflow()};
   if($("bgClose"))$("bgClose").onclick=()=>{$("bgPane").classList.remove("on");reflow()};
   if($("atClose"))$("atClose").onclick=()=>$("atSheet").classList.remove("on");
@@ -732,6 +772,8 @@ function injectChrome(){
     };
     ctx._wired=true;
   }
+  const lbGit=$("lbGit");
+  if(lbGit&&!lbGit._wired){lbGit.onclick=()=>refreshGit();lbGit.style.cursor="pointer";lbGit._wired=true}
   paintPins();paintBudget();paintBg();paintCheckpoints();paintTodos();paintCtxMeter();refreshGit();
   bindSlashComplete();enhanceBubbles();wireToolPathClicks();
   setInterval(()=>{refreshGit();refreshSessionContext();paintCtxMeter()},12000);
@@ -748,7 +790,7 @@ window.grokCockpit={
  isAlwaysPerm(key){return !!S.alwaysPerm[key]},
  setAlwaysPerm(key,v){if(v)S.alwaysPerm[key]=1;else delete S.alwaysPerm[key];saveAlways()},
  openAtPicker,searchChat,exportChat,startVoice,stopTurn,refreshGit,showGitDiff,paintCtxMeter,refreshSessionContext,
- syncTodosFromPlan,upsertTodo,openLocInIde,injectProjectContext,
+ syncTodosFromPlan,upsertTodo,openLocInIde,injectProjectContext,openDelve,paintBudget,paintPins,
  voiceGo:()=>window.grokVoice&&window.grokVoice.setMode("go"),
  voiceXr:()=>window.grokVoice&&window.grokVoice.setMode("xr")
 };
