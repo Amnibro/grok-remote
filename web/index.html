@@ -379,6 +379,9 @@ body.clean .row{margin:14px 0}
 body.bordered .bub,body.bordered .tool,body.bordered .sess .item,body.bordered .collapsible{border-width:1px;border-style:solid}
 .chip{text-align:center;color:var(--mut);font-size:.8em;margin:8px 0}
 .chip span{border:1px solid color-mix(in srgb,var(--acc) 25%,var(--line));border-radius:999px;padding:3px 10px;background:var(--panel);box-shadow:0 0 12px -8px var(--acc-glow);font-family:var(--font-mono);letter-spacing:.3px}
+.chip.hist-more{margin:4px 0 10px;cursor:pointer;position:sticky;top:0;z-index:3}
+.chip.hist-more span{border-color:color-mix(in srgb,var(--acc) 40%,var(--line));color:var(--acc);background:color-mix(in srgb,var(--panel) 92%,transparent)}
+.chip.hist-more:hover span{border-color:var(--acc)}
 .recap{border:1px solid color-mix(in srgb,var(--ok) 40%,var(--line));background:color-mix(in srgb,var(--ok) 10%,var(--panel));border-radius:12px;padding:10px;margin:8px 0;font-size:.9em;color:var(--ok);white-space:pre-wrap;box-shadow:0 0 16px -10px color-mix(in srgb,var(--ok) 40%,transparent)}
 body.clean .pulse-frame{animation:none;border-color:transparent;box-shadow:none}
 @media (prefers-reduced-motion:reduce){
@@ -1171,6 +1174,8 @@ let curUser=null,curAgent=null,curThought=null,toolMap={},curThoughtRow=null;
 let seenEvents=new Set(),seenUserTexts=new Set(),promptCount=0,commands=[];
 let pollTimer=null,catchupBusy=false,lastLiveAt=0,localEchoUntil=0;
 let historyFileSize=0,diskCatchupBusy=false;
+const HISTORY_PAGE=100;
+let historyHasMore=false,historyOlderBefore=0,historyLoadingOlder=false;
 let sessionGen=0,sessionSwitching=false,loadExpectSid=null,sessionFresh=false;
 let linkState="standby",agentPhase="idle",phaseDetail="",wantReconnect=false,reconnectTimer=null,connectAttempt=0;
 let connecting=false,intentionalClose=false,reconnectArmed=false,maxReconnect=5,startInFlight=false;
@@ -1625,7 +1630,8 @@ function scroll(){
 }
 feed.addEventListener("scroll",()=>{
   if(replaying||sessionSwitching||feed.classList.contains("loading-history")){stickBottom=true;updateJump();return}
-  stickBottom=atBottom();updateJump()
+  stickBottom=atBottom();updateJump();
+  if(feed.scrollTop<140)loadOlderHistory().catch(()=>{});
 },{passive:true});
 async function snapChatToBottom(times){
   stickBottom=true;
@@ -2661,25 +2667,66 @@ function scheduleCatchup(ms){
 async function paintDiskEvents(events,sessionId,opts){
   opts=opts||{};
   const asReplay=!!opts.replay;
+  const prepend=!!opts.prepend;
   const prevReplay=replaying;
-  if(asReplay)replaying=true;
+  if(asReplay||prepend)replaying=true;
   let n=0;
-  for(const ev of events||[]){
-    const params=ev&&ev.params||{};
-    const update=params.update;
-    if(!update)continue;
-    const meta=params._meta||update._meta||null;
-    handleUpdate(update,params.sessionId||sessionId,meta);
-    n++;
+  let nodes=null;
+  let origAppend=null;
+  if(prepend&&feed){
+    nodes=[];
+    origAppend=feed.appendChild.bind(feed);
+    feed.appendChild=function(node){nodes.push(node);return node};
   }
-  if(asReplay){replaying=prevReplay;closeOpen()}
-  else if(n){touchLive();if(stickBottom||atBottom())scroll()}
+  try{
+    for(const ev of events||[]){
+      const params=ev&&ev.params||{};
+      const update=params.update;
+      if(!update)continue;
+      const meta=params._meta||update._meta||null;
+      handleUpdate(update,params.sessionId||sessionId,meta);
+      n++;
+    }
+  }finally{
+    if(prepend&&feed&&origAppend){
+      feed.appendChild=origAppend;
+      const first=feed.firstChild;
+      for(let i=0;i<(nodes||[]).length;i++)feed.insertBefore(nodes[i],first);
+    }
+    if(asReplay||prepend){replaying=prevReplay;closeOpen()}
+    else if(n){touchLive();if(stickBottom||atBottom())scroll()}
+  }
   return n;
+}
+function applyHistoryMeta(meta){
+  meta=meta||{};
+  if(typeof meta.size==="number")historyFileSize=meta.size;
+  if(typeof meta.end==="number"&&!meta.live){/* keep size for live tail */}
+  if(typeof meta.end==="number"&&meta.live)historyFileSize=meta.end;
+  else if(typeof meta.size==="number")historyFileSize=meta.size;
+  historyHasMore=!!meta.has_more;
+  if(typeof meta.older_before==="number")historyOlderBefore=meta.older_before;
+  else if(typeof meta.window_start==="number")historyOlderBefore=meta.window_start;
+  paintHistoryMoreChip();
+}
+function paintHistoryMoreChip(){
+  let el=document.getElementById("histMore");
+  if(!historyHasMore){if(el)el.remove();return}
+  if(!el){
+    el=document.createElement("div");
+    el.id="histMore";
+    el.className="chip hist-more";
+    el.innerHTML='<span>↑ earlier messages — scroll up</span>';
+    el.onclick=()=>loadOlderHistory().catch(()=>{});
+  }
+  if(feed&&feed.firstChild!==el)feed.insertBefore(el,feed.firstChild);
 }
 async function paintDiskHistory(sessionId,cwd,opts){
   opts=opts||{};
-  const limit=opts.limit||1200;
+  const limit=opts.limit!=null?opts.limit:HISTORY_PAGE;
   const q=new URLSearchParams({sessionId:String(sessionId||""),cwd:String(cwd||sidCwd||""),limit:String(limit)});
+  if(opts.before!=null)q.set("before",String(opts.before));
+  if(opts.max_bytes!=null)q.set("max_bytes",String(opts.max_bytes));
   const r=await fetch("/api/session/history?"+q.toString(),{cache:"no-store"});
   const text=await r.text();
   let j=null;try{j=JSON.parse(String(text).replace(/^\uFEFF/,"").trim())}catch(e){j=null}
@@ -2688,9 +2735,32 @@ async function paintDiskHistory(sessionId,cwd,opts){
     throw new Error(err||"history fetch failed");
   }
   const events=Array.isArray(j.events)?j.events:[];
-  const n=await paintDiskEvents(events,sessionId,{replay:true});
-  if(j.meta&&typeof j.meta.size==="number")historyFileSize=j.meta.size;
-  return {count:n,meta:j.meta||{},title:j.title||""};
+  const n=await paintDiskEvents(events,sessionId,{replay:!opts.prepend,prepend:!!opts.prepend});
+  applyHistoryMeta(j.meta||{});
+  return {count:n,meta:j.meta||{},title:j.title||"",events:events};
+}
+async function loadOlderHistory(){
+  if(!sid||!historyHasMore||historyLoadingOlder||replaying||sessionSwitching)return;
+  if(!(historyOlderBefore>0)){historyHasMore=false;paintHistoryMoreChip();return}
+  historyLoadingOlder=true;
+  const expect=sid,gen=sessionGen;
+  const prevH=feed.scrollHeight,prevT=feed.scrollTop;
+  const marker=document.getElementById("histMore");
+  if(marker)marker.innerHTML='<span>loading earlier…</span>';
+  try{
+    const hist=await paintDiskHistory(sid,sidCwd,{limit:HISTORY_PAGE,before:historyOlderBefore,prepend:true,max_bytes:1500000});
+    if(sid!==expect||gen!==sessionGen)return;
+    if(!(hist.count>0)){historyHasMore=false;paintHistoryMoreChip();return}
+    const delta=feed.scrollHeight-prevH;
+    feed.scrollTop=prevT+Math.max(0,delta);
+    chip("loaded +"+hist.count+" earlier");
+  }catch(e){
+    if(marker)marker.innerHTML='<span>↑ earlier messages — scroll up</span>';
+    chip("older history: "+e);
+  }finally{
+    historyLoadingOlder=false;
+    paintHistoryMoreChip();
+  }
 }
 async function diskLiveCatchup(){
   if(!sid||replaying||sessionSwitching||diskCatchupBusy)return 0;
@@ -2732,6 +2802,7 @@ async function diskLiveCatchup(){
   }catch(e){return 0}
   finally{diskCatchupBusy=false}
 }
+
 async function softCatchup(){
   if(!sid||replaying||catchupBusy||sessionSwitching)return;
   const expect=sid,gen=sessionGen;
@@ -2769,6 +2840,9 @@ function clearSessionFeed(){
   seenUserTexts=new Set();
   promptCount=0;
   historyFileSize=0;
+  historyHasMore=false;
+  historyOlderBefore=0;
+  historyLoadingOlder=false;
   agentQueueNote="";
   msgQueue.length=0;
   try{paintMsgQueue()}catch(e){}
@@ -3005,29 +3079,32 @@ async function openSession(s){
     if(gen!==sessionGen)return;
     let painted=0;
     try{
-      const hist=await paintDiskHistory(sid,sidCwd,{limit:2000});
+      const hist=await paintDiskHistory(sid,sidCwd,{limit:HISTORY_PAGE,max_bytes:900000});
       painted=hist.count||0;
-      if(hist.meta&&typeof hist.meta.size==="number")historyFileSize=hist.meta.size;
       if(gen!==sessionGen)return;
     }catch(e){
       if(gen===sessionGen)chip("disk history: "+e);
     }
     try{
-      const ph=await req("_x.ai/prompt_history",{sessionId:sid,cwd:sidCwd},20000);
+      const ph=await req("_x.ai/prompt_history",{sessionId:sid,cwd:sidCwd},12000);
       if(gen!==sessionGen)return;
       const prompts=ph.prompts||[];promptCount=prompts.length;
       prompts.forEach(p=>{if(p)seenUserTexts.add(String(p).trim())});
       if(!painted&&prompts.length){
-        const slice=prompts.slice(-40);
+        const slice=prompts.slice(-Math.min(40,HISTORY_PAGE));
         for(const p of slice){
           const t=String(p||"").trim();
           if(t){closeOpen();appendUser(t);closeOpen()}
         }
         painted=slice.length;
       }
-      chip(painted?"history · "+painted+" events · live":("history ready · "+promptCount+" prompts · live"));
+      const more=historyHasMore?" · scroll up for older":"";
+      chip(painted?"history · last "+painted+" events"+more+" · live":("history ready"+more+" · live"));
     }catch(e){
-      if(gen===sessionGen)chip(painted?"history · "+painted+" events · live":"history ready · live");
+      if(gen===sessionGen){
+        const more=historyHasMore?" · scroll up for older":"";
+        chip(painted?"history · last "+painted+" events"+more+" · live":"history ready · live");
+      }
     }
     if(gen!==sessionGen)return;
     try{await loadCommands()}catch(e){}

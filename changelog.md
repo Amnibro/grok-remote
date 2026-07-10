@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-07-09 — Fast history: last 100 + scroll-up load
+
+- Open session loads only the **latest ~100** disk events (smaller read window)
+- **Scroll up** (or tap “earlier messages”) loads the previous page and prepends it
+- API: `/api/session/history?limit=100&before=<byte>` + `meta.has_more` / `older_before`
+
 ## 2026-07-09 — Footer de-clutter + menu fonts + Amni-Delve
 
 - ☰ menu uses UI `--font` / size (no fixed 12px mono)

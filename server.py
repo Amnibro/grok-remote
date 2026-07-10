@@ -172,53 +172,82 @@ def _parse_update_line(line,live=False):
   "_kind":kind,
   "_eid":str(merged.get("eventId") or umeta.get("eventId") or ""),
  }
-def read_session_updates(session_dir:Path,limit=1600,max_bytes=8_000_000,since_bytes=0,live=False):
+def read_session_updates(session_dir:Path,limit=1600,max_bytes=8_000_000,since_bytes=0,live=False,before_bytes=None):
  path=session_dir/"updates.jsonl"
- if not path.is_file():return [],{"path":str(path),"missing":True,"size":0}
+ if not path.is_file():return [],{"path":str(path),"missing":True,"size":0,"has_more":False}
  size=path.stat().st_size
  since=int(since_bytes or 0)
  if since<0:since=0
  if since>size:since=0
  if live and since>=size:
-  return [],{"path":str(path),"size":size,"returned":0,"scanned":0,"since":since,"live":True}
+  return [],{"path":str(path),"size":size,"returned":0,"scanned":0,"since":since,"live":True,"has_more":False,"end":size}
  end_pos=size
+ window_start=0
+ scored=[]
  try:
   with path.open("rb") as f:
-   if live and since>0:
-    f.seek(since)
-   elif live:
-    f.seek(max(0,size-min(max_bytes,512_000)));f.readline()
-   elif size>max_bytes:
-    f.seek(max(0,size-max_bytes));f.readline()
-   raw=f.read().decode("utf-8","replace")
-   end_pos=f.tell()
+   if live:
+    if since>0:f.seek(since)
+    else:
+     f.seek(max(0,size-min(max_bytes,512_000)));f.readline()
+    window_start=f.tell()
+    raw=f.read()
+    end_pos=f.tell()
+    for line in raw.splitlines():
+     try:s=line.decode("utf-8","replace")
+     except Exception:s=""
+     ev=_parse_update_line(s,live=True)
+     if ev:scored.append(ev)
+    if len(scored)>limit:scored=scored[-limit:]
+    events=[{k:v for k,v in ev.items() if not k.startswith("_")} for ev in scored]
+    return events,{"path":str(path),"size":size,"end":end_pos,"returned":len(events),"scanned":len(scored),"since":since,"live":True,"has_more":False,"window_start":window_start}
+   if before_bytes is not None:
+    end_cap=min(max(0,int(before_bytes)),size)
+    if end_cap<=0:return [],{"path":str(path),"size":size,"has_more":False,"window_start":0,"window_end":0,"returned":0,"live":False}
+    start=max(0,end_cap-max_bytes)
+    f.seek(start)
+    if start>0:f.readline()
+    window_start=f.tell()
+    blob=f.read(max(0,end_cap-window_start))
+    end_pos=window_start+len(blob)
+   else:
+    start=max(0,size-max_bytes) if size>max_bytes else 0
+    f.seek(start)
+    if start>0:f.readline()
+    window_start=f.tell()
+    blob=f.read()
+    end_pos=f.tell()
+  off=window_start
+  for line in blob.splitlines(keepends=True):
+   line_start=off
+   off+=len(line)
+   s=line.decode("utf-8","replace").rstrip("\r\n")
+   if not s.strip():continue
+   ev=_parse_update_line(s,live=False)
+   if ev:
+    ev["_off"]=line_start
+    scored.append(ev)
  except Exception as e:
-  return [],{"path":str(path),"error":str(e),"size":size}
- lines=raw.splitlines()
- scored=[]
- for line in lines:
-  ev=_parse_update_line(line,live=live)
-  if ev:scored.append(ev)
- if live:
-  if len(scored)>limit:scored=scored[-limit:]
-  events=[{k:v for k,v in ev.items() if not k.startswith("_")} for ev in scored]
-  return events,{"path":str(path),"size":size,"end":end_pos,"returned":len(events),"scanned":len(scored),"since":since,"live":True}
+  return [],{"path":str(path),"error":str(e),"size":size,"has_more":False}
+ if not scored:
+  return [],{"path":str(path),"size":size,"returned":0,"scanned":0,"live":False,"has_more":window_start>0,"window_start":window_start,"window_end":end_pos,"end":end_pos}
  chat_kinds={"user_message_chunk","agent_message_chunk","agent_thought_chunk","plan","session_recap","turn_completed","task_completed"}
- if len(scored)>limit:
-  chat_idx=[]; tool_idx=[]
+ trimmed=len(scored)>limit
+ if trimmed:
+  chat_idx=[];tool_idx=[]
   for i,ev in enumerate(scored):
    (chat_idx if ev.get("_kind") in chat_kinds else tool_idx).append(i)
-  chat_budget=max(limit*3//4,limit-100)
+  chat_budget=max(limit*3//4,max(1,limit-20))
   keep=set(chat_idx[-chat_budget:])
   room=limit-len(keep)
   if room>0:keep.update(tool_idx[-room:])
-  events=[]
-  for i,ev in enumerate(scored):
-   if i not in keep:continue
-   events.append({k:v for k,v in ev.items() if not k.startswith("_")})
+  kept=[scored[i] for i in range(len(scored)) if i in keep]
  else:
-  events=[{k:v for k,v in ev.items() if not k.startswith("_")} for ev in scored]
- return events,{"path":str(path),"size":size,"returned":len(events),"scanned":len(scored),"live":False}
+  kept=scored
+ first_off=kept[0].get("_off",window_start) if kept else window_start
+ events=[{k:v for k,v in ev.items() if not k.startswith("_")} for ev in kept]
+ has_more=bool(window_start>0 or trimmed)
+ return events,{"path":str(path),"size":size,"returned":len(events),"scanned":len(scored),"live":False,"has_more":has_more,"window_start":int(first_off),"window_end":end_pos,"end":end_pos,"older_before":int(first_off)}
 def is_text_path(p:Path):
  if p.suffix.lower() in TEXT_EXT:return True
  if p.name.lower() in ("dockerfile","makefile","license","readme"):return True
@@ -632,15 +661,22 @@ async def main_async(a):
   sid=(request.rel_url.query.get("sessionId") or request.rel_url.query.get("id") or "").strip()
   cwd=(request.rel_url.query.get("cwd") or state["cwd"] or "").strip()
   live=str(request.rel_url.query.get("live") or "").lower() in ("1","true","yes")
-  try:limit=min(4000,max(20,int(request.rel_url.query.get("limit") or ("400" if live else "1200"))))
-  except Exception:limit=400 if live else 1200
+  try:limit=min(4000,max(20,int(request.rel_url.query.get("limit") or ("400" if live else "100"))))
+  except Exception:limit=400 if live else 100
   try:since_bytes=int(request.rel_url.query.get("since") or request.rel_url.query.get("since_bytes") or "0")
   except Exception:since_bytes=0
+  before_raw=request.rel_url.query.get("before") or request.rel_url.query.get("before_bytes")
+  before_bytes=None
+  if before_raw not in (None,""):
+   try:before_bytes=int(before_raw)
+   except Exception:before_bytes=None
+  try:max_bytes=min(12_000_000,max(64_000,int(request.rel_url.query.get("max_bytes") or ("512000" if live else ("1500000" if before_bytes is not None else "900000")))))
+  except Exception:max_bytes=512000 if live else 900000
   if not sid:raise web.HTTPBadRequest(text="sessionId required")
   sdir=find_session_dir(sid,cwd or None)
   if not sdir:
-   return web.json_response({"ok":False,"error":"session dir not found","sessionId":sid,"cwd":cwd,"events":[]},status=404,headers={"Cache-Control":"no-store"})
-  events,meta=await asyncio.get_event_loop().run_in_executor(None,lambda:read_session_updates(sdir,limit=limit,since_bytes=since_bytes,live=live))
+   return web.json_response({"ok":False,"error":"session dir not found","sessionId":sid,"cwd":cwd,"events":[],"meta":{"has_more":False}},status=404,headers={"Cache-Control":"no-store"})
+  events,meta=await asyncio.get_event_loop().run_in_executor(None,lambda:read_session_updates(sdir,limit=limit,max_bytes=max_bytes,since_bytes=since_bytes,live=live,before_bytes=before_bytes))
   title=""
   try:
    summ=json.loads((sdir/"summary.json").read_text(encoding="utf-8",errors="replace"))
