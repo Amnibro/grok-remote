@@ -1,0 +1,168 @@
+# Changelog
+
+## 2026-07-10 — Menu stacking + code line numbers / syntax
+
+- Header ☰ / orbit menus use `position:fixed` + high z-index so they paint above chat
+- Thinking renders markdown + fenced code (syntax colors)
+- Tool in/out, reads, edits: line numbers + token highlighting
+- Markdown fenced code blocks no longer skipped
+
+## 2026-07-10 — Live CLI→remote disk catch-up
+
+- Remote polls `updates.jsonl` via `/api/session/history?live=1&since=<bytes>` every 500ms
+- Thinking / tools / agent text from desktop TUI (same session id) stream into remote without hard refresh
+- EventId de-dupe keeps history paint + live tail from double-rendering
+
+## 2026-07-10 — Start Server + port claim + reconnect guard v8
+
+- **Start Server** header + setup button → `POST /api/stack/start` (kills stale :2419, spawns `grok agent --no-leader serve`, rebinds hub)
+- **Boot:** UI claims free :2421 listeners; auto-starts agent if missing; `start.ps1` kills :2419/:2421 before bind
+- **Reconnect:** max 5 tries, no infinite reconnecting #N loop; agent error no longer thrashing; after give-up → hit Start Server
+- Auto-connect: if `/health` agent down, Start Server first then connect
+
+## 2026-07-10 — Live status + init/session reliability v7
+
+- **Root cause of init failed:** agent serve was down / started with wrong `--leader` flag (means *attach to leader*, not run server). Fixed launcher to `--no-leader serve` via cmd append (no stdout pipe hang).
+- **Hub:** keep client WS open when agent is briefly down; retry ensure; cache `initialize` for multi-client; fast connect timeouts; clearer offline errors.
+- **Session list:** unwrap nested `result.result.sessions`; sort/auto-open by `lastChangeUnixMs` (opens this chat: latest).
+- **Live status bar:** bottom strip shows **idle / waiting for response / thinking / responding / running tools** with pulse dot; header short status.
+- **Reconnect:** auto-retry on close/init fail; auto-open best session after connect.
+- Restart stack: `scripts\restart-ui-only.ps1` + `logs\run-agent.cmd`; hard-refresh remote UI.
+
+## 2026-07-10 — Pin fix + feature tour v6
+
+- **Pin bugfix:** local `import subprocess` inside `main_async` except-block made nested handlers fail with *cannot access free variable 'subprocess'…* when aiohttp was already installed. Use module-level `subprocess` only.
+- **Feature tour:** header **Tour** + setup **Feature tour**; 12-step spotlight walkthrough; first-run auto; `?tour=1` force; localStorage `grok_remote_tour_done`.
+- **Tutorial prompt:** **Paste tutorial prompt** fills composer + clipboard for a live Grok-narrated walkthrough of all features.
+- Restart UI on `:2421` after pull; hard-refresh clients.
+
+## 2026-07-10 — Stop button + pin/start from anywhere
+
+- UI header **Stop** → `POST /api/stack/stop` (UI + agent serve only; never mass-kill grok)
+- UI **Pin** → `POST /api/stack/shortcut` creates Desktop + Start Menu shortcuts
+- Scripts: `stop-remote.ps1`, `launch-remote.cmd`, `install-shortcut.ps1`
+- Commands: `/remote-start`, hardened `/remote-stop`
+- Desktop shortcuts installed: **Grok Remote** + **Grok Remote Stop**
+
+## 2026-07-09 — Claude-gap pack v5.1
+
+Closer to Claude Code day-to-day flow:
+
+- **Stop turn** button (session/cancel) while agent is busy
+- **Git strip** branch/sha/dirty + `/api/git/status|diff|log` + Δ working-tree diff
+- **Context meter** live est. fill; `/cost` slash helper
+- **Todos board** (plan sync + manual); badge count
+- **Slash autocomplete** for skills + local `/clear /cost /diff /stop /agents /compact`
+- **Open tool paths in IDE** (click 📄 locs)
+- **Copy** on message hover
+- **MD** inject AGENTS.md / CLAUDE.md into composer
+- APIs: `/api/git/*`, `/api/project/context`
+
+Restart UI server (`:2421`) for new routes; hard-refresh clients.
+
+## 2026-07-09 — UX fix: contrast, horizon loader, terminal lag v4.2
+
+- Contrast: solid bubbles, readable `--tx`/`--soft`/`--mut`, softened Grok mono (no pure black/white)
+- **Event horizon loader** lives in `#chatStage` (chat area above composer only — not header/fullscreen)
+- Space puns rotate under the spinning accretion disk while history/session loads
+- Terminal stream: throttled paint, no auto-open spam, badge on `$_` instead, skip during replay
+- Header no-wrap scroll; cockpit bar height capped
+
+## 2026-07-09 — xAI product UX polish v4.1b
+
+- Design tokens: `--ease`, `--elev-*`, `--glass`, `--hairline`
+- Near-black monochrome base; **Grok** variant as official black/white product look (white CTA)
+- Hover/focus/active micro-motion on header, chips, sessions, tools, composer, sheets
+- Message row enter animation; glass header/footer; refined scrollbars
+- Soft ambient glow + grid; reduced-motion + retro-theme exclusions
+- Deployed to plugin + marketplace copies
+
+## 2026-07-09 — Claude-gap cockpit features v5.0
+
+High impact: inline red/green diffs + accept/reject hunk apply; @ workspace file picker; plan approve/edit/hold; Always-allow permission; terminal stream pane; background tasks list/cancel/notify  
+Medium: chat search; local checkpoints; voice PTT; reconnect resume; HTML export (spoiler-aware)  
+Diff: pin sessions bar; cost budgets; Delve launcher  
+
+Files: `web/cockpit-features.js`, index wiring. Hard-refresh after stack up.
+
+## 2026-07-09 — Full skills palette v4.3
+
+- **Disk skill scan** `/api/skills/list`: `~/.grok/skills`, bundled, plugins, marketplace-cache, project skills + plugin commands
+- Skills UI merges agent `commands/list` + disk scan; source chips + filter
+- Advanced skills (design, execute-plan, review, …) appear even if agent list is sparse
+- Restart UI server required
+
+## 2026-07-09 — Multi-client hub + history snap v4.2
+
+- **WS hub:** one shared agent connection; fan-out `session/update` to all phone/desktop clients; route RPC replies to the requester
+- **History open:** hide feed while loading, then `snapChatToBottom` (no scroll-from-top marathon)
+- Restart UI on :2421 required for hub
+
+## 2026-07-09 — Personas & directions v4.1
+
+- **Persona flyout:** personalities (Concise, Unhinged, Programmer, Engineer, Manager, Clown, Warlord, …)
+- **Directions:** Build, Debug, Review, Explore, Plan, Ship, Refactor, Security, Docs, Teach, Speedrun
+- Setup preamble on first send per session; **Inject setup now** button
+- **Risk** persona owner-gated (`Users\antho` path or `?owner=1` unlock); not shown to others by default
+- Prefs: `grok_remote_persona`, `grok_remote_direction`
+
+## 2026-07-09 — Cockpit IDE + auto-stack + Grok Review v4.0
+
+- **Electron auto-stack:** launch app → agent + UI proxy (no daily terminal)
+- **`scripts/launch-desktop.cmd`** double-click entry
+- **FS API** on UI server: `/api/fs/list|read|write|root` (workspace sandboxed)
+- **Built-in IDE** panel: tree, tabs, editor, Save, Folder, New session here
+- **Grok Review:** post-edit bug-check prompt for active / dirty files
+- Desktop menus: Open workspace, IDE review shortcuts, New session
+
+## 2026-07-09 — X-like labels + Ubuntu Yaru-ish v3.7
+
+- Skin labels: **AIM-like**, **Win95-like**, **C64-like**, **Atari-like**, **Ubuntu-like**, **Matrix-like**, **DOS-like**, **Amiga-like**
+- **Ubuntu-like:** modern Yaru-ish slate surfaces + orange accent (not old aubergine-only)
+
+## 2026-07-09 — Tool payloads + rename skins v3.6
+
+- **Tool cards:** merge rawInput/rawOutput/locations/content across updates; real titles (kind + path/cmd); no empty white bars
+- Earlier playful aliases replaced by X-like naming
+
+## 2026-07-09 — Code colors + collapsible rail + flyouts v3.5
+
+- **Syntax colors** in fenced code: keywords/strings/numbers/comments/fns use theme tokens (`--acc`, `--ok`, `--you`, …)
+- **Collapsible sessions rail:** « Hide / ☰ / edge tab; pref `grok_remote_sidebar`
+- **Top-right flyouts:** Theme, Skills, Task open frosted glass panels sliding from top-right (Esc closes)
+
+## 2026-07-09 — Legacy themes v3.4
+
+- **Legacy palettes:** AIM, Win95, Commodore 64, Atari, Ubuntu, Matrix, MS-DOS, Amiga Workbench
+- Full surface overrides (fonts, radius, chrome) + dark/light twists
+- Theme picker groups **Product** then **Legacy · retro**
+- Win95 bevel chrome, Amiga/Win95 title bars, Matrix phosphor glow
+
+## 2026-07-09 — Chat polish + attachments v3.3
+
+- **Markdown render:** headings, lists, bold/italic, inline code, tables, blockquotes, links, path chips, fenced code cards
+- **Consistent bubbles:** solid 1px borders (no hover jitter); tools/cards match radius; cleaner clean-mode edge accents
+- **File upload:** 📎 attach / drag-drop / paste; images as ACP `image` blocks; text/code as resource + fenced body
+- Limits: 8 files, 6MB each · hard-refresh clients (`?v=3`)
+
+## 2026-07-09 — SpaceXAI beauty + session isolation v3.2
+
+- **Orbital status dial:** satellite orbits planet (spin when linked, fast when busy, red offline)
+- **Pulse frames:** thin theme-accent borders on header / rail / feed / footer / setup
+- **Polish:** bubble glow, composer focus halo, session card hover lift, reduced-motion safe
+- **New-chat history bug:** clear `sid` first; `loadExpectSid` gates unscoped load stream; abandon softCatchup/silentReload across `sessionGen`; re-wipe feed after `session/new`
+- Deployed to `~/.grok/plugins/grok-remote/web` + marketplace plugin copy
+
+## 2026-07-09 — Sessions scroll + jump + archive v2
+
+- **↓ Bottom** always on in chat (not only when scrolled up); forced scroll + `scrollIntoView`
+- **Independent scrolls:** body locked; session rail list vs chat feed scroll separately
+- **Archive / Unarchive** per session (localStorage); scope chips Active · Live · Archived · All + search
+- Layout: picker-head sticky controls, `.sess` flex scroll region
+
+## 2026-07-09 — UX options v1
+
+- **Auto-scroll:** toggle on setup/Theme UX chips; stick-to-bottom while reading live; jump FAB
+- **Collapse:** thinking rows, fenced code, tool cards — defaults + per-block tap
+- **Borders vs clean:** bordered cards or clean edge-accent layout
+- Prefs: `localStorage.grok_remote_ux`

@@ -1,34 +1,523 @@
-"""Grok Remote: mobile UI + WebSocket proxy to local grok agent serve.
-Phone only talks to THIS server (0.0.0.0). Agent can stay on 127.0.0.1.
-  GET  /            mobile chat UI
-  GET  /config.json connection info
-  WS   /ws          proxied to ws://AGENT/ws?server-key=SECRET
-"""
-import os,sys,json,socket,argparse,asyncio,functools,mimetypes
+"""Grok Remote: UI + multi-client WS hub (fan-out) + workspace FS API."""
+import os,sys,json,socket,argparse,asyncio,mimetypes,subprocess,shutil
 from pathlib import Path
+from urllib.parse import quote,unquote
 ROOT=Path(__file__).resolve().parent
 WEB=ROOT/"web"
+GROK_SESSIONS=Path.home()/".grok"/"sessions"
+HISTORY_KEEP={"user_message_chunk","agent_message_chunk","agent_thought_chunk","tool_call","tool_call_update","plan","session_recap","turn_completed","task_completed","available_commands_update"}
+SKIP_DIR={".git","node_modules","__pycache__",".venv","venv","dist","build",".next",".cache","desktop/node_modules"}
+MAX_READ=2_000_000
+MAX_WRITE=4_000_000
+TEXT_EXT={".py",".js",".ts",".tsx",".jsx",".json",".md",".txt",".css",".html",".htm",".xml",".yml",".yaml",".toml",".ini",".cfg",".env",".sh",".ps1",".bat",".cmd",".rs",".go",".java",".c",".h",".cpp",".hpp",".cs",".rb",".php",".sql",".r",".swift",".kt",".vue",".svelte",".scss",".less",".svg",".gitignore",".dockerfile",".cmake",".gradle",".log",".diff",".patch",".csv"}
 def lan_ip():
  try:
   s=socket.socket(socket.AF_INET,socket.SOCK_DGRAM);s.connect(("8.8.8.8",80));ip=s.getsockname()[0];s.close();return ip
  except Exception:return "127.0.0.1"
+def find_grok():
+ for p in (Path.home()/".grok"/"bin"/"grok.exe",Path.home()/".grok"/"bin"/"grok",shutil.which("grok") or ""):
+  if p and Path(p).is_file():return str(Path(p))
+ return None
+def listen_pids_port(port:int,exclude_self=True):
+ pids=[];needle=":%d"%port;me=os.getpid()
+ try:
+  out=subprocess.run(["netstat","-ano"],capture_output=True,text=True,timeout=8,encoding="utf-8",errors="replace")
+  for line in (out.stdout or "").splitlines():
+   if "LISTENING" not in line:continue
+   if needle not in line:continue
+   parts=line.split()
+   if not parts:continue
+   try:pid=int(parts[-1])
+   except Exception:continue
+   if pid<=0:continue
+   if exclude_self and pid==me:continue
+   pids.append(pid)
+ except Exception:pass
+ return sorted(set(pids))
+def kill_pids_list(pids):
+ killed=[]
+ for pid in pids:
+  try:
+   r=subprocess.run(["taskkill","/F","/PID",str(pid)],capture_output=True,text=True,timeout=8)
+   killed.append({"pid":pid,"ok":r.returncode==0,"out":((r.stdout or "")+(r.stderr or ""))[:120]})
+  except Exception as e:
+   killed.append({"pid":pid,"ok":False,"out":str(e)[:120]})
+ return killed
+def claim_port(port:int,label="port"):
+ pids=listen_pids_port(port,exclude_self=True)
+ if not pids:return []
+ print("[claim] free %s :%d pids=%s"%(label,port,pids),flush=True)
+ return kill_pids_list(pids)
+def write_run_agent_cmd(secret:str,agent_port:int,cwd:str):
+ log_dir=ROOT/"logs";log_dir.mkdir(parents=True,exist_ok=True)
+ grok=find_grok()
+ if not grok:return None
+ agent_log=log_dir/"agent.log"
+ cmd_path=log_dir/"run-agent.cmd"
+ cwd_s=str(cwd).replace('"','')
+ body="@echo off\r\ncd /d \"%s\"\r\nset GROK_AGENT_SECRET=%s\r\n\"%s\" agent --always-approve --no-leader serve --bind 127.0.0.1:%d --secret %s >> \"%s\" 2>&1\r\n"%(cwd_s,secret,grok,agent_port,secret,agent_log)
+ cmd_path.write_text(body,encoding="ascii",errors="replace")
+ return cmd_path
+def start_agent_process(secret:str,agent_port:int,cwd:str):
+ cmd=write_run_agent_cmd(secret,agent_port,cwd)
+ if not cmd:raise RuntimeError("grok.exe not found under ~/.grok/bin")
+ claim_port(agent_port,"agent")
+ creation=0x00000008|0x00000200 if sys.platform=="win32" else 0
+ subprocess.Popen(["cmd.exe","/c",str(cmd)],cwd=str(cwd),creationflags=creation if sys.platform=="win32" else 0,
+  stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,stdin=subprocess.DEVNULL,close_fds=True)
+ return str(cmd)
+def wait_port(port:int,timeout=20.0):
+ import time
+ t0=time.time()
+ while time.time()-t0<timeout:
+  if listen_pids_port(port,exclude_self=False):return True
+  time.sleep(0.35)
+ return False
+def archive_store_path():
+ base=os.environ.get("GROK_PLUGIN_DATA") or str(Path.home()/".grok"/"plugin-data"/"grok-remote")
+ p=Path(base);p.mkdir(parents=True,exist_ok=True)
+ return p/"archived_sessions.json"
+def load_archived_ids():
+ path=archive_store_path()
+ if not path.is_file():return []
+ try:
+  data=json.loads(path.read_text(encoding="utf-8",errors="replace"))
+  if isinstance(data,dict):ids=data.get("ids") or data.get("archived") or []
+  elif isinstance(data,list):ids=data
+  else:ids=[]
+  out=[];seen=set()
+  for x in ids:
+   s=str(x or "").strip()
+   if not s or s in seen:continue
+   seen.add(s);out.append(s)
+  return out
+ except Exception:return []
+def save_archived_ids(ids):
+ path=archive_store_path()
+ clean=[];seen=set()
+ for x in ids or []:
+  s=str(x or "").strip()
+  if not s or s in seen:continue
+  seen.add(s);clean.append(s)
+ path.write_text(json.dumps({"ids":clean,"updatedAt":__import__("time").time()},indent=2),encoding="utf-8")
+ return clean
+def encode_session_cwd(cwd:str):
+ s=str(Path(cwd).expanduser()) if cwd else ""
+ s=s.replace("/","\\") if os.name=="nt" else s
+ return quote(s,safe="")
+def find_session_dir(session_id:str,cwd:str|None=None):
+ sid=str(session_id or "").strip()
+ if not sid or ".." in sid or "/" in sid or "\\" in sid:return None
+ root=GROK_SESSIONS
+ if not root.is_dir():return None
+ if cwd:
+  c=str(Path(cwd).expanduser())
+  for variant in (c,c.replace("/","\\"),c.replace("\\","/"),str(Path(c))):
+   enc=encode_session_cwd(variant)
+   d=root/enc/sid
+   if d.is_dir() and ((d/"updates.jsonl").is_file() or (d/"summary.json").is_file()):return d
+   # double-escaped backslash form used by some sessions
+   enc2=quote(variant.replace("/","\\").replace("\\","\\\\") if os.name=="nt" else variant,safe="")
+   d2=root/enc2/sid
+   if d2.is_dir():return d2
+ try:
+  for p in root.iterdir():
+   if not p.is_dir():continue
+   d=p/sid
+   if d.is_dir() and ((d/"updates.jsonl").is_file() or (d/"summary.json").is_file()):return d
+ except Exception:pass
+ return None
+def _parse_update_line(line,live=False):
+ line=(line or "").strip()
+ if not line:return None
+ try:obj=json.loads(line)
+ except Exception:return None
+ params=obj.get("params") if isinstance(obj,dict) else None
+ if not isinstance(params,dict):return None
+ update=params.get("update") if isinstance(params.get("update"),dict) else None
+ if not update:return None
+ kind=update.get("sessionUpdate") or ""
+ if kind not in HISTORY_KEEP:return None
+ content=update.get("content") if isinstance(update.get("content"),dict) else {}
+ text=(content.get("text") if content else None) or ""
+ if kind in ("user_message_chunk","agent_message_chunk","agent_thought_chunk") and not str(text).strip():
+  return None
+ if kind=="tool_call_update" and not live:
+  st=str(update.get("status") or "")
+  if st and st.lower() not in ("completed","failed","cancelled","error","done","success") and not update.get("content") and not update.get("rawOutput"):
+   return None
+ meta=params.get("_meta") if isinstance(params.get("_meta"),dict) else {}
+ umeta=update.get("_meta") if isinstance(update.get("_meta"),dict) else {}
+ merged=dict(meta or {})
+ if umeta:
+  for k,v in umeta.items():
+   if k not in merged:merged[k]=v
+ return {
+  "method":obj.get("method") or "session/update",
+  "params":{"sessionId":params.get("sessionId"),"update":update,"_meta":merged},
+  "_kind":kind,
+  "_eid":str(merged.get("eventId") or umeta.get("eventId") or ""),
+ }
+def read_session_updates(session_dir:Path,limit=1600,max_bytes=8_000_000,since_bytes=0,live=False):
+ path=session_dir/"updates.jsonl"
+ if not path.is_file():return [],{"path":str(path),"missing":True,"size":0}
+ size=path.stat().st_size
+ since=int(since_bytes or 0)
+ if since<0:since=0
+ if since>size:since=0
+ if live and since>=size:
+  return [],{"path":str(path),"size":size,"returned":0,"scanned":0,"since":since,"live":True}
+ end_pos=size
+ try:
+  with path.open("rb") as f:
+   if live and since>0:
+    f.seek(since)
+   elif live:
+    f.seek(max(0,size-min(max_bytes,512_000)));f.readline()
+   elif size>max_bytes:
+    f.seek(max(0,size-max_bytes));f.readline()
+   raw=f.read().decode("utf-8","replace")
+   end_pos=f.tell()
+ except Exception as e:
+  return [],{"path":str(path),"error":str(e),"size":size}
+ lines=raw.splitlines()
+ scored=[]
+ for line in lines:
+  ev=_parse_update_line(line,live=live)
+  if ev:scored.append(ev)
+ if live:
+  if len(scored)>limit:scored=scored[-limit:]
+  events=[{k:v for k,v in ev.items() if not k.startswith("_")} for ev in scored]
+  return events,{"path":str(path),"size":size,"end":end_pos,"returned":len(events),"scanned":len(scored),"since":since,"live":True}
+ chat_kinds={"user_message_chunk","agent_message_chunk","agent_thought_chunk","plan","session_recap","turn_completed","task_completed"}
+ if len(scored)>limit:
+  chat_idx=[]; tool_idx=[]
+  for i,ev in enumerate(scored):
+   (chat_idx if ev.get("_kind") in chat_kinds else tool_idx).append(i)
+  chat_budget=max(limit*3//4,limit-100)
+  keep=set(chat_idx[-chat_budget:])
+  room=limit-len(keep)
+  if room>0:keep.update(tool_idx[-room:])
+  events=[]
+  for i,ev in enumerate(scored):
+   if i not in keep:continue
+   events.append({k:v for k,v in ev.items() if not k.startswith("_")})
+ else:
+  events=[{k:v for k,v in ev.items() if not k.startswith("_")} for ev in scored]
+ return events,{"path":str(path),"size":size,"returned":len(events),"scanned":len(scored),"live":False}
+def is_text_path(p:Path):
+ if p.suffix.lower() in TEXT_EXT:return True
+ if p.name.lower() in ("dockerfile","makefile","license","readme"):return True
+ return p.suffix==""
+
+def parse_frontmatter(text):
+ meta={}; body=text
+ if text.startswith("---"):
+  parts=text.split("---",2)
+  if len(parts)>=3:
+   raw=parts[1]; body=parts[2].lstrip("\n")
+   key=None; acc=[]
+   def flush():
+    nonlocal key,acc
+    if key is not None:
+     meta[key]=" ".join(acc).strip().strip('"').strip("'")
+     key=None;acc=[]
+   for line in raw.splitlines():
+    if not line.strip():
+     continue
+    if (line.startswith(" ") or line.startswith("\t")) and key is not None:
+     acc.append(line.strip());continue
+    flush()
+    if ":" in line:
+     k,v=line.split(":",1);k=k.strip();v=v.strip()
+     if v in ("|",">",">-","|-") or v=="":
+      key=k;acc=[]
+     else:
+      meta[k]=v.strip('"').strip("'")
+   flush()
+ return meta,body
+def skill_roots(cwd):
+ home=Path.home()/".grok"
+ roots=[]
+ for r in [home/"skills",home/"bundled"/"skills",home/"plugins",home/"installed-plugins",home/"marketplace-cache"]:
+  if r.is_dir():roots.append(r)
+ if cwd:
+  c=Path(cwd)
+  for r in [c/".grok"/"skills",c/".agents"/"skills",c/"skills"]:
+   if r.is_dir():roots.append(r)
+ return roots
+def scan_skills(cwd):
+ seen=set();out=[]
+ for root in skill_roots(cwd):
+  try:files=list(root.rglob("SKILL.md"))
+  except Exception:continue
+  for f in files:
+   try:
+    if any(part in f.parts for part in ("node_modules",".git")):continue
+    raw=f.read_text(encoding="utf-8",errors="replace")
+    meta,body=parse_frontmatter(raw)
+    name=(meta.get("name") or f.parent.name).strip()
+    if not name or name.lower() in seen:continue
+    seen.add(name.lower())
+    desc=meta.get("description") or ""
+    if len(desc)>240:desc=desc[:237]+"..."
+    sp=str(f).replace("\\","/")
+    src="user"
+    if "/bundled/" in sp:src="bundled"
+    elif "/marketplace-cache/" in sp:src="marketplace"
+    elif "/plugins/" in sp or "/installed-plugins/" in sp:src="plugin"
+    inv=str(meta.get("user-invocable","true")).lower() not in ("false","0","no")
+    out.append({"name":name,"description":desc,"when":meta.get("when-to-use") or "","hint":meta.get("argument-hint") or "","source":src,"path":str(f),"kind":"skill","userInvocable":inv,"invoke":"/"+name})
+   except Exception:continue
+ home=Path.home()/".grok"
+ cmd_roots=[]
+ for r in [home/"plugins",home/"installed-plugins",home/"marketplace-cache"]:
+  if r.is_dir():cmd_roots.append(r)
+ if cwd:
+  c=Path(cwd)
+  for r in [c/".grok"/"commands",c/"commands"]:
+   if r.is_dir():cmd_roots.append(r)
+ for root in cmd_roots:
+  try:files=list(root.rglob("*.md"))
+  except Exception:continue
+  for f in files:
+   try:
+    if "commands" not in f.parts:continue
+    if f.name.lower() in ("readme.md","changelog.md","license.md"):continue
+    if any(part in f.parts for part in ("node_modules",".git")):continue
+    raw=f.read_text(encoding="utf-8",errors="replace")
+    meta,body=parse_frontmatter(raw)
+    name=(meta.get("name") or f.stem).strip().lstrip("/")
+    if not name or name.lower() in seen:continue
+    seen.add(name.lower())
+    desc=meta.get("description") or ""
+    if len(desc)>240:desc=desc[:237]+"..."
+    out.append({"name":name,"description":desc,"when":"","hint":meta.get("argument-hint") or "","source":"command","path":str(f),"kind":"command","userInvocable":True,"invoke":"/"+name})
+   except Exception:continue
+ order={"bundled":0,"user":1,"plugin":2,"command":3,"marketplace":4,"agent":5}
+ out.sort(key=lambda x:(order.get(x["source"],9),x["name"].lower()))
+ return out
+
+def under_root(path:Path,root:Path):
+ try:
+  path=path.resolve();root=root.resolve()
+  return str(path).startswith(str(root)+os.sep) or path==root
+ except Exception:return False
+class AgentHub:
+ def __init__(self,agent_ws:str):
+  self.agent_ws=agent_ws
+  self.clients=set()
+  self.pending={}
+  self._nid=0
+  self._agent=None
+  self._session=None
+  self._reader=None
+  self._lock=asyncio.Lock()
+  self._alive=False
+  self._init_result=None
+  self._init_error=None
+  self._init_done=False
+  self._last_err=""
+ async def ensure(self,retries=3,delay=0.2):
+  for i in range(max(1,retries)):
+   async with self._lock:
+    if self._agent is not None and not self._agent.closed:return True
+    await self._open()
+    if self._agent is not None and not self._agent.closed:return True
+   if i+1<retries:await asyncio.sleep(delay)
+  return False
+ async def _open(self):
+  from aiohttp import ClientSession,ClientTimeout
+  await self._close_unlocked(keep_init=False)
+  try:
+   self._session=ClientSession(timeout=ClientTimeout(total=6,connect=2,sock_connect=2,sock_read=None))
+   self._agent=await self._session.ws_connect(self.agent_ws,heartbeat=20,max_msg_size=16*1024*1024,autoping=True)
+   self._alive=True
+   self._last_err=""
+   self._reader=asyncio.create_task(self._pump())
+   print("[hub] upstream agent connected · clients=%d"%len(self.clients),flush=True)
+  except Exception as e:
+   self._last_err=str(e)[:200]
+   print("[hub] upstream open failed:",e,flush=True)
+   await self._close_unlocked(keep_init=False)
+ async def _close_unlocked(self,keep_init=False):
+  self._alive=False
+  if self._reader:
+   self._reader.cancel()
+   try:await self._reader
+   except Exception:pass
+   self._reader=None
+  if self._agent is not None:
+   try:
+    if not self._agent.closed:await self._agent.close()
+   except Exception:pass
+   self._agent=None
+  if self._session is not None:
+   try:await self._session.close()
+   except Exception:pass
+   self._session=None
+  dead=list(self.pending.items())
+  self.pending.clear()
+  for nid,(client,orig) in dead:
+   try:
+    if not client.closed:
+     await client.send_str(json.dumps({"jsonrpc":"2.0","id":orig,"error":{"code":-32001,"message":"agent disconnected"}}))
+   except Exception:pass
+  if not keep_init:
+   self._init_result=None
+   self._init_error=None
+   self._init_done=False
+ async def close(self):
+  async with self._lock:
+   await self._close_unlocked(keep_init=False)
+ async def _pump(self):
+  from aiohttp import WSMsgType
+  try:
+   async for msg in self._agent:
+    if msg.type==WSMsgType.TEXT:await self._from_agent(msg.data)
+    elif msg.type==WSMsgType.BINARY:
+     try:await self._from_agent(msg.data.decode("utf-8","replace"))
+     except Exception:pass
+    elif msg.type in (WSMsgType.CLOSE,WSMsgType.ERROR,WSMsgType.CLOSED):break
+  except asyncio.CancelledError:return
+  except Exception as e:print("[hub] pump error:",e,flush=True)
+  finally:
+   print("[hub] upstream closed · reconnect on next traffic",flush=True)
+   async with self._lock:
+    await self._close_unlocked(keep_init=False)
+ async def _from_agent(self,raw:str):
+  try:obj=json.loads(raw)
+  except Exception:
+   await self._broadcast(raw);return
+  rid=obj.get("id",None)
+  is_resp=rid is not None and "method" not in obj
+  if is_resp:
+   ent=self.pending.pop(rid,None)
+   if not ent:return
+   client,orig,meta=ent if len(ent)==3 else (ent[0],ent[1],{})
+   if meta.get("init"):
+    if "result" in obj:
+     self._init_result=obj.get("result")
+     self._init_error=None
+     self._init_done=True
+    elif "error" in obj:
+     self._init_error=obj.get("error")
+     self._init_result=None
+     self._init_done=True
+   obj["id"]=orig
+   data=json.dumps(obj,separators=(",",":"))
+   try:
+    if not client.closed:await client.send_str(data)
+   except Exception:pass
+   return
+  await self._broadcast(raw if isinstance(raw,str) else json.dumps(obj,separators=(",",":")))
+ async def _broadcast(self,data:str):
+  dead=[]
+  for c in list(self.clients):
+   try:
+    if c.closed:dead.append(c);continue
+    await c.send_str(data)
+   except Exception:dead.append(c)
+  for c in dead:
+   self.clients.discard(c)
+   self._drop_client_pending(c)
+ def _drop_client_pending(self,client):
+  dead=[k for k,v in self.pending.items() if v[0] is client]
+  for k in dead:self.pending.pop(k,None)
+ async def _reply_err(self,client,orig,msg,code=-32000):
+  if orig is None:
+   try:await client.send_str(json.dumps({"jsonrpc":"2.0","method":"error","params":{"message":msg}}))
+   except Exception:pass
+   return
+  try:await client.send_str(json.dumps({"jsonrpc":"2.0","id":orig,"error":{"code":code,"message":msg}}))
+  except Exception:pass
+ async def handle_client(self,client):
+  from aiohttp import WSMsgType
+  self.clients.add(client)
+  print("[hub] client join from remote · n=%d"%len(self.clients),flush=True)
+  try:
+   up=await self.ensure(retries=4,delay=0.25)
+   if not up:
+    try:await client.send_str(json.dumps({"jsonrpc":"2.0","method":"error","params":{"message":"agent hub unavailable · start agent serve on :2419 · "+(self._last_err or "")}}))
+    except Exception:pass
+   async for msg in client:
+    if msg.type==WSMsgType.TEXT:await self._to_agent(client,msg.data)
+    elif msg.type==WSMsgType.BINARY:
+     try:await self._to_agent(client,msg.data.decode("utf-8","replace"))
+     except Exception:pass
+    elif msg.type in (WSMsgType.CLOSE,WSMsgType.ERROR,WSMsgType.CLOSED):break
+  except Exception as e:
+   print("[hub] client error:",e,flush=True)
+  finally:
+   self.clients.discard(client)
+   self._drop_client_pending(client)
+   print("[hub] client leave · n=%d"%len(self.clients),flush=True)
+ async def _to_agent(self,client,raw:str):
+  try:obj=json.loads(raw)
+  except Exception:
+   if not await self.ensure():
+    await self._reply_err(client,None,"agent offline")
+    return
+   try:await self._agent.send_str(raw)
+   except Exception as e:await self._reply_err(client,None,str(e))
+   return
+  method=obj.get("method")
+  orig=obj.get("id",None)
+  if method=="initialize" and orig is not None and self._init_done and self._init_result is not None:
+   try:await client.send_str(json.dumps({"jsonrpc":"2.0","id":orig,"result":self._init_result},separators=(",",":")))
+   except Exception:pass
+   return
+  if method=="initialize" and orig is not None and self._init_done and self._init_error is not None:
+   try:await client.send_str(json.dumps({"jsonrpc":"2.0","id":orig,"error":self._init_error},separators=(",",":")))
+   except Exception:pass
+   return
+  if not await self.ensure():
+   await self._reply_err(client,orig,"agent offline · is serve on :2419? "+(self._last_err or ""),-32001)
+   return
+  if orig is not None and method:
+   self._nid+=1
+   nid=self._nid
+   meta={"init":method=="initialize"}
+   self.pending[nid]=(client,orig,meta)
+   obj["id"]=nid
+   try:await self._agent.send_str(json.dumps(obj,separators=(",",":")))
+   except Exception as e:
+    self.pending.pop(nid,None)
+    await self._reply_err(client,orig,str(e))
+   return
+  try:await self._agent.send_str(json.dumps(obj,separators=(",",":")))
+  except Exception as e:await self._reply_err(client,orig,str(e))
 async def main_async(a):
  try:
   import aiohttp
   from aiohttp import web,WSMsgType,ClientSession
  except ImportError:
-  import subprocess;subprocess.check_call([sys.executable,"-m","pip","install","aiohttp","-q"])
+  subprocess.check_call([sys.executable,"-m","pip","install","aiohttp","-q"])
   import aiohttp
   from aiohttp import web,WSMsgType,ClientSession
  agent_host=a.agent_host or "127.0.0.1"
  agent_ws="ws://%s:%d/ws?server-key=%s"%(agent_host,a.agent_port,a.secret)
  lan=lan_ip()
- cfg={"agent_host":agent_host,"agent_port":a.agent_port,"secret":"(held server-side)","cwd":a.cwd,"ws_url":"ws://%s:%d/ws"%(lan,a.port),"ws_path":"/ws","ui":"http://%s:%d/"%(lan,a.port),"lan_ip":lan,"proxy":True}
+ work_root=Path(a.cwd).expanduser().resolve()
+ state={"cwd":str(work_root)}
+ hub=AgentHub(agent_ws)
+ cfg={"agent_host":agent_host,"agent_port":a.agent_port,"secret":"(held server-side)","cwd":state["cwd"],"ws_url":"ws://%s:%d/ws"%(lan,a.port),"ws_path":"/ws","ui":"http://%s:%d/"%(lan,a.port),"lan_ip":lan,"proxy":True,"hub":True,"ide":True,"features":["fs","ide","review","multi-client-hub","skills-scan","git","project-context","stop-turn","todos"]}
  try:(ROOT/"runtime-config.json").write_text(json.dumps(cfg,indent=2),encoding="utf-8")
  except Exception:pass
+ def root_path():
+  return Path(state["cwd"]).expanduser().resolve()
+ def safe_path(raw):
+  root=root_path()
+  if not raw or raw in (".","/"):return root
+  p=Path(raw)
+  if not p.is_absolute():p=root/p
+  p=p.expanduser().resolve()
+  if not under_root(p,root):raise web.HTTPForbidden(text="path outside workspace")
+  return p
  async def index(_):
   return web.FileResponse(WEB/"index.html")
  async def config(_):
+  cfg["cwd"]=state["cwd"];cfg["clients"]=len(hub.clients)
   return web.json_response(cfg,headers={"Cache-Control":"no-store"})
  async def static(request):
   name=request.match_info.get("name","")
@@ -44,37 +533,280 @@ async def main_async(a):
     await w.send(json.dumps({"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":1,"clientInfo":{"name":"health","version":"0"},"clientCapabilities":{}}}))
     raw=await asyncio.wait_for(w.recv(),timeout=5);ok="result" in json.loads(raw)
   except Exception as e:detail=str(e)[:200]
-  return web.json_response({"ok":ok,"agent_ws_local":"ws://%s:%d/ws"%(agent_host,a.agent_port),"detail":detail})
+  return web.json_response({"ok":ok,"agent_ws_local":"ws://%s:%d/ws"%(agent_host,a.agent_port),"detail":detail,"cwd":state["cwd"],"hub_clients":len(hub.clients),"hub_up":hub._agent is not None and not getattr(hub._agent,"closed",True),"hub_err":getattr(hub,"_last_err","") or "","init_cached":bool(getattr(hub,"_init_done",False))})
+ async def fs_root(_):
+  r=root_path()
+  return web.json_response({"root":str(r),"exists":r.is_dir()})
+ async def fs_set_root(request):
+  try:body=await request.json()
+  except Exception:body={}
+  raw=(body.get("path") or body.get("cwd") or "").strip()
+  if not raw:raise web.HTTPBadRequest(text="path required")
+  p=Path(raw).expanduser().resolve()
+  if not p.is_dir():raise web.HTTPBadRequest(text="not a directory")
+  state["cwd"]=str(p);cfg["cwd"]=state["cwd"]
+  return web.json_response({"ok":True,"root":state["cwd"]})
+ async def fs_list(request):
+  rel=request.rel_url.query.get("path") or "."
+  p=safe_path(rel)
+  if not p.is_dir():raise web.HTTPBadRequest(text="not a directory")
+  dirs=[];files=[]
+  try:entries=sorted(p.iterdir(),key=lambda x:(not x.is_dir(),x.name.lower()))
+  except PermissionError:raise web.HTTPForbidden(text="permission denied")
+  for e in entries:
+   if e.name.startswith(".") and e.name not in (".env",".gitignore"):continue
+   if e.is_dir() and e.name in SKIP_DIR:continue
+   try:
+    st=e.stat()
+    item={"name":e.name,"path":str(e),"rel":str(e.relative_to(root_path())).replace("\\","/"),"mtime":int(st.st_mtime)}
+    if e.is_dir():dirs.append(item)
+    else:item["size"]=st.st_size;item["text"]=is_text_path(e);files.append(item)
+   except OSError:continue
+  parent=None
+  root=root_path()
+  if p!=root:
+   try:parent=str(p.parent.relative_to(root)).replace("\\","/") if p.parent!=root else "."
+   except Exception:parent="."
+  return web.json_response({"path":str(p),"rel":"." if p==root else str(p.relative_to(root)).replace("\\","/"),"parent":parent,"dirs":dirs,"files":files,"root":str(root)})
+ async def fs_read(request):
+  rel=request.rel_url.query.get("path") or ""
+  if not rel:raise web.HTTPBadRequest(text="path required")
+  p=safe_path(rel)
+  if not p.is_file():raise web.HTTPNotFound(text="not a file")
+  size=p.stat().st_size
+  if size>MAX_READ:raise web.HTTPRequestEntityTooLarge(text="file too large")
+  if not is_text_path(p):
+   return web.json_response({"path":str(p),"binary":True,"size":size,"text":False})
+  data=p.read_bytes()
+  try:text=data.decode("utf-8")
+  except UnicodeDecodeError:
+   try:text=data.decode("utf-8-sig")
+   except Exception:text=data.decode("latin-1",errors="replace")
+  return web.json_response({"path":str(p),"rel":str(p.relative_to(root_path())).replace("\\","/"),"text":True,"content":text,"size":size,"name":p.name})
+ async def fs_write(request):
+  try:body=await request.json()
+  except Exception:raise web.HTTPBadRequest(text="json required")
+  rel=(body.get("path") or "").strip()
+  content=body.get("content")
+  if not rel or content is None:raise web.HTTPBadRequest(text="path and content required")
+  if not isinstance(content,str):raise web.HTTPBadRequest(text="content must be string")
+  if len(content.encode("utf-8"))>MAX_WRITE:raise web.HTTPRequestEntityTooLarge(text="content too large")
+  p=safe_path(rel)
+  if p.exists() and p.is_dir():raise web.HTTPBadRequest(text="path is directory")
+  p.parent.mkdir(parents=True,exist_ok=True)
+  p.write_text(content,encoding="utf-8",newline="\n")
+  return web.json_response({"ok":True,"path":str(p),"rel":str(p.relative_to(root_path())).replace("\\","/"),"size":p.stat().st_size})
+ async def fs_mkdir(request):
+  try:body=await request.json()
+  except Exception:raise web.HTTPBadRequest(text="json required")
+  rel=(body.get("path") or "").strip()
+  if not rel:raise web.HTTPBadRequest(text="path required")
+  p=safe_path(rel)
+  p.mkdir(parents=True,exist_ok=True)
+  return web.json_response({"ok":True,"path":str(p)})
+
+ async def skills_list(request):
+  cwd=request.rel_url.query.get("cwd") or state["cwd"]
+  items=scan_skills(cwd)
+  return web.json_response({"ok":True,"cwd":cwd,"count":len(items),"skills":items},headers={"Cache-Control":"no-store"})
+ async def session_history(request):
+  sid=(request.rel_url.query.get("sessionId") or request.rel_url.query.get("id") or "").strip()
+  cwd=(request.rel_url.query.get("cwd") or state["cwd"] or "").strip()
+  live=str(request.rel_url.query.get("live") or "").lower() in ("1","true","yes")
+  try:limit=min(4000,max(20,int(request.rel_url.query.get("limit") or ("400" if live else "1200"))))
+  except Exception:limit=400 if live else 1200
+  try:since_bytes=int(request.rel_url.query.get("since") or request.rel_url.query.get("since_bytes") or "0")
+  except Exception:since_bytes=0
+  if not sid:raise web.HTTPBadRequest(text="sessionId required")
+  sdir=find_session_dir(sid,cwd or None)
+  if not sdir:
+   return web.json_response({"ok":False,"error":"session dir not found","sessionId":sid,"cwd":cwd,"events":[]},status=404,headers={"Cache-Control":"no-store"})
+  events,meta=await asyncio.get_event_loop().run_in_executor(None,lambda:read_session_updates(sdir,limit=limit,since_bytes=since_bytes,live=live))
+  title=""
+  try:
+   summ=json.loads((sdir/"summary.json").read_text(encoding="utf-8",errors="replace"))
+   title=summ.get("generated_title") or summ.get("session_summary") or ""
+  except Exception:pass
+  return web.json_response({"ok":True,"sessionId":sid,"cwd":cwd,"title":title,"dir":str(sdir),"events":events,"meta":meta,"count":len(events)},headers={"Cache-Control":"no-store"})
+ async def session_signals(request):
+  sid=(request.rel_url.query.get("sessionId") or request.rel_url.query.get("id") or "").strip()
+  cwd=(request.rel_url.query.get("cwd") or state["cwd"] or "").strip()
+  if not sid:raise web.HTTPBadRequest(text="sessionId required")
+  sdir=find_session_dir(sid,cwd or None)
+  if not sdir:
+   return web.json_response({"ok":False,"error":"session dir not found","sessionId":sid},status=404,headers={"Cache-Control":"no-store"})
+  sig={}
+  try:
+   p=sdir/"signals.json"
+   if p.is_file():sig=json.loads(p.read_text(encoding="utf-8",errors="replace")) or {}
+  except Exception as e:
+   return web.json_response({"ok":False,"error":str(e),"sessionId":sid},status=500,headers={"Cache-Control":"no-store"})
+  used=sig.get("contextTokensUsed")
+  if used is None:used=sig.get("context_tokens_used")
+  win=sig.get("contextWindowTokens")
+  if win is None:win=sig.get("context_window_tokens")
+  usage=sig.get("contextWindowUsage")
+  if usage is None and used is not None and win:
+   try:usage=round(100.0*float(used)/float(win),1)
+   except Exception:usage=None
+  return web.json_response({
+   "ok":True,"sessionId":sid,"dir":str(sdir),
+   "contextTokensUsed":used,"contextWindowTokens":win,"contextWindowUsage":usage,
+   "turnCount":sig.get("turnCount"),"toolCallCount":sig.get("toolCallCount"),
+   "primaryModelId":sig.get("primaryModelId") or sig.get("primary_model_id"),
+   "signals":sig
+  },headers={"Cache-Control":"no-store"})
+ async def session_archived_get(_):
+  ids=load_archived_ids()
+  return web.json_response({"ok":True,"ids":ids,"count":len(ids),"path":str(archive_store_path())},headers={"Cache-Control":"no-store"})
+ async def session_archived_set(request):
+  try:body=await request.json()
+  except Exception:body={}
+  ids=load_archived_ids()
+  if "ids" in body and isinstance(body.get("ids"),list):
+   ids=save_archived_ids(body.get("ids"))
+  elif body.get("id") or body.get("sessionId"):
+   sid=str(body.get("id") or body.get("sessionId") or "").strip()
+   if not sid:raise web.HTTPBadRequest(text="id required")
+   want=body.get("archived")
+   if want is None:want=sid not in ids
+   else:want=bool(want)
+   s=set(ids)
+   if want:s.add(sid)
+   else:s.discard(sid)
+   ids=save_archived_ids(sorted(s))
+  else:
+   raise web.HTTPBadRequest(text="ids[] or id required")
+  return web.json_response({"ok":True,"ids":ids,"count":len(ids)},headers={"Cache-Control":"no-store"})
+ def run_git(args,cwd,timeout=12):
+  git=shutil.which("git")
+  if not git:return None,"git not found"
+  try:
+   p=subprocess.run([git,*args],cwd=str(cwd),capture_output=True,text=True,timeout=timeout,encoding="utf-8",errors="replace")
+   return p,None
+  except Exception as e:return None,str(e)
+ async def git_status(request):
+  root=root_path()
+  p,err=run_git(["rev-parse","--is-inside-work-tree"],root)
+  if err:return web.json_response({"ok":False,"error":err,"git":False})
+  if not p or p.returncode!=0:return web.json_response({"ok":True,"git":False,"root":str(root)})
+  branch_p,_=run_git(["rev-parse","--abbrev-ref","HEAD"],root)
+  branch=(branch_p.stdout.strip() if branch_p and branch_p.returncode==0 else "?")
+  short_p,_=run_git(["rev-parse","--short","HEAD"],root)
+  sha=(short_p.stdout.strip() if short_p and short_p.returncode==0 else "")
+  st_p,_=run_git(["status","--porcelain","-b"],root)
+  lines=(st_p.stdout.splitlines() if st_p else [])
+  head=lines[0] if lines else ""
+  files=[ln for ln in lines[1:] if ln.strip()]
+  ahead=behind=0
+  import re as _re
+  m=_re.search(r"ahead\s+(\d+)",head);ahead=int(m.group(1)) if m else 0
+  m=_re.search(r"behind\s+(\d+)",head);behind=int(m.group(1)) if m else 0
+  dirty=[{"code":f[:2],"path":f[3:].strip()} for f in files[:80]]
+  return web.json_response({"ok":True,"git":True,"root":str(root),"branch":branch,"sha":sha,"ahead":ahead,"behind":behind,"dirty":len(files),"files":dirty,"head":head},headers={"Cache-Control":"no-store"})
+ async def git_diff(request):
+  root=root_path()
+  path=request.rel_url.query.get("path") or ""
+  staged=request.rel_url.query.get("staged") in ("1","true","yes")
+  args=["diff","--no-color"]
+  if staged:args.append("--cached")
+  if path:args+=["--",path]
+  p,err=run_git(args,root,timeout=20)
+  if err:return web.json_response({"ok":False,"error":err})
+  text=(p.stdout if p else "")[:200000]
+  return web.json_response({"ok":True,"path":path,"staged":staged,"diff":text,"code":p.returncode if p else -1},headers={"Cache-Control":"no-store"})
+ async def git_log(request):
+  root=root_path()
+  n=min(30,max(1,int(request.rel_url.query.get("n") or 12)))
+  p,err=run_git(["log","-"+str(n),"--pretty=format:%h%x09%ad%x09%s","--date=short"],root)
+  if err:return web.json_response({"ok":False,"error":err,"commits":[]})
+  commits=[]
+  for ln in (p.stdout.splitlines() if p else []):
+   parts=ln.split("\t",2)
+   if len(parts)>=3:commits.append({"hash":parts[0],"date":parts[1],"subject":parts[2]})
+  return web.json_response({"ok":True,"commits":commits},headers={"Cache-Control":"no-store"})
+ async def project_context(request):
+  root=root_path()
+  names=["AGENTS.md","CLAUDE.md","Claude.md",".cursorrules","README.md","package.json","pyproject.toml","Cargo.toml","go.mod"]
+  found=[]
+  for n in names:
+   p=root/n
+   if p.is_file():
+    try:
+     text=p.read_text(encoding="utf-8",errors="replace")
+     found.append({"name":n,"rel":n,"size":len(text),"preview":text[:4000]})
+    except Exception:pass
+  git_p,_=run_git(["rev-parse","--abbrev-ref","HEAD"],root)
+  branch=git_p.stdout.strip() if git_p and git_p.returncode==0 else None
+  return web.json_response({"ok":True,"root":str(root),"branch":branch,"files":found},headers={"Cache-Control":"no-store"})
+ def listen_pids(port:int):
+  return listen_pids_port(port,exclude_self=True)
+ def kill_pids(pids):
+  return kill_pids_list(pids)
+ async def stack_status(request):
+  ui=listen_pids(a.port);ag=listen_pids(a.agent_port)
+  hub_up=hub._agent is not None and not getattr(hub._agent,"closed",True)
+  return web.json_response({"ok":True,"ui_port":a.port,"agent_port":a.agent_port,"ui_pids":ui,"agent_pids":ag,"self_pid":os.getpid(),"lan":lan,"cwd":state["cwd"],"hub_up":hub_up,"hub_err":getattr(hub,"_last_err","") or "","agent_listening":bool(ag)},headers={"Cache-Control":"no-store"})
+ async def stack_stop(request):
+  keep_agent=False
+  try:
+   body=await request.json()
+   keep_agent=bool(body.get("keep_agent"))
+  except Exception:pass
+  agent_pids=[] if keep_agent else listen_pids(a.agent_port)
+  self_pid=os.getpid()
+  async def _shutdown():
+   await asyncio.sleep(0.35)
+   try:await hub.close()
+   except Exception:pass
+   if agent_pids:kill_pids(agent_pids)
+   await asyncio.sleep(0.15)
+   try:os._exit(0)
+   except Exception:
+    try:sys.exit(0)
+    except Exception:pass
+  asyncio.create_task(_shutdown())
+  return web.json_response({"ok":True,"stopping":True,"self_pid":self_pid,"agent_pids":agent_pids,"message":"Remote UI stopping; agent serve will stop unless keep_agent"})
+ async def stack_start(request):
+  body={}
+  try:body=await request.json()
+  except Exception:pass
+  force=bool(body.get("force") or body.get("restart"))
+  cwd=str(body.get("cwd") or state["cwd"] or a.cwd)
+  agent_up=bool(listen_pids(a.agent_port))
+  killed=[];started=False;msg=""
+  try:
+   if force or not agent_up:
+    killed=claim_port(a.agent_port,"agent")
+    try:await hub.close()
+    except Exception:pass
+    start_agent_process(a.secret,a.agent_port,cwd)
+    started=True
+    ok_listen=await asyncio.get_event_loop().run_in_executor(None,lambda:wait_port(a.agent_port,22))
+    if not ok_listen:
+     return web.json_response({"ok":False,"error":"agent did not bind :%d"%a.agent_port,"killed":killed,"started":started},status=503)
+    msg="agent started on :%d"%a.agent_port
+   else:
+    msg="agent already listening on :%d"%a.agent_port
+   up=await hub.ensure(retries=6,delay=0.3)
+   return web.json_response({"ok":up,"message":msg,"killed":killed,"started":started,"agent_pids":listen_pids(a.agent_port),"hub_up":up,"hub_err":getattr(hub,"_last_err","") or ""})
+  except Exception as e:
+   return web.json_response({"ok":False,"error":str(e),"killed":killed,"started":started},status=500)
+ async def stack_shortcut(request):
+  script=ROOT/"scripts"/"install-shortcut.ps1"
+  if not script.is_file():
+   return web.json_response({"ok":False,"error":"install-shortcut.ps1 missing"},status=404)
+  try:
+   p=subprocess.run(["powershell","-NoProfile","-ExecutionPolicy","Bypass","-File",str(script)],capture_output=True,text=True,timeout=30,encoding="utf-8",errors="replace")
+   return web.json_response({"ok":p.returncode==0,"code":p.returncode,"out":(p.stdout or "")[-2000:],"err":(p.stderr or "")[-1000:]})
+  except Exception as e:
+   return web.json_response({"ok":False,"error":str(e)},status=500)
  async def ws_proxy(request):
   client=web.WebSocketResponse(heartbeat=30,max_msg_size=16*1024*1024)
   await client.prepare(request)
-  print("[proxy] phone connected from",request.remote,flush=True)
-  try:
-   async with ClientSession() as session:
-    async with session.ws_connect(agent_ws,heartbeat=30,max_msg_size=16*1024*1024) as agent:
-     print("[proxy] upstream agent open",flush=True)
-     async def c2a():
-      async for msg in client:
-       if msg.type==WSMsgType.TEXT:await agent.send_str(msg.data)
-       elif msg.type==WSMsgType.BINARY:await agent.send_bytes(msg.data)
-       elif msg.type in (WSMsgType.CLOSE,WSMsgType.ERROR):break
-     async def a2c():
-      async for msg in agent:
-       if msg.type==WSMsgType.TEXT:await client.send_str(msg.data)
-       elif msg.type==WSMsgType.BINARY:await client.send_bytes(msg.data)
-       elif msg.type in (WSMsgType.CLOSE,WSMsgType.ERROR):break
-     done,pending=await asyncio.wait([asyncio.create_task(c2a()),asyncio.create_task(a2c())],return_when=asyncio.FIRST_COMPLETED)
-     for t in pending:t.cancel()
-  except Exception as e:
-   print("[proxy] error:",e,flush=True)
-   if not client.closed:
-    try:await client.send_str(json.dumps({"jsonrpc":"2.0","method":"error","params":{"message":str(e)}}))
-    except Exception:pass
-  finally:
-   if not client.closed:await client.close()
-   print("[proxy] phone disconnected",flush=True)
+  await hub.handle_client(client)
   return client
- app=web.Application()
+ app=web.Application(client_max_size=8*1024*1024)
  app.router.add_get("/",index)
  app.router.add_get("/index.html",index)
  app.router.add_get("/config.json",config)
@@ -82,21 +814,68 @@ async def main_async(a):
  app.router.add_get("/health",health)
  app.router.add_get("/ws",ws_proxy)
  app.router.add_get("/static/{name}",static)
- print("Grok Remote UI+proxy  http://%s:%d/"%(lan,a.port),flush=True)
- print("Phone WebSocket       ws://%s:%d/ws  ->  %s:%d (secret server-side)"%(lan,a.port,agent_host,a.agent_port),flush=True)
- print("CWD                   %s"%a.cwd,flush=True)
+ app.router.add_get("/api/fs/root",fs_root)
+ app.router.add_post("/api/fs/root",fs_set_root)
+ app.router.add_get("/api/fs/list",fs_list)
+ app.router.add_get("/api/fs/read",fs_read)
+ app.router.add_post("/api/fs/write",fs_write)
+ app.router.add_post("/api/fs/mkdir",fs_mkdir)
+ app.router.add_get("/api/skills/list",skills_list)
+ app.router.add_get("/api/session/history",session_history)
+ app.router.add_get("/api/session/signals",session_signals)
+ app.router.add_get("/api/session/archived",session_archived_get)
+ app.router.add_post("/api/session/archived",session_archived_set)
+ app.router.add_get("/api/git/status",git_status)
+ app.router.add_get("/api/git/diff",git_diff)
+ app.router.add_get("/api/git/log",git_log)
+ app.router.add_get("/api/project/context",project_context)
+ app.router.add_get("/api/stack/status",stack_status)
+ app.router.add_post("/api/stack/stop",stack_stop)
+ app.router.add_post("/api/stack/start",stack_start)
+ app.router.add_post("/api/stack/shortcut",stack_shortcut)
+ print("Grok Remote UI+hub   http://%s:%d/"%(lan,a.port),flush=True)
+ print("Multi-client WS      ws://%s:%d/ws  -> shared agent %s:%d"%(lan,a.port,agent_host,a.agent_port),flush=True)
+ print("Workspace            %s"%state["cwd"],flush=True)
  runner=web.AppRunner(app);await runner.setup()
- site=web.TCPSite(runner,a.bind,a.port);await site.start()
- while True:await asyncio.sleep(3600)
+ site=web.TCPSite(runner,a.bind,a.port)
+ try:
+  await site.start()
+ except OSError as e:
+  print("[bind] :%d busy (%s) — claiming port and retry"%(a.port,e),flush=True)
+  claim_port(a.port,"ui")
+  await asyncio.sleep(0.6)
+  site=web.TCPSite(runner,a.bind,a.port)
+  await site.start()
+ if getattr(a,"ensure_agent",False) or not listen_pids(a.agent_port):
+  try:
+   if not listen_pids(a.agent_port):
+    print("[boot] agent not on :%d — starting"%a.agent_port,flush=True)
+    start_agent_process(a.secret,a.agent_port,state["cwd"])
+    await asyncio.get_event_loop().run_in_executor(None,lambda:wait_port(a.agent_port,18))
+   await hub.ensure(retries=5,delay=0.35)
+  except Exception as e:
+   print("[boot] agent ensure failed:",e,flush=True)
+ try:
+  while True:await asyncio.sleep(3600)
+ finally:
+  await hub.close()
 def main():
  ap=argparse.ArgumentParser()
  ap.add_argument("--port",type=int,default=2421);ap.add_argument("--bind",default="0.0.0.0")
  ap.add_argument("--agent-host",default="127.0.0.1");ap.add_argument("--agent-port",type=int,default=2419)
  ap.add_argument("--secret",default=os.environ.get("GROK_AGENT_SECRET",""))
  ap.add_argument("--cwd",default=os.getcwd())
+ ap.add_argument("--claim-ports",action="store_true",help="kill other listeners on UI+agent ports before bind")
+ ap.add_argument("--ensure-agent",action="store_true",help="start agent serve if not listening")
  a=ap.parse_args()
  if not a.secret:
   print("ERROR: --secret or GROK_AGENT_SECRET required",file=sys.stderr);sys.exit(2)
+ if a.claim_ports or os.environ.get("GROK_REMOTE_CLAIM_PORTS")=="1":
+  claim_port(a.port,"ui")
+  claim_port(a.agent_port,"agent")
+ else:
+  claim_port(a.port,"ui")
+ a.ensure_agent=bool(a.ensure_agent or os.environ.get("GROK_REMOTE_ENSURE_AGENT","1")!="0")
  try:asyncio.run(main_async(a))
  except KeyboardInterrupt:pass
 if __name__=="__main__":main()

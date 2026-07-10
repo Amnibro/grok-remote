@@ -46,14 +46,21 @@ function Stop-Ours {
     try { Stop-Process -Id $id -Force -ErrorAction SilentlyContinue } catch {}
   }
 }
-function Ensure-PortFree([int]$p) {
+function Free-Port([int]$p, [string]$label) {
   $lines = netstat -ano | Select-String ":$p\s+.*LISTENING"
   if (-not $lines) { return }
-  Write-Host "Port $p already in use:" -ForegroundColor Yellow
-  $lines | ForEach-Object { Write-Host "  $_" }
+  Write-Host "Claiming $label port $p (killing listeners)..." -ForegroundColor Yellow
+  foreach ($ln in $lines) {
+    $procId = ($ln.ToString().Trim() -split "\s+")[-1]
+    if ($procId -match "^\d+$" -and [int]$procId -gt 0) {
+      Write-Host "  taskkill /F /PID $procId"
+      cmd /c "taskkill /F /PID $procId" 2>$null | Out-Null
+    }
+  }
+  Start-Sleep -Seconds 1
 }
-Ensure-PortFree $Port
-Ensure-PortFree $UiPort
+Free-Port $Port "agent"
+Free-Port $UiPort "UI"
 Write-Host ""
 Write-Host "=== Grok Remote Control ===" -ForegroundColor Yellow
 Write-Host "Grok:     $Grok"
@@ -67,18 +74,23 @@ Write-Host "On Android: open  http://${lan}:${UiPort}/?auto=1" -ForegroundColor 
 Write-Host "Never: Stop-Process -Name grok  (kills desktop TUI)" -ForegroundColor DarkYellow
 Write-Host ""
 $agentLog = Join-Path $logDir "agent.log"
-$agentArgs = @("agent", "--always-approve", "serve", "--bind", "127.0.0.1:$Port", "--secret", $Secret)
-if (-not $NoLeader -and $env:GROK_REMOTE_LEADER -eq "1") {
-  $agentArgs = @("agent", "--always-approve", "--leader", "serve", "--bind", "127.0.0.1:$Port", "--secret", $Secret)
-}
-# Start grok serve directly (cmd-redirect sometimes swallows long-lived servers on Windows)
-$agent = Start-Process -FilePath $Grok -ArgumentList $agentArgs -WorkingDirectory $Cwd -PassThru -WindowStyle Hidden
+# Note: --leader means "connect TO a shared leader", not "be a leader".
+# serve starts a standalone agent WS server. --no-leader avoids broken attach when no leader is running.
+$agentArgs = @("agent", "--always-approve", "--no-leader", "serve", "--bind", "127.0.0.1:$Port", "--secret", $Secret)
+$agentCmd = Join-Path $logDir "run-agent.cmd"
+@"
+@echo off
+cd /d "$Cwd"
+set GROK_AGENT_SECRET=$Secret
+"$Grok" $($agentArgs -join ' ') >> "$agentLog" 2>&1
+"@ | Set-Content -Path $agentCmd -Encoding ASCII
+$agent = Start-Process -FilePath "cmd.exe" -ArgumentList @("/c", $agentCmd) -WorkingDirectory $Cwd -PassThru -WindowStyle Hidden
 $script:OurPids += $agent.Id
 $ok = $false
 for ($i = 0; $i -lt 25; $i++) {
   Start-Sleep -Seconds 1
   if (netstat -an | Select-String "127.0.0.1:$Port\s+.*LISTENING") { $ok = $true; break }
-  if ($agent.HasExited) { Write-Host "Agent process exited early code=$($agent.ExitCode)" -ForegroundColor Red; break }
+  if ($agent.HasExited) { Write-Host "Agent launcher exited early code=$($agent.ExitCode)" -ForegroundColor Red; break }
 }
 if (-not $ok) {
   Write-Host "Agent failed to listen on 127.0.0.1:$Port" -ForegroundColor Red
@@ -103,22 +115,24 @@ if (-not $NoUi) {
   if (-not $py) { throw "python required for UI/proxy" }
   & $py -c "import aiohttp" 2>$null
   if ($LASTEXITCODE -ne 0) { & $py -m pip install aiohttp -q }
-  $uiArgs = @(
-    (Join-Path $here "server.py"),
-    "--port", "$UiPort",
-    "--bind", "0.0.0.0",
-    "--agent-host", "127.0.0.1",
-    "--agent-port", "$Port",
-    "--secret", $Secret,
-    "--cwd", $Cwd
-  )
-  $ui = Start-Process -FilePath $py -ArgumentList $uiArgs -WorkingDirectory $here -PassThru -WindowStyle Hidden
+  $env:GROK_REMOTE_ENSURE_AGENT = "0"
+  $logDirUi = $logDir
+  $runUi = Join-Path $logDirUi "run-ui.cmd"
+  $uiLine = "`"$py`" `"$(Join-Path $here 'server.py')`" --port $UiPort --bind 0.0.0.0 --agent-host 127.0.0.1 --agent-port $Port --secret $Secret --cwd `"$Cwd`" --ensure-agent >> `"$(Join-Path $logDirUi 'ui.out.log')`" 2>> `"$(Join-Path $logDirUi 'ui.err.log')`""
+  @(
+    "@echo off",
+    "cd /d `"$here`"",
+    "set GROK_AGENT_SECRET=$Secret",
+    $uiLine
+  ) | Set-Content -Path $runUi -Encoding ASCII
+  $ui = Start-Process -FilePath "cmd.exe" -ArgumentList @("/c", $runUi) -WorkingDirectory $here -PassThru -WindowStyle Hidden
   $script:OurPids += $ui.Id
-  Start-Sleep -Seconds 2
+  Start-Sleep -Seconds 3
   $uiOk = netstat -an | Select-String "0.0.0.0:$UiPort\s+.*LISTENING|\[::\]:$UiPort\s+.*LISTENING|:$UiPort\s+.*LISTENING"
   if (-not $uiOk) {
     Write-Host "UI failed to bind 0.0.0.0:$UiPort - is an old server holding the port?" -ForegroundColor Red
     Write-Host "Check: netstat -ano | findstr $UiPort" -ForegroundColor Yellow
+    Get-Content (Join-Path $logDirUi "ui.err.log") -ErrorAction SilentlyContinue | Select-Object -Last 15
   } else {
     Write-Host "UI+proxy OK  http://${lan}:${UiPort}/" -ForegroundColor Green
   }

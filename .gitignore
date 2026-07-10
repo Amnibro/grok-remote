@@ -4,3 +4,12 @@ connect.url
 __pycache__/
 *.pyc
 .DS_Store
+backups/
+desktop/node_modules/
+desktop/dist/
+node_modules/
+_probe_*.py
+_shot*.js
+*.log
+.idea/
+.vscode/

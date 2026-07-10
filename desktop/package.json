@@ -1,0 +1,31 @@
+{
+  "name": "grok-remote-desktop",
+  "version": "1.3.0",
+  "description": "Grok Remote desktop shell — manage sessions, spin code tasks, chat with Grok Build",
+  "main": "main.js",
+  "author": "Amnibro",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder"
+  },
+  "build": {
+    "appId": "com.amni.grok-remote",
+    "productName": "Grok Remote",
+    "directories": { "output": "dist" },
+    "files": ["main.js", "preload.js", "package.json"],
+    "extraResources": [
+      { "from": "../web", "to": "web" },
+      { "from": "../server.py", "to": "server.py" },
+      { "from": "../start.ps1", "to": "start.ps1" },
+      { "from": "../scripts", "to": "scripts" }
+    ],
+    "win": { "target": ["portable", "nsis"] }
+  },
+  "devDependencies": {
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8"
+  }
+}

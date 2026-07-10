@@ -6,12 +6,18 @@ allowed-tools: [Bash]
 
 # /remote-stop
 
-Stop only Grok Remote processes:
+Stop **only** Grok Remote (never desktop TUI by name).
 
-1. Listener on **TCP 2421** (mobile UI + WS proxy)
-2. Remote **agent serve** on **2419** if started for remote
+## Run
 
-## Hard rules
+```powershell
+$PLUGIN = if ($env:GROK_PLUGIN_ROOT) { $env:GROK_PLUGIN_ROOT } elseif (Test-Path "$env:USERPROFILE\.grok\plugins\grok-remote\scripts\stop-remote.ps1") { "$env:USERPROFILE\.grok\plugins\grok-remote" } else { (Get-Location).Path }
+powershell -NoProfile -ExecutionPolicy Bypass -File "$PLUGIN\scripts\stop-remote.ps1"
+```
 
-- **Never** `Stop-Process -Name grok` / kill every Grok PID
-- Confirm ports free; report status to the user
+## Rules
+
+- Kills listeners on **TCP 2421** (UI) and **2419** (remote agent serve) only
+- **Never** `Stop-Process -Name grok`
+- Confirm ports free with `netstat -ano | findstr "2421 2419"`
+- Tell user: start again with `/remote` or Desktop **Grok Remote** shortcut

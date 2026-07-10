@@ -34,12 +34,19 @@ Parse the first token:
 
 | Arg | Action |
 |-----|--------|
-| *(empty)* or `start` | Start remote control for the current project cwd |
-| `stop` | Stop **only** the remote agent/UI processes started by this plugin (never `Stop-Process -Name grok`) |
+| *(empty)* or `start` | Start remote control for the current project cwd (`ensure-running.ps1 -Force -IgnoreConfig` or `start.ps1`) |
+| `stop` | Run `scripts/stop-remote.ps1` — **only** listeners on 2421 + 2419 (never `Stop-Process -Name grok`) |
 | `status` | Check ports 2419/2421, print connect URL, health |
 | `url` | Print the LAN connect URL only |
 | `task <cwd> [message…]` | Tell the user the phone **Task** button / deep link for a new session at cwd |
 | extra path | Optional cwd override after the verb |
+
+### UI stop + pin
+
+- Header **Stop** posts `/api/stack/stop` (stops UI + remote agent serve; desktop TUI stays)
+- Header **Pin** posts `/api/stack/shortcut` → Desktop + Start Menu shortcuts
+- Desktop: **Grok Remote** / **Grok Remote Stop**; Start Menu folder **Grok Remote**
+- Pin to taskbar: right-click Desktop shortcut → Pin to taskbar
 
 ### Phone UI features (tell the user)
 
@@ -47,6 +54,8 @@ Parse the first token:
 - **Back swipe / ‹** returns to **Sessions** (does not leave the site)
 - **Skills** button → slash commands for the active session
 - **Task** → new session at a stated folder + optional first prompt
+- **Theme → UX**: auto-scroll, collapse think/code/tools, borders vs clean UI (device `localStorage`)
+- **↓ Latest** FAB when scrolled up in chat
 - Deep links: `?auto=1&session=<id>` · `?auto=1&task=<msg>&cwd=<path>`
 
 Default cwd = the user's current workspace (session cwd), not the plugin directory.
