@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="mobile-web-app-capable" content="yes"/>
 <meta name="theme-color" content="#0a0b0e" id="themeColor"/>
-<title>Grok Remote · AMNI-SCIENT</title>
+<title>Grok Remote · GROK BUILD</title>
 <style>
 /* Surfaces: dark / light. Accents: product variant (Amni-Scient + grey Grok). */
 html[data-mode="dark"]{
@@ -424,16 +424,17 @@ button.send.is-stop:hover{background:var(--bad);transform:translateY(-1px)}
 .badge.idle{color:var(--acc)}
 .hint{color:var(--mut);font-size:clamp(11px,.2vw + 10px,13px);margin-top:6px}
 .spoiler,.spoiler-path{border-radius:4px;transition:filter .12s ease,background .12s}
-body.privacy .spoiler,body.privacy .spoiler-path,body.privacy .sess .m,body.privacy .tool .loc,body.privacy .file-chip,body.privacy #hint,body.privacy .tool .inblock,body.privacy .tool .out,body.privacy .tool .tt,body.privacy .att-chip b,body.privacy .collapsible .code-head span:last-child{
-  filter:blur(6px);user-select:none;-webkit-user-select:none;cursor:default
+body.privacy .spoiler,body.privacy .spoiler-path,body.privacy .sess .m,body.privacy .sess .item .t,body.privacy .sess .item .body .t,body.privacy .tool .loc,body.privacy .file-chip,body.privacy #hint,body.privacy .lb-sess,body.privacy .tool .inblock,body.privacy .tool .out,body.privacy .tool .tt,body.privacy .att-chip b,body.privacy .collapsible .code-head span:last-child,body.privacy .panel input,body.privacy #wsurl,body.privacy #cwd,body.privacy #log,body.privacy .git-strip,body.privacy .ide-tree-head span,body.privacy #ideStatus{
+  filter:blur(9px);user-select:none;-webkit-user-select:none;cursor:default
 }
-body.privacy.privacy-reveal .spoiler,body.privacy.privacy-reveal .spoiler-path,body.privacy.privacy-reveal .sess .m,body.privacy.privacy-reveal .tool .loc,body.privacy.privacy-reveal .file-chip,body.privacy.privacy-reveal #hint,body.privacy.privacy-reveal .tool .inblock,body.privacy.privacy-reveal .tool .out,body.privacy.privacy-reveal .tool .tt,body.privacy.privacy-reveal .att-chip b,body.privacy.privacy-reveal .collapsible .code-head span:last-child{
+body.privacy.privacy-reveal .spoiler,body.privacy.privacy-reveal .spoiler-path,body.privacy.privacy-reveal .sess .m,body.privacy.privacy-reveal .sess .item .t,body.privacy.privacy-reveal .sess .item .body .t,body.privacy.privacy-reveal .tool .loc,body.privacy.privacy-reveal .file-chip,body.privacy.privacy-reveal #hint,body.privacy.privacy-reveal .lb-sess,body.privacy.privacy-reveal .tool .inblock,body.privacy.privacy-reveal .tool .out,body.privacy.privacy-reveal .tool .tt,body.privacy.privacy-reveal .att-chip b,body.privacy.privacy-reveal .collapsible .code-head span:last-child,body.privacy.privacy-reveal .panel input,body.privacy.privacy-reveal #wsurl,body.privacy.privacy-reveal #cwd,body.privacy.privacy-reveal #log,body.privacy.privacy-reveal .git-strip,body.privacy.privacy-reveal .ide-tree-head span,body.privacy.privacy-reveal #ideStatus{
   filter:none;user-select:text
 }
-body.privacy #status{filter:blur(5px);user-select:none}
+body.privacy #status{filter:blur(6px);user-select:none}
 body.privacy.privacy-reveal #status{filter:none}
 .hdrbtn.privacy-on{border-color:var(--acc);color:var(--acc);background:var(--acc-dim)}
-body.privacy::after{content:"SPOILER ON · hold Alt to peek";position:fixed;left:50%;bottom:calc(10px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:45;font:700 10px/1 var(--font-mono);letter-spacing:.6px;color:var(--acc);background:color-mix(in srgb,var(--panel) 85%,transparent);border:1px solid color-mix(in srgb,var(--acc) 40%,var(--line));border-radius:999px;padding:6px 12px;pointer-events:none;backdrop-filter:blur(8px)}
+body.privacy::after{content:"SPOILER ON · private screen";position:fixed;left:50%;bottom:calc(10px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:45;font:700 10px/1 var(--font-mono);letter-spacing:.6px;color:var(--acc);background:color-mix(in srgb,var(--panel) 85%,transparent);border:1px solid color-mix(in srgb,var(--acc) 40%,var(--line));border-radius:999px;padding:6px 12px;pointer-events:none;backdrop-filter:blur(8px)}
+body.privacy.can-hover.desktop::after{content:"SPOILER ON · hold Alt to peek"}
 #log{font-size:11px;color:var(--mut);max-height:min(80px,12vh);overflow:auto;white-space:pre-wrap;background:var(--in);border:1px solid var(--line);border-radius:8px;padding:8px;margin-top:8px;font-family:var(--font-mono)}
 .queue{font-size:11px;color:var(--acc);padding:2px 0 6px;min-height:0}
 .perm{border:1px solid color-mix(in srgb,var(--acc) 40%,var(--line));background:var(--acc-dim);border-radius:12px;padding:10px;margin:8px 0}
@@ -1051,7 +1052,7 @@ let linkState="standby",agentPhase="idle",phaseDetail="",wantReconnect=false,rec
 let connecting=false,intentionalClose=false,reconnectArmed=false,maxReconnect=5,startInFlight=false;
 Object.defineProperty(window,"replaying",{get:()=>replaying,set:v=>{replaying=!!v},configurable:true});
 Object.defineProperty(window,"sessionSwitching",{get:()=>sessionSwitching,set:v=>{sessionSwitching=!!v},configurable:true});
-let variant="scient",mode="dark";
+let variant="grok",mode="dark";
 let ux={borders:true,collapseThink:true,collapseCode:true,collapseTools:false,autoScroll:true,privacy:false};
 let archived=new Set(),sessScope="active";
 let personaId="default",directionId="none",personaApplied=new Set();
@@ -1077,15 +1078,15 @@ const VARIANTS=[
 ];
 function esc(t){return String(t||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")}
 function migrateTheme(raw){
-  if(!raw)return{variant:"scient",mode:"dark"};
-  if(raw==="light")return{variant:"scient",mode:"light"};
+  if(!raw)return{variant:"grok",mode:"dark"};
+  if(raw==="light")return{variant:"grok",mode:"light"};
   if(raw==="prayer")return{variant:"ai",mode:"dark"};
-  if(raw.indexOf("-")>=0){const p=raw.split("-");return{variant:p[0],mode:p[1]==="light"?"light":"dark"}}
-  if(VARIANTS.some(v=>v.id===raw))return{variant:raw,mode:"dark"};
-  return{variant:"scient",mode:"dark"};
+  if(raw.indexOf("-")>=0){const p=raw.split("-");return{variant:p[0]==="scient"?"grok":p[0],mode:p[1]==="light"?"light":"dark"}}
+  if(VARIANTS.some(v=>v.id===raw))return{variant:raw==="scient"?"grok":raw,mode:"dark"};
+  return{variant:"grok",mode:"dark"};
 }
 function applyTheme(v,m,persist){
-  const vv=VARIANTS.find(x=>x.id===v)||VARIANTS[0];
+  const vv=VARIANTS.find(x=>x.id===v)||VARIANTS.find(x=>x.id==="grok")||VARIANTS[0];
   variant=vv.id;mode=(m==="light")?"light":"dark";
   document.documentElement.setAttribute("data-variant",variant);
   document.documentElement.setAttribute("data-mode",mode);
@@ -1096,6 +1097,7 @@ function applyTheme(v,m,persist){
     meta.setAttribute("content",c);
   }
   if(logoEl)logoEl.innerHTML='<span class="brand">'+esc(vv.brand)+"</span>Grok <b>Remote</b>";
+  try{document.title="Grok Remote · "+(vv.brand||"GROK BUILD")}catch(e){}
   if(persist!==false){
     try{
       localStorage.setItem("grok_remote_variant",variant);
@@ -1163,8 +1165,17 @@ function applyUx(){
   document.body.classList.toggle("privacy",!!ux.privacy);
   autoScroll=ux.autoScroll!==false;
   if(autoScroll){stickBottom=true;scroll()}
+  const mq=window.matchMedia;
+  const finePtr=!(mq)||mq("(hover:hover) and (pointer:fine)").matches;
+  const desktopUi=document.body.classList.contains("desktop")||document.body.classList.contains("electron");
+  const fine=!!(finePtr&&desktopUi);
+  document.body.classList.toggle("can-hover",!!fine);
+  document.body.classList.toggle("touch-ui",!fine);
   const bp=document.getElementById("btnPrivacy");
-  if(bp){bp.classList.toggle("privacy-on",!!ux.privacy);bp.title=ux.privacy?"Spoiler ON — paths/IDs blurred (hold Alt to peek)":"Spoiler mode — blur IDs/paths for screenshots"}
+  if(bp){
+    bp.classList.toggle("privacy-on",!!ux.privacy);
+    bp.title=ux.privacy?(fine?"Spoiler ON — titles/paths blurred (hold Alt to peek)":"Spoiler ON — private screen (titles/paths blurred)"):"Spoiler mode — blur titles/paths/IDs for screenshots";
+  }
   updateJump();
   paintUxChips();
 }
@@ -1606,10 +1617,11 @@ function extractStartLine(text,st){
   }
   return 1;
 }
+function isLinked(){return!!(isDemoMode()||(ws&&ws.readyState===1))}
 function updateChrome(){
   updateLayoutClass();
   applySidebar();
-  const chat=page==="chat",on=ws&&ws.readyState===1,wide=isWideLayout();
+  const chat=page==="chat",on=isLinked(),wide=isWideLayout();
   document.body.classList.toggle("page-chat",chat);
   btnBack.style.display=(!wide&&chat)?"inline-block":"none";
   if(btnSess)btnSess.style.display=(on&&chat&&!wide)?"":"none";
@@ -1626,7 +1638,7 @@ function showPage(name,fromPop){
   page=name;
   updateLayoutClass();
   applySidebar();
-  const wide=isWideLayout(),on=ws&&ws.readyState===1;
+  const wide=isWideLayout(),on=isLinked();
   const chatStage=document.getElementById("chatStage");
   setup.classList.toggle("on",name==="setup");
   document.body.classList.toggle("page-chat",name==="chat");
@@ -2492,8 +2504,31 @@ function relTime(ms){
 function sessionTitle(s){
   return String((s&&s.title)||"").trim()||"Untitled";
 }
+const DEMO_SESSIONS=[
+  {sessionId:"demo-001",title:"Ship remote cockpit polish",cwd:"~/projects/demo-app",resident:true,activity:"live",updatedAt:Date.now()-120000},
+  {sessionId:"demo-002",title:"Tighten CI + flaky tests",cwd:"~/projects/demo-app",resident:false,activity:"idle",updatedAt:Date.now()-3600000},
+  {sessionId:"demo-003",title:"Theme tokens + spoiler mode",cwd:"~/projects/ui-kit",resident:false,activity:"idle",updatedAt:Date.now()-86400000},
+  {sessionId:"demo-004",title:"Mobile layout pass",cwd:"~/projects/demo-app",resident:false,activity:"idle",updatedAt:Date.now()-172800000},
+  {sessionId:"demo-005",title:"Docs + install walkthrough",cwd:"~/projects/docs",resident:false,activity:"idle",updatedAt:Date.now()-259200000}
+];
+function isDemoMode(){try{return new URLSearchParams(location.search).get("demo")==="1"||!!window.__demoMode}catch(e){return!!window.__demoMode}}
+function paintDemoChat(){
+  if(!feed)return;
+  feed.innerHTML="";
+  const mk=(who,html)=>{const r=document.createElement("div");r.className="row "+who;const b=document.createElement("div");b.className="bub";b.innerHTML=html;r.appendChild(b);feed.appendChild(r)};
+  mk("me","<div class='md-p'>Walk me through the session picker and spoiler mode for safe screenshots.</div>");
+  mk("you","<div class='md-p'><strong>Sessions rail</strong> — New chat, search, Active/Live/Archive scope.</div><div class='md-p'><strong>Spoiler</strong> blurs titles, paths, and IDs. On desktop hold <kbd>Alt</kbd> to peek; on phone it stays private.</div>");
+  mk("you","<div class='md-p'>Composer: <code class='ic'>+</code> tools tray, attachments, Cancel while busy. Theme default is <strong>Grok</strong> (dark).</div>");
+  try{const h=document.getElementById("hint");if(h)h.textContent="demo session · spoiler-safe"}catch(e){}
+  stickBottom=true;scroll();
+}
 async function fetchSessions(){
   try{await loadArchive()}catch(e){}
+  if(isDemoMode()){
+    sessions=DEMO_SESSIONS.slice();
+    renderSessions();
+    return sessions;
+  }
   const r=await req("_x.ai/sessions/list",{},30000);
   sessions=normalizeSessions(r);renderSessions();return sessions;
 }
@@ -2525,12 +2560,12 @@ function renderSessions(){
     const arch=isArchived(id);
     const cur=sid&&id===String(sid);
     const d=document.createElement("div");d.className="item"+(arch?" archived":"")+(cur?" current":"");
-    d.title=sessionTitle(s)+(s.cwd?" · "+String(s.cwd):"");
+    d.title=ux.privacy?"":(sessionTitle(s)+(s.cwd?" · "+String(s.cwd):""));
     const body=document.createElement("div");body.className="body";
     const when=sessionStamp(s);const ago=relTime(when);
     const path=shortPath(s.cwd||"");
     const actBadge=s.resident?"live":(s.activity&&!/dormant|idle/i.test(String(s.activity))?s.activity:"");
-    body.innerHTML='<div class="t">'+(cur?'<span class="badge live">open</span>':'')+(s.resident?'<span class="badge live">live</span>':'')+(arch?'<span class="badge">archived</span>':'')+(actBadge&&!s.resident?'<span class="badge idle">'+esc(actBadge)+'</span>':'')+esc(sessionTitle(s))+'</div><div class="m spoiler">'+(path?'<span class="spoiler-path">'+esc(path)+"</span>":"")+(ago?(path?" · ":"")+esc(ago):"")+"</div>";
+    body.innerHTML='<div class="t spoiler">'+(cur?'<span class="badge live">open</span>':'')+(s.resident?'<span class="badge live">live</span>':'')+(arch?'<span class="badge">archived</span>':'')+(actBadge&&!s.resident?'<span class="badge idle">'+esc(actBadge)+'</span>':'')+'<span class="spoiler">'+esc(sessionTitle(s))+'</span></div><div class="m spoiler">'+(path?'<span class="spoiler-path">'+esc(path)+"</span>":"")+(ago?(path?" · ":"")+esc(ago):"")+"</div>";
     const acts=document.createElement("div");acts.className="acts";
     const ab=document.createElement("button");ab.type="button";ab.textContent=arch?"Unarchive":"Archive";
     ab.onclick=e=>toggleArchive(id,e);
@@ -2539,7 +2574,7 @@ function renderSessions(){
     pb.onclick=e=>{e.stopPropagation();if(window.grokCockpit)window.grokCockpit.pinSession(s);chip("pinned "+sessionTitle(s))};
     acts.appendChild(pb);
     d.appendChild(body);d.appendChild(acts);
-    d.onclick=e=>{if(e.target.closest&&e.target.closest(".acts"))return;openSession(s)};
+    d.onclick=e=>{if(e.target.closest&&e.target.closest(".acts"))return;if(isDemoMode()){sid=id;sidCwd=s.cwd||"";renderSessions();paintDemoChat();page="chat";updateChrome();return}openSession(s)};
     sessList.appendChild(d);
   });
 }
@@ -3526,9 +3561,9 @@ window.addEventListener("resize",()=>{
     const raw=localStorage.getItem("grok_remote_theme");
     const v=localStorage.getItem("grok_remote_variant");
     const m=localStorage.getItem("grok_remote_mode");
-    if(v||m){variant=v||"scient";mode=m||"dark"}
+    if(v||m){variant=v||"grok";mode=m||"dark"}
     else{const mig=migrateTheme(raw);variant=mig.variant;mode=mig.mode}
-  }catch(e){variant="scient";mode="dark"}
+  }catch(e){variant="grok";mode="dark"}
   loadUx();
   loadArchiveLocal();
   loadArchive({migrate:true}).catch(()=>{});
@@ -3546,9 +3581,20 @@ window.addEventListener("resize",()=>{
   const q=new URLSearchParams(location.search);
   if(q.get("theme")||q.get("variant")||q.get("mode")){
     const mig=migrateTheme(q.get("theme")||"");
-    applyTheme(q.get("variant")||mig.variant,q.get("mode")||mig.mode,true);
+    applyTheme(q.get("variant")||mig.variant,q.get("mode")||mig.mode,q.get("demo")!=="1");
   }
-  // Electron bridge: preload can force desktop + autostart stack
+  if(q.get("privacy")==="1"||q.get("spoiler")==="1"){ux.privacy=true;saveUx()}
+  if(q.get("privacy")==="0"){ux.privacy=false;saveUx()}
+  if(q.get("demo")==="1"){
+    window.__demoMode=true;
+    try{localStorage.setItem("grok_remote_tour_done","1")}catch(e){}
+    applyTheme(q.get("variant")||"grok",q.get("mode")||"dark",false);
+    ux.privacy=q.get("privacy")!=="0";
+    saveUx();
+  }
+  applyUx();
+  updateLayoutClass();
+  applyUx();
   if(window.grokRemote){
     document.body.classList.add("electron","desktop");
     try{if(window.grokRemote.getCwd){const c=await window.grokRemote.getCwd();if(c)document.getElementById("cwd").value=c}}catch(e){}
@@ -3558,7 +3604,24 @@ window.addEventListener("resize",()=>{
   if(q.get("ws"))document.getElementById("wsurl").value=q.get("ws");
   if(q.get("session"))window.__wantSession=q.get("session");
   if(q.get("task"))window.__wantTask=q.get("task");
-  const doAuto=q.get("auto")==="1"||q.get("auto")!=="0"&&(window.grokRemote&&window.grokRemote.autoConnect!==false||!window.grokRemote&&location.protocol!=="file:");
+  if(isDemoMode()){
+    sessions=DEMO_SESSIONS.slice();
+    setConn(true,"demo",false);
+    setPhase("idle");
+    if(q.get("chat")==="1"||q.get("view")==="chat"){
+      sid=DEMO_SESSIONS[0].sessionId;sidCwd=DEMO_SESSIONS[0].cwd||"";
+      showPage("chat",true);
+      renderSessions();
+      paintDemoChat();
+    }else if(q.get("view")==="setup"){
+      showPage("setup",true);
+      renderSessions();
+    }else{
+      showPage("sessions",true);
+      renderSessions();
+    }
+  }
+  const doAuto=!isDemoMode()&&(q.get("auto")==="1"||q.get("auto")!=="0"&&(window.grokRemote&&window.grokRemote.autoConnect!==false||!window.grokRemote&&location.protocol!=="file:"));
   if(doAuto){
     reconnectArmed=true;wantReconnect=true;connectAttempt=0;
     try{
@@ -3573,7 +3636,7 @@ window.addEventListener("resize",()=>{
   }
   const forceTour=q.get("tour")==="1"||q.get("tour")==="force";
   let tourDone=false;try{tourDone=localStorage.getItem("grok_remote_tour_done")==="1"}catch(e){}
-  if(forceTour||!tourDone){
+  if(!isDemoMode()&&(forceTour||!tourDone)){
     setTimeout(()=>{try{startTour(forceTour?"url":"first-run")}catch(e){}},doAuto?900:400);
   }
 })();

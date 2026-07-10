@@ -1,22 +1,33 @@
 # Grok Remote — architecture map
 
-**Updated:** 2026-07-10 · v7 live status + session reliability
+**Updated:** 2026-07-10 · v14 spoiler-safe screenshots + demo mode
 
 ## Layout
 
 ```
 grok-remote/
-  web/index.html          # Phone + browser + Electron UI
+  web/index.html          # Phone + browser + Electron UI (default theme: grok)
   web/ide.js              # Built-in IDE + Grok Review
   server.py               # static + /ws proxy + /api/fs/*
   start.ps1               # agent + UI launch
+  scripts/capture-screenshots.mjs  # demo=1 Playwright PNGs for README
   scripts/launch-desktop.cmd
   desktop/                # Electron cockpit (auto-stack)
+  docs/screenshots/       # public spoiler shots only
   skills/remote/
   commands/
   hooks/hooks.json
   config.default.json
 ```
+
+## Privacy / spoiler (v14)
+
+| Piece | Behavior |
+|-------|----------|
+| `body.privacy` | Blurs titles (`.sess .item .t`), paths, IDs, setup inputs, tool locs |
+| Badge | Default `SPOILER ON · private screen`; Alt only if `can-hover` + `desktop` |
+| `?demo=1` | Fake sessions + sample chat; no agent; safe for git screenshots |
+| `?privacy=1` / `variant=` | Force spoiler / theme for captures without localStorage leaks |
 
 ## Cockpit v4
 

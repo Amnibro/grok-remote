@@ -29,9 +29,11 @@ Open the printed URL on your phone (same Wi‑Fi), e.g. `http://192.168.x.x:2421
 
 ## Screenshots
 
-Spoiler mode blurs paths, session IDs, and sensitive chips for safe sharing (hold **Alt** to peek).
+Default theme is **Grok** (dark). Spoiler blurs session titles, paths, and IDs for safe sharing — desktop holds **Alt** to peek; phone shows **private screen** (no Alt).
 
-### Desktop cockpit (Scient · dark · spoiler on)
+Demo captures use `?demo=1&variant=grok&privacy=1` so real chats/paths never hit the repo.
+
+### Desktop cockpit (Grok · dark · spoiler on)
 
 ![Desktop sessions + cockpit with spoiler blur](docs/screenshots/desktop-cockpit-spoiler.png)
 
@@ -45,13 +47,13 @@ Spoiler mode blurs paths, session IDs, and sensitive chips for safe sharing (hol
 
 ### Phone
 
-| Scient | Grok mono |
-|--------|-----------|
-| ![Phone Scient theme spoiler](docs/screenshots/phone-spoiler.png) | ![Phone Grok theme spoiler](docs/screenshots/phone-grok-spoiler.png) |
+| Grok (default) | Scient accent |
+|----------------|---------------|
+| ![Phone Grok theme spoiler](docs/screenshots/phone-grok-spoiler.png) | ![Phone Scient theme spoiler](docs/screenshots/phone-spoiler.png) |
 
 ### Connect / themes screen
 
-![Setup panel with themes, Spoiler chip, and SPOILER ON badge](docs/screenshots/setup-spoiler.png)
+![Setup panel with Grok selected, Spoiler chip, and SPOILER ON badge](docs/screenshots/setup-spoiler.png)
 
 ## What you get
 

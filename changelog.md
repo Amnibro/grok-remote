@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-07-10 — Spoiler-safe Grok screenshots v14
+
+- Privacy blurs **session titles** (not just paths); stronger blur; title tooltips stripped when spoiler on
+- Spoiler badge: **private screen** by default; **hold Alt to peek** only on real desktop (`can-hover.desktop`)
+- Default product theme remains **Grok**; `applyTheme` fallback no longer lands on Scient
+- `?demo=1&variant=grok&privacy=1` scrubbed sessions for public captures; `scripts/capture-screenshots.mjs`
+- README shots retaken — no personal paths/chats, Grok dark default, phone without Alt
+
 ## 2026-07-10 — Menu stacking + code line numbers / syntax
 
 - Header ☰ / orbit menus use `position:fixed` + high z-index so they paint above chat
