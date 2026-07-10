@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-07-09 — Fix mixed history across sessions
+
+- Abort stale history paints when `sessionGen` / `sid` changes mid-load (race was blending chats)
+- Live updates require a matching `sessionId` (no unscoped bleed)
+- Disk live catchup + older pages check session identity; history API stamps `resolvedDir`
+- `find_session_dir` prefers cwd match; multi-hit fallback picks newest only
+
 ## 2026-07-09 — Start server reliability + faster chat open
 
 - **Start server:** force-spawn agent with UI secret; if hub still 401s, kill/rebind and retry; clearer error toast

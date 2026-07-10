@@ -2546,8 +2546,9 @@ function handleUpdate(u,sessionId,meta){
   if(suppressLive&&!historyPainting)return;
   if(sessionSwitching&&!historyPainting)return;
   if(!sid)return;
-  if(sessionId){if(sessionId!==sid)return}
-  else if(!(historyPainting||(replaying&&loadExpectSid&&loadExpectSid===sid)))return;
+  const want=String(sid);
+  if(sessionId){if(String(sessionId)!==want)return}
+  else if(!historyPainting)return;
   const eid=meta&&meta.eventId;
   if(eid){
     if(seenEvents.has(eid))return;
@@ -2669,6 +2670,8 @@ async function paintDiskEvents(events,sessionId,opts){
   opts=opts||{};
   const asReplay=!!opts.replay;
   const prepend=!!opts.prepend;
+  const expectSid=String(sessionId||sid||"");
+  const expectGen=opts.gen!=null?opts.gen:sessionGen;
   const prevReplay=replaying;
   const prevHist=historyPainting;
   if(asReplay||prepend)replaying=true;
@@ -2676,6 +2679,7 @@ async function paintDiskEvents(events,sessionId,opts){
   let n=0;
   let nodes=null;
   let origAppend=null;
+  let aborted=false;
   if(prepend&&feed){
     nodes=[];
     origAppend=feed.appendChild.bind(feed);
@@ -2684,26 +2688,33 @@ async function paintDiskEvents(events,sessionId,opts){
   try{
     const list=events||[];
     for(let i=0;i<list.length;i++){
+      if(expectGen!==sessionGen||String(sid||"")!==expectSid){aborted=true;break}
       const ev=list[i];
       const params=ev&&ev.params||{};
       const update=params.update;
       if(!update)continue;
+      const evSid=params.sessionId||(params.update&&params.update.sessionId)||null;
+      if(evSid&&String(evSid)!==expectSid)continue;
       const meta=params._meta||update._meta||null;
-      handleUpdate(update,params.sessionId||sessionId,meta);
+      handleUpdate(update,expectSid,meta);
       n++;
-      if(asReplay&&i>0&&i%24===0)await new Promise(r=>requestAnimationFrame(r));
+      if(asReplay&&i>0&&i%40===0)await new Promise(r=>requestAnimationFrame(r));
     }
   }finally{
     historyPainting=prevHist;
     if(prepend&&feed&&origAppend){
       feed.appendChild=origAppend;
-      const first=feed.firstChild;
-      for(let i=0;i<(nodes||[]).length;i++)feed.insertBefore(nodes[i],first);
+      if(!aborted&&expectGen===sessionGen&&String(sid||"")===expectSid){
+        const first=feed.firstChild;
+        for(let i=0;i<(nodes||[]).length;i++)feed.insertBefore(nodes[i],first);
+      }
+    }else if(aborted&&expectGen!==sessionGen){
+      /* stale paint discarded by newer clearSessionFeed */
     }
     if(asReplay||prepend){replaying=prevReplay;closeOpen()}
-    else if(n){touchLive();if(stickBottom||atBottom())scroll()}
+    else if(n&&!aborted){touchLive();if(stickBottom||atBottom())scroll()}
   }
-  return n;
+  return aborted?0:n;
 }
 function applyHistoryMeta(meta){
   meta=meta||{};
@@ -2730,22 +2741,28 @@ function paintHistoryMoreChip(){
 }
 async function paintDiskHistory(sessionId,cwd,opts){
   opts=opts||{};
+  const expectSid=String(sessionId||"");
+  const expectGen=opts.gen!=null?opts.gen:sessionGen;
   const limit=opts.limit!=null?opts.limit:HISTORY_PAGE;
-  const q=new URLSearchParams({sessionId:String(sessionId||""),cwd:String(cwd||sidCwd||""),limit:String(limit)});
+  const q=new URLSearchParams({sessionId:expectSid,cwd:String(cwd||sidCwd||""),limit:String(limit)});
   if(opts.before!=null)q.set("before",String(opts.before));
   if(opts.max_bytes!=null)q.set("max_bytes",String(opts.max_bytes));
   if(opts.chat_only)q.set("chat_only","1");
   const r=await fetch("/api/session/history?"+q.toString(),{cache:"no-store"});
+  if(expectGen!==sessionGen||String(sid||"")!==expectSid)return {count:0,meta:{},title:"",events:[],stale:true};
   const text=await r.text();
   let j=null;try{j=JSON.parse(String(text).replace(/^\uFEFF/,"").trim())}catch(e){j=null}
   if(!r.ok||!j||!j.ok){
     const err=(j&&j.error)||text.slice(0,120)||("HTTP "+r.status);
     throw new Error(err||"history fetch failed");
   }
+  if(j.sessionId&&String(j.sessionId)!==expectSid)throw new Error("history session mismatch");
+  if(expectGen!==sessionGen||String(sid||"")!==expectSid)return {count:0,meta:{},title:"",events:[],stale:true};
   const events=Array.isArray(j.events)?j.events:[];
-  const n=await paintDiskEvents(events,sessionId,{replay:!opts.prepend,prepend:!!opts.prepend});
+  const n=await paintDiskEvents(events,expectSid,{replay:!opts.prepend,prepend:!!opts.prepend,gen:expectGen});
+  if(expectGen!==sessionGen||String(sid||"")!==expectSid)return {count:0,meta:{},title:"",events:[],stale:true};
   applyHistoryMeta(j.meta||{});
-  return {count:n,meta:j.meta||{},title:j.title||"",events:events};
+  return {count:n,meta:j.meta||{},title:j.title||"",events:events,dir:j.dir||""};
 }
 async function loadOlderHistory(){
   if(!sid||!historyHasMore||historyLoadingOlder||replaying||sessionSwitching)return;
@@ -2756,8 +2773,8 @@ async function loadOlderHistory(){
   const marker=document.getElementById("histMore");
   if(marker)marker.innerHTML='<span>loading earlier…</span>';
   try{
-    const hist=await paintDiskHistory(sid,sidCwd,{limit:HISTORY_PAGE,before:historyOlderBefore,prepend:true,max_bytes:1500000});
-    if(sid!==expect||gen!==sessionGen)return;
+    const hist=await paintDiskHistory(expect,sidCwd,{limit:HISTORY_PAGE,before:historyOlderBefore,prepend:true,max_bytes:1500000,gen:gen});
+    if(String(sid)!==expect||gen!==sessionGen||(hist&&hist.stale))return;
     if(!(hist.count>0)){historyHasMore=false;paintHistoryMoreChip();return}
     const delta=feed.scrollHeight-prevH;
     feed.scrollTop=prevT+Math.max(0,delta);
@@ -2771,29 +2788,31 @@ async function loadOlderHistory(){
   }
 }
 async function diskLiveCatchup(){
-  if(!sid||replaying||sessionSwitching||diskCatchupBusy)return 0;
-  const expect=sid,gen=sessionGen;
+  if(!sid||replaying||sessionSwitching||diskCatchupBusy||suppressLive)return 0;
+  const expect=String(sid),gen=sessionGen,expectCwd=String(sidCwd||"");
   diskCatchupBusy=true;
   try{
     const q=new URLSearchParams({
-      sessionId:String(expect),
-      cwd:String(sidCwd||""),
+      sessionId:expect,
+      cwd:expectCwd,
       live:"1",
       since:String(historyFileSize||0),
-      limit:"500"
+      limit:"200"
     });
     const r=await fetch("/api/session/history?"+q.toString(),{cache:"no-store"});
     const text=await r.text();
     let j=null;try{j=JSON.parse(String(text).replace(/^\uFEFF/,"").trim())}catch(e){j=null}
-    if(sid!==expect||gen!==sessionGen||sessionSwitching||replaying)return 0;
+    if(String(sid)!==expect||gen!==sessionGen||sessionSwitching||replaying||suppressLive)return 0;
     if(!r.ok||!j||!j.ok)return 0;
+    if(j.sessionId&&String(j.sessionId)!==expect)return 0;
     const meta=j.meta||{};
     const fileSize=typeof meta.size==="number"?meta.size:historyFileSize;
     if(historyFileSize>0&&fileSize<historyFileSize)historyFileSize=0;
     const events=Array.isArray(j.events)?j.events:[];
     let n=0;
     if(events.length){
-      n=await paintDiskEvents(events,expect,{replay:false});
+      n=await paintDiskEvents(events,expect,{replay:false,gen:gen});
+      if(String(sid)!==expect||gen!==sessionGen)return 0;
       if(n){
         setBusy(true);
         const last=events[events.length-1];
@@ -2804,6 +2823,7 @@ async function diskLiveCatchup(){
         else if(kind==="turn_completed"||kind==="task_completed"){setBusy(false);setPhase("idle")}
       }
     }
+    if(String(sid)!==expect||gen!==sessionGen)return 0;
     if(typeof meta.end==="number")historyFileSize=meta.end;
     else if(typeof fileSize==="number")historyFileSize=fileSize;
     return n;
@@ -2820,25 +2840,6 @@ async function softCatchup(){
     if(sid!==expect||gen!==sessionGen||sessionSwitching||replaying)return;
     if(painted){if(sessionFresh)sessionFresh=false;return}
     if(sessionFresh)return;
-    if(historyFileSize===0&&promptCount===0)return;
-    if(!ws||ws.readyState!==1)return;
-    try{
-      const ph=await req("_x.ai/prompt_history",{sessionId:expect,cwd:sidCwd},15000);
-      if(sid!==expect||gen!==sessionGen||sessionSwitching||replaying||sessionFresh)return;
-      const prompts=Array.isArray(ph.prompts)?ph.prompts:[];
-      if(prompts.length<=promptCount)return;
-      const chron=[...prompts].reverse();
-      const delta=chron.slice(Math.max(0,promptCount));
-      for(const p of delta){
-        const t=String(p||"").trim();
-        if(t&&!seenUserTexts.has(t)){
-          closeOpen();appendUser(t,{force:true});closeOpen();
-          seenUserTexts.add(t);
-        }
-      }
-      promptCount=prompts.length;
-      await diskLiveCatchup();
-    }catch(e){}
   }finally{catchupBusy=false}
 }
 function clearSessionFeed(){
@@ -2853,6 +2854,7 @@ function clearSessionFeed(){
   historyLoadingOlder=false;
   agentQueueNote="";
   msgQueue.length=0;
+  try{if(feed)feed.dataset.sid=""}catch(e){}
   try{paintMsgQueue()}catch(e){}
   closeOpen();
 }
@@ -3076,54 +3078,65 @@ async function openSession(s){
   suppressLive=true;
   historyPainting=false;
   const gen=++sessionGen;
+  const openId=String(s.sessionId);
   sid=null;window.sid=null;loadExpectSid=null;
-  sidCwd=(s.cwd||defaultCwd||".").replace(/\\\\/g,"\\");
+  sidCwd=String(s.cwd||defaultCwd||".").replace(/\\\\/g,"\\");
   clearSessionFeed();
   showPage("chat");replaying=true;setBusy(true);stickBottom=true;
   showHorizon("loading recent");
   setConn(true,"loading…",true);
   let painted=0;
   try{
-    sid=s.sessionId;window.sid=sid;rememberSessionSid(sid,s.cwd||sidCwd);
+    sid=openId;window.sid=sid;rememberSessionSid(sid,sidCwd);
+    try{if(feed)feed.dataset.sid=openId}catch(e){}
     if(gen!==sessionGen)return;
     try{
-      const hist=await paintDiskHistory(sid,sidCwd,{limit:HISTORY_PAGE,max_bytes:400000,chat_only:true});
+      const hist=await paintDiskHistory(openId,sidCwd,{limit:HISTORY_PAGE,max_bytes:400000,chat_only:true,gen:gen});
+      if(gen!==sessionGen||String(sid)!==openId)return;
+      if(hist&&hist.stale)return;
       painted=hist.count||0;
-      if(gen!==sessionGen)return;
+      if(hist.dir)try{feed.dataset.histDir=String(hist.dir)}catch(e){}
     }catch(e){
-      if(gen===sessionGen)chip("disk history: "+e);
+      if(gen===sessionGen&&String(sid)===openId){
+        clearSessionFeed();
+        try{if(feed)feed.dataset.sid=openId}catch(x){}
+        chip("disk history: "+e);
+      }
     }
-    if(gen!==sessionGen)return;
+    if(gen!==sessionGen||String(sid)!==openId)return;
     const title=sessionTitle(s);
-    document.getElementById("hint").textContent=(s.resident?"Live · ":"")+title+(sidCwd?" · "+shortPath(sidCwd):"");
+    document.getElementById("hint").textContent=(s.resident?"Live · ":"")+title+(sidCwd?" · "+shortPath(sidCwd):"")+" · "+openId.slice(0,8);
     setConn(true,s.resident?"live":"resume",false);
     const more=historyHasMore?" · scroll up for older":"";
-    chip(painted?"recent · "+painted+" messages"+more:("history ready"+more));
+    chip(painted?"recent · "+painted+" · "+openId.slice(0,8)+more:("no disk history · "+openId.slice(0,8)));
   }catch(e){
     if(gen!==sessionGen)return;
     chip("load failed: "+e);alert(e);
   }finally{
-    if(gen===sessionGen){
+    if(gen===sessionGen&&String(sid)===openId){
       loadExpectSid=null;sessionSwitching=false;replaying=false;setBusy(false);closeOpen();
       stickBottom=true;
       forceScrollBottom();
       hideHorizon();
       startPoll();
       updateJump();
-      setTimeout(()=>{if(gen===sessionGen)forceScrollBottom()},30);
+      setTimeout(()=>{if(gen===sessionGen&&String(sid)===openId)forceScrollBottom()},30);
+    }else if(gen!==sessionGen){
+      suppressLive=true;
     }
   }
-  if(gen!==sessionGen)return;
+  if(gen!==sessionGen||String(sid)!==openId)return;
   suppressLive=true;
   (async()=>{
+    const attachId=openId,attachGen=gen,attachCwd=sidCwd;
     try{
-      await req("session/load",{sessionId:sid,cwd:sidCwd,mcpServers:[]},10000);
-    }catch(e){if(gen===sessionGen)try{chip("agent attach: "+String(e).slice(0,80))}catch(x){}}
-    finally{if(gen===sessionGen)suppressLive=false}
-    if(gen!==sessionGen)return;
+      await req("session/load",{sessionId:attachId,cwd:attachCwd,mcpServers:[]},10000);
+    }catch(e){if(attachGen===sessionGen&&String(sid)===attachId)try{chip("agent attach: "+String(e).slice(0,80))}catch(x){}}
+    finally{if(attachGen===sessionGen&&String(sid)===attachId)suppressLive=false}
+    if(attachGen!==sessionGen||String(sid)!==attachId)return;
     try{await loadCommands()}catch(e){}
     try{if(window.grokCockpit&&window.grokCockpit.refreshSessionContext)window.grokCockpit.refreshSessionContext()}catch(e){}
-    try{if(sidCwd)fetch("/api/fs/root",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({path:sidCwd})}).catch(()=>{})}catch(e){}
+    try{if(attachCwd)fetch("/api/fs/root",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({path:attachCwd})}).catch(()=>{})}catch(e){}
   })();
 }
 

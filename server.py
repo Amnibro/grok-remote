@@ -119,27 +119,40 @@ def encode_session_cwd(cwd:str):
  s=str(Path(cwd).expanduser()) if cwd else ""
  s=s.replace("/","\\") if os.name=="nt" else s
  return quote(s,safe="")
+def _session_dir_ok(d:Path):
+ return d.is_dir() and ((d/"updates.jsonl").is_file() or (d/"summary.json").is_file())
 def find_session_dir(session_id:str,cwd:str|None=None):
  sid=str(session_id or "").strip()
  if not sid or ".." in sid or "/" in sid or "\\" in sid:return None
  root=GROK_SESSIONS
  if not root.is_dir():return None
+ hits=[]
  if cwd:
-  c=str(Path(cwd).expanduser())
-  for variant in (c,c.replace("/","\\"),c.replace("\\","/"),str(Path(c))):
+  c=str(Path(cwd).expanduser().resolve()) if cwd not in (".","") else ""
+  variants=[]
+  if c:
+   for v in (c,c.replace("/","\\"),c.replace("\\","/"),str(Path(c)),str(Path(c).resolve())):
+    if v and v not in variants:variants.append(v)
+    if os.name=="nt":
+     v2=v.replace("\\","\\\\")
+     if v2 not in variants:variants.append(v2)
+  for variant in variants:
    enc=encode_session_cwd(variant)
    d=root/enc/sid
-   if d.is_dir() and ((d/"updates.jsonl").is_file() or (d/"summary.json").is_file()):return d
-   # double-escaped backslash form used by some sessions
+   if _session_dir_ok(d):return d
    enc2=quote(variant.replace("/","\\").replace("\\","\\\\") if os.name=="nt" else variant,safe="")
    d2=root/enc2/sid
-   if d2.is_dir():return d2
+   if _session_dir_ok(d2):return d2
  try:
   for p in root.iterdir():
    if not p.is_dir():continue
    d=p/sid
-   if d.is_dir() and ((d/"updates.jsonl").is_file() or (d/"summary.json").is_file()):return d
+   if _session_dir_ok(d):hits.append(d)
  except Exception:pass
+ if len(hits)==1:return hits[0]
+ if len(hits)>1:
+  hits.sort(key=lambda d:(d/"updates.jsonl").stat().st_mtime if (d/"updates.jsonl").is_file() else 0,reverse=True)
+  return hits[0]
  return None
 def _parse_update_line(line,live=False):
  line=(line or "").strip()
@@ -688,6 +701,9 @@ async def main_async(a):
    summ=json.loads((sdir/"summary.json").read_text(encoding="utf-8",errors="replace"))
    title=summ.get("generated_title") or summ.get("session_summary") or ""
   except Exception:pass
+  meta=dict(meta or {})
+  meta["resolvedSid"]=sid
+  meta["resolvedDir"]=str(sdir)
   return web.json_response({"ok":True,"sessionId":sid,"cwd":cwd,"title":title,"dir":str(sdir),"events":events,"meta":meta,"count":len(events)},headers={"Cache-Control":"no-store"})
  async def session_signals(request):
   sid=(request.rel_url.query.get("sessionId") or request.rel_url.query.get("id") or "").strip()
