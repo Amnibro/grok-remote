@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-07-09 — Start server reliability + faster chat open
+
+- **Start server:** force-spawn agent with UI secret; if hub still 401s, kill/rebind and retry; clearer error toast
+- **Chat open:** paint **disk messages first** (chat-only, ~80, small byte window); reveal UI immediately
+- `session/load` + commands run **in background** with live-stream suppressed (no full agent replay dump)
+- Skip blocking `_x.ai/prompt_history` on open
+
 ## 2026-07-09 — Fast history: last 100 + scroll-up load
 
 - Open session loads only the **latest ~100** disk events (smaller read window)

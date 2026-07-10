@@ -172,7 +172,7 @@ def _parse_update_line(line,live=False):
   "_kind":kind,
   "_eid":str(merged.get("eventId") or umeta.get("eventId") or ""),
  }
-def read_session_updates(session_dir:Path,limit=1600,max_bytes=8_000_000,since_bytes=0,live=False,before_bytes=None):
+def read_session_updates(session_dir:Path,limit=1600,max_bytes=8_000_000,since_bytes=0,live=False,before_bytes=None,chat_only=False):
  path=session_dir/"updates.jsonl"
  if not path.is_file():return [],{"path":str(path),"missing":True,"size":0,"has_more":False}
  size=path.stat().st_size
@@ -231,9 +231,12 @@ def read_session_updates(session_dir:Path,limit=1600,max_bytes=8_000_000,since_b
   return [],{"path":str(path),"error":str(e),"size":size,"has_more":False}
  if not scored:
   return [],{"path":str(path),"size":size,"returned":0,"scanned":0,"live":False,"has_more":window_start>0,"window_start":window_start,"window_end":end_pos,"end":end_pos}
- chat_kinds={"user_message_chunk","agent_message_chunk","agent_thought_chunk","plan","session_recap","turn_completed","task_completed"}
+ msg_kinds={"user_message_chunk","agent_message_chunk","turn_completed","task_completed","session_recap","plan"}
+ chat_kinds=msg_kinds|{"agent_thought_chunk"}
+ if chat_only:
+  scored=[ev for ev in scored if ev.get("_kind") in msg_kinds]
  trimmed=len(scored)>limit
- if trimmed:
+ if trimmed and not chat_only:
   chat_idx=[];tool_idx=[]
   for i,ev in enumerate(scored):
    (chat_idx if ev.get("_kind") in chat_kinds else tool_idx).append(i)
@@ -242,12 +245,14 @@ def read_session_updates(session_dir:Path,limit=1600,max_bytes=8_000_000,since_b
   room=limit-len(keep)
   if room>0:keep.update(tool_idx[-room:])
   kept=[scored[i] for i in range(len(scored)) if i in keep]
+ elif trimmed:
+  kept=scored[-limit:]
  else:
   kept=scored
  first_off=kept[0].get("_off",window_start) if kept else window_start
  events=[{k:v for k,v in ev.items() if not k.startswith("_")} for ev in kept]
  has_more=bool(window_start>0 or trimmed)
- return events,{"path":str(path),"size":size,"returned":len(events),"scanned":len(scored),"live":False,"has_more":has_more,"window_start":int(first_off),"window_end":end_pos,"end":end_pos,"older_before":int(first_off)}
+ return events,{"path":str(path),"size":size,"returned":len(events),"scanned":len(scored),"live":False,"has_more":has_more,"window_start":int(first_off),"window_end":end_pos,"end":end_pos,"older_before":int(first_off),"chat_only":bool(chat_only)}
 def is_text_path(p:Path):
  if p.suffix.lower() in TEXT_EXT:return True
  if p.name.lower() in ("dockerfile","makefile","license","readme"):return True
@@ -670,13 +675,14 @@ async def main_async(a):
   if before_raw not in (None,""):
    try:before_bytes=int(before_raw)
    except Exception:before_bytes=None
-  try:max_bytes=min(12_000_000,max(64_000,int(request.rel_url.query.get("max_bytes") or ("512000" if live else ("1500000" if before_bytes is not None else "900000")))))
-  except Exception:max_bytes=512000 if live else 900000
+  try:max_bytes=min(12_000_000,max(64_000,int(request.rel_url.query.get("max_bytes") or ("512000" if live else ("1200000" if before_bytes is not None else "400000")))))
+  except Exception:max_bytes=512000 if live else 400000
+  chat_only=str(request.rel_url.query.get("chat_only") or request.rel_url.query.get("messages") or "").lower() in ("1","true","yes")
   if not sid:raise web.HTTPBadRequest(text="sessionId required")
   sdir=find_session_dir(sid,cwd or None)
   if not sdir:
    return web.json_response({"ok":False,"error":"session dir not found","sessionId":sid,"cwd":cwd,"events":[],"meta":{"has_more":False}},status=404,headers={"Cache-Control":"no-store"})
-  events,meta=await asyncio.get_event_loop().run_in_executor(None,lambda:read_session_updates(sdir,limit=limit,max_bytes=max_bytes,since_bytes=since_bytes,live=live,before_bytes=before_bytes))
+  events,meta=await asyncio.get_event_loop().run_in_executor(None,lambda:read_session_updates(sdir,limit=limit,max_bytes=max_bytes,since_bytes=since_bytes,live=live,before_bytes=before_bytes,chat_only=chat_only))
   title=""
   try:
    summ=json.loads((sdir/"summary.json").read_text(encoding="utf-8",errors="replace"))
@@ -855,27 +861,36 @@ async def main_async(a):
   body={}
   try:body=await request.json()
   except Exception:pass
-  force=bool(body.get("force") or body.get("restart"))
+  force=True if "force" not in body and "restart" not in body else bool(body.get("force") or body.get("restart"))
   cwd=str(body.get("cwd") or state["cwd"] or a.cwd)
-  agent_up=bool(listen_pids(a.agent_port))
-  killed=[];started=False;msg=""
+  agent_up=bool(listen_pids_port(a.agent_port,exclude_self=False))
+  killed=[];started=False;msg="";attempts=[]
+  async def spawn_agent(reason):
+   nonlocal killed,started,msg
+   killed=claim_port(a.agent_port,"agent")
+   try:await hub.close()
+   except Exception:pass
+   await asyncio.sleep(0.25)
+   start_agent_process(a.secret,a.agent_port,cwd)
+   started=True
+   ok_listen=await asyncio.get_event_loop().run_in_executor(None,lambda:wait_port(a.agent_port,24))
+   attempts.append({"reason":reason,"listen":ok_listen,"killed":killed})
+   if not ok_listen:
+    raise RuntimeError("agent did not bind :%d after %s"%(a.agent_port,reason))
+   msg="agent started on :%d (%s)"%(a.agent_port,reason)
   try:
    if force or not agent_up:
-    killed=claim_port(a.agent_port,"agent")
-    try:await hub.close()
-    except Exception:pass
-    start_agent_process(a.secret,a.agent_port,cwd)
-    started=True
-    ok_listen=await asyncio.get_event_loop().run_in_executor(None,lambda:wait_port(a.agent_port,22))
-    if not ok_listen:
-     return web.json_response({"ok":False,"error":"agent did not bind :%d"%a.agent_port,"killed":killed,"started":started},status=503)
-    msg="agent started on :%d"%a.agent_port
-   else:
-    msg="agent already listening on :%d"%a.agent_port
-   up=await hub.ensure(retries=6,delay=0.3)
-   return web.json_response({"ok":up,"message":msg,"killed":killed,"started":started,"agent_pids":listen_pids(a.agent_port),"hub_up":up,"hub_err":getattr(hub,"_last_err","") or ""})
+    await spawn_agent("force" if force else "missing")
+   up=await hub.ensure(retries=8,delay=0.35)
+   if not up:
+    await spawn_agent("hub-auth-retry")
+    up=await hub.ensure(retries=10,delay=0.4)
+   if not up:
+    err=getattr(hub,"_last_err","") or "hub could not open agent websocket"
+    return web.json_response({"ok":False,"error":err,"message":msg,"killed":killed,"started":started,"attempts":attempts,"agent_pids":listen_pids_port(a.agent_port,exclude_self=False),"hub_up":False,"hub_err":err,"hint":"Secret mismatch is usually fixed by force-restart (already attempted). Check logs/agent.log"},status=503)
+   return web.json_response({"ok":True,"message":msg or "agent ready","killed":killed,"started":started,"attempts":attempts,"agent_pids":listen_pids_port(a.agent_port,exclude_self=False),"hub_up":True,"hub_err":""})
   except Exception as e:
-   return web.json_response({"ok":False,"error":str(e),"killed":killed,"started":started},status=500)
+   return web.json_response({"ok":False,"error":str(e),"killed":killed,"started":started,"attempts":attempts,"hub_err":getattr(hub,"_last_err","") or ""},status=500)
  async def stack_shortcut(request):
   script=ROOT/"scripts"/"install-shortcut.ps1"
   if not script.is_file():

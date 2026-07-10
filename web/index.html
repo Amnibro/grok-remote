@@ -1174,9 +1174,9 @@ let curUser=null,curAgent=null,curThought=null,toolMap={},curThoughtRow=null;
 let seenEvents=new Set(),seenUserTexts=new Set(),promptCount=0,commands=[];
 let pollTimer=null,catchupBusy=false,lastLiveAt=0,localEchoUntil=0;
 let historyFileSize=0,diskCatchupBusy=false;
-const HISTORY_PAGE=100;
+const HISTORY_PAGE=80;
 let historyHasMore=false,historyOlderBefore=0,historyLoadingOlder=false;
-let sessionGen=0,sessionSwitching=false,loadExpectSid=null,sessionFresh=false;
+let sessionGen=0,sessionSwitching=false,loadExpectSid=null,sessionFresh=false,historyPainting=false,suppressLive=false;
 let linkState="standby",agentPhase="idle",phaseDetail="",wantReconnect=false,reconnectTimer=null,connectAttempt=0;
 let connecting=false,intentionalClose=false,reconnectArmed=false,maxReconnect=5,startInFlight=false;
 Object.defineProperty(window,"replaying",{get:()=>replaying,set:v=>{replaying=!!v},configurable:true});
@@ -2543,10 +2543,11 @@ function appendRecap(u){
 }
 function handleUpdate(u,sessionId,meta){
   if(!u)return;
-  if(sessionSwitching&&!replaying)return;
+  if(suppressLive&&!historyPainting)return;
+  if(sessionSwitching&&!historyPainting)return;
   if(!sid)return;
   if(sessionId){if(sessionId!==sid)return}
-  else if(!(replaying&&loadExpectSid&&loadExpectSid===sid))return;
+  else if(!(historyPainting||(replaying&&loadExpectSid&&loadExpectSid===sid)))return;
   const eid=meta&&meta.eventId;
   if(eid){
     if(seenEvents.has(eid))return;
@@ -2669,7 +2670,9 @@ async function paintDiskEvents(events,sessionId,opts){
   const asReplay=!!opts.replay;
   const prepend=!!opts.prepend;
   const prevReplay=replaying;
+  const prevHist=historyPainting;
   if(asReplay||prepend)replaying=true;
+  historyPainting=true;
   let n=0;
   let nodes=null;
   let origAppend=null;
@@ -2679,15 +2682,19 @@ async function paintDiskEvents(events,sessionId,opts){
     feed.appendChild=function(node){nodes.push(node);return node};
   }
   try{
-    for(const ev of events||[]){
+    const list=events||[];
+    for(let i=0;i<list.length;i++){
+      const ev=list[i];
       const params=ev&&ev.params||{};
       const update=params.update;
       if(!update)continue;
       const meta=params._meta||update._meta||null;
       handleUpdate(update,params.sessionId||sessionId,meta);
       n++;
+      if(asReplay&&i>0&&i%24===0)await new Promise(r=>requestAnimationFrame(r));
     }
   }finally{
+    historyPainting=prevHist;
     if(prepend&&feed&&origAppend){
       feed.appendChild=origAppend;
       const first=feed.firstChild;
@@ -2727,6 +2734,7 @@ async function paintDiskHistory(sessionId,cwd,opts){
   const q=new URLSearchParams({sessionId:String(sessionId||""),cwd:String(cwd||sidCwd||""),limit:String(limit)});
   if(opts.before!=null)q.set("before",String(opts.before));
   if(opts.max_bytes!=null)q.set("max_bytes",String(opts.max_bytes));
+  if(opts.chat_only)q.set("chat_only","1");
   const r=await fetch("/api/session/history?"+q.toString(),{cache:"no-store"});
   const text=await r.text();
   let j=null;try{j=JSON.parse(String(text).replace(/^\uFEFF/,"").trim())}catch(e){j=null}
@@ -3065,56 +3073,32 @@ async function openSession(s){
   stopPoll();
   sessionSwitching=true;
   sessionFresh=false;
+  suppressLive=true;
+  historyPainting=false;
   const gen=++sessionGen;
   sid=null;window.sid=null;loadExpectSid=null;
   sidCwd=(s.cwd||defaultCwd||".").replace(/\\\\/g,"\\");
   clearSessionFeed();
   showPage("chat");replaying=true;setBusy(true);stickBottom=true;
-  showHorizon("loading history");
+  showHorizon("loading recent");
   setConn(true,"loading…",true);
+  let painted=0;
   try{
-    sid=s.sessionId;window.sid=sid;loadExpectSid=sid;rememberSessionSid(sid,s.cwd||sidCwd);
+    sid=s.sessionId;window.sid=sid;rememberSessionSid(sid,s.cwd||sidCwd);
     if(gen!==sessionGen)return;
-    try{await req("session/load",{sessionId:sid,cwd:sidCwd,mcpServers:[]},60000)}catch(e){if(gen===sessionGen)chip("session/load: "+e)}
-    if(gen!==sessionGen)return;
-    clearSessionFeed();
-    loadExpectSid=sid;
-    let painted=0;
     try{
-      const hist=await paintDiskHistory(sid,sidCwd,{limit:HISTORY_PAGE,max_bytes:900000});
+      const hist=await paintDiskHistory(sid,sidCwd,{limit:HISTORY_PAGE,max_bytes:400000,chat_only:true});
       painted=hist.count||0;
       if(gen!==sessionGen)return;
     }catch(e){
       if(gen===sessionGen)chip("disk history: "+e);
     }
-    try{
-      const ph=await req("_x.ai/prompt_history",{sessionId:sid,cwd:sidCwd},12000);
-      if(gen!==sessionGen)return;
-      const prompts=ph.prompts||[];promptCount=prompts.length;
-      prompts.forEach(p=>{if(p)seenUserTexts.add(String(p).trim())});
-      if(!painted&&prompts.length){
-        const slice=prompts.slice(-Math.min(40,HISTORY_PAGE));
-        for(const p of slice){
-          const t=String(p||"").trim();
-          if(t){closeOpen();appendUser(t);closeOpen()}
-        }
-        painted=slice.length;
-      }
-      const more=historyHasMore?" · scroll up for older":"";
-      chip(painted?"history · last "+painted+" events"+more+" · live":("history ready"+more+" · live"));
-    }catch(e){
-      if(gen===sessionGen){
-        const more=historyHasMore?" · scroll up for older":"";
-        chip(painted?"history · last "+painted+" events"+more+" · live":"history ready · live");
-      }
-    }
     if(gen!==sessionGen)return;
-    try{await loadCommands()}catch(e){}
     const title=sessionTitle(s);
     document.getElementById("hint").textContent=(s.resident?"Live · ":"")+title+(sidCwd?" · "+shortPath(sidCwd):"");
     setConn(true,s.resident?"live":"resume",false);
-    try{if(window.grokCockpit&&window.grokCockpit.refreshSessionContext)window.grokCockpit.refreshSessionContext()}catch(e){}
-    try{if(sidCwd)fetch("/api/fs/root",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({path:sidCwd})}).then(()=>{if(window.grokIde&&window.grokIde.state){window.grokIde.state.root="";if(window.grokIde.loadList)window.grokIde.loadList(".").catch(()=>{})}}).catch(()=>{})}catch(e){}
+    const more=historyHasMore?" · scroll up for older":"";
+    chip(painted?"recent · "+painted+" messages"+more:("history ready"+more));
   }catch(e){
     if(gen!==sessionGen)return;
     chip("load failed: "+e);alert(e);
@@ -3122,14 +3106,25 @@ async function openSession(s){
     if(gen===sessionGen){
       loadExpectSid=null;sessionSwitching=false;replaying=false;setBusy(false);closeOpen();
       stickBottom=true;
-      await snapChatToBottom(10);
-      hideHorizon();
       forceScrollBottom();
+      hideHorizon();
       startPoll();
       updateJump();
-      try{if(window.grokCockpit&&window.grokCockpit.refreshSessionContext)window.grokCockpit.refreshSessionContext()}catch(e){}
+      setTimeout(()=>{if(gen===sessionGen)forceScrollBottom()},30);
     }
   }
+  if(gen!==sessionGen)return;
+  suppressLive=true;
+  (async()=>{
+    try{
+      await req("session/load",{sessionId:sid,cwd:sidCwd,mcpServers:[]},10000);
+    }catch(e){if(gen===sessionGen)try{chip("agent attach: "+String(e).slice(0,80))}catch(x){}}
+    finally{if(gen===sessionGen)suppressLive=false}
+    if(gen!==sessionGen)return;
+    try{await loadCommands()}catch(e){}
+    try{if(window.grokCockpit&&window.grokCockpit.refreshSessionContext)window.grokCockpit.refreshSessionContext()}catch(e){}
+    try{if(sidCwd)fetch("/api/fs/root",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({path:sidCwd})}).catch(()=>{})}catch(e){}
+  })();
 }
 
 async function newSession(cwd,firstMsg){
@@ -3312,20 +3307,23 @@ async function startRemoteStack(opts){
   try{chip("starting agent serve · force="+force)}catch(e){}
   try{
     const cwd=(document.getElementById("cwd")&&document.getElementById("cwd").value)||defaultCwd||".";
-    const r=await fetch("/api/stack/start",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({force:force,cwd:cwd})});
+    const r=await fetch("/api/stack/start",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({force:force,cwd:cwd,restart:force})});
     const text=await r.text();
     let j=null;try{j=JSON.parse(String(text).replace(/^\uFEFF/,"").trim())}catch(e){j=null}
     if(!r.ok||!j||!j.ok){
-      const err=(j&&(j.error||j.message))||text.slice(0,200)||("HTTP "+r.status);
+      const err=(j&&(j.error||j.message||j.hub_err))||text.slice(0,240)||("HTTP "+r.status);
       setConn(false,"start failed");setPhase("error",String(err).slice(0,50));
-      try{chip("start failed: "+String(err).slice(0,160))}catch(e){}
+      try{chip("start failed: "+String(err).slice(0,180))}catch(e){}
       if(/404|not found|method/i.test(String(err)+r.status)){
         alert("Start API missing (old UI server).\nRestart stack:\n  scripts\\launch-remote.cmd\nor /remote from Grok.\n\n"+String(err).slice(0,200));
+      }else{
+        alert("Could not start agent serve.\n\n"+String(err).slice(0,280)+"\n\nTip: orbit menu → Start server again, or run scripts\\launch-remote.cmd");
       }
       return false;
     }
-    try{chip((j.message||"agent ready")+(j.started?" · spawned":" · reused"))}catch(e){}
+    try{chip((j.message||"agent ready")+(j.started?" · spawned":" · ready")+(j.hub_up?" · hub up":""))}catch(e){}
     connectAttempt=0;reconnectArmed=true;wantReconnect=true;
+    await new Promise(r=>setTimeout(r,400));
     await connect({fromStart:true,didStart:true});
     return true;
   }catch(e){
