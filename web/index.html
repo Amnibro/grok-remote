@@ -3075,8 +3075,10 @@ async function openSession(s){
   try{
     sid=s.sessionId;window.sid=sid;loadExpectSid=sid;rememberSessionSid(sid,s.cwd||sidCwd);
     if(gen!==sessionGen)return;
-    try{await req("session/load",{sessionId:sid,cwd:sidCwd,mcpServers:[]},120000)}catch(e){if(gen===sessionGen)chip("session/load: "+e)}
+    try{await req("session/load",{sessionId:sid,cwd:sidCwd,mcpServers:[]},60000)}catch(e){if(gen===sessionGen)chip("session/load: "+e)}
     if(gen!==sessionGen)return;
+    clearSessionFeed();
+    loadExpectSid=sid;
     let painted=0;
     try{
       const hist=await paintDiskHistory(sid,sidCwd,{limit:HISTORY_PAGE,max_bytes:900000});
