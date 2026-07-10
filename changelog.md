@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-07-10 — Polish v15 (syntax, greyscale, tools, tour, repo)
+
+- **Syntax colors** fixed in tool edits/reads (token CSS covered `.code-with-lines` / tool panes; removed `!important` greys that killed tokens)
+- **Grok theme** full greyscale chrome (no green status accents); code keeps distinct syntax hues
+- **Delve** hidden for normal users (owner unlock only; code kept)
+- **Composer + tray** clearer labels + Chat/Work/Share groups
+- **Tour** reworked steps, prep focus, no auto-hijack on first run (gentle chip instead)
+- **Screenshots** varied non-spoiler sample session views; README/CONTRIBUTING/package.json professionalized
+
 ## 2026-07-10 — Spoiler-safe Grok screenshots v14
 
 - Privacy blurs **session titles** (not just paths); stronger blur; title tooltips stripped when spoiler on

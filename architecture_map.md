@@ -1,6 +1,6 @@
 # Grok Remote — architecture map
 
-**Updated:** 2026-07-10 · v14 spoiler-safe screenshots + demo mode
+**Updated:** 2026-07-10 · v15 syntax + greyscale Grok + professional repo
 
 ## Layout
 
@@ -43,7 +43,7 @@ grok-remote/
 | `.pulse-frame` | Thin theme-accent border with slow `frame-pulse` on header, setup, picker rail, feed, footer |
 | Status copy | Livebar: `uplink` / `sync · burn…` / `standby` (mission-control tone) |
 | Design tokens | `--ease`, `--dur`, `--elev-*`, `--glass`, `--hairline` |
-| Grok variant | Official monochrome: pure black surfaces, white primary CTA, zinc accents |
+| Grok variant | Full greyscale chrome (black/zinc); syntax tokens stay colored in code panes |
 | Motion | Row enter (`row-in`), hover lift ≤2px, focus rings, pill chrome, thin scrollbars |
 | Ambient | Soft accent radial + faint grid mask (disabled on retro themes) |
 | `#chatStage` | Chat column wrapper; `#horizonLoad` overlays **only this area** (above footer/composer) |

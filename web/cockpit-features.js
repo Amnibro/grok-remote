@@ -621,23 +621,27 @@ function injectChrome(){
   const foot=$("foot");
   if(!foot)return;
   const host=$("composerTools")||(()=>{const d=document.createElement("div");d.id="composerTools";d.className="composer-tools";const comp=foot.querySelector(".composer");if(comp)foot.insertBefore(d,comp);else foot.appendChild(d);return d})();
+  const owner=!!(window.grokPresets&&window.grokPresets.ownerUnlocked&&window.grokPresets.ownerUnlocked());
   host.innerHTML=
-    '<div class="git-strip" id="gitStrip" title="Git status - click refresh">git …</div>'+
+    '<div class="git-strip" id="gitStrip" title="Git branch status — tap to refresh">git …</div>'+
     '<div class="pin-bar" id="pinBar" title="Pinned sessions"></div>'+
     '<div class="tools-row" id="toolsRow">'+
-      '<button type="button" class="btn-attach" id="btnAttach" title="Attach files / photos">Attach</button>'+
-      '<button type="button" id="btnAt" title="@ workspace file">@ file</button>'+
-      '<button type="button" id="btnVoice" title="Voice input">Voice</button>'+
-      '<button type="button" id="btnCp" title="Checkpoint">Checkpoint</button>'+
-      '<button type="button" id="btnExport" title="Export HTML">Export</button>'+
-      '<button type="button" id="btnTerm" title="Terminal">Terminal</button>'+
-      '<button type="button" id="btnBg" title="Background tasks">Background</button>'+
-      '<button type="button" id="btnTodo" title="Todos">Todos</button>'+
-      '<button type="button" id="btnGitDiff" title="Git diff">Diff</button>'+
-      '<button type="button" id="btnAgents" title="Inject AGENTS.md">MD</button>'+
-      '<button type="button" id="btnBudget" title="Budgets">Budget</button>'+
-      '<button type="button" id="btnDelve" title="Delve">Delve</button>'+
-      '<span id="budgetBar" class="budget-bar">cost</span>'+
+      '<span class="tools-group-lab">Chat</span>'+
+      '<button type="button" class="btn-attach" id="btnAttach" title="Attach photos or files to your next message">Attach files</button>'+
+      '<button type="button" id="btnAt" title="Pick a workspace file path to include">Add path</button>'+
+      '<button type="button" id="btnVoice" title="Dictate with the microphone">Voice</button>'+
+      '<span class="tools-group-lab">Work</span>'+
+      '<button type="button" id="btnTodo" title="Checklist for this session">Todos</button>'+
+      '<button type="button" id="btnTerm" title="Show recent shell/tool output">Terminal</button>'+
+      '<button type="button" id="btnGitDiff" title="Show uncommitted git changes">Git diff</button>'+
+      '<button type="button" id="btnBg" title="Background tasks and save-points">Tasks</button>'+
+      '<span class="tools-group-lab">Share</span>'+
+      '<button type="button" id="btnCp" title="Snapshot this chat so you can restore later">Save point</button>'+
+      '<button type="button" id="btnExport" title="Download chat as HTML">Export</button>'+
+      '<button type="button" id="btnAgents" title="Paste project AGENTS.md / README into context">Project MD</button>'+
+      '<button type="button" id="btnBudget" title="Soft limits for turns and tokens">Limits</button>'+
+      (owner?'<button type="button" id="btnDelve" title="Open local Delve hub (owner)">Delve</button>':'')+
+      '<span id="budgetBar" class="budget-bar" title="Turn / context estimate">cost</span>'+
     '</div>'+
     '<div id="atAttachBar" class="attach-bar"></div>';
   const floatHost=document.createElement("div");floatHost.id="cockpitFloats";
@@ -696,7 +700,7 @@ function injectChrome(){
     if(k===null)return;
     S.budget.maxTurns=+t||0;S.budget.maxEstTokens=+k||0;saveBudget();paintBudget();paintCtxMeter();
   };
-  $("btnDelve").onclick=()=>openDelve();
+  if($("btnDelve"))$("btnDelve").onclick=()=>openDelve();
   $("termClose").onclick=()=>{$("termPane").classList.remove("on");reflow()};
   $("bgClose").onclick=()=>{$("bgPane").classList.remove("on");reflow()};
   $("atClose").onclick=()=>$("atSheet").classList.remove("on");

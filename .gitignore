@@ -1,4 +1,4 @@
-logs/
+﻿logs/
 runtime-config.json
 connect.url
 __pycache__/
@@ -13,3 +13,8 @@ _shot*.js
 *.log
 .idea/
 .vscode/
+*.bak
+.env
+.env.*
+Thumbs.db
+desktop/package-lock.json

@@ -35,7 +35,7 @@ html[data-mode="light"]{
 }
 /* Product accents — dark */
 html[data-variant="scient"][data-mode="dark"]{--acc:#00ff9d;--acc-soft:#2ce8a0;--acc-dim:rgba(0,255,157,.12);--acc-glow:rgba(0,255,157,.32);--me-bg:#0c1f18;--me-line:#14532d}
-html[data-variant="grok"][data-mode="dark"]{--acc:#b8c0cc;--acc-soft:#e8ecf2;--acc-dim:rgba(184,192,204,.14);--acc-glow:rgba(184,192,204,.28);--you:#9ab0c8;--me-bg:#1a1e26;--me-line:#4a5568;--bg:#0c0e12;--bg2:#12151c;--panel:#181c24;--panel2:#1e2430;--line:#2c3340;--tx:#f0f2f5;--mut:#9aa3b2;--soft:#c5cdd8;--in:#10141a}
+html[data-variant="grok"][data-mode="dark"]{--acc:#d4d4d8;--acc-soft:#fafafa;--acc-dim:rgba(255,255,255,.1);--acc-glow:rgba(255,255,255,.2);--you:#a1a1aa;--ok:#a1a1aa;--bad:#71717a;--gold:#8a8a92;--me-bg:#141414;--me-line:#3f3f46;--bg:#000000;--bg2:#0a0a0a;--panel:#111111;--panel2:#18181b;--line:#27272a;--line2:#3f3f46;--tx:#fafafa;--mut:#a1a1aa;--soft:#e4e4e7;--in:#0c0c0e}
 html[data-variant="ai"][data-mode="dark"]{--acc:#ffb74d;--acc-soft:#ffc970;--acc-dim:rgba(255,183,77,.13);--acc-glow:rgba(255,183,77,.3);--me-bg:#1a1408;--me-line:#5a4a1a}
 html[data-variant="explore"][data-mode="dark"]{--acc:#00b4ff;--acc-soft:#48c8ff;--acc-dim:rgba(0,180,255,.13);--acc-glow:rgba(0,180,255,.3);--you:#48c8ff;--me-bg:#0a1520;--me-line:#0d47a1}
 html[data-variant="calc"][data-mode="dark"]{--acc:#ff6b35;--acc-soft:#ff8a5e;--acc-dim:rgba(255,107,53,.13);--acc-glow:rgba(255,107,53,.3);--me-bg:#1a0e08;--me-line:#bf360c}
@@ -45,7 +45,7 @@ html[data-variant="haven"][data-mode="dark"]{--acc:#7c5cfc;--acc-soft:#9a82ff;--
 html[data-variant="core"][data-mode="dark"]{--acc:#ef5350;--acc-soft:#f47572;--acc-dim:rgba(239,83,80,.13);--acc-glow:rgba(239,83,80,.3);--me-bg:#1a0a0a;--me-line:#c62828}
 /* Product accents — light */
 html[data-variant="scient"][data-mode="light"]{--acc:#00875a;--acc-soft:#0a8f63;--acc-dim:rgba(0,135,90,.09);--acc-glow:rgba(0,135,90,.22);--me-bg:#e8f5e9;--me-line:#a5d6a7}
-html[data-variant="grok"][data-mode="light"]{--acc:#3f4654;--acc-soft:#1f2430;--acc-dim:rgba(63,70,84,.1);--acc-glow:rgba(63,70,84,.18);--you:#4a5d78;--me-bg:#eef1f5;--me-line:#c5ccd6;--tx:#12151a;--mut:#5c6573}
+html[data-variant="grok"][data-mode="light"]{--acc:#3f3f46;--acc-soft:#18181b;--acc-dim:rgba(24,24,27,.1);--acc-glow:rgba(24,24,27,.16);--you:#52525b;--ok:#52525b;--bad:#71717a;--gold:#71717a;--me-bg:#f4f4f5;--me-line:#d4d4d8;--bg:#fafafa;--bg2:#f4f4f5;--panel:#ffffff;--panel2:#f4f4f5;--line:#e4e4e7;--tx:#09090b;--mut:#71717a;--soft:#3f3f46;--in:#f4f4f5}
 html[data-variant="ai"][data-mode="light"]{--acc:#e65100;--acc-soft:#ef6c00;--acc-dim:rgba(230,81,0,.1);--acc-glow:rgba(230,81,0,.2);--me-bg:#fff3e0;--me-line:#ffcc80}
 html[data-variant="explore"][data-mode="light"]{--acc:#0277bd;--acc-soft:#0288d1;--acc-dim:rgba(2,119,189,.1);--acc-glow:rgba(2,119,189,.2);--you:#0288d1;--me-bg:#e1f5fe;--me-line:#81d4fa}
 html[data-variant="calc"][data-mode="light"]{--acc:#d84315;--acc-soft:#e64a19;--acc-dim:rgba(216,67,21,.1);--acc-glow:rgba(216,67,21,.2);--me-bg:#fbe9e7;--me-line:#ffab91}
@@ -273,17 +273,18 @@ main{flex:1;overflow-x:hidden;overflow-y:auto;padding:clamp(10px,1.2vw,20px);pad
 .collapsible .code-head .chev{display:inline-block;transition:transform .15s;font-size:10px;opacity:.8}
 .collapsible .code-body{padding:0;margin:0;overflow:auto;max-height:min(360px,46vh);font-family:var(--font-mono);font-size:12px;line-height:1.55;white-space:pre;color:var(--soft);border-top:1px solid var(--line);tab-size:2}
 .collapsible.collapsed .code-body{display:none}
-.collapsible .code-body .tok{font-style:normal}
-.collapsible .code-body .tok-kw{color:var(--acc);font-weight:600}
-.collapsible .code-body .tok-type{color:var(--you)}
-.collapsible .code-body .tok-fn{color:var(--acc-soft)}
-.collapsible .code-body .tok-str{color:var(--ok)}
-.collapsible .code-body .tok-num{color:var(--gold)}
-.collapsible .code-body .tok-cmt{color:var(--mut);font-style:italic}
-.collapsible .code-body .tok-op{color:color-mix(in srgb,var(--acc) 55%,var(--soft))}
-.collapsible .code-body .tok-punc{color:var(--mut)}
-.collapsible .code-body .tok-prop{color:color-mix(in srgb,var(--you) 70%,var(--tx))}
-.collapsible .code-body .tok-bool{color:var(--gold);font-weight:600}
+.code-with-lines .tok,.collapsible .code-body .tok,.tool .tool-body .tok{font-style:normal}
+.code-with-lines .tok-kw,.collapsible .code-body .tok-kw,.tool .tool-body .tok-kw{color:#c792ea;font-weight:600}
+.code-with-lines .tok-type,.collapsible .code-body .tok-type,.tool .tool-body .tok-type{color:#ffcb6b}
+.code-with-lines .tok-fn,.collapsible .code-body .tok-fn,.tool .tool-body .tok-fn{color:#82aaff}
+.code-with-lines .tok-str,.collapsible .code-body .tok-str,.tool .tool-body .tok-str{color:#c3e88d}
+.code-with-lines .tok-num,.collapsible .code-body .tok-num,.tool .tool-body .tok-num{color:#f78c6c}
+.code-with-lines .tok-cmt,.collapsible .code-body .tok-cmt,.tool .tool-body .tok-cmt{color:#546e7a;font-style:italic}
+.code-with-lines .tok-op,.collapsible .code-body .tok-op,.tool .tool-body .tok-op{color:#89ddff}
+.code-with-lines .tok-punc,.collapsible .code-body .tok-punc,.tool .tool-body .tok-punc{color:#89ddff}
+.code-with-lines .tok-prop,.collapsible .code-body .tok-prop,.tool .tool-body .tok-prop{color:#f07178}
+.code-with-lines .tok-bool,.collapsible .code-body .tok-bool,.tool .tool-body .tok-bool{color:#ff9cac;font-weight:600}
+
 .code-with-lines{display:block;padding:6px 0 8px}
 .code-line{display:grid;grid-template-columns:minmax(2.6em,auto) minmax(0,1fr);gap:0;align-items:start;min-width:min-content}
 .code-line .ln{user-select:none;-webkit-user-select:none;text-align:right;padding:0 10px 0 8px;color:color-mix(in srgb,var(--mut) 85%,transparent);border-right:1px solid color-mix(in srgb,var(--line) 80%,transparent);font-variant-numeric:tabular-nums;opacity:.75}
@@ -322,8 +323,10 @@ body.page-chat #chatTop{display:flex}
 .composer-tools .git-strip{flex:1 1 100%;min-width:0}
 .composer-tools .pin-bar{flex:1 1 100%}
 .composer-tools .tools-row{display:flex;flex-wrap:wrap;gap:4px;align-items:center;width:100%}
-.composer-tools button,.tools-row button{border:1px solid var(--line);background:var(--panel2);color:var(--tx);border-radius:8px;padding:5px 8px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap}
+.composer-tools .tools-group-lab{flex:0 0 auto;font:700 9px/1 var(--font-mono);letter-spacing:.06em;text-transform:uppercase;color:var(--mut);padding:0 4px 0 2px;opacity:.9}
+.composer-tools button,.tools-row button{border:1px solid var(--line);background:var(--panel2);color:var(--tx);border-radius:8px;padding:6px 10px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap}
 .composer-tools button.on,.tools-row button.on{border-color:var(--acc);color:var(--acc);background:var(--acc-dim)}
+.composer-tools button:hover{border-color:color-mix(in srgb,var(--acc) 40%,var(--line))}
 .composer-sendcol{display:flex;flex-direction:column;align-items:stretch;gap:4px;flex:none}
 .ctx-meter.ctx-send{min-width:64px;justify-content:center;cursor:pointer;user-select:none}
 .ctx-meter.ctx-send:hover{border-color:var(--acc);color:var(--acc)}
@@ -710,15 +713,28 @@ footer:hover .livebar{opacity:1}
 .picker-head{background:color-mix(in srgb,var(--bg2) 88%,transparent)!important;backdrop-filter:blur(12px)}
 body.desktop #picker.panel.on,body.electron #picker.panel.on{background:color-mix(in srgb,var(--bg2) 94%,transparent)!important;border-right:1px solid var(--hairline)!important}
 html[data-variant="grok"] .logo b{color:var(--acc-soft)!important}
-html[data-variant="grok"][data-mode="dark"] button.send{color:#0b0d12!important;background:var(--acc-soft)!important}
+html[data-variant="grok"][data-mode="dark"] button.send{color:#0a0a0a!important;background:#fafafa!important}
 html[data-variant="grok"][data-mode="dark"] button.send:hover:not(:disabled){filter:brightness(1.05)}
-html[data-variant="grok"][data-mode="dark"] .rowbtns button.pri{color:#0b0d12!important;background:var(--acc-soft)!important}
+html[data-variant="grok"][data-mode="dark"] .rowbtns button.pri{color:#0a0a0a!important;background:#fafafa!important}
 html[data-variant="grok"] .pulse-frame{animation-duration:7s}
+html[data-variant="grok"] .badge.live,html[data-variant="grok"] .livebar b,html[data-variant="grok"] .sub,html[data-variant="grok"] #status{color:var(--tx)!important;text-shadow:none!important}
+html[data-variant="grok"] .orbit-wrap.on .orbit-planet{fill:#e4e4e7!important;stroke:#a1a1aa!important;filter:drop-shadow(0 0 4px rgba(255,255,255,.25))!important}
+html[data-variant="grok"] .orbit-wrap.on .orbit-ring{stroke:#a1a1aa!important}
+html[data-variant="grok"] .orbit-wrap.off .orbit-planet{fill:#52525b!important;stroke:#3f3f46!important;filter:none!important}
+html[data-variant="grok"] .livebar[data-phase="thinking"] .lb-dot,html[data-variant="grok"] .livebar[data-phase="tools"] .lb-dot,html[data-variant="grok"] .livebar[data-phase="error"] .lb-dot,html[data-variant="grok"] .livebar[data-phase="responding"] .lb-dot,html[data-variant="grok"] .livebar[data-phase="waiting"] .lb-dot,html[data-variant="grok"] .livebar[data-phase="sync"] .lb-dot{background:var(--soft)!important}
+html[data-variant="grok"] .tool .tool-head .st.ok{color:var(--soft)}
+html[data-variant="grok"] .tool .tool-head .st.bad{color:var(--mut)}
+html[data-variant="grok"] .tool .tool-head .st.run{color:var(--tx)}
+html[data-variant="grok"] .diff-add{background:rgba(255,255,255,.07)!important;color:var(--tx)!important}
+html[data-variant="grok"] .diff-del{background:rgba(255,255,255,.03)!important;color:var(--mut)!important}
+html[data-variant="grok"] .git-clean{color:var(--soft)!important}
+html[data-variant="grok"] .recap{color:var(--soft)!important;border-color:var(--line)!important;background:var(--panel)!important;box-shadow:none!important}
 .bub .md-p,.bub .md-li,.bub span{color:inherit}
 .bub code.ic{color:var(--acc-soft)!important;background:var(--in)!important;border-color:var(--line)!important}
-.tool{color:var(--acc-soft)!important}
-.tool .tool-body .out,.tool .tool-body .inblock{color:var(--soft)!important}
-.collapsible .code-body{color:var(--soft)!important}
+.tool{color:var(--acc-soft)}
+.tool .tool-body .out,.tool .tool-body .inblock{color:var(--soft)}
+.collapsible .code-body{color:var(--soft)}
+
 .sess .t{color:var(--tx)!important}
 .sess .m{color:var(--mut)!important}
 .hint,#hint{color:var(--mut)!important}
@@ -2516,10 +2532,18 @@ function paintDemoChat(){
   if(!feed)return;
   feed.innerHTML="";
   const mk=(who,html)=>{const r=document.createElement("div");r.className="row "+who;const b=document.createElement("div");b.className="bub";b.innerHTML=html;r.appendChild(b);feed.appendChild(r)};
-  mk("me","<div class='md-p'>Walk me through the session picker and spoiler mode for safe screenshots.</div>");
-  mk("you","<div class='md-p'><strong>Sessions rail</strong> — New chat, search, Active/Live/Archive scope.</div><div class='md-p'><strong>Spoiler</strong> blurs titles, paths, and IDs. On desktop hold <kbd>Alt</kbd> to peek; on phone it stays private.</div>");
-  mk("you","<div class='md-p'>Composer: <code class='ic'>+</code> tools tray, attachments, Cancel while busy. Theme default is <strong>Grok</strong> (dark).</div>");
-  try{const h=document.getElementById("hint");if(h)h.textContent="demo session · spoiler-safe"}catch(e){}
+  mk("me","<div class='md-p'>Polish the auth helper and show me the edit with syntax colors.</div>");
+  mk("you","<div class='md-p'>On it — opening the file, applying a small guard, then summarizing.</div>");
+  const tool=document.createElement("div");tool.className="tool";
+  tool.innerHTML='<div class="tool-head"><span class="chev">▾</span><span class="tt">⚙ edit: src/auth.js</span><span class="st ok">complete</span></div><div class="tool-body"></div>';
+  const tb=tool.querySelector(".tool-body");
+  const meta=document.createElement("div");meta.className="meta";meta.innerHTML='<span class="loc spoiler-path">📄 src/auth.js</span>';
+  tb.appendChild(meta);
+  const sample="function requireUser(req){\n  // reject anonymous before handlers run\n  if(!req.user){\n    throw new Error(\"unauthorized\");\n  }\n  return req.user;\n}\nexport {requireUser};";
+  tb.appendChild(makeCodePane(sample,"js",{className:"out",startLine:12}));
+  feed.appendChild(tool);
+  mk("you","<div class='md-p'><strong>Done.</strong> Added <code class='ic'>requireUser</code> so protected routes fail closed. Tap <code class='ic'>+</code> for Attach / Todos / Git diff.</div>");
+  try{const h=document.getElementById("hint");if(h)h.textContent="demo session · sample UI"}catch(e){}
   stickBottom=true;scroll();
 }
 async function fetchSessions(){
@@ -3443,17 +3467,17 @@ if(btnPinSetup)btnPinSetup.onclick=()=>installShortcuts();
 const closeTheme=document.getElementById("closeTheme");
 if(closeTheme)closeTheme.onclick=()=>closeAllSheets();
 if(themeSheet)themeSheet.addEventListener("click",e=>{if(e.target===themeSheet)closeAllSheets()});
-const TOUR_PROMPT="Walk me through Grok Remote like a quick product tour. Cover, in order, with short steps I can try: (1) Connect + sessions rail — New chat, search, Active/Live/Archive scope. (2) Chat feed — thinking collapse, tool cards, diffs, jump-to-bottom, auto-scroll. (3) Composer — send, attachments, slash skills autocomplete, stop turn while busy. (4) Header: Persona (Rikku default + directions), Theme/UX chips, Spoiler/privacy blur for screenshots, Skills palette, New Task cwd. (5) IDE panel + Grok Review after edits. (6) Cockpit strip — git status/diff/log, todos, cost/context meter, pins. (7) Pin shortcuts (Desktop/Start) and Stop Remote (UI+agent only, not desktop TUI). (8) From any Grok window: /remote, /remote stop, /remote-autostart. Keep it friendly, scannable, and actionable — no walls of theory.";
+const TOUR_PROMPT="Give me a short, friendly walkthrough of Grok Remote after I connect. Cover only what I can try now: sessions list, sending a message, the + tools tray (attach / todos / git), Spoiler for screenshots, and how to stop remote without killing my desktop Grok chat.";
 const TOUR_STEPS=[
-  {title:"Welcome to Grok Remote",body:"Phone + desktop cockpit for Grok Build. This tour highlights the main controls. Tap Next, or Paste tutorial prompt to drop a guided script into the composer.",sel:null},
-  {title:"Connect",body:"On setup: pick theme/mode, confirm WebSocket (usually this machine's LAN :2421/ws), set default cwd, then Connect. Health checks the agent; Config reloads runtime.",sel:"#connect"},
-  {title:"Sessions rail",body:"+ New chat starts a clean session. Search filters title/cwd/id. Scope chips: Active (default), Live, Archived, All. Archive only hides on this device — not a server delete.",sel:"#picker,#newSess"},
-  {title:"Chat stage",body:"Feed streams history + live tokens. Search this chat from the top bar. Thinking/code/tools can collapse. ↓ Bottom only appears when you're scrolled up.",sel:"#chatStage,#feed"},
-  {title:"Composer",body:"Type to send. Tap + for special functions (attach, @, todos, term…). Context meter always sits above Send — click it for a compact readout. / opens skills autocomplete.",sel:"#foot,#box"},
-  {title:"Menu ☰",body:"Persona, IDE, Theme, Fonts, Spoiler, Skills, Task, Tour, and Pin live in the top-right hamburger so the header stays clean.",sel:"#btnMore"},
-  {title:"Fonts",body:"Presets (Inter, JetBrains Mono…) or bring-your-own family + optional CSS URL. Saved per browser.",sel:"#btnFont"},
-  {title:"Orbit start/stop",body:"Planet indicator: Start server / Stop remote / Health. Pin still available from ☰.",sel:"#orbit"},
-  {title:"You're set",body:"From any Grok Build chat: /remote · /remote stop · /remote-autostart on. Re-run this tour anytime via Tour in the header. Have fun — Rao!",sel:null}
+  {title:"Welcome",body:"Grok Remote is your phone + browser remote for Grok Build on this PC. A few short stops — Skip anytime. Nothing here changes your agent until you Connect.",sel:null,prep:()=>{try{showPage("setup",true)}catch(e){}}},
+  {title:"1 · Connect",body:"Choose Grok (default greyscale) or another theme, set your project folder if needed, then hit Connect. Health checks the agent; Start Server wakes it if it’s down.",sel:"#setup .rowbtns,#connect,#btnStartSetup",prep:()=>{try{showPage("setup",true);closeAllSheets()}catch(e){}}},
+  {title:"2 · Sessions",body:"After connect, the left rail (or Sessions on phone) lists chats. New chat starts clean. Search filters titles. Archive only hides on this device.",sel:"#picker,#newSess",prep:()=>{try{if(isLinked())showPage("sessions",true);else showPage("setup",true)}catch(e){}}},
+  {title:"3 · Chat",body:"The feed is live history + streaming replies. Tool cards show edits and terminal output. Use Search this chat to jump around.",sel:"#chatStage,#feed",prep:()=>{try{if(isLinked()&&sid)showPage("chat",true);else if(isLinked())showPage("sessions",true)}catch(e){}}},
+  {title:"4 · Composer",body:"Type and Send. While Grok is busy, Send becomes Cancel. The ctx meter above Send is your context window estimate.",sel:"#foot .composer,#box,#send",prep:()=>{try{if(isLinked())showPage("chat",true);const t=document.getElementById("composerTools");if(t)t.classList.remove("on")}catch(e){}}},
+  {title:"5 · Tools (+)",body:"Tap + for everyday actions: Attach files, Add path, Todos, Terminal, Git diff, Export. Labels are grouped so you don’t hunt.",sel:"#btnPlus,#composerTools",prep:()=>{try{if(isLinked())showPage("chat",true);const tray=document.getElementById("composerTools"),btn=document.getElementById("btnPlus");if(tray&&!tray.classList.contains("on")){tray.classList.add("on");if(btn){btn.classList.add("on");btn.textContent="×";btn.setAttribute("aria-expanded","true")}}}catch(e){}}},
+  {title:"6 · Menu ☰",body:"Theme, Spoiler (blur for screenshots), Skills, New Task, IDE, and this tour live in the top-right menu so the header stays calm.",sel:"#btnMore",prep:()=>{try{const tray=document.getElementById("composerTools");if(tray)tray.classList.remove("on");const btn=document.getElementById("btnPlus");if(btn){btn.classList.remove("on");btn.textContent="+"}closeAllSheets()}catch(e){}}},
+  {title:"7 · Link control",body:"The planet shows link health. Click it for Start server / Stop remote / Health. Stop remote only kills the remote UI + agent serve — not your desktop Grok chat.",sel:"#orbit",prep:()=>{try{closeAllSheets();closeMoreMenu&&closeMoreMenu()}catch(e){}}},
+  {title:"You’re ready",body:"From any Grok Build window: /remote · /remote stop · /remote-autostart. Re-open this tour from ☰ anytime. Have fun.",sel:null,prep:()=>{try{closeAllSheets()}catch(e){}}}
 ];
 let tourIdx=0,tourOpen=false,tourHiEls=[];
 function tourMarkDone(){try{localStorage.setItem("grok_remote_tour_done","1")}catch(e){}}
@@ -3473,33 +3497,39 @@ function tourPlaceCard(anchor){
 function tourPaint(){
   const ov=document.getElementById("tourOverlay");if(!ov||!tourOpen)return;
   const step=TOUR_STEPS[tourIdx]||TOUR_STEPS[0];
+  try{if(typeof step.prep==="function")step.prep()}catch(e){}
   const meta=document.getElementById("tourMeta"),title=document.getElementById("tourTitle"),body=document.getElementById("tourBody");
   const spot=document.getElementById("tourSpot"),nextBtn=document.getElementById("tourNext"),backBtn=document.getElementById("tourBack");
-  if(meta)meta.textContent=(tourIdx+1)+" / "+TOUR_STEPS.length;
+  if(meta)meta.textContent="Step "+(tourIdx+1)+" of "+TOUR_STEPS.length;
   if(title)title.textContent=step.title;
   if(body)body.textContent=step.body;
-  if(nextBtn)nextBtn.textContent=tourIdx>=TOUR_STEPS.length-1?"Done":"Next";
+  if(nextBtn)nextBtn.textContent=tourIdx>=TOUR_STEPS.length-1?"Finish":"Next";
   if(backBtn)backBtn.disabled=tourIdx<=0;
   tourClearHi();
   let anchor=null;
-  if(step.sel){
-    const nodes=[...document.querySelectorAll(step.sel)].filter(el=>el&&el.offsetParent!==null||(el&&el.getClientRects().length));
-    if(nodes.length){
-      let minL=1e9,minT=1e9,maxR=0,maxB=0;let any=false;
-      nodes.forEach(el=>{
-        const r=el.getBoundingClientRect();if(r.width<2&&r.height<2)return;
-        any=true;el.setAttribute("data-tour-hi","1");tourHiEls.push(el);
-        minL=Math.min(minL,r.left);minT=Math.min(minT,r.top);maxR=Math.max(maxR,r.right);maxB=Math.max(maxB,r.bottom);
-      });
-      if(any&&spot){
-        const m=6;spot.hidden=false;
-        spot.style.left=(minL-m)+"px";spot.style.top=(minT-m)+"px";
-        spot.style.width=(maxR-minL+m*2)+"px";spot.style.height=(maxB-minT+m*2)+"px";
-        anchor={getBoundingClientRect:()=>({left:minL,top:minT,right:maxR,bottom:maxB,width:maxR-minL,height:maxB-minT})};
-      }else if(spot)spot.hidden=true;
-    }else if(spot)spot.hidden=true;
-  }else if(spot)spot.hidden=true;
-  tourPlaceCard(anchor);
+  const paintSpot=()=>{
+    if(!step.sel){if(spot)spot.hidden=true;tourPlaceCard(null);return}
+    const nodes=[...document.querySelectorAll(step.sel)].filter(el=>{
+      if(!el)return false;
+      const r=el.getBoundingClientRect();
+      return r.width>=2&&r.height>=2&&r.bottom>0&&r.right>0&&r.top<window.innerHeight&&r.left<window.innerWidth;
+    });
+    if(!nodes.length){if(spot)spot.hidden=true;tourPlaceCard(null);return}
+    let minL=1e9,minT=1e9,maxR=0,maxB=0;
+    nodes.forEach(el=>{
+      const r=el.getBoundingClientRect();
+      el.setAttribute("data-tour-hi","1");tourHiEls.push(el);
+      minL=Math.min(minL,r.left);minT=Math.min(minT,r.top);maxR=Math.max(maxR,r.right);maxB=Math.max(maxB,r.bottom);
+    });
+    if(spot){
+      const m=8;spot.hidden=false;
+      spot.style.left=(minL-m)+"px";spot.style.top=(minT-m)+"px";
+      spot.style.width=(maxR-minL+m*2)+"px";spot.style.height=(maxB-minT+m*2)+"px";
+    }
+    anchor={getBoundingClientRect:()=>({left:minL,top:minT,right:maxR,bottom:maxB,width:maxR-minL,height:maxB-minT})};
+    tourPlaceCard(anchor);
+  };
+  requestAnimationFrame(()=>requestAnimationFrame(paintSpot));
 }
 function endTour(done){
   tourOpen=false;tourClearHi();
@@ -3636,8 +3666,15 @@ window.addEventListener("resize",()=>{
   }
   const forceTour=q.get("tour")==="1"||q.get("tour")==="force";
   let tourDone=false;try{tourDone=localStorage.getItem("grok_remote_tour_done")==="1"}catch(e){}
-  if(!isDemoMode()&&(forceTour||!tourDone)){
-    setTimeout(()=>{try{startTour(forceTour?"url":"first-run")}catch(e){}},doAuto?900:400);
+  if(!isDemoMode()&&forceTour){
+    setTimeout(()=>{try{startTour("url")}catch(e){}},600);
+  }else if(!isDemoMode()&&!tourDone){
+    setTimeout(()=>{
+      try{
+        if(document.getElementById("tourOverlay")&&document.getElementById("tourOverlay").classList.contains("on"))return;
+        chip("New here? Open ☰ → Feature tour anytime");
+      }catch(e){}
+    },1400);
   }
 })();
 </script>

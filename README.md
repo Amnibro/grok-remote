@@ -1,19 +1,25 @@
 # Grok Remote
 
-**Live phone/browser controller for [Grok Build](https://x.ai)** — control your PC agent from Android (or any browser) over the LAN.
+**Live phone/browser controller for [Grok Build](https://x.ai)** — drive your PC agent from Android or any browser on the same network.
 
-**Repo:** https://github.com/Amnibro/grok-remote  
+[![License: MIT](https://img.shields.io/badge/License-MIT-lightgrey.svg)](./LICENSE)
 
-**Plugin:** `/remote` · `/remote-stop`
+| | |
+|---|---|
+| **Repo** | https://github.com/Amnibro/grok-remote |
+| **Plugin** | `/remote` · `/remote-stop` · `/remote-autostart` |
+| **Default theme** | Grok (full greyscale) · dark |
 
-## Install (anyone)
+---
+
+## Install
 
 ```bash
 grok plugin install Amnibro/grok-remote --trust
 grok plugin enable grok-remote
 ```
 
-Pin a version:
+Pin a release:
 
 ```bash
 grok plugin install Amnibro/grok-remote@v1.1.0 --trust
@@ -27,74 +33,68 @@ In the TUI, reload plugins if needed (`/plugins` → `r`), then:
 
 Open the printed URL on your phone (same Wi‑Fi), e.g. `http://192.168.x.x:2421/?auto=1`.
 
+---
+
 ## Screenshots
 
-Default theme is **Grok** (dark). Spoiler blurs session titles, paths, and IDs for safe sharing — desktop holds **Alt** to peek; phone shows **private screen** (no Alt).
+Sample session UI (demo data — no real chats or machine paths). Grok greyscale; tool cards show syntax-colored code.
 
-Demo captures use `?demo=1&variant=grok&privacy=1` so real chats/paths never hit the repo.
+### Desktop chat
 
-### Desktop cockpit (Grok · dark · spoiler on)
+![Desktop chat with sessions rail and tool edit](docs/screenshots/desktop-chat.png)
 
-![Desktop sessions + cockpit with spoiler blur](docs/screenshots/desktop-cockpit-spoiler.png)
+### Composer tools (`+`)
 
-### Hamburger menu
+![Grouped tools tray under the composer](docs/screenshots/desktop-tools.png)
 
-![Top-right organized menu over the cockpit](docs/screenshots/desktop-menu-spoiler.png)
+### Menu
 
-### Composer tools tray (`+`)
+![Header menu over the cockpit](docs/screenshots/desktop-menu.png)
 
-![Special functions tray under the composer](docs/screenshots/composer-tools-spoiler.png)
+### Setup / themes
+
+![Setup panel with Grok theme selected](docs/screenshots/setup.png)
 
 ### Phone
 
-| Grok (default) | Scient accent |
-|----------------|---------------|
-| ![Phone Grok theme spoiler](docs/screenshots/phone-grok-spoiler.png) | ![Phone Scient theme spoiler](docs/screenshots/phone-spoiler.png) |
+| Chat | Spoiler mode |
+|------|----------------|
+| ![Phone chat](docs/screenshots/phone-chat.png) | ![Phone spoiler](docs/screenshots/phone-spoiler.png) |
 
-### Connect / themes screen
+**Spoiler** blurs session titles, paths, and IDs for safe sharing. Desktop: hold **Alt** to peek. Phone: **private screen** (no Alt).
 
-![Setup panel with Grok selected, Spoiler chip, and SPOILER ON badge](docs/screenshots/setup-spoiler.png)
+Regenerate captures (local UI on `:2421`):
 
-## What you get
+```bash
+node scripts/capture-screenshots.mjs
+```
+
+---
+
+## Features
 
 | Feature | Detail |
 |---------|--------|
-| Session picker | List + load desktop / historical chats (`resident` = live) |
-| Full history | Messages, thinking, tools, plans, recaps on load |
-| Live stream | ACP updates + ~0.8s catch-up for PC-side prompts |
-| Skills | Quick slash-command palette |
-| New Task | New session at a stated cwd + optional first prompt |
-| Back swipe | Returns to Sessions (does not leave the site) |
-| One phone URL | UI proxies WebSocket; agent secret stays on the PC |
-| Auto-scroll | Follow latest messages; **↓ Bottom** FAB always in chat |
-| Collapse regions | Thinking / fenced code / tools start collapsed (toggle in Theme → UX) |
-| Borders vs clean | Bordered cards or clean edge accents — same Theme → UX sheet |
-| Themes | Product (Scient, Grok, …) + X-like skins (AIM-like, Win95-like, Ubuntu-like, …) × light/dark |
-| Diff UX | Inline red/green hunks; Accept applies via FS API |
-| @ files | Browse workspace and attach paths/content to prompts |
-| Plan UI | Approve / edit / hold plan steps |
+| Session picker | List + load desktop / historical chats (`live` = resident) |
+| Full history | Messages, thinking, tools, plans on load |
+| Live stream | ACP updates + disk catch-up for PC-side prompts |
+| Composer tools | Attach files, add path, voice, todos, terminal, git diff, export |
+| Skills | Slash-command palette |
+| New Task | New session at a cwd + optional first prompt |
+| Themes | Grok greyscale default + product accents + fun skins × light/dark |
+| Spoiler | Privacy blur for screenshots |
+| Diff UX | Inline hunks; Accept applies via FS API |
+| Code in tools | Line numbers + syntax colors in reads/edits/output |
 | Permissions | One-tap allow/deny + Always for session |
-| Terminal pane | Live shell-like tool output stream |
-| Background | Task list + cancel + optional notifications |
-| Search / export | Chat search; HTML export with spoiler |
-| Voice | Push-to-talk (browser SpeechRecognition) |
-| Pins / budget | Pin live sessions; soft turn/token budgets |
-| Delve | Launch local Amni Delve hub if running |
-| Session archive | Per-chat Archive/Unarchive (device-local); scope Active/Live/Archived/All |
-| Search | Filter sessions by title, cwd, id |
-| Split scroll | Session list and chat scroll independently |
-| Markdown chat | Headings, lists, tables, **theme-colored code**, links, path chips |
-| Attachments | 📎 photos/files (drag-drop/paste); images + text/code to agent |
-| Collapsible rail | Hide/show sessions sidebar (desktop); edge tab to reopen |
-| Flyout menus | Theme / Skills / Task slide in from the top-right (frosted) |
+| Desktop app | Electron cockpit + IDE + Grok Review (optional) |
 
-UX prefs: `grok_remote_ux` · archived ids: `grok_remote_archived` (this device only).
+---
 
-## Manual start (without the plugin)
+## Manual start
 
 ```powershell
 cd path\to\grok-remote
-.\start.ps1 -Cwd C:\path\to\your\project
+.\start.ps1 -Cwd path\to\your\project
 ```
 
 ## Architecture
@@ -106,52 +106,29 @@ Phone browser  --HTTP-->  UI+proxy :2421
                                          tools / files on PC
 ```
 
-## Desktop app (Electron) — no terminal required
+## Desktop app (Electron)
 
-Cockpit that **starts Grok agent + UI for you**, with **built-in IDE** and **Grok Review**.
+Optional cockpit that starts agent + UI, with built-in IDE and Grok Review.
 
 ```powershell
-# one-time
 cd desktop
 npm install
-
-# daily launch (or double-click scripts\launch-desktop.cmd)
 npm start
 ```
-
-| Feature | Detail |
-|---------|--------|
-| Auto stack | Agent `:2419` + UI `:2421` on launch |
-| New sessions | From UI / menu — no TUI needed |
-| IDE | File tree, edit, save to PC workspace |
-| Grok Review | Structured bug-check prompt after edits |
-| Phone | Same stack on LAN `:2421` |
 
 Details: [desktop/README.md](./desktop/README.md)
 
 ## Auto-start (optional)
 
-When **enabled**, Grok-Remote can start itself:
-
-| Mode | When |
-|------|------|
-| **Session** (default if on) | Every new Grok TUI/session (`SessionStart` hook) |
-| **Boot** | Windows logon (`GrokRemoteAutostart` scheduled task) |
-
 ```powershell
-# Enable for Grok session start (idempotent; skips if already healthy)
-powershell -File .\scripts\install-autostart.ps1 -Cwd C:\Users\antho\Documents\ai
-
-# Also start at Windows logon
-powershell -File .\scripts\install-autostart.ps1 -Boot -Cwd C:\Users\antho\Documents\ai
-
-# Disable
+powershell -File .\scripts\install-autostart.ps1 -Cwd path\to\project
+powershell -File .\scripts\install-autostart.ps1 -Boot -Cwd path\to\project
 powershell -File .\scripts\install-autostart.ps1 -Disable
 ```
 
-Or in TUI after plugin install: **`/remote-autostart on`** · **`/remote-autostart boot`** · **`/remote-autostart off`** · **`/remote-autostart status`**
+Or in TUI: `/remote-autostart on` · `boot` · `off` · `status`
 
-Config lives in `~/.grok/plugin-data/grok-remote/config.json` (`autostart`, `autostart_on_session`, `autostart_on_boot`, `cwd`, ports). Default is **off** until you enable it.
+Config: `~/.grok/plugin-data/grok-remote/config.json` (default **off**).
 
 ## Safety
 
@@ -159,11 +136,22 @@ Config lives in `~/.grok/plugin-data/grok-remote/config.json` (`autostart`, `aut
 - Never `Stop-Process -Name grok` (kills every Grok session on the machine).
 - `/remote-stop` only stops remote UI + remote agent serve.
 
+## Develop
+
+```powershell
+# UI + hub (serves web/ from this repo)
+.\start.ps1 -Cwd .
+# Screenshots
+node scripts/capture-screenshots.mjs
+```
+
+See [CONTRIBUTING.md](./CONTRIBUTING.md) and [architecture_map.md](./architecture_map.md).
+
 ## License
 
 MIT — see [LICENSE](./LICENSE).
 
 ## Docs
 
-- [PUBLISH.md](./PUBLISH.md) — marketplaces and distribution
-- Plugin skill: `skills/remote/SKILL.md`
+- [PUBLISH.md](./PUBLISH.md) — plugin install & marketplaces  
+- [skills/remote/SKILL.md](./skills/remote/SKILL.md) — `/remote` skill  
