@@ -1174,7 +1174,7 @@ let curUser=null,curAgent=null,curThought=null,toolMap={},curThoughtRow=null;
 let seenEvents=new Set(),seenUserTexts=new Set(),promptCount=0,commands=[];
 let pollTimer=null,catchupBusy=false,lastLiveAt=0,localEchoUntil=0;
 let historyFileSize=0,diskCatchupBusy=false;
-const HISTORY_PAGE=80;
+const HISTORY_PAGE=40;
 let historyHasMore=false,historyOlderBefore=0,historyLoadingOlder=false;
 let sessionGen=0,sessionSwitching=false,loadExpectSid=null,sessionFresh=false,historyPainting=false,suppressLive=false;
 let linkState="standby",agentPhase="idle",phaseDetail="",wantReconnect=false,reconnectTimer=null,connectAttempt=0;
@@ -3091,7 +3091,7 @@ async function openSession(s){
     try{if(feed)feed.dataset.sid=openId}catch(e){}
     if(gen!==sessionGen)return;
     try{
-      const hist=await paintDiskHistory(openId,sidCwd,{limit:HISTORY_PAGE,max_bytes:400000,chat_only:true,gen:gen});
+      const hist=await paintDiskHistory(openId,sidCwd,{limit:HISTORY_PAGE,max_bytes:2500000,chat_only:true,gen:gen});
       if(gen!==sessionGen||String(sid)!==openId)return;
       if(hist&&hist.stale)return;
       painted=hist.count||0;
@@ -3116,11 +3116,12 @@ async function openSession(s){
     if(gen===sessionGen&&String(sid)===openId){
       loadExpectSid=null;sessionSwitching=false;replaying=false;setBusy(false);closeOpen();
       stickBottom=true;
-      forceScrollBottom();
       hideHorizon();
+      forceScrollBottom();
       startPoll();
       updateJump();
-      setTimeout(()=>{if(gen===sessionGen&&String(sid)===openId)forceScrollBottom()},30);
+      requestAnimationFrame(()=>{if(gen===sessionGen&&String(sid)===openId){forceScrollBottom();requestAnimationFrame(()=>{if(gen===sessionGen&&String(sid)===openId)forceScrollBottom()})}});
+      setTimeout(()=>{if(gen===sessionGen&&String(sid)===openId)forceScrollBottom()},50);
     }else if(gen!==sessionGen){
       suppressLive=true;
     }

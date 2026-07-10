@@ -185,6 +185,26 @@ def _parse_update_line(line,live=False):
   "_kind":kind,
   "_eid":str(merged.get("eventId") or umeta.get("eventId") or ""),
  }
+def _strip_ev(ev):
+ return {k:v for k,v in ev.items() if not k.startswith("_")}
+def _coalesce_chat(events):
+ out=[]
+ for ev in events:
+  kind=ev.get("_kind") or ""
+  if kind not in ("user_message_chunk","agent_message_chunk") or not out:
+   out.append(ev);continue
+  prev=out[-1]
+  if prev.get("_kind")!=kind:
+   out.append(ev);continue
+  pu=(prev.get("params") or {}).get("update") or {}
+  cu=(ev.get("params") or {}).get("update") or {}
+  pt=((pu.get("content") or {}).get("text") if isinstance(pu.get("content"),dict) else "") or ""
+  ct=((cu.get("content") or {}).get("text") if isinstance(cu.get("content"),dict) else "") or ""
+  if not isinstance(pu.get("content"),dict):pu["content"]={"type":"text","text":""}
+  pu["content"]["text"]=pt+ct
+  if "params" not in prev:prev["params"]={}
+  prev["params"]["update"]=pu
+ return out
 def read_session_updates(session_dir:Path,limit=1600,max_bytes=8_000_000,since_bytes=0,live=False,before_bytes=None,chat_only=False):
  path=session_dir/"updates.jsonl"
  if not path.is_file():return [],{"path":str(path),"missing":True,"size":0,"has_more":False}
@@ -197,6 +217,8 @@ def read_session_updates(session_dir:Path,limit=1600,max_bytes=8_000_000,since_b
  end_pos=size
  window_start=0
  scored=[]
+ msg_kinds={"user_message_chunk","agent_message_chunk"}
+ chat_kinds=msg_kinds|{"agent_thought_chunk","plan","session_recap","turn_completed","task_completed"}
  try:
   with path.open("rb") as f:
    if live:
@@ -212,26 +234,53 @@ def read_session_updates(session_dir:Path,limit=1600,max_bytes=8_000_000,since_b
      ev=_parse_update_line(s,live=True)
      if ev:scored.append(ev)
     if len(scored)>limit:scored=scored[-limit:]
-    events=[{k:v for k,v in ev.items() if not k.startswith("_")} for ev in scored]
-    return events,{"path":str(path),"size":size,"end":end_pos,"returned":len(events),"scanned":len(scored),"since":since,"live":True,"has_more":False,"window_start":window_start}
-   if before_bytes is not None:
-    end_cap=min(max(0,int(before_bytes)),size)
-    if end_cap<=0:return [],{"path":str(path),"size":size,"has_more":False,"window_start":0,"window_end":0,"returned":0,"live":False}
-    start=max(0,end_cap-max_bytes)
-    f.seek(start)
-    if start>0:f.readline()
-    window_start=f.tell()
-    blob=f.read(max(0,end_cap-window_start))
-    end_pos=window_start+len(blob)
-   else:
-    start=max(0,size-max_bytes) if size>max_bytes else 0
-    f.seek(start)
-    if start>0:f.readline()
-    window_start=f.tell()
-    blob=f.read()
-    end_pos=f.tell()
+    return [_strip_ev(ev) for ev in scored],{"path":str(path),"size":size,"end":end_pos,"returned":len(scored),"scanned":len(scored),"since":since,"live":True,"has_more":False,"window_start":window_start}
+   end_cap=size if before_bytes is None else min(max(0,int(before_bytes)),size)
+   if end_cap<=0:return [],{"path":str(path),"size":size,"has_more":False,"window_start":0,"window_end":0,"returned":0,"live":False}
+   if chat_only:
+    want=max(1,int(limit))
+    scan=max(int(max_bytes or 0),min(8_000_000,max(1_500_000,want*80000)))
+    collected=[]
+    first_off=end_cap
+    scanned_lines=0
+    while True:
+     start=max(0,end_cap-scan)
+     f.seek(start)
+     if start>0:f.readline()
+     window_start=f.tell()
+     blob=f.read(max(0,end_cap-window_start))
+     end_pos=window_start+len(blob)
+     lines=blob.splitlines(keepends=True)
+     scanned_lines=len(lines)
+     collected=[]
+     off=end_pos
+     for raw_line in reversed(lines):
+      off-=len(raw_line)
+      s=raw_line.decode("utf-8","replace").rstrip("\r\n")
+      if not s.strip():continue
+      ev=_parse_update_line(s,live=False)
+      if not ev or ev.get("_kind") not in msg_kinds:continue
+      ev["_off"]=off
+      collected.append(ev)
+      if len(collected)>=want:break
+     collected.reverse()
+     first_off=collected[0].get("_off",window_start) if collected else window_start
+     if len(collected)>=want or start<=0 or scan>=8_000_000:break
+     scan=min(8_000_000,scan*2)
+    collected=_coalesce_chat(collected)
+    if len(collected)>want:collected=collected[-want:]
+    first_off=collected[0].get("_off",first_off) if collected else first_off
+    has_more=bool(first_off>0 and (start>0 or len(collected)>=want))
+    return [_strip_ev(ev) for ev in collected],{"path":str(path),"size":size,"returned":len(collected),"scanned":scanned_lines,"live":False,"has_more":has_more,"window_start":int(first_off),"window_end":end_pos,"end":end_pos,"older_before":int(first_off),"chat_only":True}
+   start=max(0,end_cap-max_bytes)
+   f.seek(start)
+   if start>0:f.readline()
+   window_start=f.tell()
+   blob=f.read(max(0,end_cap-window_start))
+   end_pos=window_start+len(blob)
+  lines=blob.splitlines(keepends=True)
   off=window_start
-  for line in blob.splitlines(keepends=True):
+  for line in lines:
    line_start=off
    off+=len(line)
    s=line.decode("utf-8","replace").rstrip("\r\n")
@@ -244,12 +293,8 @@ def read_session_updates(session_dir:Path,limit=1600,max_bytes=8_000_000,since_b
   return [],{"path":str(path),"error":str(e),"size":size,"has_more":False}
  if not scored:
   return [],{"path":str(path),"size":size,"returned":0,"scanned":0,"live":False,"has_more":window_start>0,"window_start":window_start,"window_end":end_pos,"end":end_pos}
- msg_kinds={"user_message_chunk","agent_message_chunk","turn_completed","task_completed","session_recap","plan"}
- chat_kinds=msg_kinds|{"agent_thought_chunk"}
- if chat_only:
-  scored=[ev for ev in scored if ev.get("_kind") in msg_kinds]
  trimmed=len(scored)>limit
- if trimmed and not chat_only:
+ if trimmed:
   chat_idx=[];tool_idx=[]
   for i,ev in enumerate(scored):
    (chat_idx if ev.get("_kind") in chat_kinds else tool_idx).append(i)
@@ -258,12 +303,10 @@ def read_session_updates(session_dir:Path,limit=1600,max_bytes=8_000_000,since_b
   room=limit-len(keep)
   if room>0:keep.update(tool_idx[-room:])
   kept=[scored[i] for i in range(len(scored)) if i in keep]
- elif trimmed:
-  kept=scored[-limit:]
  else:
   kept=scored
  first_off=kept[0].get("_off",window_start) if kept else window_start
- events=[{k:v for k,v in ev.items() if not k.startswith("_")} for ev in kept]
+ events=[_strip_ev(ev) for ev in kept]
  has_more=bool(window_start>0 or trimmed)
  return events,{"path":str(path),"size":size,"returned":len(events),"scanned":len(scored),"live":False,"has_more":has_more,"window_start":int(first_off),"window_end":end_pos,"end":end_pos,"older_before":int(first_off),"chat_only":bool(chat_only)}
 def is_text_path(p:Path):
