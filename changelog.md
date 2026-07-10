@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-07-09 — Fix new chat inheriting old user messages
+
+- **Root cause:** `softCatchup` painted full `_x.ai/prompt_history` when `promptCount===0`, so **New chat** filled with prior turns
+- **Fix:** `sessionFresh` gate; skip prompt-history backfill on empty/new sessions; only append prompt deltas after a known baseline; hard-clear feed/queue on new/open
+
 ## 2026-07-09 — Composer UX + XR detect + Watch v19
 
 - **+** is attach-only; **Mic** sits beside the composer for Go voice

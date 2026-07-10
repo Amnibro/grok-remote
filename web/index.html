@@ -1159,7 +1159,7 @@ let curUser=null,curAgent=null,curThought=null,toolMap={},curThoughtRow=null;
 let seenEvents=new Set(),seenUserTexts=new Set(),promptCount=0,commands=[];
 let pollTimer=null,catchupBusy=false,lastLiveAt=0,localEchoUntil=0;
 let historyFileSize=0,diskCatchupBusy=false;
-let sessionGen=0,sessionSwitching=false,loadExpectSid=null;
+let sessionGen=0,sessionSwitching=false,loadExpectSid=null,sessionFresh=false;
 let linkState="standby",agentPhase="idle",phaseDetail="",wantReconnect=false,reconnectTimer=null,connectAttempt=0;
 let connecting=false,intentionalClose=false,reconnectArmed=false,maxReconnect=5,startInFlight=false;
 Object.defineProperty(window,"replaying",{get:()=>replaying,set:v=>{replaying=!!v},configurable:true});
@@ -2719,26 +2719,40 @@ async function softCatchup(){
   try{
     const painted=await diskLiveCatchup();
     if(sid!==expect||gen!==sessionGen||sessionSwitching||replaying)return;
-    if(painted)return;
+    if(painted){if(sessionFresh)sessionFresh=false;return}
+    if(sessionFresh)return;
+    if(historyFileSize===0&&promptCount===0)return;
     if(!ws||ws.readyState!==1)return;
     try{
       const ph=await req("_x.ai/prompt_history",{sessionId:expect,cwd:sidCwd},15000);
-      if(sid!==expect||gen!==sessionGen||sessionSwitching||replaying)return;
-      const prompts=ph.prompts||[];
-      if(prompts.length>promptCount){
-        const chron=[...prompts].reverse();
-        for(const p of chron){
-          const t=String(p||"").trim();
-          if(t&&!seenUserTexts.has(t)){
-            closeOpen();appendUser(t,{force:true});closeOpen();
-            seenUserTexts.add(t);
-          }
+      if(sid!==expect||gen!==sessionGen||sessionSwitching||replaying||sessionFresh)return;
+      const prompts=Array.isArray(ph.prompts)?ph.prompts:[];
+      if(prompts.length<=promptCount)return;
+      const chron=[...prompts].reverse();
+      const delta=chron.slice(Math.max(0,promptCount));
+      for(const p of delta){
+        const t=String(p||"").trim();
+        if(t&&!seenUserTexts.has(t)){
+          closeOpen();appendUser(t,{force:true});closeOpen();
+          seenUserTexts.add(t);
         }
-        promptCount=prompts.length;
-        await diskLiveCatchup();
       }
+      promptCount=prompts.length;
+      await diskLiveCatchup();
     }catch(e){}
   }finally{catchupBusy=false}
+}
+function clearSessionFeed(){
+  feed.innerHTML="";
+  resetBubbles();
+  seenEvents=new Set();
+  seenUserTexts=new Set();
+  promptCount=0;
+  historyFileSize=0;
+  agentQueueNote="";
+  msgQueue.length=0;
+  try{paintMsgQueue()}catch(e){}
+  closeOpen();
 }
 async function silentReload(expectSid,gen){
   const want=expectSid||sid;
@@ -2954,11 +2968,13 @@ function rememberSessionSid(id,cwd){
 async function openSession(s){
   if(!s||!s.sessionId){chip("bad session");return}
   abortSessionSwitch();
+  stopPoll();
   sessionSwitching=true;
+  sessionFresh=false;
   const gen=++sessionGen;
-  sid=null;window.sid=null;loadExpectSid=null;historyFileSize=0;
+  sid=null;window.sid=null;loadExpectSid=null;
   sidCwd=(s.cwd||defaultCwd||".").replace(/\\\\/g,"\\");
-  feed.innerHTML="";resetBubbles();seenEvents=new Set();seenUserTexts=new Set();promptCount=0;
+  clearSessionFeed();
   showPage("chat");replaying=true;setBusy(true);stickBottom=true;
   showHorizon("loading history");
   setConn(true,"loading…",true);
@@ -3019,13 +3035,15 @@ async function openSession(s){
 
 async function newSession(cwd,firstMsg){
   abortSessionSwitch();
+  stopPoll();
   sessionSwitching=true;
+  sessionFresh=true;
   const gen=++sessionGen;
   sid=null;window.sid=null;loadExpectSid=null;
   const c=(cwd||document.getElementById("cwd").value||defaultCwd||".").trim();
-  if(!c){sessionSwitching=false;alert("cwd required");return}
+  if(!c){sessionSwitching=false;sessionFresh=false;alert("cwd required");return}
   sidCwd=c;
-  feed.innerHTML="";resetBubbles();seenEvents=new Set();seenUserTexts=new Set();promptCount=0;historyFileSize=0;
+  clearSessionFeed();
   showPage("chat");
   replaying=true;setBusy(true);stickBottom=true;
   showHorizon("opening channel");
@@ -3035,15 +3053,16 @@ async function newSession(cwd,firstMsg){
     if(gen!==sessionGen)return;
     const newId=r&& (r.sessionId||r.session_id||(r.session&&r.session.sessionId));
     if(!newId)throw new Error("session/new returned no id · "+JSON.stringify(r||{}).slice(0,180));
-    sid=String(newId);window.sid=sid;loadExpectSid=null;historyFileSize=0;rememberSessionSid(sid,sidCwd);
-    feed.innerHTML="";resetBubbles();seenEvents=new Set();seenUserTexts=new Set();promptCount=0;
+    sid=String(newId);window.sid=sid;loadExpectSid=null;rememberSessionSid(sid,sidCwd);
+    clearSessionFeed();
+    sessionFresh=true;
     chip("new session @ "+c);
     document.getElementById("hint").textContent="New chat · "+shortPath(c);
     setConn(true,"new chat",false);
   }catch(e){
     if(gen===sessionGen){
       sid=null;window.sid=null;
-      loadExpectSid=null;sessionSwitching=false;replaying=false;setBusy(false);hideHorizon();
+      loadExpectSid=null;sessionSwitching=false;replaying=false;sessionFresh=false;setBusy(false);hideHorizon();
       chip("new session failed: "+e);alert(e);
     }
     return;
@@ -3051,10 +3070,13 @@ async function newSession(cwd,firstMsg){
   if(gen!==sessionGen)return;
   loadExpectSid=null;sessionSwitching=false;replaying=false;setBusy(false);
   stickBottom=true;forceScrollBottom();hideHorizon();
+  clearSessionFeed();
+  sessionFresh=true;
   startPoll();
   try{await fetchSessions()}catch(e){}
   try{await loadCommands()}catch(e){}
   if(firstMsg&&String(firstMsg).trim()){
+    sessionFresh=false;
     box.value=String(firstMsg).trim();
     await sendPrompt();
   }
@@ -3478,6 +3500,7 @@ async function sendPrompt(forcedMode){
     await sleep(350);
   }
   localEchoUntil=Date.now()+5000;
+  sessionFresh=false;
   if(tRaw)appendUser((mode==="fyi"?"FYI · ":"")+(interjected?"Interject · ":"")+tRaw);
   if(files.length)showLocalAttachments(files);
   closeOpen();
