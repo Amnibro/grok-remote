@@ -1,14 +1,15 @@
 # Grok Remote — architecture map
 
-**Updated:** 2026-07-10 · v15 syntax + greyscale Grok + professional repo
+**Updated:** 2026-07-09 · v19 composer UX + XR detect + watch
 
 ## Layout
 
 ```
 grok-remote/
   web/index.html          # Phone + browser + Electron UI (default theme: grok)
+  web/voice-mode.js       # STT / conversational Go / XR HUD / Grok TTS playback
   web/ide.js              # Built-in IDE + Grok Review
-  server.py               # static + /ws proxy + /api/fs/*
+  server.py               # static + /ws proxy + /api/fs/* + /api/tts
   start.ps1               # agent + UI launch
   scripts/capture-screenshots.mjs  # demo=1 Playwright PNGs for README
   scripts/launch-desktop.cmd
@@ -90,8 +91,37 @@ Controls: setup **UI / UX** chips + **Theme** sheet → same chips.
 
 - Independent scroll: `html/body` overflow hidden; `#picker` flex column; `.sess` list scrolls alone; `main` scrolls alone.
 - **Search** text filter + **Scope** chips: Active (default) / Live / Archived / All
-- Archive: per-row button; IDs in `localStorage.grok_remote_archived` (device-local hide, not server delete)
+- Archive: per-row button; IDs via `POST /api/session/archived` (`ids[]` or `{id, archived}`) + localStorage mirror
 - Scope: `localStorage.grok_remote_sess_scope`
+- **Promote on message (v16):** `promoteSessionAfterMessage` on send — unarchives (`setArchivedFlag(id,false)`), marks `resident`+live, leaves Archived → Active, re-renders list + `fetchSessions`
+
+## Voice + XR + Watch (v17 → v19)
+
+| Piece | Behavior |
+|-------|----------|
+| **Mic** | Composer button next to `+` and box (`#btnComposerVoice`) → Go voice |
+| **+** | **Attach only** (file picker) — no specials tray |
+| **Specials** | ☰ menu **Tools** (Todos, Terminal, Git, Export, …) |
+| **Chat view** | ☰ toggles: hide thinking / tools / edits / reads / code + collapse defaults |
+| **XR / AR** | Auto-detect via `navigator.xr` (prefer AR); wearable UA → auto Go/XR; button shows when capable |
+| **Watch** | `/watch` Galaxy/Wear OS companion (round UI, mic, session sync via `grok_remote_last`) |
+| **Spoken replies** | Ack on send; summarized final answer on turn complete |
+| **TTS** | `POST /api/tts` → xAI Grok TTS (`XAI_API_KEY`); else `speechSynthesis` |
+
+Safety: Go/XR designed for glanceable status; full tool dumps are not spoken.
+
+## Message delivery modes (v18)
+
+| Mode | When agent busy | Behavior |
+|------|-----------------|----------|
+| **Interject** | Cancels current turn (`session/cancel`), then sends immediately with interject framing | Drop in-flight steps; handle user now |
+| **Queue** (default) | Enqueues locally; drains on `turn_completed` / prompt resolve | Wait for a good pause, then apply guidance |
+| **FYI** | Enqueues as context; never cancels | “Consider this; don’t stop the task” framing |
+
+- **Send** always sends (never morphs to Cancel)
+- **Cancel** (`#btnCancelTurn`) separate, visible only while busy → `session/cancel`
+- Queue UI: `#queue` shows remote pending + agent queue note; dismiss with ×
+- Pref: `localStorage.grok_remote_msg_mode`
 
 ## Themes
 

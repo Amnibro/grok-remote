@@ -1,5 +1,39 @@
 # Changelog
 
+## 2026-07-09 — Composer UX + XR detect + Watch v19
+
+- **+** is attach-only; **Mic** sits beside the composer for Go voice
+- Special functions moved to top-right **☰** (Todos, Terminal, Git, Export, …)
+- **Chat view** toggles in ☰: hide/collapse thinking, tools, edits, reads, code
+- **XR/AR autodetect** (`navigator.xr` + wearable UA); prefers AR when available
+- **Galaxy Watch companion** at `/watch` (round UI, mic, session sync)
+- Git strip stays under composer; tools tray removed from +
+
+## 2026-07-09 — Message queue modes + Cancel v18
+
+- **Interject / Queue / FYI** chips above composer (`When busy`)
+- **Interject:** cancel current steps → send now
+- **Queue:** hold until a good pause (`turn_completed`), then send with guidance framing
+- **FYI:** extra context only — never cancels; applied at next pause with “don’t stop” framing
+- **Cancel** button beside **Send** (Send no longer turns into Cancel)
+- Queue strip shows pending remote items (dismissible) + agent queue note
+
+## 2026-07-09 — Voice Go + XR/AR + Grok TTS v17
+
+- **Dictate / Go / XR** controls in composer tools + floating `#voiceHud`
+- **Go mode:** continuous voice-to-text, pause-to-send for on-the-go tasks
+- **XR/AR mode:** large smartwear-friendly HUD; WebXR immersive-ar/vr when the browser supports it
+- Spoken replies are **ack on task receipt** + **summarized final answer** only (not full tool chatter)
+- **Real Grok voice:** `POST /api/tts` → `https://api.x.ai/v1/tts` (needs `XAI_API_KEY`); browser `speechSynthesis` fallback
+- `GET /api/voice/status` reports TTS readiness; voice picker (eve, ara, leo, …)
+
+## 2026-07-09 — Promote archived → live on message v16
+
+- Messaging an **archived** session unarchives it (`POST {id, archived:false}`), marks it **live**/resident, switches scope Archived → Active, and **auto-refreshes** the session list
+- Promote runs optimistically on send + again on prompt resolve
+- Archive load no longer re-merges stale local IDs over a successful server unarchive (merge only on `migrate`)
+- Synced to `~/.grok/plugins/grok-remote`
+
 ## 2026-07-10 — Polish v15 (syntax, greyscale, tools, tour, repo)
 
 - **Syntax colors** fixed in tool edits/reads (token CSS covered `.code-with-lines` / tool panes; removed `!important` greys that killed tokens)

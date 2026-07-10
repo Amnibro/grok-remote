@@ -73,6 +73,20 @@ def wait_port(port:int,timeout=20.0):
   if listen_pids_port(port,exclude_self=False):return True
   time.sleep(0.35)
  return False
+def xai_api_key():
+ for k in ("XAI_API_KEY","GROK_API_KEY","xai_api_key"):
+  v=(os.environ.get(k) or "").strip()
+  if v:return v
+ try:
+  p=Path.home()/".grok"/"credentials.json"
+  if p.is_file():
+   d=json.loads(p.read_text(encoding="utf-8",errors="replace"))
+   if isinstance(d,dict):
+    for k in ("XAI_API_KEY","apiKey","api_key","xaiApiKey","token"):
+     v=str(d.get(k) or "").strip()
+     if v:return v
+ except Exception:pass
+ return ""
 def archive_store_path():
  base=os.environ.get("GROK_PLUGIN_DATA") or str(Path.home()/".grok"/"plugin-data"/"grok-remote")
  p=Path(base);p.mkdir(parents=True,exist_ok=True)
@@ -490,18 +504,18 @@ class AgentHub:
 async def main_async(a):
  try:
   import aiohttp
-  from aiohttp import web,WSMsgType,ClientSession
+  from aiohttp import web,WSMsgType,ClientSession,ClientTimeout
  except ImportError:
   subprocess.check_call([sys.executable,"-m","pip","install","aiohttp","-q"])
   import aiohttp
-  from aiohttp import web,WSMsgType,ClientSession
+  from aiohttp import web,WSMsgType,ClientSession,ClientTimeout
  agent_host=a.agent_host or "127.0.0.1"
  agent_ws="ws://%s:%d/ws?server-key=%s"%(agent_host,a.agent_port,a.secret)
  lan=lan_ip()
  work_root=Path(a.cwd).expanduser().resolve()
  state={"cwd":str(work_root)}
  hub=AgentHub(agent_ws)
- cfg={"agent_host":agent_host,"agent_port":a.agent_port,"secret":"(held server-side)","cwd":state["cwd"],"ws_url":"ws://%s:%d/ws"%(lan,a.port),"ws_path":"/ws","ui":"http://%s:%d/"%(lan,a.port),"lan_ip":lan,"proxy":True,"hub":True,"ide":True,"features":["fs","ide","review","multi-client-hub","skills-scan","git","project-context","stop-turn","todos"]}
+ cfg={"agent_host":agent_host,"agent_port":a.agent_port,"secret":"(held server-side)","cwd":state["cwd"],"ws_url":"ws://%s:%d/ws"%(lan,a.port),"ws_path":"/ws","ui":"http://%s:%d/"%(lan,a.port),"watch":"http://%s:%d/watch"%(lan,a.port),"lan_ip":lan,"proxy":True,"hub":True,"ide":True,"features":["fs","ide","review","multi-client-hub","skills-scan","git","project-context","stop-turn","todos","voice-tts","voice-go","xr-ar","watch-companion","msg-queue"]}
  try:(ROOT/"runtime-config.json").write_text(json.dumps(cfg,indent=2),encoding="utf-8")
  except Exception:pass
  def root_path():
@@ -516,6 +530,10 @@ async def main_async(a):
   return p
  async def index(_):
   return web.FileResponse(WEB/"index.html")
+ async def watch_page(_):
+  p=WEB/"watch.html"
+  if not p.is_file():raise web.HTTPNotFound()
+  return web.FileResponse(p,headers={"Cache-Control":"no-store"})
  async def config(_):
   cfg["cwd"]=state["cwd"];cfg["clients"]=len(hub.clients)
   return web.json_response(cfg,headers={"Cache-Control":"no-store"})
@@ -524,6 +542,7 @@ async def main_async(a):
   p=(WEB/name).resolve()
   if not str(p).startswith(str(WEB.resolve())) or not p.is_file():raise web.HTTPNotFound()
   ctype=mimetypes.guess_type(str(p))[0] or "application/octet-stream"
+  if name.endswith(".webmanifest"):ctype="application/manifest+json"
   return web.FileResponse(p,headers={"Content-Type":ctype})
  async def health(_):
   ok=False;detail=""
@@ -678,6 +697,35 @@ async def main_async(a):
   else:
    raise web.HTTPBadRequest(text="ids[] or id required")
   return web.json_response({"ok":True,"ids":ids,"count":len(ids)},headers={"Cache-Control":"no-store"})
+ async def voice_status(_):
+  key=xai_api_key()
+  return web.json_response({"ok":True,"tts":bool(key),"stt":"browser","provider":"xai" if key else "browser-fallback","voices":["eve","ara","leo","rex","sal","luna","orion","helix"],"hint":None if key else "Set XAI_API_KEY for real Grok voice (else browser speechSynthesis)"},headers={"Cache-Control":"no-store"})
+ async def tts_proxy(request):
+  key=xai_api_key()
+  if not key:return web.json_response({"ok":False,"error":"XAI_API_KEY not set — browser fallback only"},status=503)
+  try:body=await request.json()
+  except Exception:body={}
+  text=str(body.get("text") or body.get("input") or "").strip()
+  if not text:raise web.HTTPBadRequest(text="text required")
+  if len(text)>15000:text=text[:14990]+"…"
+  voice_id=str(body.get("voice_id") or body.get("voice") or "eve").strip() or "eve"
+  language=str(body.get("language") or "en").strip() or "en"
+  speed=body.get("speed")
+  payload={"text":text,"voice_id":voice_id,"language":language,"output_format":{"codec":"mp3","sample_rate":24000,"bit_rate":128000},"text_normalization":True}
+  if speed is not None:
+   try:payload["speed"]=max(0.7,min(1.5,float(speed)))
+   except Exception:pass
+  try:
+   timeout=ClientTimeout(total=60,connect=10,sock_connect=10,sock_read=50)
+   async with ClientSession(timeout=timeout) as sess:
+    async with sess.post("https://api.x.ai/v1/tts",headers={"Authorization":"Bearer "+key,"Content-Type":"application/json","Accept":"audio/mpeg"},json=payload) as resp:
+     data=await resp.read()
+     if resp.status!=200:
+      err=data.decode("utf-8","replace")[:400]
+      return web.json_response({"ok":False,"error":err or ("HTTP "+str(resp.status)),"status":resp.status},status=502 if resp.status>=500 else 400)
+     return web.Response(body=data,headers={"Content-Type":resp.headers.get("Content-Type","audio/mpeg"),"Cache-Control":"no-store","X-Voice-Id":voice_id})
+  except Exception as e:
+   return web.json_response({"ok":False,"error":str(e)[:300]},status=502)
  def run_git(args,cwd,timeout=12):
   git=shutil.which("git")
   if not git:return None,"git not found"
@@ -809,6 +857,8 @@ async def main_async(a):
  app=web.Application(client_max_size=8*1024*1024)
  app.router.add_get("/",index)
  app.router.add_get("/index.html",index)
+ app.router.add_get("/watch",watch_page)
+ app.router.add_get("/watch.html",watch_page)
  app.router.add_get("/config.json",config)
  app.router.add_get("/config",config)
  app.router.add_get("/health",health)
@@ -825,6 +875,8 @@ async def main_async(a):
  app.router.add_get("/api/session/signals",session_signals)
  app.router.add_get("/api/session/archived",session_archived_get)
  app.router.add_post("/api/session/archived",session_archived_set)
+ app.router.add_get("/api/voice/status",voice_status)
+ app.router.add_post("/api/tts",tts_proxy)
  app.router.add_get("/api/git/status",git_status)
  app.router.add_get("/api/git/diff",git_diff)
  app.router.add_get("/api/git/log",git_log)

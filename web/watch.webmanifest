@@ -1,0 +1,11 @@
+{
+  "name": "Grok Remote Watch",
+  "short_name": "GrokWatch",
+  "start_url": "/watch",
+  "display": "standalone",
+  "background_color": "#0a0a0a",
+  "theme_color": "#0a0a0a",
+  "orientation": "any",
+  "description": "Hands-free Grok Remote companion for Galaxy Watch / Wear OS",
+  "icons": []
+}

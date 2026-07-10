@@ -617,33 +617,39 @@ function wireToolPathClicks(){
  feed._locClick=true;
 }
 function injectChrome(){
-  if($("cockpitBar")||$("toolsRow"))return;
+  if($("cockpitBar")||$("toolsRow")||document.body.dataset.cockpitInjected==="1")return;
+  document.body.dataset.cockpitInjected="1";
   const foot=$("foot");
   if(!foot)return;
-  const host=$("composerTools")||(()=>{const d=document.createElement("div");d.id="composerTools";d.className="composer-tools";const comp=foot.querySelector(".composer");if(comp)foot.insertBefore(d,comp);else foot.appendChild(d);return d})();
+  if(!$("gitStrip")){
+    const meta=$("footerMeta")||(()=>{const d=document.createElement("div");d.id="footerMeta";d.className="footer-meta";const comp=foot.querySelector(".composer");if(comp)foot.insertBefore(d,comp);else foot.appendChild(d);return d})();
+    if(!$("gitStrip")){const g=document.createElement("div");g.className="git-strip";g.id="gitStrip";g.title="Git branch status";g.textContent="git …";meta.appendChild(g)}
+    if(!$("pinBar")){const p=document.createElement("div");p.className="pin-bar";p.id="pinBar";meta.appendChild(p)}
+    if(!$("budgetBar")){const b=document.createElement("span");b.id="budgetBar";b.className="budget-bar";b.textContent="cost";meta.appendChild(b)}
+  }
   const owner=!!(window.grokPresets&&window.grokPresets.ownerUnlocked&&window.grokPresets.ownerUnlocked());
-  host.innerHTML=
-    '<div class="git-strip" id="gitStrip" title="Git branch status — tap to refresh">git …</div>'+
-    '<div class="pin-bar" id="pinBar" title="Pinned sessions"></div>'+
-    '<div class="tools-row" id="toolsRow">'+
-      '<span class="tools-group-lab">Chat</span>'+
-      '<button type="button" class="btn-attach" id="btnAttach" title="Attach photos or files to your next message">Attach files</button>'+
-      '<button type="button" id="btnAt" title="Pick a workspace file path to include">Add path</button>'+
-      '<button type="button" id="btnVoice" title="Dictate with the microphone">Voice</button>'+
-      '<span class="tools-group-lab">Work</span>'+
-      '<button type="button" id="btnTodo" title="Checklist for this session">Todos</button>'+
-      '<button type="button" id="btnTerm" title="Show recent shell/tool output">Terminal</button>'+
-      '<button type="button" id="btnGitDiff" title="Show uncommitted git changes">Git diff</button>'+
-      '<button type="button" id="btnBg" title="Background tasks and save-points">Tasks</button>'+
-      '<span class="tools-group-lab">Share</span>'+
-      '<button type="button" id="btnCp" title="Snapshot this chat so you can restore later">Save point</button>'+
-      '<button type="button" id="btnExport" title="Download chat as HTML">Export</button>'+
-      '<button type="button" id="btnAgents" title="Paste project AGENTS.md / README into context">Project MD</button>'+
-      '<button type="button" id="btnBudget" title="Soft limits for turns and tokens">Limits</button>'+
-      (owner?'<button type="button" id="btnDelve" title="Open local Delve hub (owner)">Delve</button>':'')+
-      '<span id="budgetBar" class="budget-bar" title="Turn / context estimate">cost</span>'+
-    '</div>'+
-    '<div id="atAttachBar" class="attach-bar"></div>';
+  const toolsHost=$("moreToolsHost")||$("moreMenu");
+  if(toolsHost&&!$("toolsRow")){
+    const wrap=document.createElement("div");
+    wrap.id="toolsRow";
+    wrap.innerHTML=
+      '<button type="button" id="btnAt" role="menuitem">Add path <span class="mm-k">@</span></button>'+
+      '<button type="button" id="btnTodo" role="menuitem">Todos <span class="mm-k">list</span></button>'+
+      '<button type="button" id="btnTerm" role="menuitem">Terminal <span class="mm-k">shell</span></button>'+
+      '<button type="button" id="btnGitDiff" role="menuitem">Git diff <span class="mm-k">diff</span></button>'+
+      '<button type="button" id="btnBg" role="menuitem">Tasks <span class="mm-k">bg</span></button>'+
+      '<button type="button" id="btnCp" role="menuitem">Save point <span class="mm-k">snap</span></button>'+
+      '<button type="button" id="btnExport" role="menuitem">Export <span class="mm-k">html</span></button>'+
+      '<button type="button" id="btnAgents" role="menuitem">Project MD <span class="mm-k">ctx</span></button>'+
+      '<button type="button" id="btnBudget" role="menuitem">Limits <span class="mm-k">cost</span></button>'+
+      (owner?'<button type="button" id="btnDelve" role="menuitem">Delve <span class="mm-k">owner</span></button>':'');
+    if(toolsHost.id==="moreToolsHost")toolsHost.appendChild(wrap);
+    else{
+      const sec=document.createElement("div");sec.className="mm-sec";sec.textContent="Tools";
+      toolsHost.insertBefore(wrap,toolsHost.firstChild);
+      toolsHost.insertBefore(sec,wrap);
+    }
+  }
   const floatHost=document.createElement("div");floatHost.id="cockpitFloats";
   floatHost.innerHTML=
     '<div id="todoPane" class="side-pane cockpit-float"><div class="term-head">Todos <button type="button" id="todoClose">x</button></div><div id="todoList"></div><div class="rowbtns" style="padding:8px"><button type="button" id="todoAdd">+ Todo</button><button type="button" id="todoClearDone">Clear done</button></div></div>'+
@@ -670,40 +676,50 @@ function injectChrome(){
   atSheet.innerHTML='<div class="card"><h3>@ workspace file <button type="button" class="sheet-x" id="atClose">x</button></h3><p class="hint">Browse PC workspace and attach to the next prompt.</p><div id="atTree" class="ide-tree" style="max-height:50vh"></div></div>';
   document.body.appendChild(atSheet);
   const reflow=()=>{if(window.updateJump)window.updateJump();if(window.measureBottomStack)window.measureBottomStack()};
+  const closeMore=()=>{if(typeof window.closeMoreMenu==="function")window.closeMoreMenu()};
   const topSearch=$("chatTopSearch")||$("chatSearch");
   if(topSearch)topSearch.oninput=e=>searchChat(e.target.value);
-  if($("btnAttach")&&window.wireAttachButton)try{window.wireAttachButton()}catch(e){}
-  else if($("btnAttach")&&$("filePick"))$("btnAttach").onclick=()=>$("filePick").click();
-  $("btnAt").onclick=()=>openAtPicker();
-  $("btnVoice").onclick=()=>startVoice();
-  $("btnCp").onclick=()=>checkpointNow();
-  $("btnExport").onclick=()=>exportChat("html");
-  $("btnTerm").onclick=()=>{
+  const pick=$("filePick");
+  if($("btnPlus")&&pick)$("btnPlus").onclick=e=>{e.stopPropagation();pick.click()};
+  if($("btnAttach")&&pick)$("btnAttach").onclick=()=>pick.click();
+  if($("btnAt"))$("btnAt").onclick=()=>{closeMore();openAtPicker()};
+  if($("btnComposerVoice"))$("btnComposerVoice").onclick=()=>{
+    if(window.grokVoice){
+      const m=window.grokVoice.mode;
+      m==="go"||m==="dictate"?window.grokVoice.setMode("off"):window.grokVoice.setMode("go");
+    }else startVoice();
+  };
+  if($("btnComposerXr"))$("btnComposerXr").onclick=()=>{window.grokVoice?window.grokVoice.enterBestXr():chip("voice loading…")};
+  if($("btnCp"))$("btnCp").onclick=()=>{closeMore();checkpointNow()};
+  if($("btnExport"))$("btnExport").onclick=()=>{closeMore();exportChat("html")};
+  if($("btnTerm"))$("btnTerm").onclick=()=>{
+    closeMore();
     const p=$("termPane");if(!p)return;
     p.classList.toggle("on");
     $("btnTerm").classList.remove("btn-term-hot");
     if(p.classList.contains("on")){termDirty=true;paintTerm()}
     reflow();
   };
-  $("btnBg").onclick=()=>{$("bgPane").classList.toggle("on");paintBg();paintCheckpoints();reflow()};
-  $("btnTodo").onclick=()=>{$("todoPane").classList.toggle("on");paintTodos();reflow()};
-  $("todoClose").onclick=()=>{$("todoPane").classList.remove("on");reflow()};
-  $("todoAdd").onclick=()=>{const t=prompt("Todo");if(t)upsertTodo({text:t,status:"pending"})};
-  $("todoClearDone").onclick=()=>{S.todos=S.todos.filter(t=>t.status!=="done");paintTodos()};
-  $("btnGitDiff").onclick=()=>showGitDiff();
-  $("btnAgents").onclick=()=>injectProjectContext();
-  $("gitStrip").onclick=()=>refreshGit();
-  $("btnBudget").onclick=()=>{
+  if($("btnBg"))$("btnBg").onclick=()=>{closeMore();$("bgPane").classList.toggle("on");paintBg();paintCheckpoints();reflow()};
+  if($("btnTodo"))$("btnTodo").onclick=()=>{closeMore();$("todoPane").classList.toggle("on");paintTodos();reflow()};
+  if($("todoClose"))$("todoClose").onclick=()=>{$("todoPane").classList.remove("on");reflow()};
+  if($("todoAdd"))$("todoAdd").onclick=()=>{const t=prompt("Todo");if(t)upsertTodo({text:t,status:"pending"})};
+  if($("todoClearDone"))$("todoClearDone").onclick=()=>{S.todos=S.todos.filter(t=>t.status!=="done");paintTodos()};
+  if($("btnGitDiff"))$("btnGitDiff").onclick=()=>{closeMore();showGitDiff()};
+  if($("btnAgents"))$("btnAgents").onclick=()=>{closeMore();injectProjectContext()};
+  if($("gitStrip"))$("gitStrip").onclick=()=>refreshGit();
+  if($("btnBudget"))$("btnBudget").onclick=()=>{
+    closeMore();
     const t=prompt("Max turns (0=off)",String(S.budget.maxTurns||0));
     if(t===null)return;
     const k=prompt("Max est. tokens (0=off)",String(S.budget.maxEstTokens||0));
     if(k===null)return;
     S.budget.maxTurns=+t||0;S.budget.maxEstTokens=+k||0;saveBudget();paintBudget();paintCtxMeter();
   };
-  if($("btnDelve"))$("btnDelve").onclick=()=>openDelve();
-  $("termClose").onclick=()=>{$("termPane").classList.remove("on");reflow()};
-  $("bgClose").onclick=()=>{$("bgPane").classList.remove("on");reflow()};
-  $("atClose").onclick=()=>$("atSheet").classList.remove("on");
+  if($("btnDelve"))$("btnDelve").onclick=()=>{closeMore();openDelve()};
+  if($("termClose"))$("termClose").onclick=()=>{$("termPane").classList.remove("on");reflow()};
+  if($("bgClose"))$("bgClose").onclick=()=>{$("bgPane").classList.remove("on");reflow()};
+  if($("atClose"))$("atClose").onclick=()=>$("atSheet").classList.remove("on");
   atSheet.addEventListener("click",e=>{if(e.target===atSheet)$("atSheet").classList.remove("on")});
   const ctx=$("ctxMeter");
   if(ctx&&!ctx._wired){
@@ -732,7 +748,9 @@ window.grokCockpit={
  isAlwaysPerm(key){return !!S.alwaysPerm[key]},
  setAlwaysPerm(key,v){if(v)S.alwaysPerm[key]=1;else delete S.alwaysPerm[key];saveAlways()},
  openAtPicker,searchChat,exportChat,startVoice,stopTurn,refreshGit,showGitDiff,paintCtxMeter,refreshSessionContext,
- syncTodosFromPlan,upsertTodo,openLocInIde,injectProjectContext
+ syncTodosFromPlan,upsertTodo,openLocInIde,injectProjectContext,
+ voiceGo:()=>window.grokVoice&&window.grokVoice.setMode("go"),
+ voiceXr:()=>window.grokVoice&&window.grokVoice.setMode("xr")
 };
 function boot(){
  loadState();

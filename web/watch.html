@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"/>
+<meta name="theme-color" content="#0a0a0a"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<title>Grok Remote · Watch</title>
+<link rel="manifest" href="/static/watch.webmanifest"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:#0a0a0a;color:#e8e8e8;font:600 14px/1.25 system-ui,Segoe UI,sans-serif;overflow:hidden}
+body{display:flex;align-items:center;justify-content:center;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+#app{width:min(100vw,100vh);height:min(100vw,100vh);max-width:360px;max-height:360px;border-radius:50%;border:2px solid #333;background:radial-gradient(circle at 40% 30%,#1a1a1a,#050505 70%);display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:14% 12% 12%;text-align:center}
+#phase{font:700 11px/1 ui-monospace,Consolas,monospace;letter-spacing:.08em;text-transform:uppercase;color:#8a8a8a}
+#phase.on{color:#7dffa0}#phase.busy{color:#ffb86b}#phase.err{color:#ff6b6b}
+#line{flex:1;display:flex;align-items:center;justify-content:center;padding:6px;font-size:13px;line-height:1.3;overflow:hidden;word-break:break-word;max-width:100%}
+#mic{width:42%;aspect-ratio:1;border-radius:50%;border:2px solid #555;background:#141414;color:#fff;font:800 13px/1 system-ui;cursor:pointer}
+#mic.on{border-color:#ff5c5c;background:#2a1010;box-shadow:0 0 0 6px rgba(255,92,92,.18)}
+#row{display:flex;gap:8px;width:100%;justify-content:center}
+#row button,#row a{flex:1;max-width:46%;border:1px solid #444;background:#151515;color:#ccc;border-radius:999px;padding:8px 6px;font:700 11px/1 system-ui;text-decoration:none;text-align:center}
+#row button.pri{border-color:#888;color:#fff}
+@media (min-width:400px){#app{border-radius:28px}}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="phase">standby</div>
+  <div id="line">Galaxy Watch · tap Mic · speak a task</div>
+  <button type="button" id="mic" aria-label="Voice">Mic</button>
+  <div id="row">
+    <button type="button" id="sendLast" class="pri">Send</button>
+    <a href="/" id="full">Full</a>
+  </div>
+</div>
+<script>
+(function(){
+const phase=document.getElementById("phase"),line=document.getElementById("line"),mic=document.getElementById("mic");
+let rec=null,listening=false,finalBuf="",ws=null,sid=null,secret="",nid=1,pendingText="";
+function setPhase(t,cls){phase.textContent=t;phase.className=cls||""}
+function setLine(t){line.textContent=t||""}
+function loadCfg(){
+ try{
+  const c=JSON.parse(localStorage.getItem("grok_remote_watch")||"{}");
+  if(c.sid)sid=c.sid;
+ }catch(e){}
+ try{const u=JSON.parse(localStorage.getItem("grok_remote_last")||"{}");if(u.sid)sid=u.sid}catch(e){}
+}
+function saveSid(){try{localStorage.setItem("grok_remote_watch",JSON.stringify({sid:sid}))}catch(e){}}
+async function bootLink(){
+ loadCfg();
+ try{
+  const r=await fetch("/config.json",{cache:"no-store"});
+  const j=await r.json();
+  const url=(j.ws_url||(location.protocol==="https:"?"wss://":"ws://")+location.host+"/ws");
+  connect(url);
+ }catch(e){setPhase("offline","err");setLine("UI server offline")}
+}
+function connect(url){
+ try{if(ws)ws.close()}catch(e){}
+ ws=new WebSocket(url);
+ ws.onopen=()=>{setPhase("uplink","on");setLine(sid?"Session ready · Mic":"Connected · open a session on phone first")};
+ ws.onclose=()=>{setPhase("offline","err");setTimeout(()=>bootLink(),2500)};
+ ws.onerror=()=>setPhase("error","err");
+ ws.onmessage=ev=>{
+  let d;try{d=JSON.parse(ev.data)}catch(e){return}
+  if(d.method==="session/update"){
+   const u=d.params&&d.params.update;if(!u)return;
+   const t=u.sessionUpdate;
+   if(t==="agent_message_chunk"){
+    const tx=(u.content&&u.content.text)||"";
+    if(tx)setLine(String(line.textContent||"").length>80?tx.slice(0,120):((line.dataset.raw||"")+tx).slice(-160));
+    line.dataset.raw=(line.dataset.raw||"")+tx;
+   }
+   if(t==="turn_completed"||t==="task_completed"){setPhase("idle","on");setLine(summarize(line.dataset.raw||line.textContent||"Done."))}
+  }
+ };
+}
+function summarize(raw){
+ let t=String(raw||"").replace(/```[\s\S]*?```/g," ").replace(/[#>*_`]/g," ").replace(/\s+/g," ").trim();
+ return t.length>140?t.slice(0,130)+"…":(t||"Done.");
+}
+function SR(){return window.SpeechRecognition||window.webkitSpeechRecognition}
+function stopMic(){
+ if(rec){try{rec.onend=null;rec.stop()}catch(e){}}
+ rec=null;listening=false;mic.classList.remove("on");
+}
+function startMic(){
+ const C=SR();
+ if(!C){setLine("Speech not supported");return}
+ stopMic();
+ const r=new C();r.lang="en-US";r.continuous=false;r.interimResults=true;finalBuf="";
+ r.onresult=e=>{
+  let f="",inter="";
+  for(let i=e.resultIndex;i<e.results.length;i++){const t=e.results[i][0].transcript;e.results[i].isFinal?f+=t:inter+=t}
+  if(f)finalBuf=(finalBuf+" "+f).trim();
+  setLine((finalBuf||inter||"…").trim());
+  pendingText=(finalBuf||inter||"").trim();
+ };
+ r.onerror=()=>{stopMic();setPhase("mic err","err")};
+ r.onend=()=>{listening=false;mic.classList.remove("on");if(finalBuf){pendingText=finalBuf;sendPrompt(finalBuf)}};
+ rec=r;r.start();listening=true;mic.classList.add("on");setPhase("listening","busy");
+}
+async function sendPrompt(text){
+ const t=String(text||pendingText||"").trim();
+ if(!t){setLine("Nothing to send");return}
+ if(!ws||ws.readyState!==1){setLine("Not connected");return}
+ if(!sid){
+  try{
+   const r=await fetch("/api/session/archived",{cache:"no-store"});
+  }catch(e){}
+  setLine("Open a chat on phone first, then return");
+  setPhase("need session","err");
+  return;
+ }
+ setPhase("sending","busy");setLine("You: "+t.slice(0,80));
+ line.dataset.raw="";
+ const id=nid++;
+ ws.send(JSON.stringify({jsonrpc:"2.0",id,method:"session/prompt",params:{sessionId:sid,prompt:[{type:"text",text:t}]}}));
+ pendingText="";
+ setPhase("working","busy");
+}
+mic.onclick=()=>listening?stopMic():startMic();
+document.getElementById("sendLast").onclick=()=>sendPrompt(pendingText||line.textContent);
+window.addEventListener("storage",()=>loadCfg());
+setInterval(()=>{
+ try{
+  const u=JSON.parse(localStorage.getItem("grok_remote_last")||"{}");
+  if(u.sid&&u.sid!==sid){sid=u.sid;saveSid();setLine("Session synced")}
+ }catch(e){}
+},2000);
+bootLink();
+if("serviceWorker" in navigator){
+ try{navigator.serviceWorker.register("/static/watch-sw.js").catch(()=>{})}catch(e){}
+}
+})();
+</script>
+</body>
+</html>
