@@ -2646,13 +2646,14 @@ function appendUser(text,opts){
     const display=stripPromptChrome(userWireBuf);
     if(!display.trim())return;
     const key=display.trim();
-    if(!opts.force&&seenUserTexts.has(key)&&Date.now()<localEchoUntil)return;
-    if(!opts.force&&seenUserTexts.has(key)&&curUser&&(curUser.dataset.raw||"").trim()===key)return;
+    const isReplay=!!(opts.replay||replaying||historyPainting);
+    if(!opts.force&&!isReplay&&Date.now()<localEchoUntil&&seenUserTexts.has(key))return;
+    if(!opts.force&&!isReplay&&curUser&&(curUser.dataset.raw||"").trim()===key)return;
     if(!curUser){curUser=addRow("You");curUser.classList.add("md")}
     curUser.dataset.raw=display;
     curUser.innerHTML="";
     curUser.appendChild(renderMdBlock(display));
-    noteSeenUser(key);
+    if(!isReplay)noteSeenUser(key);
     scroll();
     return;
   }
@@ -2673,6 +2674,7 @@ function appendUser(text,opts){
 }
 function appendAgent(text){
   curThought=null;curThoughtRow=null;
+  curUser=null;
   if(!curAgent){curAgent=addRow("Grok");curAgent.dataset.raw=""}
   curAgent.dataset.raw=(curAgent.dataset.raw||"")+(text||"");
   renderAgentBubble(curAgent,curAgent.dataset.raw);scroll();
@@ -2989,10 +2991,27 @@ function handleUpdate(u,sessionId,meta){
   if(!replaying)touchLive();
   if(meta&&window.grokCockpit&&window.grokCockpit.noteContextFromMeta)try{window.grokCockpit.noteContextFromMeta(meta)}catch(e){}
   const t=u.sessionUpdate;
-  if(t==="user_message_chunk"){curAgent=null;curThought=null;appendUser((u.content&&u.content.text)||"",{fromWire:true})}
-  else if(t==="agent_message_chunk"){userWireBuf="";appendAgent((u.content&&u.content.text)||"");if(!replaying){setBusy(true);setPhase("responding")}}
-  else if(t==="agent_thought_chunk"){appendThought((u.content&&u.content.text)||"");if(!replaying){setBusy(true);setPhase("thinking")}}
-  else if(t==="tool_call"||t==="tool_call_update"){upsertTool(u);if(!replaying){setBusy(true);setPhase("tools",u.title||u.kind||u.toolName||"")}}
+  if(t==="user_message_chunk"){
+    curAgent=null;curThought=null;
+    if(!userWireBuf)curUser=null;
+    appendUser((u.content&&u.content.text)||"",{fromWire:true,replay:!!(replaying||historyPainting)});
+  }
+  else if(t==="agent_message_chunk"){
+    userWireBuf="";
+    curUser=null;
+    appendAgent((u.content&&u.content.text)||"");
+    if(!replaying){setBusy(true);setPhase("responding")}
+  }
+  else if(t==="agent_thought_chunk"){
+    if(replaying||historyPainting){userWireBuf="";curUser=null}
+    appendThought((u.content&&u.content.text)||"");
+    if(!replaying){setBusy(true);setPhase("thinking")}
+  }
+  else if(t==="tool_call"||t==="tool_call_update"){
+    if(replaying||historyPainting){userWireBuf="";curUser=null}
+    upsertTool(u);
+    if(!replaying){setBusy(true);setPhase("tools",u.title||u.kind||u.toolName||"")}
+  }
   else if(t==="plan"){
     const level=getPermLevel(sid);
     if(level==="always"&&(replaying||historyPainting)){
@@ -3160,7 +3179,7 @@ async function paintDiskEvents(events,sessionId,opts){
       /* stale paint discarded by newer clearSessionFeed */
     }
     if(asReplay||prepend){
-      replaying=prevReplay;closeOpen();
+      replaying=prevReplay;userWireBuf="";closeOpen();
       if(!aborted&&expectGen===sessionGen&&String(sid||"")===expectSid){
         const last=feed&&feed.querySelector(".row.msg:last-of-type");
         if(last)markLatestMsg(last);
