@@ -331,16 +331,49 @@ body.page-chat #chatTop{display:flex}
 #chatTopSearch:focus{outline:none;border-color:var(--acc);box-shadow:0 0 0 2px var(--acc-dim)}
 .hdr-right{display:flex;align-items:center;gap:6px;margin-left:auto;flex:none}
 .more-wrap{position:relative;flex:none}
-.more-menu{display:none;position:fixed;z-index:20050;width:min(288px,92vw);max-height:min(72dvh,580px);overflow:auto;padding:6px;border-radius:14px;background:color-mix(in srgb,var(--panel) 98%,transparent);border:1px solid color-mix(in srgb,var(--acc) 28%,var(--line));box-shadow:var(--elev-3,0 18px 48px rgba(0,0,0,.55));backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);font-family:var(--font);font-size:inherit;line-height:inherit}
-.more-menu.on{display:block}
-.more-menu .mm-sec{font-family:var(--font);font-weight:700;font-size:.68em;color:var(--mut);letter-spacing:.07em;text-transform:uppercase;padding:10px 10px 3px;border-top:1px solid color-mix(in srgb,var(--line) 70%,transparent);margin-top:4px}
-.more-menu .mm-sec:first-child{border-top:none;margin-top:0;padding-top:4px}
-.more-menu button{display:flex;width:100%;align-items:center;justify-content:space-between;gap:8px;text-align:left;border:1px solid transparent;background:transparent;color:var(--tx);border-radius:8px;padding:8px 10px;font-family:inherit;font-size:.95em;font-weight:650;line-height:1.3;cursor:pointer}
-.more-menu button:hover,.more-menu button.on{background:var(--acc-dim);border-color:color-mix(in srgb,var(--acc) 30%,var(--line));color:var(--acc)}
-.more-menu button .mm-k{color:var(--mut);font-family:inherit;font-size:.8em;font-weight:600;opacity:.9;flex:none}
-.more-menu .mm-grid{display:grid;grid-template-columns:1fr 1fr;gap:2px;padding:0 2px 2px}
-.more-menu .mm-grid button{padding:7px 8px;font-size:.88em}
-.more-menu .mm-grid button .mm-k{font-size:.75em}
+#btnMore{position:relative;min-width:40px;height:36px;padding:0 10px;border-radius:12px;font-weight:800;letter-spacing:.04em;display:inline-flex;align-items:center;justify-content:center;gap:6px;overflow:hidden}
+#btnMore .mm-trig{display:inline-grid;grid-template-columns:repeat(3,4px);gap:3px;width:18px}
+#btnMore .mm-trig i{width:4px;height:4px;border-radius:1px;background:currentColor;opacity:.85;box-shadow:0 0 6px color-mix(in srgb,var(--acc) 40%,transparent)}
+#btnMore.on,#btnMore[aria-expanded="true"]{border-color:var(--acc);color:var(--acc);background:var(--acc-dim);box-shadow:0 0 0 1px color-mix(in srgb,var(--acc) 35%,transparent),0 0 18px -6px var(--acc-glow)}
+#btnMore.on .mm-trig i,#btnMore[aria-expanded="true"] .mm-trig i{background:var(--acc);animation:mm-dot 1.2s ease-in-out infinite}
+#btnMore.on .mm-trig i:nth-child(2),#btnMore[aria-expanded="true"] .mm-trig i:nth-child(2){animation-delay:.12s}
+#btnMore.on .mm-trig i:nth-child(3),#btnMore[aria-expanded="true"] .mm-trig i:nth-child(3){animation-delay:.24s}
+#btnMore.on .mm-trig i:nth-child(4),#btnMore[aria-expanded="true"] .mm-trig i:nth-child(4){animation-delay:.08s}
+#btnMore.on .mm-trig i:nth-child(5),#btnMore[aria-expanded="true"] .mm-trig i:nth-child(5){animation-delay:.2s}
+#btnMore.on .mm-trig i:nth-child(6),#btnMore[aria-expanded="true"] .mm-trig i:nth-child(6){animation-delay:.32s}
+#btnMore.on .mm-trig i:nth-child(7),#btnMore[aria-expanded="true"] .mm-trig i:nth-child(7){animation-delay:.16s}
+#btnMore.on .mm-trig i:nth-child(8),#btnMore[aria-expanded="true"] .mm-trig i:nth-child(8){animation-delay:.28s}
+#btnMore.on .mm-trig i:nth-child(9),#btnMore[aria-expanded="true"] .mm-trig i:nth-child(9){animation-delay:.4s}
+@keyframes mm-dot{0%,100%{opacity:.35;transform:scale(.85)}50%{opacity:1;transform:scale(1.15)}}
+.more-menu{display:none;position:fixed;z-index:20050;width:min(320px,94vw);max-height:min(78dvh,640px);overflow:auto;padding:0;border-radius:16px;background:linear-gradient(165deg,color-mix(in srgb,var(--panel) 92%,var(--acc) 6%),color-mix(in srgb,var(--panel) 98%,transparent) 40%,var(--panel));border:1px solid color-mix(in srgb,var(--acc) 32%,var(--line));box-shadow:var(--elev-3),0 0 0 1px color-mix(in srgb,#fff 4%,transparent),0 0 48px -12px var(--acc-glow),inset 0 1px 0 color-mix(in srgb,#fff 8%,transparent);backdrop-filter:blur(20px) saturate(1.25);-webkit-backdrop-filter:blur(20px) saturate(1.25);font-family:var(--font);font-size:inherit;line-height:inherit;transform-origin:top right}
+.more-menu.on{display:flex;flex-direction:column;animation:mm-pop .22s var(--ease-out,cubic-bezier(.16,1,.3,1)) both}
+@keyframes mm-pop{from{opacity:0;transform:translateY(-8px) scale(.96)}to{opacity:1;transform:translateY(0) scale(1)}}
+.more-menu .mm-head{padding:12px 14px 10px;border-bottom:1px solid color-mix(in srgb,var(--line) 80%,transparent);background:radial-gradient(120% 80% at 100% 0%,color-mix(in srgb,var(--acc) 14%,transparent),transparent 55%)}
+.more-menu .mm-head-top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px}
+.more-menu .mm-brand{font:800 11px/1.2 var(--font);letter-spacing:.12em;text-transform:uppercase;color:var(--acc);text-shadow:0 0 16px var(--acc-glow)}
+.more-menu .mm-head-x{border:1px solid var(--line);background:var(--panel2);color:var(--mut);border-radius:8px;width:28px;height:28px;font-size:14px;cursor:pointer;flex:none;line-height:1}
+.more-menu .mm-head-x:hover{border-color:var(--acc);color:var(--acc)}
+.more-menu .mm-status{display:flex;flex-wrap:wrap;gap:5px}
+.more-menu .mm-chip{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:999px;font:700 10px/1.2 var(--font-mono);letter-spacing:.03em;border:1px solid color-mix(in srgb,var(--line) 90%,var(--acc));background:color-mix(in srgb,var(--panel2) 88%,transparent);color:var(--soft)}
+.more-menu .mm-chip.live{border-color:color-mix(in srgb,var(--ok) 50%,var(--line));color:var(--ok);box-shadow:0 0 12px -6px color-mix(in srgb,var(--ok) 50%,transparent)}
+.more-menu .mm-chip.busy{border-color:color-mix(in srgb,var(--acc) 55%,var(--line));color:var(--acc)}
+.more-menu .mm-chip.hot{border-color:color-mix(in srgb,var(--gold,#c9a227) 50%,var(--line));color:var(--gold,#c9a227)}
+.more-menu .mm-body{padding:6px;overflow:auto;flex:1;min-height:0}
+.more-menu .mm-sec{display:flex;align-items:center;gap:6px;font-family:var(--font);font-weight:700;font-size:.65em;color:var(--mut);letter-spacing:.1em;text-transform:uppercase;padding:10px 10px 4px;border-top:1px solid color-mix(in srgb,var(--line) 55%,transparent);margin-top:2px}
+.more-menu .mm-body>.mm-sec:first-child{border-top:none;margin-top:0;padding-top:4px}
+.more-menu .mm-sec-dot{width:6px;height:6px;border-radius:50%;background:var(--acc);box-shadow:0 0 8px var(--acc-glow);flex:none}
+.more-menu button{display:flex;width:100%;align-items:center;gap:10px;text-align:left;border:1px solid transparent;background:transparent;color:var(--tx);border-radius:10px;padding:9px 10px;font-family:inherit;font-size:.92em;font-weight:650;line-height:1.3;cursor:pointer;transition:background .14s,border-color .14s,transform .14s,box-shadow .14s}
+.more-menu button:hover{background:color-mix(in srgb,var(--acc) 12%,var(--panel2));border-color:color-mix(in srgb,var(--acc) 28%,var(--line));color:var(--acc);transform:translateX(2px);box-shadow:inset 2px 0 0 var(--acc)}
+.more-menu button.on{background:var(--acc-dim);border-color:color-mix(in srgb,var(--acc) 35%,var(--line));color:var(--acc)}
+.more-menu button .mm-ico{flex:none;width:22px;height:22px;display:inline-grid;place-items:center;border-radius:7px;font-size:12px;font-weight:800;background:color-mix(in srgb,var(--panel2) 90%,var(--acc) 8%);border:1px solid color-mix(in srgb,var(--line) 80%,var(--acc));color:var(--acc);line-height:1}
+.more-menu button:hover .mm-ico,.more-menu button.on .mm-ico{border-color:var(--acc);box-shadow:0 0 10px -4px var(--acc-glow)}
+.more-menu button .mm-lab{flex:1;min-width:0}
+.more-menu button .mm-k{color:var(--mut);font-family:inherit;font-size:.78em;font-weight:600;opacity:.9;flex:none;margin-left:auto}
+.more-menu .mm-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:2px 4px 4px}
+.more-menu .mm-grid button{padding:8px;font-size:.84em;gap:6px}
+.more-menu .mm-grid button .mm-ico{width:18px;height:18px;font-size:10px;border-radius:5px}
+.more-menu .mm-grid button .mm-k{font-size:.72em}
+.more-menu .mm-foot{padding:8px 12px 10px;border-top:1px solid color-mix(in srgb,var(--line) 70%,transparent);font:600 10px/1.35 var(--font-mono);color:var(--mut);letter-spacing:.02em}
 .composer-tools{display:none;flex-wrap:wrap;gap:6px;align-items:center;padding:0 0 8px}
 .composer-tools.on{display:flex}
 .composer-tools .git-strip{flex:1 1 100%;min-width:0}
@@ -364,13 +397,14 @@ body.hide-tools .tool{display:none!important}
 body.hide-code .collapsible.code,body.hide-code .bub .collapsible.code{display:none!important}
 body.hide-edit .tool[data-tool-kind="edit"],body.hide-edit .tool[data-tool-kind="write"],body.hide-edit .tool[data-tool-kind="multi_edit"]{display:none!important}
 body.hide-read .tool[data-tool-kind="read"],body.hide-read .tool[data-tool-kind="search"],body.hide-read .tool[data-tool-kind="grep"],body.hide-read .tool[data-tool-kind="glob"]{display:none!important}
-.more-menu .mm-tog{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;text-align:left}
+.more-menu .mm-tog{display:flex;align-items:center;gap:8px;width:100%;text-align:left}
 .more-menu .mm-tog .mm-k{opacity:.85}
 .more-menu .mm-tog.on{color:var(--acc)}
-#moreToolsHost,#toolsRow{display:flex;flex-direction:column;gap:0;width:100%}
-#moreToolsHost button,#toolsRow button{width:100%;text-align:left;border:0;background:transparent;color:inherit;padding:8px 10px;font-family:inherit;font-size:.95em;font-weight:650;line-height:1.3;cursor:pointer;display:flex;justify-content:space-between;align-items:center;border-radius:8px}
-#moreToolsHost button:hover,#toolsRow button:hover{background:var(--acc-dim);color:var(--acc)}
-#moreToolsHost button .mm-k,#toolsRow button .mm-k{font-family:inherit;font-size:.8em;font-weight:600;color:var(--mut)}
+#moreToolsHost,#toolsRow{display:flex;flex-direction:column;gap:2px;width:100%}
+#moreToolsHost button,#toolsRow button{width:100%}
+@media (prefers-reduced-motion:reduce){
+  .more-menu.on,#btnMore.on .mm-trig i,#btnMore[aria-expanded="true"] .mm-trig i{animation:none!important}
+}
 .footer-meta{display:none;flex-wrap:wrap;gap:4px;align-items:center;padding:0 0 4px;min-height:0}
 .footer-meta.has-pins{display:flex}
 .footer-meta .git-strip{display:none}
@@ -927,41 +961,51 @@ body.voice-go #voiceHud,body.voice-xr #voiceHud{bottom:calc(var(--stack-h,120px)
   <div class="sub" id="status">offline</div>
   <div class="hdr-right">
     <div class="more-wrap">
-      <button type="button" class="hdrbtn" id="btnMore" title="Menu" aria-haspopup="menu" aria-expanded="false" aria-controls="moreMenu">☰</button>
+      <button type="button" class="hdrbtn" id="btnMore" title="Command deck" aria-haspopup="menu" aria-expanded="false" aria-controls="moreMenu"><span class="mm-trig" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span></button>
       <div class="more-menu" id="moreMenu" role="menu" hidden>
-        <div class="mm-sec">Chat</div>
-        <button type="button" id="btnSkills" role="menuitem">Skills <span class="mm-k">/</span></button>
-        <button type="button" id="btnNewTask" role="menuitem">New task <span class="mm-k">task</span></button>
-        <button type="button" id="btnSess" role="menuitem">Sessions <span class="mm-k">list</span></button>
-        <button type="button" id="btnMsgModeMenu" role="menuitem">Delivery <span class="mm-k">queue</span></button>
-        <button type="button" class="mm-tog" id="btnPermCycle" role="menuitem" title="Tap to cycle Always → Ask → Plan">Permission <span class="mm-k">always</span></button>
-        <div class="mm-sec">Tools</div>
+        <div class="mm-head">
+          <div class="mm-head-top">
+            <div class="mm-brand">Command deck</div>
+            <button type="button" class="mm-head-x" id="btnMoreClose" aria-label="Close menu">×</button>
+          </div>
+          <div class="mm-status" id="moreMenuStatus" aria-live="polite"></div>
+        </div>
+        <div class="mm-body">
+        <div class="mm-sec"><span class="mm-sec-dot"></span>Chat</div>
+        <button type="button" id="btnSkills" role="menuitem"><span class="mm-ico" aria-hidden="true">✦</span><span class="mm-lab">Skills</span><span class="mm-k">/</span></button>
+        <button type="button" id="btnNewTask" role="menuitem"><span class="mm-ico" aria-hidden="true">＋</span><span class="mm-lab">New task</span><span class="mm-k">task</span></button>
+        <button type="button" id="btnSess" role="menuitem"><span class="mm-ico" aria-hidden="true">≡</span><span class="mm-lab">Sessions</span><span class="mm-k">list</span></button>
+        <button type="button" id="btnMsgModeMenu" role="menuitem"><span class="mm-ico" aria-hidden="true">⇉</span><span class="mm-lab">Delivery</span><span class="mm-k">queue</span></button>
+        <button type="button" class="mm-tog" id="btnPermCycle" role="menuitem" title="Tap to cycle Always → Ask → Plan"><span class="mm-ico" aria-hidden="true">◈</span><span class="mm-lab">Permission</span><span class="mm-k">always</span></button>
+        <div class="mm-sec"><span class="mm-sec-dot"></span>Tools</div>
         <div id="moreToolsHost"></div>
-        <div class="mm-sec">Hide in feed</div>
+        <div class="mm-sec"><span class="mm-sec-dot"></span>Hide in feed</div>
         <div class="mm-grid" id="viewHideGrid">
-          <button type="button" class="mm-tog" id="togHideThink" role="menuitem" data-ux="hideThink">Think <span class="mm-k">show</span></button>
-          <button type="button" class="mm-tog" id="togHideTools" role="menuitem" data-ux="hideTools">Tools <span class="mm-k">show</span></button>
-          <button type="button" class="mm-tog" id="togHideEdit" role="menuitem" data-ux="hideEdit">Edits <span class="mm-k">show</span></button>
-          <button type="button" class="mm-tog" id="togHideRead" role="menuitem" data-ux="hideRead">Reads <span class="mm-k">show</span></button>
-          <button type="button" class="mm-tog" id="togHideCode" role="menuitem" data-ux="hideCode">Code <span class="mm-k">show</span></button>
+          <button type="button" class="mm-tog" id="togHideThink" role="menuitem" data-ux="hideThink"><span class="mm-ico" aria-hidden="true">·</span><span class="mm-lab">Think</span><span class="mm-k">show</span></button>
+          <button type="button" class="mm-tog" id="togHideTools" role="menuitem" data-ux="hideTools"><span class="mm-ico" aria-hidden="true">·</span><span class="mm-lab">Tools</span><span class="mm-k">show</span></button>
+          <button type="button" class="mm-tog" id="togHideEdit" role="menuitem" data-ux="hideEdit"><span class="mm-ico" aria-hidden="true">·</span><span class="mm-lab">Edits</span><span class="mm-k">show</span></button>
+          <button type="button" class="mm-tog" id="togHideRead" role="menuitem" data-ux="hideRead"><span class="mm-ico" aria-hidden="true">·</span><span class="mm-lab">Reads</span><span class="mm-k">show</span></button>
+          <button type="button" class="mm-tog" id="togHideCode" role="menuitem" data-ux="hideCode"><span class="mm-ico" aria-hidden="true">·</span><span class="mm-lab">Code</span><span class="mm-k">show</span></button>
         </div>
-        <div class="mm-sec">Collapse</div>
+        <div class="mm-sec"><span class="mm-sec-dot"></span>Collapse</div>
         <div class="mm-grid" id="viewCollapseGrid">
-          <button type="button" class="mm-tog" id="togCollapseThink" role="menuitem" data-ux="collapseThink">Think <span class="mm-k">off</span></button>
-          <button type="button" class="mm-tog" id="togCollapseTools" role="menuitem" data-ux="collapseTools">Tools <span class="mm-k">off</span></button>
-          <button type="button" class="mm-tog" id="togCollapseCode" role="menuitem" data-ux="collapseCode">Code <span class="mm-k">off</span></button>
+          <button type="button" class="mm-tog" id="togCollapseThink" role="menuitem" data-ux="collapseThink"><span class="mm-ico" aria-hidden="true">▾</span><span class="mm-lab">Think</span><span class="mm-k">off</span></button>
+          <button type="button" class="mm-tog" id="togCollapseTools" role="menuitem" data-ux="collapseTools"><span class="mm-ico" aria-hidden="true">▾</span><span class="mm-lab">Tools</span><span class="mm-k">off</span></button>
+          <button type="button" class="mm-tog" id="togCollapseCode" role="menuitem" data-ux="collapseCode"><span class="mm-ico" aria-hidden="true">▾</span><span class="mm-lab">Code</span><span class="mm-k">off</span></button>
         </div>
-        <div class="mm-sec">Apps</div>
-        <button type="button" id="btnIde" role="menuitem">IDE <span class="mm-k">files</span></button>
-        <button type="button" id="btnPersona" role="menuitem">Persona <span class="mm-k">style</span></button>
-        <button type="button" id="btnWatch" role="menuitem">Watch <span class="mm-k">galaxy</span></button>
-        <button type="button" id="btnDelve" role="menuitem">Amni-Delve <span class="mm-k">hub</span></button>
-        <div class="mm-sec">Appearance</div>
-        <button type="button" id="btnTheme" role="menuitem">Theme &amp; fonts <span class="mm-k">skin</span></button>
-        <button type="button" id="btnPrivacy" role="menuitem">Spoiler <span class="mm-k">off</span></button>
-        <div class="mm-sec">Help</div>
-        <button type="button" id="btnTour" role="menuitem">Feature tour <span class="mm-k">?</span></button>
-        <button type="button" id="btnPin" role="menuitem">Pin shortcuts <span class="mm-k">desk</span></button>
+        <div class="mm-sec"><span class="mm-sec-dot"></span>Apps</div>
+        <button type="button" id="btnIde" role="menuitem"><span class="mm-ico" aria-hidden="true">&lt;/&gt;</span><span class="mm-lab">IDE</span><span class="mm-k">files</span></button>
+        <button type="button" id="btnPersona" role="menuitem"><span class="mm-ico" aria-hidden="true">◎</span><span class="mm-lab">Persona</span><span class="mm-k">style</span></button>
+        <button type="button" id="btnWatch" role="menuitem"><span class="mm-ico" aria-hidden="true">⌚</span><span class="mm-lab">Watch</span><span class="mm-k">galaxy</span></button>
+        <button type="button" id="btnDelve" role="menuitem"><span class="mm-ico" aria-hidden="true">◉</span><span class="mm-lab">Amni-Delve</span><span class="mm-k">hub</span></button>
+        <div class="mm-sec"><span class="mm-sec-dot"></span>Appearance</div>
+        <button type="button" id="btnTheme" role="menuitem"><span class="mm-ico" aria-hidden="true">▣</span><span class="mm-lab">Theme &amp; fonts</span><span class="mm-k">skin</span></button>
+        <button type="button" id="btnPrivacy" role="menuitem"><span class="mm-ico" aria-hidden="true">◌</span><span class="mm-lab">Spoiler</span><span class="mm-k">off</span></button>
+        <div class="mm-sec"><span class="mm-sec-dot"></span>Help</div>
+        <button type="button" id="btnTour" role="menuitem"><span class="mm-ico" aria-hidden="true">?</span><span class="mm-lab">Feature tour</span><span class="mm-k">guide</span></button>
+        <button type="button" id="btnPin" role="menuitem"><span class="mm-ico" aria-hidden="true">★</span><span class="mm-lab">Pin shortcuts</span><span class="mm-k">desk</span></button>
+        </div>
+        <div class="mm-foot" id="moreMenuFoot">tap outside · Esc to close</div>
       </div>
     </div>
     <div class="orbit-menu-wrap">
@@ -1357,7 +1401,7 @@ function applyUx(){
   if(bp){
     bp.classList.toggle("privacy-on",!!ux.privacy);
     bp.classList.toggle("on",!!ux.privacy);
-    bp.innerHTML='Spoiler <span class="mm-k">'+(ux.privacy?"on":"off")+"</span>";
+    bp.innerHTML='<span class="mm-ico" aria-hidden="true">◌</span><span class="mm-lab">Spoiler</span><span class="mm-k">'+(ux.privacy?"on":"off")+"</span>";
     bp.title=ux.privacy?(fine?"Spoiler ON — titles/paths blurred (hold Alt to peek)":"Spoiler ON — private screen (titles/paths blurred)"):"Spoiler mode — blur titles/paths/IDs for screenshots";
   }
   updateJump();
@@ -1448,21 +1492,21 @@ function toggleComposerTools(){
 }
 function paintViewToggles(){
   const map=[
-    ["hideThink","Think","hidden","show"],
-    ["hideTools","Tools","hidden","show"],
-    ["hideEdit","Edits","hidden","show"],
-    ["hideRead","Reads","hidden","show"],
-    ["hideCode","Code","hidden","show"],
-    ["collapseThink","Think","on","off"],
-    ["collapseTools","Tools","on","off"],
-    ["collapseCode","Code","on","off"]
+    ["hideThink","Think","hidden","show","·"],
+    ["hideTools","Tools","hidden","show","·"],
+    ["hideEdit","Edits","hidden","show","·"],
+    ["hideRead","Reads","hidden","show","·"],
+    ["hideCode","Code","hidden","show","·"],
+    ["collapseThink","Think","on","off","▾"],
+    ["collapseTools","Tools","on","off","▾"],
+    ["collapseCode","Code","on","off","▾"]
   ];
-  map.forEach(([k,lab,onLab,offLab])=>{
+  map.forEach(([k,lab,onLab,offLab,ico])=>{
     const el=document.querySelector('.mm-tog[data-ux="'+k+'"]');
     if(!el)return;
     const on=!!ux[k];
     el.classList.toggle("on",on);
-    el.innerHTML=lab+' <span class="mm-k">'+(on?onLab:offLab)+"</span>";
+    el.innerHTML='<span class="mm-ico" aria-hidden="true">'+(ico||"·")+'</span><span class="mm-lab">'+lab+'</span><span class="mm-k">'+(on?onLab:offLab)+"</span>";
   });
 }
 function wireViewToggles(){
@@ -1907,7 +1951,7 @@ function paintPermChip(){
   if(pc){
     pc.classList.toggle("on",level!=="always");
     pc.dataset.level=level;
-    pc.innerHTML='Permission <span class="mm-k">'+level+"</span>";
+    pc.innerHTML='<span class="mm-ico" aria-hidden="true">◈</span><span class="mm-lab">Permission</span><span class="mm-k">'+level+"</span>";
     pc.title="Permission: "+(PERM_LABEL[level]||level)+" — tap to cycle Always → Ask → Plan";
   }
   document.querySelectorAll("[data-perm]").forEach(b=>{
@@ -1936,6 +1980,7 @@ function paintLivebar(){
   paintPermChip();
   const om=document.getElementById("orbitMenuMeta");
   if(om)om.textContent=linkLab+" · "+(PHASE_LABEL[phase]||phase)+" · perm "+getPermLevel(sid);
+  try{const mm=document.getElementById("moreMenu");if(mm&&mm.classList.contains("on")&&typeof paintMoreMenuChrome==="function")paintMoreMenuChrome()}catch(e){}
 }
 function setPhase(phase,detail){
   agentPhase=phase||"idle";
@@ -2008,7 +2053,35 @@ function paintMsgModeChips(){
   host.querySelectorAll(".mode-chip[data-mode]").forEach(b=>b.classList.toggle("on",b.getAttribute("data-mode")===msgMode));
   if(send&&busy&&!replaying)send.title="Send ("+msgMode+" mode while busy)";
   const m=document.getElementById("btnMsgModeMenu");
-  if(m)m.innerHTML='Delivery <span class="mm-k">'+msgMode+"</span>";
+  if(m)m.innerHTML='<span class="mm-ico" aria-hidden="true">⇉</span><span class="mm-lab">Delivery</span><span class="mm-k">'+msgMode+"</span>";
+}
+function paintMoreMenuChrome(){
+  const st=document.getElementById("moreMenuStatus");
+  const foot=document.getElementById("moreMenuFoot");
+  if(st){
+    const link=linkState==="uplink"?"live":(linkState==="sync"?"sync":(linkState||"standby"));
+    const phase=agentPhase||"idle";
+    const perm=getPermLevel(sid);
+    let todoN=0;
+    try{
+      const raw=JSON.parse(localStorage.getItem("grok_remote_todos")||"[]");
+      if(Array.isArray(raw))todoN=raw.filter(t=>t&&t.status!=="done").length;
+    }catch(e){}
+    const bits=[];
+    bits.push('<span class="mm-chip'+(link==="live"?" live":"")+'">'+esc(link)+"</span>");
+    bits.push('<span class="mm-chip'+(phase!=="idle"&&phase!=="error"?" busy":"")+'">'+esc(PHASE_LABEL[phase]||phase)+"</span>");
+    bits.push('<span class="mm-chip">perm '+esc(perm)+"</span>");
+    if(todoN)bits.push('<span class="mm-chip hot">todos '+todoN+"</span>");
+    if(msgMode&&msgMode!=="queue")bits.push('<span class="mm-chip">'+esc(msgMode)+"</span>");
+    if(ux&&ux.privacy)bits.push('<span class="mm-chip hot">spoiler</span>');
+    st.innerHTML=bits.join("");
+  }
+  if(foot){
+    const sess=sid?String(sid).slice(0,10)+"…":"no session";
+    foot.textContent=sess+" · Esc closes · /remote from any Grok chat";
+  }
+  if(window.grokCockpit&&window.grokCockpit.paintTodoBadge)try{window.grokCockpit.paintTodoBadge()}catch(e){}
+  paintPermChip();paintMsgModeChips();paintViewToggles();
 }
 function wrapForMode(text,mode,ctx){
   const t=String(text||"");
@@ -2190,7 +2263,8 @@ function toggleMoreMenu(e){
   if(open){
     m.hidden=false;m.classList.add("on");
     if(b){b.classList.add("on");b.setAttribute("aria-expanded","true")}
-    requestAnimationFrame(()=>placeFixedMenu(m,b));
+    try{paintMoreMenuChrome()}catch(err){}
+    requestAnimationFrame(()=>{placeFixedMenu(m,b);try{paintMoreMenuChrome()}catch(err){}});
   }else closeMoreMenu();
 }
 function looksLikeShell(t){return/^\s*(\$|>|#|PS\s|cd\s|git\s|npm\s|pip\s|python\s|node\s|cargo\s|dir\s|ls\s)/im.test(String(t||""))}
@@ -4027,6 +4101,8 @@ const btnPrivacy=document.getElementById("btnPrivacy");
 if(btnPrivacy)btnPrivacy.onclick=()=>{closeMoreMenu();togglePrivacy()};
 const btnMore=document.getElementById("btnMore");
 if(btnMore)btnMore.onclick=toggleMoreMenu;
+const btnMoreClose=document.getElementById("btnMoreClose");
+if(btnMoreClose)btnMoreClose.onclick=e=>{e.preventDefault();e.stopPropagation();closeMoreMenu()};
 const moreMenu=document.getElementById("moreMenu");
 if(moreMenu)moreMenu.addEventListener("click",e=>e.stopPropagation());
 const btnPlus=document.getElementById("btnPlus");

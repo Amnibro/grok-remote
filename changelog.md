@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-07-12 — Command deck menu + todo badge fix (v22)
+
+- **Why “Todo 4”:** `paintTodoBadge` overwrote the whole Tools row button with `todo N` (open count). Now keeps **Todos** label + badge key (`3/4`, `board`)
+- **Command deck:** glass panel, brand header, live status chips, icon rows, pop-in, 3×3 glyph trigger (replaces plain ☰)
+- Tools inject with icons; status bar refreshes while menu open
+
 ## 2026-07-12 — ☰ menu dedupe (v21)
 
 - Flattened upper-right menu: Chat · Tools · Hide · Collapse · Apps · Appearance · Help

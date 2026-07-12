@@ -551,8 +551,11 @@ function paintTodos(){
 function paintTodoBadge(){
  const b=$("btnTodo");if(!b)return;
  const open=S.todos.filter(t=>t.status!=="done").length;
- b.textContent=open?"todo "+open:"todo";
+ const total=S.todos.length;
+ const k=open?String(open)+(total>open?"/"+total:""):"board";
+ b.innerHTML='<span class="mm-ico" aria-hidden="true">☑</span><span class="mm-lab">Todos</span><span class="mm-k">'+k+"</span>";
  b.classList.toggle("on",open>0);
+ b.title=open?open+" open todo"+(open===1?"":"s")+(total?(" · "+total+" total"):""):"Todo board";
 }
 function openLocInIde(path){
  if(!path)return;
@@ -673,18 +676,18 @@ function injectChrome(){
     const wrap=document.createElement("div");
     wrap.id="toolsRow";
     wrap.innerHTML=
-      '<button type="button" id="btnAt" role="menuitem">Add path <span class="mm-k">@</span></button>'+
-      '<button type="button" id="btnTodo" role="menuitem">Todos <span class="mm-k">list</span></button>'+
-      '<button type="button" id="btnTerm" role="menuitem">Terminal <span class="mm-k">shell</span></button>'+
-      '<button type="button" id="btnGitDiff" role="menuitem">Git diff <span class="mm-k">diff</span></button>'+
-      '<button type="button" id="btnBg" role="menuitem">Tasks <span class="mm-k">bg</span></button>'+
-      '<button type="button" id="btnCp" role="menuitem">Save point <span class="mm-k">snap</span></button>'+
-      '<button type="button" id="btnExport" role="menuitem">Export <span class="mm-k">html</span></button>'+
-      '<button type="button" id="btnAgents" role="menuitem">Project MD <span class="mm-k">ctx</span></button>'+
-      '<button type="button" id="btnBudget" role="menuitem">Limits <span class="mm-k">cost</span></button>';
+      '<button type="button" id="btnAt" role="menuitem"><span class="mm-ico" aria-hidden="true">@</span><span class="mm-lab">Add path</span><span class="mm-k">file</span></button>'+
+      '<button type="button" id="btnTodo" role="menuitem"><span class="mm-ico" aria-hidden="true">☑</span><span class="mm-lab">Todos</span><span class="mm-k">board</span></button>'+
+      '<button type="button" id="btnTerm" role="menuitem"><span class="mm-ico" aria-hidden="true">〉</span><span class="mm-lab">Terminal</span><span class="mm-k">shell</span></button>'+
+      '<button type="button" id="btnGitDiff" role="menuitem"><span class="mm-ico" aria-hidden="true">±</span><span class="mm-lab">Git diff</span><span class="mm-k">diff</span></button>'+
+      '<button type="button" id="btnBg" role="menuitem"><span class="mm-ico" aria-hidden="true">⋯</span><span class="mm-lab">Background</span><span class="mm-k">bg</span></button>'+
+      '<button type="button" id="btnCp" role="menuitem"><span class="mm-ico" aria-hidden="true">◇</span><span class="mm-lab">Save point</span><span class="mm-k">snap</span></button>'+
+      '<button type="button" id="btnExport" role="menuitem"><span class="mm-ico" aria-hidden="true">↓</span><span class="mm-lab">Export chat</span><span class="mm-k">html</span></button>'+
+      '<button type="button" id="btnAgents" role="menuitem"><span class="mm-ico" aria-hidden="true">⌘</span><span class="mm-lab">Project MD</span><span class="mm-k">ctx</span></button>'+
+      '<button type="button" id="btnBudget" role="menuitem"><span class="mm-ico" aria-hidden="true">◎</span><span class="mm-lab">Limits</span><span class="mm-k">cost</span></button>';
     if(toolsHost.id==="moreToolsHost")toolsHost.appendChild(wrap);
     else{
-      const sec=document.createElement("div");sec.className="mm-sec";sec.textContent="Tools";
+      const sec=document.createElement("div");sec.className="mm-sec";sec.innerHTML='<span class="mm-sec-dot"></span>Tools';
       toolsHost.insertBefore(wrap,toolsHost.firstChild);
       toolsHost.insertBefore(sec,wrap);
     }
@@ -790,7 +793,7 @@ window.grokCockpit={
  isAlwaysPerm(key){return !!S.alwaysPerm[key]},
  setAlwaysPerm(key,v){if(v)S.alwaysPerm[key]=1;else delete S.alwaysPerm[key];saveAlways()},
  openAtPicker,searchChat,exportChat,startVoice,stopTurn,refreshGit,showGitDiff,paintCtxMeter,refreshSessionContext,
- syncTodosFromPlan,upsertTodo,openLocInIde,injectProjectContext,openDelve,paintBudget,paintPins,
+ syncTodosFromPlan,upsertTodo,paintTodos,paintTodoBadge,openLocInIde,injectProjectContext,openDelve,paintBudget,paintPins,
  voiceGo:()=>window.grokVoice&&window.grokVoice.setMode("go"),
  voiceXr:()=>window.grokVoice&&window.grokVoice.setMode("xr")
 };
