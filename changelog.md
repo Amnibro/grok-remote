@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-07-09 — Mobile keyboard + perm level + md fixes
+
+- Composer tracks `visualViewport` so chat clears mobile keyboard + footer (`--kb-inset`, `--feed-pad-bottom`)
+- Focus/type/resize keep last message and input above the keyboard
+- Permission level chip + menu (always / ask / plan); always-approve skips plan approve UI
+- Markdown: lettered lists (`a.` / `o.`); path chips need 2+ char extensions (no stray `.o`)
+
 ## 2026-07-09 — Fix mixed history across sessions
 
 - Abort stale history paints when `sessionGen` / `sid` changes mid-load (race was blending chats)
