@@ -1736,8 +1736,10 @@ function syncVisualViewport(){
   else clearBodyViewportPin();
   return kbInset;
 }
-function measureBottomStack(){
-  syncVisualViewport();
+let lastStackH=0,composerLayoutRaf=0,lastBoxH=0;
+function measureBottomStack(opts){
+  opts=opts||{};
+  if(!opts.skipVv)syncVisualViewport();
   let h=0;
   const footEl=document.getElementById("foot");
   if(footEl&&footEl.style.display!=="none"&&page==="chat"){
@@ -1745,50 +1747,71 @@ function measureBottomStack(){
   }
   if(h<88)h=page==="chat"?120:80;
   const pad=Math.max(100,Math.ceil(h+28));
+  const prev=lastStackH||0;
   document.documentElement.style.setProperty("--stack-h",Math.ceil(h)+"px");
   document.documentElement.style.setProperty("--feed-pad-bottom",pad+"px");
+  if(opts.stabilize&&feed&&prev>0){
+    const delta=Math.round(h-prev);
+    if(delta)try{feed.scrollTop+=delta}catch(e){}
+  }
+  lastStackH=h;
   return Math.ceil(h+kbInset);
 }
-function keepComposerInView(force){
+function keepComposerInView(force,opts){
+  opts=opts||{};
   if(page!=="chat")return;
-  measureBottomStack();
+  const soft=!!opts.soft;
+  measureBottomStack({skipVv:soft,stabilize:soft||!!opts.stabilize});
+  if(soft){updateJump();return}
   const focused=composerFocused();
   const need=force||stickBottom||focused||kbInset>24||document.body.classList.contains("kb-open");
   if(!need){updateJump();return}
-  stickBottom=true;
-  forceScrollBottom();
+  if(force||kbInset>24||document.body.classList.contains("kb-open")){
+    stickBottom=true;
+    forceScrollBottom();
+  }else if(stickBottom){
+    forceScrollBottom();
+  }
   try{
     const vv=window.visualViewport;
     const footEl=document.getElementById("foot");
     const room=vv?((vv.offsetTop||0)+vv.height):((window.innerHeight||0));
-    if(footEl&&vv){
+    if(footEl&&vv&&!opts.noBoxScroll){
       const fr=footEl.getBoundingClientRect();
-      if(fr.bottom>room-2&&feed){
-        const lift=fr.bottom-room+8;
-        feed.scrollTop+=lift;
-      }
+      if(fr.bottom>room-2&&feed)feed.scrollTop+=(fr.bottom-room+8);
     }
-    if(box&&focused){
+    if(box&&focused&&!opts.noBoxScroll&&(force||kbInset>40)){
       const r=box.getBoundingClientRect();
-      if(vv){
-        const boxRoom=room-10;
-        if(r.bottom>boxRoom){
-          const delta=r.bottom-boxRoom+16;
-          if(feed)feed.scrollTop+=delta;
-          try{box.scrollIntoView({block:"nearest",inline:"nearest",behavior:"auto"})}catch(e){}
-        }
-      }else{
-        try{box.scrollIntoView({block:"end",behavior:"auto"})}catch(e){}
-      }
+      if(vv&&r.bottom>room-10&&feed)feed.scrollTop+=(r.bottom-(room-10)+12);
     }
     const last=feed&&feed.lastElementChild;
-    if(last&&footEl){
+    if(last&&footEl&&(stickBottom||force)){
       const lr=last.getBoundingClientRect();
       const ft=footEl.getBoundingClientRect().top;
       if(lr.bottom>ft-12&&feed)feed.scrollTop+=(lr.bottom-(ft-12));
     }
   }catch(e){}
   updateJump();
+}
+function onComposerInputLayout(){
+  if(!box)return;
+  box.style.height="auto";
+  const vvH=window.visualViewport?window.visualViewport.height:window.innerHeight;
+  const kb=document.body.classList.contains("kb-open")||composerFocused();
+  const cap=kb
+    ?Math.min(box.scrollHeight,Math.max(56,Math.floor(vvH*0.18)))
+    :Math.min(box.scrollHeight,Math.min(160,Math.floor((window.innerHeight||600)*0.2)));
+  const next=Math.max(42,cap);
+  const prev=lastBoxH||box.offsetHeight||42;
+  box.style.height=next+"px";
+  lastBoxH=next;
+  if(Math.abs(next-prev)<2)return;
+  if(composerLayoutRaf)cancelAnimationFrame(composerLayoutRaf);
+  composerLayoutRaf=requestAnimationFrame(()=>{
+    composerLayoutRaf=0;
+    measureBottomStack({skipVv:true,stabilize:true});
+    updateJump();
+  });
 }
 function hardResetViewportShell(){
   try{if(box){box.style.height="";box.style.maxHeight=""}}catch(e){}
@@ -2338,7 +2361,7 @@ window.addEventListener("popstate",(e)=>{
   showPage(st.page||"setup",true);
 });
 
-function resetBubbles(){curUser=null;curAgent=null;curThought=null;curThoughtRow=null;toolMap={}}
+function resetBubbles(){curUser=null;curAgent=null;curThought=null;curThoughtRow=null;toolMap={};userWireBuf=""}
 function closeOpen(){curUser=null;curAgent=null;curThought=null;curThoughtRow=null}
 function markLatestMsg(row){
   if(!feed||!row)return;
@@ -2589,19 +2612,63 @@ function renderAgentBubble(el,fullText){
     else el.appendChild(renderMdBlock(p.v));
   });
 }
+let userWireBuf="";
+function stripPromptChrome(text){
+  let t=String(text||"");
+  t=t.replace(/^\uFEFF/,"");
+  t=t.replace(/\[AGENT SETUP[^\]]*\][\s\S]*?\[END AGENT SETUP\]\s*(?:---+\s*)?/gi,"");
+  t=t.replace(/^\s*\[FYI\s*\/\s*chitchat[\s\S]*?\]\s*/i,"");
+  t=t.replace(/^\s*\[Queued guidance[\s\S]*?\]\s*/i,"");
+  t=t.replace(/^\s*\[INTERJECT[\s\S]*?\]\s*/i,"");
+  t=t.replace(/^\s*Acknowledge this agent setup[\s\S]*?(?:\n\s*)+/i,"");
+  t=t.replace(/^\s*---+\s*/,"");
+  return t.replace(/^\s+/,"");
+}
+function noteSeenUser(key){
+  const k=String(key||"").trim();
+  if(!k)return;
+  seenUserTexts.add(k);
+  const plain=stripPromptChrome(k).trim();
+  if(plain)seenUserTexts.add(plain);
+  if(seenUserTexts.size>400){const a=[...seenUserTexts];seenUserTexts=new Set(a.slice(-200))}
+}
 function appendUser(text,opts){
-  const t=text||"";
-  if(!opts||!opts.force){
+  opts=opts||{};
+  if(opts.html||opts.node){
+    if(!curUser){curUser=addRow("You");curUser.classList.add("md");curUser.dataset.raw=""}
+    if(opts.html){const n=document.createElement("div");n.innerHTML=opts.html;curUser.appendChild(n)}
+    if(opts.node)curUser.appendChild(opts.node);
+    scroll();
+    return;
+  }
+  if(opts.fromWire){
+    userWireBuf+=String(text||"");
+    const display=stripPromptChrome(userWireBuf);
+    if(!display.trim())return;
+    const key=display.trim();
+    if(!opts.force&&seenUserTexts.has(key)&&Date.now()<localEchoUntil)return;
+    if(!opts.force&&seenUserTexts.has(key)&&curUser&&(curUser.dataset.raw||"").trim()===key)return;
+    if(!curUser){curUser=addRow("You");curUser.classList.add("md")}
+    curUser.dataset.raw=display;
+    curUser.innerHTML="";
+    curUser.appendChild(renderMdBlock(display));
+    noteSeenUser(key);
+    scroll();
+    return;
+  }
+  userWireBuf="";
+  const t=stripPromptChrome(text||"");
+  if(!t&&!opts.force)return;
+  if(!opts.force){
     const key=t.trim();
     if(key&&seenUserTexts.has(key)&&Date.now()<localEchoUntil)return;
-    if(key)seenUserTexts.add(key);
-    if(seenUserTexts.size>400){const a=[...seenUserTexts];seenUserTexts=new Set(a.slice(-200))}
+    noteSeenUser(key);
   }
   if(!curUser){curUser=addRow("You");curUser.classList.add("md");curUser.dataset.raw=""}
   curUser.dataset.raw=(curUser.dataset.raw||"")+t;
-  if(opts&&opts.html){const n=document.createElement("div");n.innerHTML=opts.html;curUser.appendChild(n)}
-  else if(opts&&opts.node)curUser.appendChild(opts.node);
-  else{curUser.innerHTML="";curUser.appendChild(renderMdBlock(curUser.dataset.raw))}
+  curUser.dataset.raw=stripPromptChrome(curUser.dataset.raw);
+  curUser.innerHTML="";
+  curUser.appendChild(renderMdBlock(curUser.dataset.raw||""));
   scroll();
 }
 function appendAgent(text){
@@ -2922,8 +2989,8 @@ function handleUpdate(u,sessionId,meta){
   if(!replaying)touchLive();
   if(meta&&window.grokCockpit&&window.grokCockpit.noteContextFromMeta)try{window.grokCockpit.noteContextFromMeta(meta)}catch(e){}
   const t=u.sessionUpdate;
-  if(t==="user_message_chunk"){curAgent=null;curThought=null;appendUser((u.content&&u.content.text)||"")}
-  else if(t==="agent_message_chunk"){appendAgent((u.content&&u.content.text)||"");if(!replaying){setBusy(true);setPhase("responding")}}
+  if(t==="user_message_chunk"){curAgent=null;curThought=null;appendUser((u.content&&u.content.text)||"",{fromWire:true})}
+  else if(t==="agent_message_chunk"){userWireBuf="";appendAgent((u.content&&u.content.text)||"");if(!replaying){setBusy(true);setPhase("responding")}}
   else if(t==="agent_thought_chunk"){appendThought((u.content&&u.content.text)||"");if(!replaying){setBusy(true);setPhase("thinking")}}
   else if(t==="tool_call"||t==="tool_call_update"){upsertTool(u);if(!replaying){setBusy(true);setPhase("tools",u.title||u.kind||u.toolName||"")}}
   else if(t==="plan"){
@@ -2937,7 +3004,7 @@ function handleUpdate(u,sessionId,meta){
     }else appendPlan(u);
   }
   else if(t==="session_recap")appendRecap(u);
-  else if(t==="turn_completed"||t==="task_completed"){closeOpen();if(!replaying){setBusy(false);setPhase("idle");chip(t==="task_completed"?"task done":"turn done");if(t==="task_completed"&&window.grokCockpit)window.grokCockpit.trackBg({id:u.taskId||u.id||("task-"+Date.now()),title:u.title||"task",status:"completed"});try{if(window.grokVoice)window.grokVoice.onTurnDone()}catch(e){}scheduleMsgDrain(280)}}
+  else if(t==="turn_completed"||t==="task_completed"){userWireBuf="";closeOpen();if(!replaying){setBusy(false);setPhase("idle");chip(t==="task_completed"?"task done":"turn done");if(t==="task_completed"&&window.grokCockpit)window.grokCockpit.trackBg({id:u.taskId||u.id||("task-"+Date.now()),title:u.title||"task",status:"completed"});try{if(window.grokVoice)window.grokVoice.onTurnDone()}catch(e){}scheduleMsgDrain(280)}}
   else if(t==="task_backgrounded"){if(!replaying){chip("task backgrounded");if(window.grokCockpit)window.grokCockpit.trackBg({id:u.taskId||u.id||("bg-"+Date.now()),title:u.title||u.summary||"background task",status:"backgrounded"})}}
   else if(t==="available_commands_update"){
     if(Array.isArray(u.availableCommands))commands=u.availableCommands;
@@ -4001,9 +4068,13 @@ async function sendPrompt(forcedMode){
     interjected=true;
     await sleep(350);
   }
-  localEchoUntil=Date.now()+5000;
+  localEchoUntil=Date.now()+8000;
   sessionFresh=false;
-  if(tRaw)appendUser((mode==="fyi"?"FYI · ":"")+(interjected?"Interject · ":"")+tRaw);
+  const display=(mode==="fyi"?"FYI · ":"")+(interjected?"Interject · ":"")+tRaw;
+  if(tRaw){
+    appendUser(display);
+    try{seenUserTexts.add(tRaw.trim());seenUserTexts.add(display.trim())}catch(e){}
+  }
   if(files.length)showLocalAttachments(files);
   closeOpen();
   promoteSessionAfterMessage(sid).catch(()=>{});
@@ -4174,24 +4245,19 @@ box.addEventListener("keydown",e=>{
     sendPrompt().catch(err=>chip(String(err)));
   }
 });
-box.addEventListener("input",()=>{
-  box.style.height="auto";
-  const vvH=window.visualViewport?window.visualViewport.height:window.innerHeight;
-  const kb=document.body.classList.contains("kb-open")||composerFocused();
-  const cap=kb
-    ?Math.min(box.scrollHeight,Math.max(56,Math.floor(vvH*0.18)))
-    :Math.min(box.scrollHeight,Math.min(160,Math.floor((window.innerHeight||600)*0.2)));
-  box.style.height=Math.max(42,cap)+"px";
-  keepComposerInView(true);
-  requestAnimationFrame(()=>{measureBottomStack();keepComposerInView(true)});
-});
+box.addEventListener("input",()=>onComposerInputLayout());
 box.addEventListener("focus",()=>{
   stickBottom=true;
   captureBaselineViewport();
   syncVisualViewport();
   measureBottomStack();
-  keepComposerInView(true);
-  [50,120,220,380,560,800,1100].forEach(ms=>setTimeout(()=>{syncVisualViewport();measureBottomStack();keepComposerInView(true)},ms));
+  keepComposerInView(true,{noBoxScroll:false});
+  [80,200,400,700].forEach(ms=>setTimeout(()=>{
+    if(!composerFocused())return;
+    syncVisualViewport();
+    measureBottomStack();
+    keepComposerInView(true,{noBoxScroll:true});
+  },ms));
 });
 box.addEventListener("blur",()=>{
   setTimeout(()=>{

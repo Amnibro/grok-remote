@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-07-12 � Composer shake + hide agent setup in chat (v23)
+
+- **Shake fix:** multi-line typing no longer force-scrolls the feed every keystroke; pad updates stabilize scroll by footer delta only
+- **Setup chrome:** persona / mode wrappers still sent to the agent, but stripped from You bubbles (local echo + wire + history)
+- Pushed prior commits; this ships shake + display strip
+
 ## 2026-07-12 — Command deck menu + todo badge fix (v22)
 
 - **Why “Todo 4”:** `paintTodoBadge` overwrote the whole Tools row button with `todo N` (open count). Now keeps **Todos** label + badge key (`3/4`, `board`)
