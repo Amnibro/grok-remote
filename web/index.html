@@ -2632,6 +2632,30 @@ function noteSeenUser(key){
   if(plain)seenUserTexts.add(plain);
   if(seenUserTexts.size>400){const a=[...seenUserTexts];seenUserTexts=new Set(a.slice(-200))}
 }
+function paintHistoryUser(text){
+  userWireBuf="";
+  curAgent=null;curThought=null;curThoughtRow=null;curUser=null;
+  const display=stripPromptChrome(text||"");
+  if(!display.trim())return false;
+  const bub=addRow("You");
+  bub.classList.add("md");
+  bub.dataset.raw=display;
+  bub.innerHTML="";
+  bub.appendChild(renderMdBlock(display));
+  curUser=null;
+  return true;
+}
+function paintHistoryAgent(text){
+  userWireBuf="";
+  curUser=null;curThought=null;curThoughtRow=null;curAgent=null;
+  const t=String(text||"");
+  if(!t.trim())return false;
+  const bub=addRow("Grok");
+  bub.dataset.raw=t;
+  renderAgentBubble(bub,t);
+  curAgent=null;
+  return true;
+}
 function appendUser(text,opts){
   opts=opts||{};
   if(opts.html||opts.node){
@@ -2641,19 +2665,25 @@ function appendUser(text,opts){
     scroll();
     return;
   }
+  if(opts.history||((replaying||historyPainting)&&opts.fromWire)){
+    paintHistoryUser(text);
+    return;
+  }
   if(opts.fromWire){
-    userWireBuf+=String(text||"");
+    const chunk=String(text||"");
+    const wasEmpty=!userWireBuf;
+    userWireBuf+=chunk;
     const display=stripPromptChrome(userWireBuf);
     if(!display.trim())return;
     const key=display.trim();
-    const isReplay=!!(opts.replay||replaying||historyPainting);
-    if(!opts.force&&!isReplay&&Date.now()<localEchoUntil&&seenUserTexts.has(key))return;
-    if(!opts.force&&!isReplay&&curUser&&(curUser.dataset.raw||"").trim()===key)return;
+    if(!opts.force&&Date.now()<localEchoUntil&&seenUserTexts.has(key))return;
+    if(!opts.force&&curUser&&(curUser.dataset.raw||"").trim()===key)return;
+    if(wasEmpty)curUser=null;
     if(!curUser){curUser=addRow("You");curUser.classList.add("md")}
     curUser.dataset.raw=display;
     curUser.innerHTML="";
     curUser.appendChild(renderMdBlock(display));
-    if(!isReplay)noteSeenUser(key);
+    noteSeenUser(key);
     scroll();
     return;
   }
@@ -2672,7 +2702,12 @@ function appendUser(text,opts){
   curUser.appendChild(renderMdBlock(curUser.dataset.raw||""));
   scroll();
 }
-function appendAgent(text){
+function appendAgent(text,opts){
+  opts=opts||{};
+  if(opts.history||(replaying||historyPainting)){
+    paintHistoryAgent(text);
+    return;
+  }
   curThought=null;curThoughtRow=null;
   curUser=null;
   if(!curAgent){curAgent=addRow("Grok");curAgent.dataset.raw=""}
@@ -2992,23 +3027,27 @@ function handleUpdate(u,sessionId,meta){
   if(meta&&window.grokCockpit&&window.grokCockpit.noteContextFromMeta)try{window.grokCockpit.noteContextFromMeta(meta)}catch(e){}
   const t=u.sessionUpdate;
   if(t==="user_message_chunk"){
+    const txt=(u.content&&u.content.text)||"";
+    if(replaying||historyPainting){paintHistoryUser(txt);return}
     curAgent=null;curThought=null;
     if(!userWireBuf)curUser=null;
-    appendUser((u.content&&u.content.text)||"",{fromWire:true,replay:!!(replaying||historyPainting)});
+    appendUser(txt,{fromWire:true});
   }
   else if(t==="agent_message_chunk"){
+    const txt=(u.content&&u.content.text)||"";
+    if(replaying||historyPainting){paintHistoryAgent(txt);return}
     userWireBuf="";
     curUser=null;
-    appendAgent((u.content&&u.content.text)||"");
+    appendAgent(txt);
     if(!replaying){setBusy(true);setPhase("responding")}
   }
   else if(t==="agent_thought_chunk"){
-    if(replaying||historyPainting){userWireBuf="";curUser=null}
+    if(replaying||historyPainting){userWireBuf="";curUser=null;curAgent=null}
     appendThought((u.content&&u.content.text)||"");
     if(!replaying){setBusy(true);setPhase("thinking")}
   }
   else if(t==="tool_call"||t==="tool_call_update"){
-    if(replaying||historyPainting){userWireBuf="";curUser=null}
+    if(replaying||historyPainting){userWireBuf="";curUser=null;curAgent=null}
     upsertTool(u);
     if(!replaying){setBusy(true);setPhase("tools",u.title||u.kind||u.toolName||"")}
   }
@@ -3154,6 +3193,7 @@ async function paintDiskEvents(events,sessionId,opts){
   }
   try{
     const list=events||[];
+    userWireBuf="";curUser=null;curAgent=null;curThought=null;curThoughtRow=null;
     for(let i=0;i<list.length;i++){
       if(expectGen!==sessionGen||String(sid||"")!==expectSid){aborted=true;break}
       const ev=list[i];
@@ -3161,11 +3201,11 @@ async function paintDiskEvents(events,sessionId,opts){
       const update=params.update;
       if(!update)continue;
       const evSid=params.sessionId||(params.update&&params.update.sessionId)||null;
-      if(evSid&&String(evSid)!==expectSid)continue;
+      if(evSid&&expectSid&&String(evSid)!==expectSid&&String(evSid).slice(0,8)!==String(expectSid).slice(0,8))continue;
       const meta=params._meta||update._meta||null;
       handleUpdate(update,expectSid,meta);
       n++;
-      if(asReplay&&i>0&&i%40===0)await new Promise(r=>requestAnimationFrame(r));
+      if(asReplay&&i>0&&i%80===0)await new Promise(r=>requestAnimationFrame(r));
     }
   }finally{
     historyPainting=prevHist;
@@ -3566,11 +3606,30 @@ async function openSession(s){
     try{if(feed)feed.dataset.sid=openId}catch(e){}
     if(gen!==sessionGen)return;
     try{
-      const hist=await paintDiskHistory(openId,sidCwd,{limit:HISTORY_PAGE,max_bytes:2500000,chat_only:true,gen:gen});
+      let hist=await paintDiskHistory(openId,sidCwd,{limit:HISTORY_PAGE,max_bytes:2500000,chat_only:true,gen:gen});
       if(gen!==sessionGen||String(sid)!==openId)return;
       if(hist&&hist.stale)return;
       painted=hist.count||0;
-      if(hist.dir)try{feed.dataset.histDir=String(hist.dir)}catch(e){}
+      if(!(painted>0)){
+        hist=await paintDiskHistory(openId,sidCwd,{limit:Math.max(HISTORY_PAGE,80),max_bytes:4000000,chat_only:false,gen:gen});
+        if(gen!==sessionGen||String(sid)!==openId)return;
+        if(hist&&!hist.stale)painted=hist.count||0;
+      }
+      if(!(painted>0)&&sidCwd){
+        hist=await paintDiskHistory(openId,"",{limit:HISTORY_PAGE,max_bytes:2500000,chat_only:true,gen:gen});
+        if(gen!==sessionGen||String(sid)!==openId)return;
+        if(hist&&!hist.stale)painted=hist.count||0;
+      }
+      if(hist&&hist.dir)try{feed.dataset.histDir=String(hist.dir)}catch(e){}
+      const youN=feed?feed.querySelectorAll(".row.me").length:0;
+      const grokN=feed?feed.querySelectorAll(".row.msg:not(.me)").length:0;
+      if(painted>0&&youN===0&&grokN===0&&gen===sessionGen){
+        chip("history painted 0 rows · retry");
+        clearSessionFeed();
+        try{if(feed)feed.dataset.sid=openId}catch(x){}
+        hist=await paintDiskHistory(openId,sidCwd,{limit:Math.max(HISTORY_PAGE,100),max_bytes:5000000,chat_only:true,gen:gen});
+        if(hist&&!hist.stale)painted=hist.count||0;
+      }
     }catch(e){
       if(gen===sessionGen&&String(sid)===openId){
         clearSessionFeed();
