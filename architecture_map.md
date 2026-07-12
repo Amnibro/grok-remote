@@ -1,6 +1,6 @@
 # Grok Remote — architecture map
 
-**Updated:** 2026-07-09 · v19 composer UX + XR detect + watch
+**Updated:** 2026-07-12 · v20 keyboard pin-on-focus + phone-landscape rotate
 
 ## Layout
 
@@ -149,6 +149,17 @@ Safety: Go/XR designed for glanceable status; full tool dumps are not spoken.
 
 - Sheets (theme/skills/task): translucent top-right flyouts (`.sheet` + fly-tr)
 - Sidebar: `body.sidebar-collapsed` collapses desktop rail; `#railTab` reopens; storage `grok_remote_sidebar`
+
+## Mobile viewport (v20)
+
+| Piece | Behavior |
+|-------|----------|
+| `syncVisualViewport` | On composer focus, pin `body` to `visualViewport` height/top (`body.kb-open`) |
+| `measureBottomStack` | Feed `padding-bottom` from measured `#foot` height (+ clearance) |
+| `keepComposerInView` | Scroll feed so footer + textarea clear VV bottom |
+| Orientation | `hardResetViewportShell` + multi-stage reflow; width/height flip treated as rotate |
+| Desktop gate | `min-width:900` alone is not enough — need height ≥520 or fine pointer (blocks phone landscape rail) |
+| `body.phone-landscape` | Compact single-column chrome while rotated |
 
 ## Deploy path
 

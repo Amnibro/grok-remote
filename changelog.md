@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-07-12 — Keyboard clearance + rotate formatting (v20)
+
+- **Keyboard:** pin shell to `visualViewport` whenever the composer is focused (not only when inset >48px); re-measure footer stack and lift feed so last messages clear keyboard + bottom bar
+- **Rotate:** hard-reset body pin + CSS vars (`--vv-h`, `--feed-pad-bottom`, …); multi-stage reflow through ~1.6s; detect width/height flip as orientation
+- **Phone landscape:** do not enter desktop sidebar layout when wide-but-short without fine pointer (`body.phone-landscape` stays single-column)
+- Composer font-size 16px (iOS zoom guard); tighter max height while keyboard open
+
 ## 2026-07-09 — Mobile keyboard + orientation reflow
 
 - Pin shell to **visualViewport height/top** while typing (iOS-safe baseline when unfocused)
