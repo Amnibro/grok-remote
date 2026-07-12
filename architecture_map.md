@@ -1,6 +1,6 @@
 # Grok Remote — architecture map
 
-**Updated:** 2026-07-12 · v20 keyboard pin-on-focus + phone-landscape rotate
+**Updated:** 2026-07-12 · v21 ☰ menu dedupe + v20 keyboard/rotate
 
 ## Layout
 

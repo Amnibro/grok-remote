@@ -331,12 +331,16 @@ body.page-chat #chatTop{display:flex}
 #chatTopSearch:focus{outline:none;border-color:var(--acc);box-shadow:0 0 0 2px var(--acc-dim)}
 .hdr-right{display:flex;align-items:center;gap:6px;margin-left:auto;flex:none}
 .more-wrap{position:relative;flex:none}
-.more-menu{display:none;position:fixed;z-index:20050;width:min(300px,92vw);max-height:min(70dvh,560px);overflow:auto;padding:8px;border-radius:14px;background:color-mix(in srgb,var(--panel) 98%,transparent);border:1px solid color-mix(in srgb,var(--acc) 28%,var(--line));box-shadow:var(--elev-3,0 18px 48px rgba(0,0,0,.55));backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);font-family:var(--font);font-size:inherit;line-height:inherit}
+.more-menu{display:none;position:fixed;z-index:20050;width:min(288px,92vw);max-height:min(72dvh,580px);overflow:auto;padding:6px;border-radius:14px;background:color-mix(in srgb,var(--panel) 98%,transparent);border:1px solid color-mix(in srgb,var(--acc) 28%,var(--line));box-shadow:var(--elev-3,0 18px 48px rgba(0,0,0,.55));backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);font-family:var(--font);font-size:inherit;line-height:inherit}
 .more-menu.on{display:block}
-.more-menu .mm-sec{font-family:var(--font);font-weight:700;font-size:.72em;color:var(--mut);letter-spacing:.06em;text-transform:uppercase;padding:8px 10px 4px}
-.more-menu button{display:flex;width:100%;align-items:center;justify-content:space-between;gap:8px;text-align:left;border:1px solid transparent;background:transparent;color:var(--tx);border-radius:8px;padding:9px 11px;font-family:inherit;font-size:1em;font-weight:650;line-height:1.35;cursor:pointer}
+.more-menu .mm-sec{font-family:var(--font);font-weight:700;font-size:.68em;color:var(--mut);letter-spacing:.07em;text-transform:uppercase;padding:10px 10px 3px;border-top:1px solid color-mix(in srgb,var(--line) 70%,transparent);margin-top:4px}
+.more-menu .mm-sec:first-child{border-top:none;margin-top:0;padding-top:4px}
+.more-menu button{display:flex;width:100%;align-items:center;justify-content:space-between;gap:8px;text-align:left;border:1px solid transparent;background:transparent;color:var(--tx);border-radius:8px;padding:8px 10px;font-family:inherit;font-size:.95em;font-weight:650;line-height:1.3;cursor:pointer}
 .more-menu button:hover,.more-menu button.on{background:var(--acc-dim);border-color:color-mix(in srgb,var(--acc) 30%,var(--line));color:var(--acc)}
-.more-menu button .mm-k{color:var(--mut);font-family:inherit;font-size:.82em;font-weight:600;opacity:.9}
+.more-menu button .mm-k{color:var(--mut);font-family:inherit;font-size:.8em;font-weight:600;opacity:.9;flex:none}
+.more-menu .mm-grid{display:grid;grid-template-columns:1fr 1fr;gap:2px;padding:0 2px 2px}
+.more-menu .mm-grid button{padding:7px 8px;font-size:.88em}
+.more-menu .mm-grid button .mm-k{font-size:.75em}
 .composer-tools{display:none;flex-wrap:wrap;gap:6px;align-items:center;padding:0 0 8px}
 .composer-tools.on{display:flex}
 .composer-tools .git-strip{flex:1 1 100%;min-width:0}
@@ -364,9 +368,9 @@ body.hide-read .tool[data-tool-kind="read"],body.hide-read .tool[data-tool-kind=
 .more-menu .mm-tog .mm-k{opacity:.85}
 .more-menu .mm-tog.on{color:var(--acc)}
 #moreToolsHost,#toolsRow{display:flex;flex-direction:column;gap:0;width:100%}
-#moreToolsHost button,#toolsRow button{width:100%;text-align:left;border:0;background:transparent;color:inherit;padding:10px 12px;font-family:inherit;font-size:1em;font-weight:650;line-height:1.35;cursor:pointer;display:flex;justify-content:space-between;align-items:center}
+#moreToolsHost button,#toolsRow button{width:100%;text-align:left;border:0;background:transparent;color:inherit;padding:8px 10px;font-family:inherit;font-size:.95em;font-weight:650;line-height:1.3;cursor:pointer;display:flex;justify-content:space-between;align-items:center;border-radius:8px}
 #moreToolsHost button:hover,#toolsRow button:hover{background:var(--acc-dim);color:var(--acc)}
-#moreToolsHost button .mm-k,#toolsRow button .mm-k{font-family:inherit;font-size:.82em;font-weight:600;color:var(--mut)}
+#moreToolsHost button .mm-k,#toolsRow button .mm-k{font-family:inherit;font-size:.8em;font-weight:600;color:var(--mut)}
 .footer-meta{display:none;flex-wrap:wrap;gap:4px;align-items:center;padding:0 0 4px;min-height:0}
 .footer-meta.has-pins{display:flex}
 .footer-meta .git-strip{display:none}
@@ -925,39 +929,37 @@ body.voice-go #voiceHud,body.voice-xr #voiceHud{bottom:calc(var(--stack-h,120px)
     <div class="more-wrap">
       <button type="button" class="hdrbtn" id="btnMore" title="Menu" aria-haspopup="menu" aria-expanded="false" aria-controls="moreMenu">☰</button>
       <div class="more-menu" id="moreMenu" role="menu" hidden>
-        <div class="mm-sec">Session</div>
+        <div class="mm-sec">Chat</div>
         <button type="button" id="btnSkills" role="menuitem">Skills <span class="mm-k">/</span></button>
         <button type="button" id="btnNewTask" role="menuitem">New task <span class="mm-k">task</span></button>
         <button type="button" id="btnSess" role="menuitem">Sessions <span class="mm-k">list</span></button>
-        <div class="mm-sec">Permission</div>
-        <button type="button" class="mm-tog" id="permAlways" role="menuitem" data-perm="always">Always approve <span class="mm-k">default</span></button>
-        <button type="button" class="mm-tog" id="permAsk" role="menuitem" data-perm="ask">Ask each tool <span class="mm-k">gate</span></button>
-        <button type="button" class="mm-tog" id="permPlan" role="menuitem" data-perm="plan">Plan gate <span class="mm-k">steps</span></button>
+        <button type="button" id="btnMsgModeMenu" role="menuitem">Delivery <span class="mm-k">queue</span></button>
+        <button type="button" class="mm-tog" id="btnPermCycle" role="menuitem" title="Tap to cycle Always → Ask → Plan">Permission <span class="mm-k">always</span></button>
         <div class="mm-sec">Tools</div>
         <div id="moreToolsHost"></div>
-        <div class="mm-sec">Chat view</div>
-        <button type="button" class="mm-tog" id="togHideThink" role="menuitem" data-ux="hideThink">Thinking <span class="mm-k">show</span></button>
-        <button type="button" class="mm-tog" id="togHideTools" role="menuitem" data-ux="hideTools">Tools <span class="mm-k">show</span></button>
-        <button type="button" class="mm-tog" id="togHideEdit" role="menuitem" data-ux="hideEdit">Edits <span class="mm-k">show</span></button>
-        <button type="button" class="mm-tog" id="togHideRead" role="menuitem" data-ux="hideRead">Reads <span class="mm-k">show</span></button>
-        <button type="button" class="mm-tog" id="togHideCode" role="menuitem" data-ux="hideCode">Code <span class="mm-k">show</span></button>
-        <button type="button" class="mm-tog" id="togCollapseThink" role="menuitem" data-ux="collapseThink">Collapse think <span class="mm-k">off</span></button>
-        <button type="button" class="mm-tog" id="togCollapseTools" role="menuitem" data-ux="collapseTools">Collapse tools <span class="mm-k">off</span></button>
-        <button type="button" class="mm-tog" id="togCollapseCode" role="menuitem" data-ux="collapseCode">Collapse code <span class="mm-k">off</span></button>
-        <div class="mm-sec">Workspace</div>
+        <div class="mm-sec">Hide in feed</div>
+        <div class="mm-grid" id="viewHideGrid">
+          <button type="button" class="mm-tog" id="togHideThink" role="menuitem" data-ux="hideThink">Think <span class="mm-k">show</span></button>
+          <button type="button" class="mm-tog" id="togHideTools" role="menuitem" data-ux="hideTools">Tools <span class="mm-k">show</span></button>
+          <button type="button" class="mm-tog" id="togHideEdit" role="menuitem" data-ux="hideEdit">Edits <span class="mm-k">show</span></button>
+          <button type="button" class="mm-tog" id="togHideRead" role="menuitem" data-ux="hideRead">Reads <span class="mm-k">show</span></button>
+          <button type="button" class="mm-tog" id="togHideCode" role="menuitem" data-ux="hideCode">Code <span class="mm-k">show</span></button>
+        </div>
+        <div class="mm-sec">Collapse</div>
+        <div class="mm-grid" id="viewCollapseGrid">
+          <button type="button" class="mm-tog" id="togCollapseThink" role="menuitem" data-ux="collapseThink">Think <span class="mm-k">off</span></button>
+          <button type="button" class="mm-tog" id="togCollapseTools" role="menuitem" data-ux="collapseTools">Tools <span class="mm-k">off</span></button>
+          <button type="button" class="mm-tog" id="togCollapseCode" role="menuitem" data-ux="collapseCode">Code <span class="mm-k">off</span></button>
+        </div>
+        <div class="mm-sec">Apps</div>
         <button type="button" id="btnIde" role="menuitem">IDE <span class="mm-k">files</span></button>
         <button type="button" id="btnPersona" role="menuitem">Persona <span class="mm-k">style</span></button>
-        <div class="mm-sec">Voice &amp; wear</div>
-        <button type="button" id="btnVoiceMenu" role="menuitem">Go voice <span class="mm-k">hands-free</span></button>
-        <button type="button" id="btnXrMenu" role="menuitem">XR / AR <span class="mm-k">auto</span></button>
-        <button type="button" id="btnWatch" role="menuitem">Watch companion <span class="mm-k">galaxy</span></button>
+        <button type="button" id="btnWatch" role="menuitem">Watch <span class="mm-k">galaxy</span></button>
         <button type="button" id="btnDelve" role="menuitem">Amni-Delve <span class="mm-k">hub</span></button>
-        <button type="button" id="btnMsgModeMenu" role="menuitem">Delivery mode <span class="mm-k">queue</span></button>
-        <div class="mm-sec">Look &amp; feel</div>
-        <button type="button" id="btnTheme" role="menuitem">Theme &amp; UX <span class="mm-k">skin</span></button>
-        <button type="button" id="btnFont" role="menuitem">Fonts <span class="mm-k">type</span></button>
-        <button type="button" id="btnPrivacy" role="menuitem">Spoiler mode <span class="mm-k">hide</span></button>
-        <div class="mm-sec">System</div>
+        <div class="mm-sec">Appearance</div>
+        <button type="button" id="btnTheme" role="menuitem">Theme &amp; fonts <span class="mm-k">skin</span></button>
+        <button type="button" id="btnPrivacy" role="menuitem">Spoiler <span class="mm-k">off</span></button>
+        <div class="mm-sec">Help</div>
         <button type="button" id="btnTour" role="menuitem">Feature tour <span class="mm-k">?</span></button>
         <button type="button" id="btnPin" role="menuitem">Pin shortcuts <span class="mm-k">desk</span></button>
       </div>
@@ -1133,17 +1135,17 @@ body.voice-go #voiceHud,body.voice-xr #voiceHud{bottom:calc(var(--stack-h,120px)
 
 <div class="sheet" id="themeSheet">
   <div class="card">
-    <h3>Themes &amp; UX <button type="button" class="sheet-x" id="closeTheme" aria-label="Close">×</button></h3>
-    <p class="hint">Product + “X-like” retro skins. Not affiliated with any brand.</p>
+    <h3>Theme &amp; fonts <button type="button" class="sheet-x" id="closeTheme" aria-label="Close">×</button></h3>
+    <p class="hint">Product + retro skins. Hide/collapse live in ☰ · feed. Not affiliated with any brand.</p>
     <label>Mode</label>
     <div class="mode-row" id="modeChipsSheet"></div>
     <label>Theme</label>
     <div class="themes" id="themeChipsSheet"></div>
-    <label>UI / UX</label>
+    <label>UI</label>
     <div class="mode-row" id="uxChipsSheet"></div>
     <label>Font</label>
     <div class="font-chips mode-row" id="fontChipsSheet"></div>
-    <p class="hint" id="fontHint">System default. Custom accepts a family name and optional CSS URL.</p>
+    <p class="hint" id="fontHint">System default. Custom… opens full font sheet.</p>
   </div>
 </div>
 <div class="sheet" id="fontSheet">
@@ -1354,6 +1356,8 @@ function applyUx(){
   const bp=document.getElementById("btnPrivacy");
   if(bp){
     bp.classList.toggle("privacy-on",!!ux.privacy);
+    bp.classList.toggle("on",!!ux.privacy);
+    bp.innerHTML='Spoiler <span class="mm-k">'+(ux.privacy?"on":"off")+"</span>";
     bp.title=ux.privacy?(fine?"Spoiler ON — titles/paths blurred (hold Alt to peek)":"Spoiler ON — private screen (titles/paths blurred)"):"Spoiler mode — blur titles/paths/IDs for screenshots";
   }
   updateJump();
@@ -1408,7 +1412,7 @@ function applyFont(){
   if(h2)h2.textContent="Active: "+lab+(url?" · loaded from URL":" · system stack");
 }
 function setFontPreset(id){
-  if(id==="custom"){openSheet(document.getElementById("fontSheet"),document.getElementById("btnFont"));return}
+  if(id==="custom"){openSheet(document.getElementById("fontSheet"),document.getElementById("btnTheme"));return}
   const p=FONT_PRESETS.find(f=>f.id===id)||FONT_PRESETS[0];
   fontState={id:p.id,css:p.css||"",name:"",url:p.url||""};
   saveFontState();applyFont();
@@ -1444,14 +1448,14 @@ function toggleComposerTools(){
 }
 function paintViewToggles(){
   const map=[
-    ["hideThink","Thinking","hidden","show"],
+    ["hideThink","Think","hidden","show"],
     ["hideTools","Tools","hidden","show"],
     ["hideEdit","Edits","hidden","show"],
     ["hideRead","Reads","hidden","show"],
     ["hideCode","Code","hidden","show"],
-    ["collapseThink","Collapse think","on","off"],
-    ["collapseTools","Collapse tools","on","off"],
-    ["collapseCode","Collapse code","on","off"]
+    ["collapseThink","Think","on","off"],
+    ["collapseTools","Tools","on","off"],
+    ["collapseCode","Code","on","off"]
   ];
   map.forEach(([k,lab,onLab,offLab])=>{
     const el=document.querySelector('.mm-tog[data-ux="'+k+'"]');
@@ -1481,15 +1485,7 @@ function paintUxChips(){
   const opts=[
     {k:"autoScroll",lab:"Auto-scroll"},
     {k:"borders",lab:"borders"},
-    {k:"privacy",lab:"Spoiler"},
-    {k:"collapseThink",lab:"Collapse think"},
-    {k:"collapseCode",lab:"Collapse code"},
-    {k:"collapseTools",lab:"Collapse tools"},
-    {k:"hideThink",lab:"Hide think"},
-    {k:"hideTools",lab:"Hide tools"},
-    {k:"hideEdit",lab:"Hide edits"},
-    {k:"hideRead",lab:"Hide reads"},
-    {k:"hideCode",lab:"Hide code"}
+    {k:"privacy",lab:"Spoiler"}
   ];
   const paint=host=>{
     if(!host)return;
@@ -1500,14 +1496,13 @@ function paintUxChips(){
       const bordered=ux.borders!==false;
       const active=o.k==="borders"?bordered:(o.k==="autoScroll"?ux.autoScroll!==false:!!ux[o.k]);
       b.className="mode-chip"+(active?" on":"");
-      b.textContent=o.k==="borders"?(bordered?"Borders":"clean"):o.lab;
-      b.title=o.k==="privacy"?"Blur session IDs, paths, locations for screenshots":o.k==="borders"?"Toggle bordered cards vs clean edge accents":o.k==="autoScroll"?"Follow new messages when at bottom":"Default collapse for new "+o.k.replace("collapse","").toLowerCase()+" blocks";
+      b.textContent=o.k==="borders"?(bordered?"borders":"clean"):o.lab;
+      b.title=o.k==="privacy"?"Blur session IDs, paths, locations for screenshots":o.k==="borders"?"Toggle bordered cards vs clean edge accents":"Follow new messages when at bottom";
       b.onclick=()=>{
         if(o.k==="borders")ux.borders=!bordered;
         else if(o.k==="autoScroll")ux.autoScroll=!(ux.autoScroll!==false);
         else ux[o.k]=!ux[o.k];
         saveUx();applyUx();
-        if(o.k.indexOf("collapse")===0)applyCollapseDefaults();
       };
       host.appendChild(b);
     });
@@ -1908,6 +1903,13 @@ function paintPermChip(){
     el.textContent="perm: "+level;
     el.title="Permission for this chat: "+(PERM_LABEL[level]||level)+" — tap to cycle (Always / Ask / Plan)";
   }
+  const pc=document.getElementById("btnPermCycle");
+  if(pc){
+    pc.classList.toggle("on",level!=="always");
+    pc.dataset.level=level;
+    pc.innerHTML='Permission <span class="mm-k">'+level+"</span>";
+    pc.title="Permission: "+(PERM_LABEL[level]||level)+" — tap to cycle Always → Ask → Plan";
+  }
   document.querySelectorAll("[data-perm]").forEach(b=>{
     const on=b.getAttribute("data-perm")===level;
     b.classList.toggle("on",on);
@@ -2006,7 +2008,7 @@ function paintMsgModeChips(){
   host.querySelectorAll(".mode-chip[data-mode]").forEach(b=>b.classList.toggle("on",b.getAttribute("data-mode")===msgMode));
   if(send&&busy&&!replaying)send.title="Send ("+msgMode+" mode while busy)";
   const m=document.getElementById("btnMsgModeMenu");
-  if(m)m.innerHTML='Delivery mode <span class="mm-k">'+msgMode+"</span>";
+  if(m)m.innerHTML='Delivery <span class="mm-k">'+msgMode+"</span>";
 }
 function wrapForMode(text,mode,ctx){
   const t=String(text||"");
@@ -4042,8 +4044,6 @@ if(btnComposerXr)btnComposerXr.onclick=()=>{window.grokVoice?window.grokVoice.se
 wireViewToggles();
 const chatTopSearch=document.getElementById("chatTopSearch");
 if(chatTopSearch)chatTopSearch.oninput=e=>{if(window.grokCockpit&&window.grokCockpit.searchChat)window.grokCockpit.searchChat(e.target.value)};
-const btnFont=document.getElementById("btnFont");
-if(btnFont)btnFont.onclick=()=>{closeMoreMenu();openSheet(document.getElementById("fontSheet"),btnFont)};
 const closeFont=document.getElementById("closeFont");
 if(closeFont)closeFont.onclick=()=>closeAllSheets();
 const fontSheet=document.getElementById("fontSheet");
@@ -4129,6 +4129,8 @@ box.addEventListener("blur",()=>{
   loadPermLevels();paintPermChip();
   const lp=document.getElementById("lbPerm");
   if(lp)lp.onclick=e=>{e.preventDefault();e.stopPropagation();cyclePermLevel()};
+  const pc=document.getElementById("btnPermCycle");
+  if(pc)pc.onclick=e=>{e.preventDefault();e.stopPropagation();cyclePermLevel()};
   document.querySelectorAll("[data-perm]").forEach(b=>{
     b.onclick=e=>{
       e.preventDefault();e.stopPropagation();
@@ -4231,9 +4233,6 @@ document.getElementById("pingHealth").onclick=async()=>{
   }catch(e){alert(e)}
 };
 if(btnPersona)btnPersona.onclick=()=>{closeMoreMenu();loadPersonas();openSheet(personaSheet,btnPersona)};
-const btnVoiceMenu=document.getElementById("btnVoiceMenu"),btnXrMenu=document.getElementById("btnXrMenu");
-if(btnVoiceMenu)btnVoiceMenu.onclick=()=>{closeMoreMenu();window.grokVoice?window.grokVoice.setMode("go"):chip("voice loading…")};
-if(btnXrMenu)btnXrMenu.onclick=()=>{closeMoreMenu();window.grokVoice?window.grokVoice.enterBestXr():chip("voice loading…")};
 const btnWatch=document.getElementById("btnWatch");
 if(btnWatch)btnWatch.onclick=()=>{closeMoreMenu();window.open("/watch","_blank")};
 const btnDelveMenu=document.getElementById("btnDelve");
@@ -4350,8 +4349,8 @@ const TOUR_STEPS=[
   {title:"2 · Sessions",body:"After connect, the left rail (or Sessions on phone) lists chats. New chat starts clean. Search filters titles. Archive only hides on this device.",sel:"#picker,#newSess",prep:()=>{try{if(isLinked())showPage("sessions",true);else showPage("setup",true)}catch(e){}}},
   {title:"3 · Chat",body:"The feed is live history + streaming replies. Tool cards show edits and terminal output. Use Search this chat to jump around.",sel:"#chatStage,#feed",prep:()=>{try{if(isLinked()&&sid)showPage("chat",true);else if(isLinked())showPage("sessions",true)}catch(e){}}},
   {title:"4 · Composer",body:"+ attaches files. Mic sits next to the box for Go voice. When busy: Interject / Queue / FYI. Cancel is its own button next to Send.",sel:"#foot .composer,#box,#send,#btnPlus,#btnComposerVoice,#msgModeRow,#btnCancelTurn",prep:()=>{try{if(isLinked())showPage("chat",true)}catch(e){}}},
-  {title:"5 · Menu ☰ tools",body:"Specials (Todos, Terminal, Git, Export…) and hide/collapse toggles for thinking, tools, edits, reads, and code live in the top-right ☰ menu — not under +.",sel:"#btnMore",prep:()=>{try{closeAllSheets();const m=document.getElementById("moreMenu");if(m)m.hidden=false}catch(e){}}},
-  {title:"6 · XR / Watch",body:"XR/AR auto-detects capability (prefers AR). Watch companion at /watch for Galaxy Watch / small screens.",sel:"#btnComposerXr,#btnWatch,#btnMore",prep:()=>{try{closeAllSheets()}catch(e){}}},
+  {title:"5 · Menu ☰",body:"One menu: Skills/task, permission (tap to cycle), tools (Todos/Terminal/Git…), hide & collapse grids, apps, theme, tour. Composer still has Mic / XR.",sel:"#btnMore",prep:()=>{try{closeAllSheets();const m=document.getElementById("moreMenu");if(m){m.hidden=false;m.classList.add("on")}}catch(e){}}},
+  {title:"6 · Watch & XR",body:"Mic / XR sit next to the composer. Watch companion is under ☰ → Apps → Watch (/watch for Galaxy Watch).",sel:"#btnComposerXr,#btnComposerVoice,#btnMore",prep:()=>{try{closeAllSheets()}catch(e){}}},
   {title:"7 · Link control",body:"The planet shows link health. Click it for Start server / Stop remote / Health. Stop remote only kills the remote UI + agent serve — not your desktop Grok chat.",sel:"#orbit",prep:()=>{try{closeAllSheets();closeMoreMenu&&closeMoreMenu()}catch(e){}}},
   {title:"You’re ready",body:"From any Grok Build window: /remote · /remote stop · /remote-autostart. Re-open this tour from ☰ anytime. Have fun.",sel:null,prep:()=>{try{closeAllSheets()}catch(e){}}}
 ];

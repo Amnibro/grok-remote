@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-07-12 — ☰ menu dedupe (v21)
+
+- Flattened upper-right menu: Chat · Tools · Hide · Collapse · Apps · Appearance · Help
+- **Permission** is one cycle control (Always → Ask → Plan), same as livebar
+- Removed duplicate **Fonts** (Theme sheet), **Go voice / XR** (composer), hide/collapse chips from Theme UX
+- Hide/collapse as compact 2-column grids; denser menu chrome
+
 ## 2026-07-12 — Keyboard clearance + rotate formatting (v20)
 
 - **Keyboard:** pin shell to `visualViewport` whenever the composer is focused (not only when inset >48px); re-measure footer stack and lift feed so last messages clear keyboard + bottom bar
