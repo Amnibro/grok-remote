@@ -1,11 +1,12 @@
 # Changelog
 
-## 2026-07-09 — Mobile keyboard + perm level + md fixes
+## 2026-07-09 — Mobile keyboard + orientation reflow
 
-- Composer tracks `visualViewport` so chat clears mobile keyboard + footer (`--kb-inset`, `--feed-pad-bottom`)
-- Focus/type/resize keep last message and input above the keyboard
-- Permission level chip + menu (always / ask / plan); always-approve skips plan approve UI
-- Markdown: lettered lists (`a.` / `o.`); path chips need 2+ char extensions (no stray `.o`)
+- Pin shell to **visualViewport height/top** while typing (iOS-safe baseline when unfocused)
+- Feed padding = measured footer height so chat clears keyboard + bottom bar
+- **Rotate** portrait↔landscape: multi-stage reflow (reset composer height, layout, stack pad, scroll)
+- Permission chip/menu; always-approve skips plan approve UI
+- Markdown lettered lists + safer path chips
 
 ## 2026-07-09 — Fix mixed history across sessions
 
