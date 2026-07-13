@@ -1,10 +1,11 @@
 """Grok Remote: UI + multi-client WS hub (fan-out) + workspace FS API."""
-import os,sys,json,socket,argparse,asyncio,mimetypes,subprocess,shutil
+import os,sys,json,socket,argparse,asyncio,mimetypes,subprocess,shutil,re,time,uuid
 from pathlib import Path
 from urllib.parse import quote,unquote
 ROOT=Path(__file__).resolve().parent
 WEB=ROOT/"web"
 GROK_SESSIONS=Path.home()/".grok"/"sessions"
+LOOP_STORE=Path.home()/".grok"/"plugin-data"/"grok-remote"/"loops.json"
 HISTORY_KEEP={"user_message_chunk","agent_message_chunk","agent_thought_chunk","tool_call","tool_call_update","plan","session_recap","turn_completed","task_completed","available_commands_update"}
 SKIP_DIR={".git","node_modules","__pycache__",".venv","venv","dist","build",".next",".cache","desktop/node_modules"}
 MAX_READ=2_000_000
@@ -422,6 +423,41 @@ class AgentHub:
   self._init_error=None
   self._init_done=False
   self._last_err=""
+  self._rpc_futs={}
+ def _next_id(self):
+  self._nid+=1
+  return self._nid
+ async def call_rpc(self,method:str,params=None,timeout=90.0):
+  if not await self.ensure():
+   raise RuntimeError("agent offline · "+(self._last_err or "no hub"))
+  nid=self._next_id()
+  fut=asyncio.get_event_loop().create_future()
+  self._rpc_futs[nid]=fut
+  payload={"jsonrpc":"2.0","id":nid,"method":method,"params":params or {}}
+  try:
+   await self._agent.send_str(json.dumps(payload,separators=(",",":")))
+  except Exception as e:
+   self._rpc_futs.pop(nid,None)
+   raise RuntimeError(str(e))
+  try:
+   return await asyncio.wait_for(fut,timeout=timeout)
+  except Exception:
+   self._rpc_futs.pop(nid,None)
+   raise
+ async def inject_prompt(self,session_id:str,text:str,timeout=300.0):
+  sid=str(session_id or "").strip()
+  t=str(text or "").strip()
+  if not sid or not t:raise ValueError("sessionId and text required")
+  return await self.call_rpc("session/prompt",{"sessionId":sid,"prompt":[{"type":"text","text":t}]},timeout=timeout)
+ async def set_model_effort(self,session_id:str,model_id:str,effort:str):
+  sid=str(session_id or "").strip()
+  mid=str(model_id or "").strip() or "grok-4.5"
+  eff=str(effort or "").strip().lower()
+  if not sid:raise ValueError("sessionId required")
+  if eff not in ("none","minimal","low","medium","high","xhigh","max"):
+   raise ValueError("effort must be low|medium|high|xhigh (or none/minimal/max)")
+  if eff=="max":eff="xhigh"
+  return await self.call_rpc("session/set_model",{"sessionId":sid,"modelId":mid,"_meta":{"reasoningEffort":eff}},timeout=30.0)
  async def ensure(self,retries=3,delay=0.2):
   for i in range(max(1,retries)):
    async with self._lock:
@@ -496,6 +532,12 @@ class AgentHub:
   rid=obj.get("id",None)
   is_resp=rid is not None and "method" not in obj
   if is_resp:
+   fut=self._rpc_futs.pop(rid,None)
+   if fut is not None and not fut.done():
+    fut.set_result(obj)
+    if "method" not in obj:
+     await self._broadcast(json.dumps({"jsonrpc":"2.0","method":"_x.ai/remote/rpc_done","params":{"id":rid,"ok":"error" not in obj}},separators=(",",":")))
+    return
    ent=self.pending.pop(rid,None)
    if not ent:return
    client,orig,meta=ent if len(ent)==3 else (ent[0],ent[1],{})
@@ -511,7 +553,7 @@ class AgentHub:
    obj["id"]=orig
    data=json.dumps(obj,separators=(",",":"))
    try:
-    if not client.closed:await client.send_str(data)
+    if client is not None and not client.closed:await client.send_str(data)
    except Exception:pass
    return
   await self._broadcast(raw if isinstance(raw,str) else json.dumps(obj,separators=(",",":")))
@@ -591,6 +633,119 @@ class AgentHub:
    return
   try:await self._agent.send_str(json.dumps(obj,separators=(",",":")))
   except Exception as e:await self._reply_err(client,orig,str(e))
+def parse_loop_interval(raw:str):
+ s=str(raw or "").strip().lower().replace("every","").strip()
+ if not s:return None
+ m=re.fullmatch(r"(\d+)\s*(s|sec|secs|second|seconds|m|min|mins|minute|minutes|h|hr|hrs|hour|hours|d|day|days)?",s)
+ if not m:return None
+ n=int(m.group(1));u=(m.group(2) or "m")[0]
+ sec=n if u=="s" else (n*60 if u=="m" else (n*3600 if u=="h" else n*86400))
+ if sec<60:sec=60
+ if sec>7*86400:sec=7*86400
+ label=("%ds"%sec) if sec<3600 and sec%60 else (("%dm"%(sec//60)) if sec<86400 and sec%3600==0 else (("%dh"%(sec//3600)) if sec%86400==0 else ("%ds"%sec)))
+ if sec>=86400 and sec%86400==0:label="%dd"%(sec//86400)
+ elif sec>=3600 and sec%3600==0:label="%dh"%(sec//3600)
+ elif sec%60==0:label="%dm"%(sec//60)
+ else:label="%ds"%sec
+ return sec,label
+def parse_loop_command(text:str):
+ t=str(text or "").strip()
+ if not t.lower().startswith("/loop"):return None
+ body=t[5:].strip()
+ if not body:return {"action":"help"}
+ low=body.lower()
+ if low in ("stop","cancel","clear","off","list","status","ls"):return {"action":low if low!="ls" else "list"}
+ if low.startswith("stop ") or low.startswith("cancel "):
+  return {"action":"stop","id":body.split(None,1)[1].strip()}
+ # /loop 5m prompt...  or /loop prompt every 5m
+ m=re.match(r"^(\d+\s*(?:s|sec|secs|seconds|m|min|mins|minutes|h|hr|hrs|hours|d|day|days)?)\s+(.+)$",body,re.I)
+ if m:
+  iv=parse_loop_interval(m.group(1))
+  if iv:return {"action":"create","interval_sec":iv[0],"interval_label":iv[1],"prompt":m.group(2).strip()}
+ m2=re.match(r"^(.+?)\s+every\s+(\d+\s*(?:s|sec|secs|seconds|m|min|mins|minutes|h|hr|hrs|hours|d|day|days)?)\s*$",body,re.I)
+ if m2:
+  iv=parse_loop_interval(m2.group(2))
+  if iv:return {"action":"create","interval_sec":iv[0],"interval_label":iv[1],"prompt":m2.group(1).strip()}
+ return {"action":"create","interval_sec":300,"interval_label":"5m","prompt":body,"assumed":True}
+class RemoteLoopManager:
+ def __init__(self,hub:AgentHub,store:Path):
+  self.hub=hub
+  self.store=store
+  self.jobs={}
+  self._tasks={}
+  self._load()
+ def _load(self):
+  try:
+   if self.store.is_file():
+    raw=json.loads(self.store.read_text(encoding="utf-8"))
+    if isinstance(raw,dict) and isinstance(raw.get("jobs"),list):
+     for j in raw["jobs"]:
+      if isinstance(j,dict) and j.get("id") and j.get("sessionId") and j.get("prompt"):
+       self.jobs[j["id"]]=j
+  except Exception as e:print("[loop] load failed:",e,flush=True)
+ def _save(self):
+  try:
+   self.store.parent.mkdir(parents=True,exist_ok=True)
+   self.store.write_text(json.dumps({"jobs":list(self.jobs.values())},indent=2),encoding="utf-8")
+  except Exception as e:print("[loop] save failed:",e,flush=True)
+ def list_jobs(self,session_id=None):
+  items=list(self.jobs.values())
+  if session_id:items=[j for j in items if str(j.get("sessionId"))==str(session_id)]
+  return items
+ def stop(self,job_id=None,session_id=None):
+  removed=[]
+  if job_id:
+   j=self.jobs.pop(str(job_id),None)
+   if j:removed.append(j)
+   t=self._tasks.pop(str(job_id),None)
+   if t:t.cancel()
+  elif session_id:
+   for jid,j in list(self.jobs.items()):
+    if str(j.get("sessionId"))==str(session_id):
+     self.jobs.pop(jid,None);removed.append(j)
+     t=self._tasks.pop(jid,None)
+     if t:t.cancel()
+  self._save()
+  return removed
+ def create(self,session_id:str,prompt:str,interval_sec:int,interval_label:str,cwd:str=""):
+  if len(self.jobs)>=50:raise RuntimeError("max 50 loops")
+  jid="loop-"+uuid.uuid4().hex[:10]
+  now=time.time()
+  job={"id":jid,"sessionId":str(session_id),"prompt":str(prompt),"interval_sec":int(interval_sec),"interval_label":str(interval_label),"cwd":str(cwd or ""),"created_at":now,"fires":0,"last_fire":0,"last_error":"","expires_at":now+7*86400}
+  self.jobs[jid]=job
+  self._save()
+  self._tasks[jid]=asyncio.create_task(self._run(jid))
+  return job
+ def start_all(self):
+  for jid in list(self.jobs.keys()):
+   if jid not in self._tasks or self._tasks[jid].done():
+    self._tasks[jid]=asyncio.create_task(self._run(jid))
+ async def _run(self,jid:str):
+  try:
+   while jid in self.jobs:
+    job=self.jobs.get(jid)
+    if not job:break
+    if time.time()>float(job.get("expires_at") or 0):
+     self.jobs.pop(jid,None);self._save();break
+    try:
+     note="[REMOTE LOOP · %s · fire %d]\n%s"%(job.get("interval_label") or "?",int(job.get("fires") or 0)+1,job.get("prompt") or "")
+     await self.hub.inject_prompt(job["sessionId"],note,timeout=600.0)
+     job["fires"]=int(job.get("fires") or 0)+1
+     job["last_fire"]=time.time()
+     job["last_error"]=""
+     self._save()
+     try:
+      await self.hub._broadcast(json.dumps({"jsonrpc":"2.0","method":"_x.ai/remote/loop_fire","params":{"id":jid,"sessionId":job["sessionId"],"fires":job["fires"],"interval":job.get("interval_label")}},separators=(",",":")))
+     except Exception:pass
+    except Exception as e:
+     job["last_error"]=str(e)[:200]
+     self._save()
+     print("[loop] fire failed",jid,e,flush=True)
+    await asyncio.sleep(max(60,int(job.get("interval_sec") or 300)))
+  except asyncio.CancelledError:
+   return
+  finally:
+   self._tasks.pop(jid,None)
 async def main_async(a):
  try:
   import aiohttp
@@ -605,7 +760,8 @@ async def main_async(a):
  work_root=Path(a.cwd).expanduser().resolve()
  state={"cwd":str(work_root)}
  hub=AgentHub(agent_ws)
- cfg={"agent_host":agent_host,"agent_port":a.agent_port,"secret":"(held server-side)","cwd":state["cwd"],"ws_url":"ws://%s:%d/ws"%(lan,a.port),"ws_path":"/ws","ui":"http://%s:%d/"%(lan,a.port),"watch":"http://%s:%d/watch"%(lan,a.port),"lan_ip":lan,"proxy":True,"hub":True,"ide":True,"features":["fs","ide","review","multi-client-hub","skills-scan","git","project-context","stop-turn","todos","voice-tts","voice-go","xr-ar","watch-companion","msg-queue"]}
+ loops=RemoteLoopManager(hub,LOOP_STORE)
+ cfg={"agent_host":agent_host,"agent_port":a.agent_port,"secret":"(held server-side)","cwd":state["cwd"],"ws_url":"ws://%s:%d/ws"%(lan,a.port),"ws_path":"/ws","ui":"http://%s:%d/"%(lan,a.port),"watch":"http://%s:%d/watch"%(lan,a.port),"lan_ip":lan,"proxy":True,"hub":True,"ide":True,"features":["fs","ide","review","multi-client-hub","skills-scan","git","project-context","stop-turn","todos","voice-tts","voice-go","xr-ar","watch-companion","msg-queue","remote-loop","effort"]}
  try:(ROOT/"runtime-config.json").write_text(json.dumps(cfg,indent=2),encoding="utf-8")
  except Exception:pass
  def root_path():
@@ -995,6 +1151,55 @@ async def main_async(a):
  app.router.add_post("/api/stack/stop",stack_stop)
  app.router.add_post("/api/stack/start",stack_start)
  app.router.add_post("/api/stack/shortcut",stack_shortcut)
+ async def loops_list(request):
+  sid=(request.rel_url.query.get("sessionId") or "").strip() or None
+  return web.json_response({"ok":True,"jobs":loops.list_jobs(sid)},headers={"Cache-Control":"no-store"})
+ async def loops_create(request):
+  try:body=await request.json()
+  except Exception:raise web.HTTPBadRequest(text="json required")
+  sid=str(body.get("sessionId") or "").strip()
+  prompt=str(body.get("prompt") or "").strip()
+  interval=body.get("interval") or body.get("interval_sec") or body.get("every")
+  if not sid or not prompt:raise web.HTTPBadRequest(text="sessionId and prompt required")
+  if isinstance(interval,(int,float)):
+   sec=max(60,min(7*86400,int(interval)))
+   lab=("%dm"%(sec//60)) if sec%60==0 else ("%ds"%sec)
+   if sec>=3600 and sec%3600==0:lab="%dh"%(sec//3600)
+  else:
+   iv=parse_loop_interval(str(interval or "5m"))
+   if not iv:raise web.HTTPBadRequest(text="bad interval")
+   sec,lab=iv
+  try:
+   job=loops.create(sid,prompt,sec,lab,cwd=str(body.get("cwd") or state.get("cwd") or ""))
+  except Exception as e:
+   return web.json_response({"ok":False,"error":str(e)},status=400)
+  return web.json_response({"ok":True,"job":job})
+ async def loops_stop(request):
+  try:body=await request.json()
+  except Exception:body={}
+  jid=str((body or {}).get("id") or request.rel_url.query.get("id") or "").strip()
+  sid=str((body or {}).get("sessionId") or request.rel_url.query.get("sessionId") or "").strip()
+  removed=loops.stop(job_id=jid or None,session_id=sid or None)
+  return web.json_response({"ok":True,"removed":removed,"count":len(removed)})
+ async def effort_set(request):
+  try:body=await request.json()
+  except Exception:raise web.HTTPBadRequest(text="json required")
+  sid=str(body.get("sessionId") or "").strip()
+  effort=str(body.get("effort") or body.get("reasoningEffort") or "").strip().lower()
+  model=str(body.get("modelId") or body.get("model") or "grok-4.5").strip()
+  if not sid or not effort:raise web.HTTPBadRequest(text="sessionId and effort required")
+  try:
+   res=await hub.set_model_effort(sid,model,effort)
+  except Exception as e:
+   return web.json_response({"ok":False,"error":str(e)},status=500)
+  if res and res.get("error"):
+   return web.json_response({"ok":False,"error":res.get("error"),"raw":res},status=400)
+  return web.json_response({"ok":True,"effort":effort,"modelId":model,"result":res.get("result") if res else None})
+ app.router.add_get("/api/loops",loops_list)
+ app.router.add_post("/api/loops",loops_create)
+ app.router.add_delete("/api/loops",loops_stop)
+ app.router.add_post("/api/loops/stop",loops_stop)
+ app.router.add_post("/api/effort",effort_set)
  print("Grok Remote UI+hub   http://%s:%d/"%(lan,a.port),flush=True)
  print("Multi-client WS      ws://%s:%d/ws  -> shared agent %s:%d"%(lan,a.port,agent_host,a.agent_port),flush=True)
  print("Workspace            %s"%state["cwd"],flush=True)
@@ -1018,8 +1223,13 @@ async def main_async(a):
   except Exception as e:
    print("[boot] agent ensure failed:",e,flush=True)
  try:
+  loops.start_all()
+  print("[loop] restored %d job(s)"%len(loops.jobs),flush=True)
   while True:await asyncio.sleep(3600)
  finally:
+  for t in list(loops._tasks.values()):
+   try:t.cancel()
+   except Exception:pass
   await hub.close()
 def main():
  ap=argparse.ArgumentParser()

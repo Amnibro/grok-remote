@@ -590,7 +590,11 @@ function bindSlashComplete(){
  {name:"cost",description:"Show local budget / context estimate"},
  {name:"diff",description:"Load working-tree git diff into chat"},
  {name:"stop",description:"Cancel current turn"},
- {name:"agents",description:"Inject AGENTS.md / CLAUDE.md into composer"}
+ {name:"agents",description:"Inject AGENTS.md / CLAUDE.md into composer"},
+ {name:"effort",description:"Set reasoning effort · low|medium|high|xhigh"},
+ {name:"loop",description:"Hub loop · /loop 5m check deploy (no CLI needed)"},
+ {name:"loops",description:"List remote loops for this chat"},
+ {name:"unloop",description:"Stop remote loops for this chat"}
  ]);
  const seen=new Set();
  const hits=cmds.filter(c=>{
@@ -618,6 +622,10 @@ function bindSlashComplete(){
  if(tv==="/diff"){e.preventDefault();hide();box.value="";showGitDiff();return}
  if(tv==="/stop"){e.preventDefault();hide();box.value="";stopTurn();return}
  if(tv==="/agents"){e.preventDefault();hide();box.value="";injectProjectContext();return}
+ if(tv==="/effort"||tv.startsWith("/effort ")||tv==="/loop"||tv.startsWith("/loop ")||tv==="/loops"||tv==="/unloop"||tv.startsWith("/unloop")){
+ e.preventDefault();hide();
+ if(window.handleRemoteSlash){window.handleRemoteSlash(tv).then(()=>{box.value=""}).catch(err=>chip(String(err)));return}
+ }
  if(tv.startsWith("/compact")){
  e.preventDefault();hide();
  box.value="Compact this session: summarize durable decisions, open tasks, and key file paths. Drop redundant chat. Keep actionable next steps.";
