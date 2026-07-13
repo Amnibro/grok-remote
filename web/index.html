@@ -1123,6 +1123,7 @@ body.voice-go #voiceHud,body.voice-xr #voiceHud{bottom:calc(var(--stack-h,120px)
       <span class="lb-extra" id="lbExtra"></span>
       <span class="lb-sep">·</span>
       <button type="button" class="lb-perm" id="lbPerm" title="Permission level for this chat — tap to cycle">perm: always</button>
+      <button type="button" class="lb-perm lb-effort" id="lbEffort" title="Reasoning effort — tap to cycle low/medium/high">effort: low</button>
       <span class="lb-sep lb-sep-git" id="lbGitSep" hidden>·</span>
       <span class="lb-git" id="lbGit" title="Git — tap to refresh" hidden></span>
       <span class="lb-sep lb-sep-cost" id="lbCostSep" hidden>·</span>
@@ -1276,6 +1277,7 @@ let permLevel="always",permBySession={};
 const PERM_ORDER=["always","ask","plan"];
 const PERM_LABEL={always:"always approve",ask:"ask each tool",plan:"plan gate"};
 let personaId="default",directionId="none",personaApplied=new Set();
+let currentModelId="grok-4.5",reasoningEffort="low",effortLevels=["low","medium","high"];
 const personaSheet=document.getElementById("personaSheet"),btnPersona=document.getElementById("btnPersona");
 const VARIANTS=[
   {id:"scient",label:"Scient",sw:"#00ff9d",swLight:"#00875a",brand:"AMNI-SCIENT"},
@@ -1984,6 +1986,13 @@ function paintPermChip(){
     if(k)k.textContent=on?"on":"off";
   });
 }
+function paintEffortChip(){
+  const el=document.getElementById("lbEffort");
+  if(!el)return;
+  el.textContent="effort: "+reasoningEffort;
+  el.dataset.effort=reasoningEffort;
+  el.title="Reasoning effort: "+reasoningEffort+" — tap to cycle · or /effort high";
+}
 function paintLivebar(){
   if(!livebar)return;
   const lb=document.getElementById("lbLink");
@@ -2001,9 +2010,118 @@ function paintLivebar(){
     ex.textContent=bits.length?("· "+bits.join(" · ")):"";
   }
   paintPermChip();
+  paintEffortChip();
   const om=document.getElementById("orbitMenuMeta");
-  if(om)om.textContent=linkLab+" · "+(PHASE_LABEL[phase]||phase)+" · perm "+getPermLevel(sid);
+  if(om)om.textContent=linkLab+" · "+(PHASE_LABEL[phase]||phase)+" · perm "+getPermLevel(sid)+" · "+reasoningEffort;
   try{const mm=document.getElementById("moreMenu");if(mm&&mm.classList.contains("on")&&typeof paintMoreMenuChrome==="function")paintMoreMenuChrome()}catch(e){}
+}
+async function setEffort(level,opts){
+  opts=opts||{};
+  const eff=String(level||"").toLowerCase().trim();
+  const ok=["none","minimal","low","medium","high","xhigh","max"];
+  if(!ok.includes(eff)){chip("effort · use low|medium|high|xhigh");return false}
+  if(!sid){chip("open a session first");return false}
+  const model=currentModelId||"grok-4.5";
+  try{
+    const r=await fetch("/api/effort",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({sessionId:sid,effort:eff,modelId:model})});
+    const text=await r.text();
+    let j=null;try{j=JSON.parse(String(text).replace(/^\uFEFF/,"").trim())}catch(e){j=null}
+    if(!r.ok||!j||!j.ok){
+      if(ws&&ws.readyState===1){
+        await req("session/set_model",{sessionId:sid,modelId:model,_meta:{reasoningEffort:eff==="max"?"xhigh":eff}},15000);
+      }else throw new Error((j&&j.error)||text||("HTTP "+r.status));
+    }
+    reasoningEffort=eff==="max"?"xhigh":eff;
+    try{localStorage.setItem("grok_remote_effort",reasoningEffort)}catch(e){}
+    paintEffortChip();
+    chip("effort · "+reasoningEffort+(opts.quiet?"":" · "+model));
+    return true;
+  }catch(e){chip("effort failed: "+e);return false}
+}
+function cycleEffort(){
+  const order=effortLevels.length?effortLevels:["low","medium","high"];
+  const i=order.indexOf(reasoningEffort);
+  setEffort(order[(i+1)%order.length]);
+}
+async function remoteLoopApi(path,body,method){
+  const m=method||(body?"POST":"GET");
+  const r=await fetch(path,{method:m,headers:body?{"Content-Type":"application/json"}:undefined,body:body?JSON.stringify(body):undefined,cache:"no-store"});
+  const text=await r.text();
+  let j=null;try{j=JSON.parse(String(text).replace(/^\uFEFF/,"").trim())}catch(e){j=null}
+  if(!r.ok||!j||j.ok===false)throw new Error((j&&(j.error||j.message))||text||("HTTP "+r.status));
+  return j;
+}
+async function handleRemoteSlash(raw){
+  const t=String(raw||"").trim();
+  if(!t.startsWith("/"))return false;
+  const low=t.toLowerCase();
+  if(low==="/effort"||low.startsWith("/effort ")){
+    const arg=t.slice(7).trim().toLowerCase();
+    if(!arg){chip("usage · /effort low|medium|high|xhigh · now "+reasoningEffort);return true}
+    await setEffort(arg);
+    return true;
+  }
+  if(low==="/loop"||low.startsWith("/loop ")||low==="/loops"||low==="/unloop"||low.startsWith("/unloop")){
+    if(!sid){chip("open a session for /loop");return true}
+    if(low==="/loops"||low==="/loop list"||low==="/loop status"||low==="/loop ls"){
+      try{
+        const j=await remoteLoopApi("/api/loops?sessionId="+encodeURIComponent(sid),null,"GET");
+        const jobs=j.jobs||[];
+        if(!jobs.length)chip("no remote loops for this chat");
+        else jobs.forEach(job=>chip("loop "+job.id+" · every "+(job.interval_label||"?")+" · fires "+(job.fires||0)+(job.last_error?" · err "+job.last_error:"")));
+      }catch(e){chip("loops: "+e)}
+      return true;
+    }
+    if(low==="/loop stop"||low==="/loop cancel"||low==="/loop clear"||low==="/loop off"||low==="/unloop"||low.startsWith("/unloop")||low.startsWith("/loop stop")||low.startsWith("/loop cancel")){
+      const id=(t.split(/\s+/).slice(2).join(" ")||"").trim();
+      try{
+        const j=await remoteLoopApi("/api/loops/stop",id?{id:id,sessionId:sid}:{sessionId:sid},"POST");
+        chip("loop stopped · "+(j.count||0));
+      }catch(e){chip("loop stop: "+e)}
+      return true;
+    }
+    if(low==="/loop"||low==="/loop help"){
+      chip("usage · /loop 5m check deploy · /loops · /loop stop");
+      return true;
+    }
+    const body=t.slice(5).trim();
+    let interval="5m",prompt=body,assumed=false;
+    const m=body.match(/^(\d+\s*(?:s|sec|secs|seconds|m|min|mins|minutes|h|hr|hrs|hours|d|day|days)?)\s+(.+)$/i);
+    if(m){interval=m[1];prompt=m[2]}
+    else{
+      const m2=body.match(/^(.+?)\s+every\s+(\d+\s*(?:s|sec|secs|seconds|m|min|mins|minutes|h|hr|hrs|hours|d|day|days)?)\s*$/i);
+      if(m2){prompt=m2[1];interval=m2[2]}
+      else assumed=true;
+    }
+    if(!prompt){chip("usage · /loop 5m <prompt>");return true}
+    try{
+      const j=await remoteLoopApi("/api/loops",{sessionId:sid,prompt:prompt,interval:interval,cwd:sidCwd||defaultCwd||""},"POST");
+      const job=j.job||{};
+      chip("loop on · every "+(job.interval_label||interval)+" · "+(job.id||"")+(assumed?" · defaulted 5m":"")+" · hub keeps firing without CLI");
+      appendUser("/loop "+(job.interval_label||interval)+" "+prompt);
+      closeOpen();
+    }catch(e){chip("loop failed: "+e)}
+    return true;
+  }
+  return false;
+}
+window.handleRemoteSlash=handleRemoteSlash;
+window.setEffort=setEffort;
+window.cycleEffort=cycleEffort;
+function applyModelState(modelsObj){
+  try{
+    if(!modelsObj)return;
+    if(modelsObj.currentModelId)currentModelId=modelsObj.currentModelId;
+    const models=modelsObj.availableModels||[];
+    const cur=models.find(m=>m&&m.modelId===currentModelId)||models[0];
+    const mm=(cur&&cur._meta)||{};
+    if(mm.reasoningEffort)reasoningEffort=String(mm.reasoningEffort);
+    if(Array.isArray(mm.reasoningEfforts)&&mm.reasoningEfforts.length){
+      effortLevels=mm.reasoningEfforts.map(x=>x.value||x.id).filter(Boolean);
+      if(!effortLevels.length)effortLevels=["low","medium","high"];
+    }
+    paintEffortChip();
+  }catch(e){}
 }
 function setPhase(phase,detail){
   agentPhase=phase||"idle";
@@ -2616,13 +2734,22 @@ let userWireBuf="";
 function stripPromptChrome(text){
   let t=String(text||"");
   t=t.replace(/^\uFEFF/,"");
-  t=t.replace(/\[AGENT SETUP[^\]]*\][\s\S]*?\[END AGENT SETUP\]\s*(?:---+\s*)?/gi,"");
-  t=t.replace(/^\s*\[FYI\s*\/\s*chitchat[\s\S]*?\]\s*/i,"");
-  t=t.replace(/^\s*\[Queued guidance[\s\S]*?\]\s*/i,"");
-  t=t.replace(/^\s*\[INTERJECT[\s\S]*?\]\s*/i,"");
-  t=t.replace(/^\s*Acknowledge this agent setup[\s\S]*?(?:\n\s*)+/i,"");
-  t=t.replace(/^\s*---+\s*/,"");
-  return t.replace(/^\s+/,"");
+  let prev="";
+  for(let n=0;n<8&&t!==prev;n++){
+    prev=t;
+    t=t.replace(/<system-reminder\b[^>]*>[\s\S]*?<\/system-reminder\s*>/gi," ");
+    t=t.replace(/\[AGENT SETUP[^\]]*\][\s\S]*?\[END AGENT SETUP\]/gi," ");
+    t=t.replace(/\[INTERJECT[^\]]*\]/gi," ");
+    t=t.replace(/\[FYI\s*\/\s*chitchat[^\]]*\]/gi," ");
+    t=t.replace(/\[Queued guidance[^\]]*\]/gi," ");
+    t=t.replace(/\[REMOTE LOOP[^\]]*\]/gi," ");
+    t=t.replace(/\[SCHEDULED[^\]]*\]/gi," ");
+    t=t.replace(/^\s*Acknowledge this agent setup[\s\S]*?(?:\n\s*)+/i,"");
+    t=t.replace(/(?:^|\n)\s*---+\s*(?=\n|$)/g,"\n");
+    t=t.replace(/^\s*(?:Interject|FYI|Queued)\s*·\s*/i,"");
+  }
+  t=t.replace(/[ \t]+\n/g,"\n").replace(/\n{3,}/g,"\n\n");
+  return t.replace(/^\s+|\s+$/g,"");
 }
 function noteSeenUser(key){
   const k=String(key||"").trim();
@@ -3665,7 +3792,12 @@ async function openSession(s){
   (async()=>{
     const attachId=openId,attachGen=gen,attachCwd=sidCwd;
     try{
-      await req("session/load",{sessionId:attachId,cwd:attachCwd,mcpServers:[]},10000);
+      const loaded=await req("session/load",{sessionId:attachId,cwd:attachCwd,mcpServers:[]},10000);
+      try{applyModelState(loaded&&loaded.models)}catch(e){}
+      try{
+        const pref=(localStorage.getItem("grok_remote_effort")||reasoningEffort||"").toLowerCase();
+        if(pref&&attachGen===sessionGen&&String(sid)===attachId)await setEffort(pref,{quiet:true});
+      }catch(e){}
     }catch(e){if(attachGen===sessionGen&&String(sid)===attachId)try{chip("agent attach: "+String(e).slice(0,80))}catch(x){}}
     finally{if(attachGen===sessionGen&&String(sid)===attachId)suppressLive=false}
     if(attachGen!==sessionGen||String(sid)!==attachId)return;
@@ -3693,6 +3825,7 @@ async function newSession(cwd,firstMsg){
   try{
     const r=await req("session/new",{cwd:c,mcpServers:[]},60000);
     if(gen!==sessionGen)return;
+    try{applyModelState(r&&r.models)}catch(e){}
     const newId=r&& (r.sessionId||r.session_id||(r.session&&r.session.sessionId));
     if(!newId)throw new Error("session/new returned no id · "+JSON.stringify(r||{}).slice(0,180));
     sid=String(newId);window.sid=sid;loadExpectSid=null;rememberSessionSid(sid,sidCwd);
@@ -3905,7 +4038,21 @@ async function connect(opts){
   ws.onopen=async()=>{
     log("open");
     try{
-      await req("initialize",{protocolVersion:1,clientInfo:{name:"grok-remote",version:"3.4"},clientCapabilities:{fs:{readTextFile:true,writeTextFile:true},terminal:true}},30000);
+      const initRes=await req("initialize",{protocolVersion:1,clientInfo:{name:"grok-remote",version:"3.6"},clientCapabilities:{fs:{readTextFile:true,writeTextFile:true},terminal:true}},30000);
+      try{
+        const meta=(initRes&&initRes._meta)||{};
+        const ms=meta.modelState||{};
+        if(ms.currentModelId)currentModelId=ms.currentModelId;
+        const models=ms.availableModels||[];
+        const cur=models.find(m=>m&&m.modelId===currentModelId)||models[0];
+        const mm=(cur&&cur._meta)||{};
+        if(mm.reasoningEffort)reasoningEffort=String(mm.reasoningEffort);
+        if(Array.isArray(mm.reasoningEfforts)&&mm.reasoningEfforts.length){
+          effortLevels=mm.reasoningEfforts.map(x=>x.value||x.id).filter(Boolean);
+          if(!effortLevels.length)effortLevels=["low","medium","high"];
+        }
+        paintEffortChip();
+      }catch(e){}
       connectAttempt=0;reconnectArmed=true;wantReconnect=true;
       setConn(true,opts.fromReconnect?"reconnected":"connected",false);setPhase("idle");
       await fetchSessions();
@@ -4122,6 +4269,14 @@ async function sendPrompt(forcedMode){
   const tRaw=box.value.trim();
   if((!tRaw&&!pendingFiles.length)||!sid)return;
   if(!ws||ws.readyState!==1){chip("not connected");return}
+  if(tRaw.startsWith("/")&&!pendingFiles.length){
+    try{
+      if(await handleRemoteSlash(tRaw)){
+        box.value="";box.style.height="auto";
+        return;
+      }
+    }catch(e){chip("slash: "+e);return}
+  }
   const mode=(forcedMode&&["interject","queue","fyi"].includes(forcedMode))?forcedMode:msgMode;
   box.value="";box.style.height="auto";
   const files=pendingFiles.slice();
@@ -4347,8 +4502,12 @@ box.addEventListener("blur",()=>{
 });
 (function wirePermUi(){
   loadPermLevels();paintPermChip();
+  try{const e=localStorage.getItem("grok_remote_effort");if(e)reasoningEffort=e}catch(x){}
+  paintEffortChip();
   const lp=document.getElementById("lbPerm");
   if(lp)lp.onclick=e=>{e.preventDefault();e.stopPropagation();cyclePermLevel()};
+  const le=document.getElementById("lbEffort");
+  if(le)le.onclick=e=>{e.preventDefault();e.stopPropagation();cycleEffort()};
   const pc=document.getElementById("btnPermCycle");
   if(pc)pc.onclick=e=>{e.preventDefault();e.stopPropagation();cyclePermLevel()};
   document.querySelectorAll("[data-perm]").forEach(b=>{
