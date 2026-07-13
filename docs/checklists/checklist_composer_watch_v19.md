@@ -6,4 +6,4 @@
 - [x] XR/AR capability autodetect
 - [x] Galaxy Watch companion page + route
 - [x] Sync plugin, architecture_map, changelog
-- [ ] Commit + push
+- [x] Commit + push (`c774cd6` → origin/main)
