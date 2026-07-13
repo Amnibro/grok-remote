@@ -1260,7 +1260,7 @@ let ws=null,sid=null,sidCwd=".",nid=0,pending=new Map(),busy=false,defaultCwd=".
 let replaying=false,showThoughts=true,stickBottom=true,autoScroll=true,page="setup";
 let curUser=null,curAgent=null,curThought=null,toolMap={},curThoughtRow=null;
 let seenEvents=new Set(),seenUserTexts=new Set(),promptCount=0,commands=[];
-let pollTimer=null,catchupBusy=false,lastLiveAt=0,localEchoUntil=0;
+let pollTimer=null,catchupBusy=false,lastLiveAt=0,localEchoUntil=0,sendInFlight=false,lastLocalUserPlain="",ignoreScrollUntil=0;
 let historyFileSize=0,diskCatchupBusy=false;
 const HISTORY_PAGE=40;
 let historyHasMore=false,historyOlderBefore=0,historyLoadingOlder=false;
@@ -1848,8 +1848,10 @@ function reflowAfterViewportChange(reason){
     measureBottomStack();
     try{if(typeof updateLayoutClass==="function")updateLayoutClass()}catch(e){}
     try{if(typeof applySidebar==="function")applySidebar()}catch(e){}
-    keepComposerInView(true);
-    if(stickBottom||composerFocused())forceScrollBottom();
+    if(stickBottom||composerFocused()||document.body.classList.contains("kb-open")){
+      stickBottom=true;
+      forceScrollBottom();
+    }else keepComposerInView(true);
     if(reason==="orientation"){
       requestAnimationFrame(()=>{
         captureBaselineViewport();
@@ -1885,21 +1887,34 @@ function jumpToBottom(){
 }
 function log(m){logEl.textContent+=(new Date().toLocaleTimeString())+"  "+m+"\n";logEl.scrollTop=logEl.scrollHeight}
 function defaultWs(){return (location.protocol==="https:"?"wss:":"ws:")+"//"+location.host+"/ws"}
-function atBottom(){return feed.scrollHeight-feed.scrollTop-feed.clientHeight<120}
+function atBottom(){
+  if(!feed)return true;
+  const slop=document.body.classList.contains("kb-open")?180:140;
+  return feed.scrollHeight-feed.scrollTop-feed.clientHeight<slop;
+}
 function forceScrollBottom(){
   if(!feed)return;
+  ignoreScrollUntil=Date.now()+500;
+  stickBottom=true;
   try{feed.scrollTop=feed.scrollHeight}catch(e){}
+  try{feed.scrollTop=feed.scrollHeight+4000}catch(e){}
   const last=feed.lastElementChild;
-  if(last)try{last.scrollIntoView({block:"end",behavior:"auto"})}catch(e){try{feed.scrollTop=feed.scrollHeight}catch(x){}}
+  if(last)try{last.scrollIntoView({block:"end",behavior:"auto",inline:"nearest"})}catch(e){}
   try{feed.scrollTop=feed.scrollHeight}catch(e){}
+  requestAnimationFrame(()=>{
+    try{if(feed)feed.scrollTop=feed.scrollHeight}catch(e){}
+    ignoreScrollUntil=Date.now()+350;
+  });
 }
 function scroll(){
   if(replaying||sessionSwitching||(feed&&feed.classList.contains("loading-history"))){updateJump();return}
-  if(autoScroll&&stickBottom)forceScrollBottom();
+  if(autoScroll&&(stickBottom||composerFocused()||document.body.classList.contains("kb-open")))forceScrollBottom();
   updateJump();
 }
 feed.addEventListener("scroll",()=>{
   if(replaying||sessionSwitching||feed.classList.contains("loading-history")){stickBottom=true;updateJump();return}
+  if(Date.now()<ignoreScrollUntil){updateJump();return}
+  if(composerFocused()&&document.body.classList.contains("kb-open")){stickBottom=true;updateJump();return}
   stickBottom=atBottom();updateJump();
   if(feed.scrollTop<140)loadOlderHistory().catch(()=>{});
 },{passive:true});
@@ -2803,7 +2818,12 @@ function appendUser(text,opts){
     const display=stripPromptChrome(userWireBuf);
     if(!display.trim())return;
     const key=display.trim();
-    if(!opts.force&&Date.now()<localEchoUntil&&seenUserTexts.has(key))return;
+    const plain=stripPromptChrome(key).trim();
+    const echoWin=Date.now()<localEchoUntil;
+    if(!opts.force&&echoWin&&(seenUserTexts.has(key)||seenUserTexts.has(plain)||(lastLocalUserPlain&&(plain===lastLocalUserPlain||key===lastLocalUserPlain||plain.endsWith(lastLocalUserPlain)||lastLocalUserPlain.endsWith(plain))))){
+      userWireBuf="";
+      return;
+    }
     if(!opts.force&&curUser&&(curUser.dataset.raw||"").trim()===key)return;
     if(wasEmpty)curUser=null;
     if(!curUser){curUser=addRow("You");curUser.classList.add("md")}
@@ -2820,7 +2840,9 @@ function appendUser(text,opts){
   if(!opts.force){
     const key=t.trim();
     if(key&&seenUserTexts.has(key)&&Date.now()<localEchoUntil)return;
+    if(key&&lastLocalUserPlain&&key===lastLocalUserPlain&&Date.now()<localEchoUntil)return;
     noteSeenUser(key);
+    lastLocalUserPlain=key;
   }
   if(!curUser){curUser=addRow("You");curUser.classList.add("md");curUser.dataset.raw=""}
   curUser.dataset.raw=(curUser.dataset.raw||"")+t;
@@ -4266,53 +4288,71 @@ async function injectPersonaNow(){
 }
 
 async function sendPrompt(forcedMode){
+  if(sendInFlight)return;
   const tRaw=box.value.trim();
   if((!tRaw&&!pendingFiles.length)||!sid)return;
   if(!ws||ws.readyState!==1){chip("not connected");return}
-  if(tRaw.startsWith("/")&&!pendingFiles.length){
-    try{
-      if(await handleRemoteSlash(tRaw)){
-        box.value="";box.style.height="auto";
-        return;
-      }
-    }catch(e){chip("slash: "+e);return}
+  sendInFlight=true;
+  try{
+    if(tRaw.startsWith("/")&&!pendingFiles.length){
+      try{
+        if(await handleRemoteSlash(tRaw)){
+          box.value="";box.style.height="auto";
+          return;
+        }
+      }catch(e){chip("slash: "+e);return}
+    }
+    const mode=(forcedMode&&["interject","queue","fyi"].includes(forcedMode))?forcedMode:msgMode;
+    box.value="";box.style.height="auto";
+    const files=pendingFiles.slice();
+    pendingFiles=[];paintAttachBar();
+    closeOpen();
+    stickBottom=true;
+    const isBusy=!!busy&&!replaying;
+    if(isBusy&&mode==="queue"){
+      enqueueMsg({mode:"queue",tRaw,files,at:Date.now()});
+      try{if(window.grokVoice)window.grokVoice.onTaskSent(tRaw,{delivery:"queue",agentBusy:true})}catch(e){}
+      return;
+    }
+    if(isBusy&&mode==="fyi"){
+      enqueueMsg({mode:"fyi",tRaw,files,at:Date.now()});
+      chip("FYI queued — will apply at next pause without stopping current work");
+      try{if(window.grokVoice)window.grokVoice.onTaskSent(tRaw,{delivery:"fyi",agentBusy:true})}catch(e){}
+      return;
+    }
+    let interjected=false;
+    if(isBusy&&mode==="interject"){
+      chip("interject · cancelling current steps…");
+      cancelTurn();
+      interjected=true;
+      await sleep(350);
+    }
+    localEchoUntil=Date.now()+12000;
+    lastLocalUserPlain=stripPromptChrome(tRaw).trim();
+    sessionFresh=false;
+    const display=(mode==="fyi"?"FYI · ":"")+(interjected?"Interject · ":"")+tRaw;
+    if(tRaw){
+      appendUser(display);
+      try{
+        seenUserTexts.add(tRaw.trim());
+        seenUserTexts.add(display.trim());
+        seenUserTexts.add(lastLocalUserPlain);
+        noteSeenUser(lastLocalUserPlain);
+      }catch(e){}
+    }
+    if(files.length)showLocalAttachments(files);
+    closeOpen();
+    userWireBuf="";
+    forceScrollBottom();
+    promoteSessionAfterMessage(sid).catch(()=>{});
+    try{if(window.grokVoice)window.grokVoice.onTaskSent(tRaw,{delivery:mode,agentBusy:isBusy,interjected:interjected})}catch(e){}
+    await dispatchPromptPayload(tRaw,files,mode,{wasBusy:isBusy,interjected:interjected});
+    stickBottom=true;
+    forceScrollBottom();
+    [40,120,280].forEach(ms=>setTimeout(()=>{if(stickBottom||autoScroll)forceScrollBottom()},ms));
+  }finally{
+    sendInFlight=false;
   }
-  const mode=(forcedMode&&["interject","queue","fyi"].includes(forcedMode))?forcedMode:msgMode;
-  box.value="";box.style.height="auto";
-  const files=pendingFiles.slice();
-  pendingFiles=[];paintAttachBar();
-  closeOpen();
-  const isBusy=!!busy&&!replaying;
-  if(isBusy&&mode==="queue"){
-    enqueueMsg({mode:"queue",tRaw,files,at:Date.now()});
-    try{if(window.grokVoice)window.grokVoice.onTaskSent(tRaw,{delivery:"queue",agentBusy:true})}catch(e){}
-    return;
-  }
-  if(isBusy&&mode==="fyi"){
-    enqueueMsg({mode:"fyi",tRaw,files,at:Date.now()});
-    chip("FYI queued — will apply at next pause without stopping current work");
-    try{if(window.grokVoice)window.grokVoice.onTaskSent(tRaw,{delivery:"fyi",agentBusy:true})}catch(e){}
-    return;
-  }
-  let interjected=false;
-  if(isBusy&&mode==="interject"){
-    chip("interject · cancelling current steps…");
-    cancelTurn();
-    interjected=true;
-    await sleep(350);
-  }
-  localEchoUntil=Date.now()+8000;
-  sessionFresh=false;
-  const display=(mode==="fyi"?"FYI · ":"")+(interjected?"Interject · ":"")+tRaw;
-  if(tRaw){
-    appendUser(display);
-    try{seenUserTexts.add(tRaw.trim());seenUserTexts.add(display.trim())}catch(e){}
-  }
-  if(files.length)showLocalAttachments(files);
-  closeOpen();
-  promoteSessionAfterMessage(sid).catch(()=>{});
-  try{if(window.grokVoice)window.grokVoice.onTaskSent(tRaw,{delivery:mode,agentBusy:isBusy,interjected:interjected})}catch(e){}
-  await dispatchPromptPayload(tRaw,files,mode,{wasBusy:isBusy,interjected:interjected});
 }
 async function promoteSessionAfterMessage(sessionId){
   const k=String(sessionId||sid||"");
@@ -4462,7 +4502,11 @@ window.grokIdeNewSession=async function(cwd,msg){
   const q=new URLSearchParams(location.search);
   if(q.get("ide")==="1")setTimeout(()=>{if(window.grokIde)window.grokIde.show(true)},800);
 })();
-send.onclick=()=>{sendPrompt().catch(e=>chip(String(e)))};
+send.onclick=e=>{
+  if(e){e.preventDefault();e.stopPropagation()}
+  if(sendInFlight)return;
+  sendPrompt().catch(err=>chip(String(err)));
+};
 const btnCancelTurn=document.getElementById("btnCancelTurn");
 if(btnCancelTurn)btnCancelTurn.onclick=()=>cancelTurn();
 (function wireMsgModeRow(){
@@ -4473,8 +4517,10 @@ if(btnCancelTurn)btnCancelTurn.onclick=()=>cancelTurn();
   loadMsgMode();paintMsgModeChips();
 })();
 box.addEventListener("keydown",e=>{
-  if(e.key==="Enter"&&!e.shiftKey){
+  if(e.key==="Enter"&&!e.shiftKey&&!e.isComposing&&e.keyCode!==229){
     e.preventDefault();
+    e.stopPropagation();
+    if(sendInFlight)return;
     sendPrompt().catch(err=>chip(String(err)));
   }
 });
@@ -4485,6 +4531,7 @@ box.addEventListener("focus",()=>{
   syncVisualViewport();
   measureBottomStack();
   keepComposerInView(true,{noBoxScroll:false});
+  forceScrollBottom();
   [80,200,400,700].forEach(ms=>setTimeout(()=>{
     if(!composerFocused())return;
     syncVisualViewport();
