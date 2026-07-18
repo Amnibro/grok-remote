@@ -321,9 +321,10 @@ main{flex:1;overflow-x:hidden;overflow-y:auto;padding:clamp(10px,1.2vw,20px);pad
 .btn-attach{flex:none;height:clamp(42px,5vh,52px);min-width:44px;border:1px solid var(--line);background:var(--panel2);color:var(--tx);border-radius:12px;font-weight:700;cursor:pointer;font-size:16px}
 .btn-attach:hover{border-color:var(--acc);color:var(--acc)}
 .composer-tools .btn-attach{height:auto;min-width:0;padding:5px 10px;font-size:11px;border-radius:8px}
-.jump{position:fixed;right:clamp(12px,2vw,24px);bottom:calc(var(--stack-h,120px) + 12px + env(safe-area-inset-bottom));z-index:40;display:none;border:2px solid color-mix(in srgb,var(--acc) 60%,#05070a);border-radius:999px;padding:11px 16px;font-weight:800;font-size:13px;background:var(--acc);color:#05070a;box-shadow:0 10px 28px -6px var(--acc-glow),0 0 0 1px color-mix(in srgb,var(--acc) 40%,transparent);cursor:pointer;opacity:.95;pointer-events:auto;-webkit-tap-highlight-color:transparent;transition:bottom .18s ease,opacity .15s,transform .15s,background .15s}
+.jump{position:fixed;right:clamp(12px,2vw,24px);bottom:calc(var(--stack-h,120px) + 12px + env(safe-area-inset-bottom));z-index:40;display:none;border:2px solid color-mix(in srgb,var(--acc) 60%,#05070a);border-radius:999px;padding:12px 18px;font-weight:800;font-size:13px;background:var(--acc);color:#05070a;box-shadow:0 10px 28px -6px var(--acc-glow),0 0 0 1px color-mix(in srgb,var(--acc) 40%,transparent);cursor:pointer;opacity:0;pointer-events:none;-webkit-tap-highlight-color:transparent;transition:bottom .18s ease,opacity .18s,transform .15s,background .15s;transform:translateY(8px)}
 body.kb-open .jump{bottom:calc(var(--stack-h,120px) + 12px)}
-.jump.on{display:inline-flex;align-items:center;gap:6px}
+.jump.on{display:inline-flex;align-items:center;gap:6px;opacity:.98;pointer-events:auto;transform:translateY(0)}
+.jump:hover{filter:brightness(1.06)}
 .jump .jlab{letter-spacing:.2px}
 .chat-top{display:none;flex:none;gap:8px;align-items:center;padding:6px clamp(10px,1.5vw,16px);border-bottom:1px solid var(--line);background:color-mix(in srgb,var(--panel) 88%,transparent);backdrop-filter:blur(10px)}
 body.page-chat #chatTop{display:flex}
@@ -1262,7 +1263,7 @@ let curUser=null,curAgent=null,curThought=null,toolMap={},curThoughtRow=null;
 let seenEvents=new Set(),seenUserTexts=new Set(),promptCount=0,commands=[];
 let pollTimer=null,catchupBusy=false,lastLiveAt=0,localEchoUntil=0,sendInFlight=false,lastLocalUserPlain="",ignoreScrollUntil=0;
 let historyFileSize=0,diskCatchupBusy=false;
-const HISTORY_PAGE=40;
+const HISTORY_PAGE=80;
 let historyHasMore=false,historyOlderBefore=0,historyLoadingOlder=false;
 let sessionGen=0,sessionSwitching=false,loadExpectSid=null,sessionFresh=false,historyPainting=false,suppressLive=false;
 let linkState="standby",agentPhase="idle",phaseDetail="",wantReconnect=false,reconnectTimer=null,connectAttempt=0;
@@ -1766,31 +1767,14 @@ function keepComposerInView(force,opts){
   measureBottomStack({skipVv:soft,stabilize:soft||!!opts.stabilize});
   if(soft){updateJump();return}
   const focused=composerFocused();
-  const need=force||stickBottom||focused||kbInset>24||document.body.classList.contains("kb-open");
-  if(!need){updateJump();return}
-  if(force||kbInset>24||document.body.classList.contains("kb-open")){
-    stickBottom=true;
-    forceScrollBottom();
-  }else if(stickBottom){
-    forceScrollBottom();
-  }
+  if(stickBottom)forceScrollBottom({pin:false});
   try{
     const vv=window.visualViewport;
     const footEl=document.getElementById("foot");
     const room=vv?((vv.offsetTop||0)+vv.height):((window.innerHeight||0));
-    if(footEl&&vv&&!opts.noBoxScroll){
+    if(stickBottom&&footEl&&vv&&!opts.noBoxScroll){
       const fr=footEl.getBoundingClientRect();
       if(fr.bottom>room-2&&feed)feed.scrollTop+=(fr.bottom-room+8);
-    }
-    if(box&&focused&&!opts.noBoxScroll&&(force||kbInset>40)){
-      const r=box.getBoundingClientRect();
-      if(vv&&r.bottom>room-10&&feed)feed.scrollTop+=(r.bottom-(room-10)+12);
-    }
-    const last=feed&&feed.lastElementChild;
-    if(last&&footEl&&(stickBottom||force)){
-      const lr=last.getBoundingClientRect();
-      const ft=footEl.getBoundingClientRect().top;
-      if(lr.bottom>ft-12&&feed)feed.scrollTop+=(lr.bottom-(ft-12));
     }
   }catch(e){}
   updateJump();
@@ -1848,10 +1832,8 @@ function reflowAfterViewportChange(reason){
     measureBottomStack();
     try{if(typeof updateLayoutClass==="function")updateLayoutClass()}catch(e){}
     try{if(typeof applySidebar==="function")applySidebar()}catch(e){}
-    if(stickBottom||composerFocused()||document.body.classList.contains("kb-open")){
-      stickBottom=true;
-      forceScrollBottom();
-    }else keepComposerInView(true);
+    if(stickBottom)forceScrollBottom({pin:false});
+    else keepComposerInView(false);
     if(reason==="orientation"){
       requestAnimationFrame(()=>{
         captureBaselineViewport();
@@ -1866,68 +1848,67 @@ function reflowAfterViewportChange(reason){
 function updateJump(){
   const j=document.getElementById("jumpBottom");
   if(!j)return;
-  measureBottomStack();
+  try{measureBottomStack({skipVv:true})}catch(e){}
   if(page!=="chat"||!feed||feed.style.display==="none"){j.classList.remove("on");return}
-  const overflow=feed.scrollHeight>feed.clientHeight+28;
+  const overflow=feed.scrollHeight>feed.clientHeight+40;
   const atEnd=atBottom();
-  if(!overflow||atEnd){j.classList.remove("on");return}
+  if(!overflow||atEnd||stickBottom){j.classList.remove("on");return}
   j.classList.add("on");
   const lab=j.querySelector(".jlab");
   if(lab)lab.textContent="Bottom";
 }
 function jumpToBottom(){
   stickBottom=true;
-  const go=()=>{
-    feed.scrollTop=feed.scrollHeight;
-    const last=feed.lastElementChild;
-    if(last&&last.scrollIntoView)try{last.scrollIntoView({block:"end",behavior:"auto"})}catch(e){feed.scrollTop=feed.scrollHeight}
-  };
-  go();
-  requestAnimationFrame(()=>{go();requestAnimationFrame(()=>{go();updateJump()})});
+  forceScrollBottom({pin:true});
+  requestAnimationFrame(()=>{forceScrollBottom({pin:true});requestAnimationFrame(()=>{forceScrollBottom({pin:true});updateJump()})});
 }
 function log(m){logEl.textContent+=(new Date().toLocaleTimeString())+"  "+m+"\n";logEl.scrollTop=logEl.scrollHeight}
 function defaultWs(){return (location.protocol==="https:"?"wss:":"ws:")+"//"+location.host+"/ws"}
 function atBottom(){
   if(!feed)return true;
-  const slop=document.body.classList.contains("kb-open")?180:140;
+  const slop=document.body.classList.contains("kb-open")?200:160;
   return feed.scrollHeight-feed.scrollTop-feed.clientHeight<slop;
 }
-function forceScrollBottom(){
+function forceScrollBottom(opts){
+  opts=opts||{};
   if(!feed)return;
-  ignoreScrollUntil=Date.now()+500;
-  stickBottom=true;
+  if(opts.pin)stickBottom=true;
+  ignoreScrollUntil=Date.now()+400;
   try{feed.scrollTop=feed.scrollHeight}catch(e){}
-  try{feed.scrollTop=feed.scrollHeight+4000}catch(e){}
+  try{feed.scrollTop=feed.scrollHeight+8000}catch(e){}
   const last=feed.lastElementChild;
   if(last)try{last.scrollIntoView({block:"end",behavior:"auto",inline:"nearest"})}catch(e){}
   try{feed.scrollTop=feed.scrollHeight}catch(e){}
   requestAnimationFrame(()=>{
     try{if(feed)feed.scrollTop=feed.scrollHeight}catch(e){}
-    ignoreScrollUntil=Date.now()+350;
+    ignoreScrollUntil=Date.now()+280;
+    updateJump();
   });
 }
 function scroll(){
-  if(replaying||sessionSwitching||(feed&&feed.classList.contains("loading-history"))){updateJump();return}
-  if(autoScroll&&(stickBottom||composerFocused()||document.body.classList.contains("kb-open")))forceScrollBottom();
+  if(replaying||sessionSwitching||historyLoadingOlder||(feed&&feed.classList.contains("loading-history"))){updateJump();return}
+  if(autoScroll&&stickBottom)forceScrollBottom({pin:false});
   updateJump();
 }
 feed.addEventListener("scroll",()=>{
-  if(replaying||sessionSwitching||feed.classList.contains("loading-history")){stickBottom=true;updateJump();return}
+  if(replaying||sessionSwitching||feed.classList.contains("loading-history")||historyLoadingOlder){updateJump();return}
   if(Date.now()<ignoreScrollUntil){updateJump();return}
-  if(composerFocused()&&document.body.classList.contains("kb-open")){stickBottom=true;updateJump();return}
-  stickBottom=atBottom();updateJump();
-  if(feed.scrollTop<140)loadOlderHistory().catch(()=>{});
+  const was=stickBottom;
+  stickBottom=atBottom();
+  updateJump();
+  if(feed.scrollTop<180)loadOlderHistory().catch(()=>{});
+  if(was&&!stickBottom)updateJump();
 },{passive:true});
 async function snapChatToBottom(times){
   stickBottom=true;
-  const n=times||6;
+  const n=times||4;
   for(let i=0;i<n;i++){
-    forceScrollBottom();
+    forceScrollBottom({pin:true});
     await new Promise(r=>requestAnimationFrame(r));
   }
-  forceScrollBottom();
-  await new Promise(r=>setTimeout(r,16));
-  forceScrollBottom();
+  forceScrollBottom({pin:true});
+  await new Promise(r=>setTimeout(r,20));
+  forceScrollBottom({pin:true});
   updateJump();
 }
 if(typeof ResizeObserver!=="undefined"){
@@ -1944,7 +1925,7 @@ if(typeof ResizeObserver!=="undefined"){
 }
 window.updateJump=updateJump;
 window.measureBottomStack=measureBottomStack;
-function chip(t){const d=document.createElement("div");d.className="chip";d.innerHTML="<span>"+esc(t)+"</span>";feed.appendChild(d);scroll()}
+function chip(t){const d=document.createElement("div");d.className="chip";d.innerHTML="<span>"+esc(t)+"</span>";feed.appendChild(d);if(stickBottom)scroll();else updateJump()}
 const PHASE_LABEL={idle:"idle",waiting:"waiting for response",thinking:"thinking",responding:"responding",tools:"running tools",error:"error",sync:"syncing…"};
 function loadPermLevels(){
   try{
@@ -2468,7 +2449,7 @@ function showPage(name,fromPop){
   foot.style.display=name==="chat"?"block":"none";
   if(name!=="chat")hideHorizon();
   if(!fromPop)pushPage(name); else updateChrome();
-  if(name==="chat"){requestAnimationFrame(()=>{if(autoScroll&&stickBottom)forceScrollBottom();updateJump()})}
+  if(name==="chat"){requestAnimationFrame(()=>{if(stickBottom)forceScrollBottom({pin:false});updateJump()})}
   else updateJump();
 }
 function goSessions(fromPop){
@@ -3430,23 +3411,35 @@ async function loadOlderHistory(){
   if(!sid||!historyHasMore||historyLoadingOlder||replaying||sessionSwitching)return;
   if(!(historyOlderBefore>0)){historyHasMore=false;paintHistoryMoreChip();return}
   historyLoadingOlder=true;
+  stickBottom=false;
   const expect=sid,gen=sessionGen;
   const prevH=feed.scrollHeight,prevT=feed.scrollTop;
   const marker=document.getElementById("histMore");
   if(marker)marker.innerHTML='<span>loading earlier…</span>';
+  ignoreScrollUntil=Date.now()+2000;
   try{
-    const hist=await paintDiskHistory(expect,sidCwd,{limit:HISTORY_PAGE,before:historyOlderBefore,prepend:true,max_bytes:1500000,gen:gen});
+    const hist=await paintDiskHistory(expect,sidCwd,{limit:Math.max(HISTORY_PAGE,60),before:historyOlderBefore,prepend:true,max_bytes:2500000,gen:gen});
     if(String(sid)!==expect||gen!==sessionGen||(hist&&hist.stale))return;
     if(!(hist.count>0)){historyHasMore=false;paintHistoryMoreChip();return}
     const delta=feed.scrollHeight-prevH;
+    ignoreScrollUntil=Date.now()+800;
     feed.scrollTop=prevT+Math.max(0,delta);
-    chip("loaded +"+hist.count+" earlier");
+    stickBottom=false;
+    const note=document.createElement("div");
+    note.className="chip";
+    note.innerHTML="<span>loaded +"+hist.count+" earlier</span>";
+    if(feed.firstChild)feed.insertBefore(note,feed.firstChild.nextSibling||feed.firstChild);
+    else feed.appendChild(note);
+    setTimeout(()=>{try{if(note.parentNode)note.parentNode.removeChild(note)}catch(e){}},2500);
   }catch(e){
     if(marker)marker.innerHTML='<span>↑ earlier messages — scroll up</span>';
-    chip("older history: "+e);
+    const note=document.createElement("div");note.className="chip";note.innerHTML="<span>older history: "+esc(String(e).slice(0,80))+"</span>";
+    try{feed.insertBefore(note,feed.firstChild)}catch(x){}
   }finally{
     historyLoadingOlder=false;
+    stickBottom=false;
     paintHistoryMoreChip();
+    updateJump();
   }
 }
 async function diskLiveCatchup(){
@@ -3800,11 +3793,11 @@ async function openSession(s){
       loadExpectSid=null;sessionSwitching=false;replaying=false;setBusy(false);closeOpen();
       stickBottom=true;
       hideHorizon();
-      forceScrollBottom();
+      forceScrollBottom({pin:true});
       startPoll();
       updateJump();
-      requestAnimationFrame(()=>{if(gen===sessionGen&&String(sid)===openId){forceScrollBottom();requestAnimationFrame(()=>{if(gen===sessionGen&&String(sid)===openId)forceScrollBottom()})}});
-      setTimeout(()=>{if(gen===sessionGen&&String(sid)===openId)forceScrollBottom()},50);
+      requestAnimationFrame(()=>{if(gen===sessionGen&&String(sid)===openId){forceScrollBottom({pin:true});requestAnimationFrame(()=>{if(gen===sessionGen&&String(sid)===openId)forceScrollBottom({pin:true})})}});
+      setTimeout(()=>{if(gen===sessionGen&&String(sid)===openId)forceScrollBottom({pin:true})},50);
     }else if(gen!==sessionGen){
       suppressLive=true;
     }
@@ -3868,7 +3861,7 @@ async function newSession(cwd,firstMsg){
   }
   if(gen!==sessionGen)return;
   loadExpectSid=null;sessionSwitching=false;replaying=false;setBusy(false);
-  stickBottom=true;forceScrollBottom();hideHorizon();
+  stickBottom=true;forceScrollBottom({pin:true});hideHorizon();
   clearSessionFeed();
   sessionFresh=true;
   startPoll();
@@ -4307,7 +4300,6 @@ async function sendPrompt(forcedMode){
     const files=pendingFiles.slice();
     pendingFiles=[];paintAttachBar();
     closeOpen();
-    stickBottom=true;
     const isBusy=!!busy&&!replaying;
     if(isBusy&&mode==="queue"){
       enqueueMsg({mode:"queue",tRaw,files,at:Date.now()});
@@ -4343,13 +4335,15 @@ async function sendPrompt(forcedMode){
     if(files.length)showLocalAttachments(files);
     closeOpen();
     userWireBuf="";
-    forceScrollBottom();
+    stickBottom=true;
+    forceScrollBottom({pin:true});
     promoteSessionAfterMessage(sid).catch(()=>{});
     try{if(window.grokVoice)window.grokVoice.onTaskSent(tRaw,{delivery:mode,agentBusy:isBusy,interjected:interjected})}catch(e){}
     await dispatchPromptPayload(tRaw,files,mode,{wasBusy:isBusy,interjected:interjected});
-    stickBottom=true;
-    forceScrollBottom();
-    [40,120,280].forEach(ms=>setTimeout(()=>{if(stickBottom||autoScroll)forceScrollBottom()},ms));
+    if(stickBottom){
+      forceScrollBottom({pin:false});
+      [50,160].forEach(ms=>setTimeout(()=>{if(stickBottom)forceScrollBottom({pin:false})},ms));
+    }else updateJump();
   }finally{
     sendInFlight=false;
   }
@@ -4394,9 +4388,7 @@ const jumpBottom=document.getElementById("jumpBottom");
 if(jumpBottom)jumpBottom.onclick=e=>{
   e.preventDefault();e.stopPropagation();
   stickBottom=true;
-  if(ux.autoScroll===false){ux.autoScroll=true;autoScroll=true;saveUx()}
   jumpToBottom();
-  paintUxChips();
 };
 if(btnSkills)btnSkills.onclick=async()=>{
   closeMoreMenu();
@@ -4526,17 +4518,18 @@ box.addEventListener("keydown",e=>{
 });
 box.addEventListener("input",()=>onComposerInputLayout());
 box.addEventListener("focus",()=>{
-  stickBottom=true;
   captureBaselineViewport();
   syncVisualViewport();
   measureBottomStack();
-  keepComposerInView(true,{noBoxScroll:false});
-  forceScrollBottom();
-  [80,200,400,700].forEach(ms=>setTimeout(()=>{
+  keepComposerInView(false,{noBoxScroll:true});
+  if(stickBottom)forceScrollBottom({pin:false});
+  else updateJump();
+  [80,200,400].forEach(ms=>setTimeout(()=>{
     if(!composerFocused())return;
     syncVisualViewport();
-    measureBottomStack();
-    keepComposerInView(true,{noBoxScroll:true});
+    measureBottomStack({skipVv:false});
+    if(stickBottom)forceScrollBottom({pin:false});
+    else updateJump();
   },ms));
 });
 box.addEventListener("blur",()=>{
