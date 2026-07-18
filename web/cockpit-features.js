@@ -435,13 +435,15 @@ function openDelve(){
  else window.open(go,"_blank");
  chip("Amni-Delve · opening local hub");
 }
-function stopTurn(){
+function stopTurn(forSid){
  try{
- if(!window.ws||window.ws.readyState!==1||!window.sid){chip("nothing to stop");return}
+ const target=String(forSid||window.sid||"");
+ if(!window.ws||window.ws.readyState!==1||!target){chip("nothing to stop");return}
+ if(typeof window.cancelTurn==="function"){window.cancelTurn(target);return}
  const nid=typeof window.nextId==="function"?window.nextId():Date.now();
- window.ws.send(JSON.stringify({jsonrpc:"2.0",id:nid,method:"session/cancel",params:{sessionId:window.sid}}));
- if(typeof window.setBusy==="function")window.setBusy(false);
- chip("stop - cancel sent");
+ window.ws.send(JSON.stringify({jsonrpc:"2.0",id:nid,method:"session/cancel",params:{sessionId:target}}));
+ if(typeof window.setBusy==="function"&&String(window.sid)===target)window.setBusy(false);
+ chip("stop · "+target.slice(0,8));
  }catch(e){chip("stop failed: "+e)}
 }
 function paintGitLive(j){

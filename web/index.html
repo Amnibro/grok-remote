@@ -2244,48 +2244,77 @@ function enqueueMsg(item){
   paintMsgQueue();
   chip((item.mode||"queue")+" · waiting ("+msgQueue.length+")");
 }
-function cancelTurn(){
+function cancelTurn(forSid){
+  const target=String(forSid||sid||"");
   try{
-    if(window.grokCockpit&&typeof window.grokCockpit.stopTurn==="function")window.grokCockpit.stopTurn();
-    else if(ws&&ws.readyState===1&&sid){
-      ws.send(JSON.stringify({jsonrpc:"2.0",id:nextId(),method:"session/cancel",params:{sessionId:sid}}));
-      setBusy(false);setPhase("idle");chip("cancel sent");
-    }else chip("nothing to cancel");
-  }catch(e){chip("cancel failed: "+e)}
+    if(!ws||ws.readyState!==1||!target){chip("nothing to cancel");return false}
+    const id=nextId();
+    ws.send(JSON.stringify({jsonrpc:"2.0",id,method:"session/cancel",params:{sessionId:target}}));
+    pending.set(id,{resolve:()=>{try{pending.delete(id)}catch(e){}},reject:()=>{try{pending.delete(id)}catch(e){}}});
+    setTimeout(()=>{try{pending.delete(id)}catch(e){}},4000);
+    if(String(sid)===target){setBusy(false);setPhase("idle");handleMsg._waitPrompt=null}
+    chip("cancel · "+target.slice(0,8));
+    return true;
+  }catch(e){chip("cancel failed: "+e);return false}
 }
 window.cancelTurn=cancelTurn;
 function sleep(ms){return new Promise(r=>setTimeout(r,ms))}
+function activeSendSid(){return String(sid||"")}
 async function dispatchPromptPayload(tRaw,files,mode,opts){
   opts=opts||{};
+  const targetSid=String(opts.sessionId||sid||"");
+  const gen=opts.sessionGen!=null?opts.sessionGen:sessionGen;
+  if(!targetSid){chip("no session");return false}
+  if(sessionSwitching){chip("wait · switching chat");return false}
+  if(gen!==sessionGen||String(sid)!==targetSid){chip("send aborted · chat changed");return false}
   const wrapped=wrapForMode(tRaw,mode,{fromQueue:!!opts.fromQueue,wasBusy:!!opts.wasBusy,interjected:!!opts.interjected});
-  const t=withAgentSetup(wrapped,sid);
-  setBusy(true);setPhase("waiting");
+  const t=withAgentSetup(wrapped,targetSid);
+  if(String(sid)===targetSid){setBusy(true);setPhase("waiting")}
   let blocks;
   try{blocks=await buildPromptBlocks(t,files||[])}
-  catch(e){setBusy(false);setPhase("error",String(e).slice(0,40));chip(String(e));return false}
-  if(!blocks.length){setBusy(false);setPhase("idle");return false}
-  const id=nextId();handleMsg._waitPrompt=id;
+  catch(e){
+    if(String(sid)===targetSid){setBusy(false);setPhase("error",String(e).slice(0,40))}
+    chip(String(e));return false
+  }
+  if(gen!==sessionGen||String(sid)!==targetSid){chip("send aborted · chat changed");return false}
+  if(!blocks.length){
+    if(String(sid)===targetSid){setBusy(false);setPhase("idle")}
+    return false
+  }
+  if(!ws||ws.readyState!==1){chip("not connected");return false}
+  const id=nextId();
+  if(String(sid)===targetSid)handleMsg._waitPrompt=id;
+  const stillHere=()=>gen===sessionGen&&String(sid)===targetSid;
   pending.set(id,{
-    resolve:()=>{setBusy(false);setPhase("idle");promoteSessionAfterMessage(sid).catch(()=>{});try{if(window.grokVoice)window.grokVoice.onTurnDone()}catch(e){}scheduleMsgDrain(200)},
+    resolve:()=>{
+      if(stillHere()){setBusy(false);setPhase("idle");if(handleMsg._waitPrompt===id)handleMsg._waitPrompt=null}
+      promoteSessionAfterMessage(targetSid).catch(()=>{});
+      try{if(window.grokVoice)window.grokVoice.onTurnDone()}catch(e){}
+      scheduleMsgDrain(200);
+    },
     reject:e=>{
-      setBusy(false);setPhase("error",String(e&&e.message||e).slice(0,40));
+      if(stillHere()){setBusy(false);setPhase("error",String(e&&e.message||e).slice(0,40));if(handleMsg._waitPrompt===id)handleMsg._waitPrompt=null}
       try{if(window.grokVoice)window.grokVoice.setBusyFlag(false)}catch(x){}
       const msg=String(e&&e.message||e);
-      if(/image|prompt|capability|unsupported|invalid/i.test(msg)&&(files||[]).some(isImage)){
+      if(/image|prompt|capability|unsupported|invalid/i.test(msg)&&(files||[]).some(isImage)&&stillHere()){
         chip("image block rejected — retrying as text note");
         const note=(files||[]).filter(isImage).map(f=>"[image attached: "+f.name+"]").join(" ");
-        const id2=nextId();handleMsg._waitPrompt=id2;
-        pending.set(id2,{resolve:()=>{setBusy(false);promoteSessionAfterMessage(sid).catch(()=>{});try{if(window.grokVoice)window.grokVoice.onTurnDone()}catch(e){}scheduleMsgDrain(200)},reject:err=>{setBusy(false);chip(String(err));try{if(window.grokVoice)window.grokVoice.setBusyFlag(false)}catch(x){}}});
+        const id2=nextId();
+        if(stillHere())handleMsg._waitPrompt=id2;
+        pending.set(id2,{
+          resolve:()=>{if(stillHere()){setBusy(false);if(handleMsg._waitPrompt===id2)handleMsg._waitPrompt=null}promoteSessionAfterMessage(targetSid).catch(()=>{});try{if(window.grokVoice)window.grokVoice.onTurnDone()}catch(e){}scheduleMsgDrain(200)},
+          reject:err=>{if(stillHere()){setBusy(false);if(handleMsg._waitPrompt===id2)handleMsg._waitPrompt=null}chip(String(err));try{if(window.grokVoice)window.grokVoice.setBusyFlag(false)}catch(x){}}
+        });
         const fallback=[{type:"text",text:(t?t+"\n\n":"")+note+"\n(Agent may not accept image content blocks on this link.)"}];
-        setBusy(true);
-        ws.send(JSON.stringify({jsonrpc:"2.0",id:id2,method:"session/prompt",params:{sessionId:sid,prompt:fallback}}));
+        if(stillHere())setBusy(true);
+        ws.send(JSON.stringify({jsonrpc:"2.0",id:id2,method:"session/prompt",params:{sessionId:targetSid,prompt:fallback}}));
         return;
       }
       chip(msg);
       scheduleMsgDrain(400);
     }
   });
-  ws.send(JSON.stringify({jsonrpc:"2.0",id,method:"session/prompt",params:{sessionId:sid,prompt:blocks}}));
+  ws.send(JSON.stringify({jsonrpc:"2.0",id,method:"session/prompt",params:{sessionId:targetSid,prompt:blocks}}));
   promptCount++;
   if(window.grokCockpit&&window.grokCockpit.noteUsage)window.grokCockpit.noteUsage(t||tRaw||"");
   if(promptCount%5===0&&window.grokCockpit&&window.grokCockpit.checkpointNow)try{window.grokCockpit.checkpointNow()}catch(e){}
@@ -2293,20 +2322,24 @@ async function dispatchPromptPayload(tRaw,files,mode,opts){
 }
 function scheduleMsgDrain(ms){setTimeout(()=>drainMsgQueue().catch(()=>{}),ms||300)}
 async function drainMsgQueue(){
-  if(msgDrainBusy||!msgQueue.length||!sid||!ws||ws.readyState!==1)return;
+  if(msgDrainBusy||!msgQueue.length||!sid||!ws||ws.readyState!==1||sessionSwitching)return;
   if(busy&&!replaying)return;
   const now=Date.now();
   if(now-lastMsgDrain<400)return;
   msgDrainBusy=true;lastMsgDrain=now;
   const item=msgQueue.shift();
   paintMsgQueue();
+  const itemSid=String(item.sessionId||sid||"");
+  if(itemSid&&itemSid!==String(sid)){
+    msgQueue.unshift(item);paintMsgQueue();msgDrainBusy=false;return
+  }
   try{
     if(item.tRaw)appendUser((item.mode==="fyi"?"FYI · ":"")+(item.mode==="queue"?"Queued · ":"")+(item.mode==="interject"?"Interject · ":"")+item.tRaw);
     if(item.files&&item.files.length)showLocalAttachments(item.files);
     localEchoUntil=Date.now()+5000;
-    promoteSessionAfterMessage(sid).catch(()=>{});
+    promoteSessionAfterMessage(itemSid).catch(()=>{});
     try{if(window.grokVoice)window.grokVoice.onTaskSent(item.tRaw)}catch(e){}
-    await dispatchPromptPayload(item.tRaw,item.files||[],item.mode||"queue",{fromQueue:true,wasBusy:item.mode!=="fyi"});
+    await dispatchPromptPayload(item.tRaw,item.files||[],item.mode||"queue",{fromQueue:true,wasBusy:item.mode!=="fyi",sessionId:itemSid,sessionGen:sessionGen});
   }catch(e){chip("queue drain: "+e);msgQueue.unshift(item);paintMsgQueue()}
   finally{msgDrainBusy=false}
 }
@@ -3708,8 +3741,17 @@ function hideHorizon(){
 function abortSessionSwitch(){
   stopPoll();
   if(catchupTimer){clearTimeout(catchupTimer);catchupTimer=null}
-  catchupBusy=false;loadExpectSid=null;
+  catchupBusy=false;loadExpectSid=null;sendInFlight=false;handleMsg._waitPrompt=null;
   try{pending.forEach((p,id)=>{try{p.reject(new Error("session switched"))}catch(e){} pending.delete(id)})}catch(e){}
+  try{
+    const keep=[];
+    while(msgQueue.length){
+      const it=msgQueue.shift();
+      if(it&&it.sessionId&&String(it.sessionId)===String(sid))keep.push(it);
+    }
+    msgQueue.push(...keep);
+    paintMsgQueue();
+  }catch(e){msgQueue.length=0}
 }
 
 function rememberSessionSid(id,cwd){
@@ -4272,8 +4314,12 @@ async function injectPersonaNow(){
 
 async function sendPrompt(forcedMode){
   if(sendInFlight)return;
+  if(sessionSwitching){chip("wait · switching chat");return}
+  const sendSid=String(sid||"");
+  const sendGen=sessionGen;
+  if(!sendSid){chip("pick a chat first");return}
   const tRaw=box.value.trim();
-  if((!tRaw&&!pendingFiles.length)||!sid)return;
+  if((!tRaw&&!pendingFiles.length))return;
   if(!ws||ws.readyState!==1){chip("not connected");return}
   sendInFlight=true;
   try{
@@ -4285,6 +4331,7 @@ async function sendPrompt(forcedMode){
         }
       }catch(e){chip("slash: "+e);return}
     }
+    if(sessionSwitching||String(sid)!==sendSid||sendGen!==sessionGen){chip("send aborted · chat changed");return}
     const mode=(forcedMode&&["interject","queue","fyi"].includes(forcedMode))?forcedMode:msgMode;
     box.value="";box.style.height="auto";
     const files=pendingFiles.slice();
@@ -4292,28 +4339,28 @@ async function sendPrompt(forcedMode){
     closeOpen();
     const isBusy=!!busy&&!replaying;
     if(isBusy&&mode==="queue"){
-      enqueueMsg({mode:"queue",tRaw,files,at:Date.now()});
+      enqueueMsg({mode:"queue",tRaw,files,at:Date.now(),sessionId:sendSid});
       try{if(window.grokVoice)window.grokVoice.onTaskSent(tRaw,{delivery:"queue",agentBusy:true})}catch(e){}
       return;
     }
     if(isBusy&&mode==="fyi"){
-      enqueueMsg({mode:"fyi",tRaw,files,at:Date.now()});
+      enqueueMsg({mode:"fyi",tRaw,files,at:Date.now(),sessionId:sendSid});
       chip("FYI queued — will apply at next pause without stopping current work");
       try{if(window.grokVoice)window.grokVoice.onTaskSent(tRaw,{delivery:"fyi",agentBusy:true})}catch(e){}
       return;
     }
     let interjected=false;
     if(isBusy&&mode==="interject"){
-      chip("interject · cancelling current steps…");
-      cancelTurn();
+      chip("interject · cancel now");
+      cancelTurn(sendSid);
       interjected=true;
-      await sleep(350);
     }
+    if(sessionSwitching||String(sid)!==sendSid||sendGen!==sessionGen){chip("send aborted · chat changed");return}
     localEchoUntil=Date.now()+12000;
     lastLocalUserPlain=stripPromptChrome(tRaw).trim();
     sessionFresh=false;
     const display=(mode==="fyi"?"FYI · ":"")+(interjected?"Interject · ":"")+tRaw;
-    if(tRaw){
+    if(tRaw&&String(sid)===sendSid){
       appendUser(display);
       try{
         seenUserTexts.add(tRaw.trim());
@@ -4322,16 +4369,18 @@ async function sendPrompt(forcedMode){
         noteSeenUser(lastLocalUserPlain);
       }catch(e){}
     }
-    if(files.length)showLocalAttachments(files);
+    if(files.length&&String(sid)===sendSid)showLocalAttachments(files);
     closeOpen();
     userWireBuf="";
-    stickBottom=true;
-    forceScrollBottom({pin:true,settle:true,settleMs:80});
-    promoteSessionAfterMessage(sid).catch(()=>{});
+    if(String(sid)===sendSid){
+      stickBottom=true;
+      forceScrollBottom({pin:true,settle:true,settleMs:80});
+    }
+    promoteSessionAfterMessage(sendSid).catch(()=>{});
     try{if(window.grokVoice)window.grokVoice.onTaskSent(tRaw,{delivery:mode,agentBusy:isBusy,interjected:interjected})}catch(e){}
-    await dispatchPromptPayload(tRaw,files,mode,{wasBusy:isBusy,interjected:interjected});
-    if(stickBottom)forceScrollBottom({pin:false,settle:true,settleMs:60});
-    else updateJump();
+    await dispatchPromptPayload(tRaw,files,mode,{wasBusy:isBusy,interjected:interjected,sessionId:sendSid,sessionGen:sendGen});
+    if(String(sid)===sendSid&&stickBottom)forceScrollBottom({pin:false,settle:true,settleMs:60});
+    else if(String(sid)===sendSid)updateJump();
   }finally{
     sendInFlight=false;
   }
@@ -4488,7 +4537,10 @@ send.onclick=e=>{
   sendPrompt().catch(err=>chip(String(err)));
 };
 const btnCancelTurn=document.getElementById("btnCancelTurn");
-if(btnCancelTurn)btnCancelTurn.onclick=()=>cancelTurn();
+if(btnCancelTurn)btnCancelTurn.onclick=e=>{
+  if(e){e.preventDefault();e.stopPropagation()}
+  cancelTurn(sid);
+};
 (function wireMsgModeRow(){
   const host=document.getElementById("msgModeRow");if(!host)return;
   host.querySelectorAll(".mode-chip[data-mode]").forEach(b=>{
