@@ -1,6 +1,6 @@
 # Grok Remote — architecture map
 
-**Updated:** 2026-07-12 · v22 command deck menu + todo badge
+**Updated:** 2026-07-18 · v33 composer bind (type → session id)
 
 ## Layout
 
@@ -51,6 +51,16 @@ grok-remote/
 | Horizon | Accretion-disk loader + rotating space puns during session open/new |
 
 Session isolation: `sessionGen`, `sessionSwitching`, `loadExpectSid`. Unscoped `session/update` only accepted during intentional load when `loadExpectSid===sid`. New chat clears `sid` first, re-clears feed after `session/new`, never sets `loadExpectSid`.
+
+## Composer bind (v33)
+
+| Piece | Behavior |
+|-------|----------|
+| `composerBoundSid` | Set on composer `input` / `focus` to the open chat id (log where typed) |
+| `composerDrafts[sid]` | Saved on chat switch; restored on open |
+| `resolveSendSid()` | Prefers `composerBoundSid`, else live `sid` |
+| `sendPrompt` | Freezes send target via resolve; does not overwrite bind from live `sid` if already set |
+| `dispatchPromptPayload` | Always `session/prompt` with pinned `sessionId`; `allowCrossSession` for off-screen send |
 
 ## Live status + sessions (v7)
 

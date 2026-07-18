@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-07-18 — Composer bind: send to chat where typed (v33)
+
+- **Log where typed:** `composerBoundSid` stamps on composer input/focus; send uses that id, not live `sid` after await
+- Per-session drafts: switch chat saves/restores composer text; empty chat does not steal an in-flight bind at send time
+- Cross-chat send allowed with pinned `sessionId` + chip `sent → <id> (typed there)`
+- Cancel/interject already target the same bound sid
+
 ## 2026-07-13 — Cancel/interject immediate + session-pin sends (v31)
 
 - **Cancel** always fires `session/cancel` on the captured session id immediately (no cockpit-only path that can stall)
