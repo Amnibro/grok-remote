@@ -1261,7 +1261,7 @@ let ws=null,sid=null,sidCwd=".",nid=0,pending=new Map(),busy=false,defaultCwd=".
 let replaying=false,showThoughts=true,stickBottom=true,autoScroll=true,page="setup";
 let curUser=null,curAgent=null,curThought=null,toolMap={},curThoughtRow=null;
 let seenEvents=new Set(),seenUserTexts=new Set(),promptCount=0,commands=[];
-let pollTimer=null,catchupBusy=false,lastLiveAt=0,localEchoUntil=0,sendInFlight=false,lastLocalUserPlain="",ignoreScrollUntil=0;
+let pollTimer=null,catchupBusy=false,lastLiveAt=0,localEchoUntil=0,sendInFlight=false,lastLocalUserPlain="",ignoreScrollUntil=0,scrollSettleTimer=0;
 let historyFileSize=0,diskCatchupBusy=false;
 const HISTORY_PAGE=80;
 let historyHasMore=false,historyOlderBefore=0,historyLoadingOlder=false;
@@ -1859,8 +1859,7 @@ function updateJump(){
 }
 function jumpToBottom(){
   stickBottom=true;
-  forceScrollBottom({pin:true});
-  requestAnimationFrame(()=>{forceScrollBottom({pin:true});requestAnimationFrame(()=>{forceScrollBottom({pin:true});updateJump()})});
+  forceScrollBottom({pin:true,settle:true});
 }
 function log(m){logEl.textContent+=(new Date().toLocaleTimeString())+"  "+m+"\n";logEl.scrollTop=logEl.scrollHeight}
 function defaultWs(){return (location.protocol==="https:"?"wss:":"ws:")+"//"+location.host+"/ws"}
@@ -1873,43 +1872,36 @@ function forceScrollBottom(opts){
   opts=opts||{};
   if(!feed)return;
   if(opts.pin)stickBottom=true;
-  ignoreScrollUntil=Date.now()+400;
+  ignoreScrollUntil=Date.now()+220;
   try{feed.scrollTop=feed.scrollHeight}catch(e){}
-  try{feed.scrollTop=feed.scrollHeight+8000}catch(e){}
-  const last=feed.lastElementChild;
-  if(last)try{last.scrollIntoView({block:"end",behavior:"auto",inline:"nearest"})}catch(e){}
-  try{feed.scrollTop=feed.scrollHeight}catch(e){}
-  requestAnimationFrame(()=>{
-    try{if(feed)feed.scrollTop=feed.scrollHeight}catch(e){}
-    ignoreScrollUntil=Date.now()+280;
-    updateJump();
-  });
+  if(opts.settle){
+    if(scrollSettleTimer)clearTimeout(scrollSettleTimer);
+    scrollSettleTimer=setTimeout(()=>{
+      scrollSettleTimer=0;
+      try{if(feed)feed.scrollTop=feed.scrollHeight}catch(e){}
+      ignoreScrollUntil=Date.now()+160;
+      updateJump();
+    },opts.settleMs||90);
+  }else updateJump();
 }
 function scroll(){
   if(replaying||sessionSwitching||historyLoadingOlder||(feed&&feed.classList.contains("loading-history"))){updateJump();return}
-  if(autoScroll&&stickBottom)forceScrollBottom({pin:false});
+  if(autoScroll&&stickBottom){
+    ignoreScrollUntil=Date.now()+120;
+    try{if(feed)feed.scrollTop=feed.scrollHeight}catch(e){}
+  }
   updateJump();
 }
 feed.addEventListener("scroll",()=>{
   if(replaying||sessionSwitching||feed.classList.contains("loading-history")||historyLoadingOlder){updateJump();return}
   if(Date.now()<ignoreScrollUntil){updateJump();return}
-  const was=stickBottom;
   stickBottom=atBottom();
   updateJump();
   if(feed.scrollTop<180)loadOlderHistory().catch(()=>{});
-  if(was&&!stickBottom)updateJump();
 },{passive:true});
-async function snapChatToBottom(times){
+async function snapChatToBottom(){
   stickBottom=true;
-  const n=times||4;
-  for(let i=0;i<n;i++){
-    forceScrollBottom({pin:true});
-    await new Promise(r=>requestAnimationFrame(r));
-  }
-  forceScrollBottom({pin:true});
-  await new Promise(r=>setTimeout(r,20));
-  forceScrollBottom({pin:true});
-  updateJump();
+  forceScrollBottom({pin:true,settle:true,settleMs:100});
 }
 if(typeof ResizeObserver!=="undefined"){
   try{
@@ -3793,11 +3785,9 @@ async function openSession(s){
       loadExpectSid=null;sessionSwitching=false;replaying=false;setBusy(false);closeOpen();
       stickBottom=true;
       hideHorizon();
-      forceScrollBottom({pin:true});
+      forceScrollBottom({pin:true,settle:true,settleMs:120});
       startPoll();
       updateJump();
-      requestAnimationFrame(()=>{if(gen===sessionGen&&String(sid)===openId){forceScrollBottom({pin:true});requestAnimationFrame(()=>{if(gen===sessionGen&&String(sid)===openId)forceScrollBottom({pin:true})})}});
-      setTimeout(()=>{if(gen===sessionGen&&String(sid)===openId)forceScrollBottom({pin:true})},50);
     }else if(gen!==sessionGen){
       suppressLive=true;
     }
@@ -3861,7 +3851,7 @@ async function newSession(cwd,firstMsg){
   }
   if(gen!==sessionGen)return;
   loadExpectSid=null;sessionSwitching=false;replaying=false;setBusy(false);
-  stickBottom=true;forceScrollBottom({pin:true});hideHorizon();
+  stickBottom=true;forceScrollBottom({pin:true,settle:true,settleMs:100});hideHorizon();
   clearSessionFeed();
   sessionFresh=true;
   startPoll();
@@ -4336,14 +4326,12 @@ async function sendPrompt(forcedMode){
     closeOpen();
     userWireBuf="";
     stickBottom=true;
-    forceScrollBottom({pin:true});
+    forceScrollBottom({pin:true,settle:true,settleMs:80});
     promoteSessionAfterMessage(sid).catch(()=>{});
     try{if(window.grokVoice)window.grokVoice.onTaskSent(tRaw,{delivery:mode,agentBusy:isBusy,interjected:interjected})}catch(e){}
     await dispatchPromptPayload(tRaw,files,mode,{wasBusy:isBusy,interjected:interjected});
-    if(stickBottom){
-      forceScrollBottom({pin:false});
-      [50,160].forEach(ms=>setTimeout(()=>{if(stickBottom)forceScrollBottom({pin:false})},ms));
-    }else updateJump();
+    if(stickBottom)forceScrollBottom({pin:false,settle:true,settleMs:60});
+    else updateJump();
   }finally{
     sendInFlight=false;
   }
@@ -4522,15 +4510,8 @@ box.addEventListener("focus",()=>{
   syncVisualViewport();
   measureBottomStack();
   keepComposerInView(false,{noBoxScroll:true});
-  if(stickBottom)forceScrollBottom({pin:false});
+  if(stickBottom)forceScrollBottom({pin:false,settle:true,settleMs:100});
   else updateJump();
-  [80,200,400].forEach(ms=>setTimeout(()=>{
-    if(!composerFocused())return;
-    syncVisualViewport();
-    measureBottomStack({skipVv:false});
-    if(stickBottom)forceScrollBottom({pin:false});
-    else updateJump();
-  },ms));
 });
 box.addEventListener("blur",()=>{
   setTimeout(()=>{
