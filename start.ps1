@@ -22,10 +22,18 @@ if (-not $Grok) {
   if (-not $cand) { throw "grok.exe not found" }
   $Grok = $cand
 }
+if (-not $Secret) { $Secret = $env:GROK_AGENT_SECRET }
 if (-not $Secret) {
+  $secretFile = Join-Path $PSScriptRoot ".ui-secret"
+  if (Test-Path $secretFile) {
+    $Secret = (Get-Content $secretFile -Raw).Trim()
+  }
+}
+if (-not $Secret -or $Secret.Length -lt 16) {
   $bytes = New-Object byte[] 16
   [System.Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($bytes)
   $Secret = ([BitConverter]::ToString($bytes) -replace "-","").ToLower()
+  try { Set-Content -Path (Join-Path $PSScriptRoot ".ui-secret") -Value $Secret -NoNewline -Encoding ascii } catch {}
 }
 $env:GROK_AGENT_SECRET = $Secret
 function Get-LanIp {

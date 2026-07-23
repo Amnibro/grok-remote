@@ -6,8 +6,6 @@ const fs = require("fs");
 const crypto = require("crypto");
 const UI_PORT = Number(process.env.GROK_REMOTE_UI_PORT || 2421);
 const AGENT_PORT = Number(process.env.GROK_REMOTE_AGENT_PORT || 2419);
-const UI_SECRET = process.env.GROK_AGENT_SECRET || crypto.randomBytes(16).toString("hex");
-process.env.GROK_AGENT_SECRET = UI_SECRET;
 let workspaceCwd = process.env.GROK_REMOTE_CWD || path.join(process.env.USERPROFILE || process.env.HOME || "", "Documents", "ai");
 let mainWindow = null;
 let stackProc = null;
@@ -16,6 +14,19 @@ function rootDir() {
   if (app.isPackaged) return path.join(process.resourcesPath);
   return path.join(__dirname, "..");
 }
+function resolveUiSecret() {
+  if (process.env.GROK_AGENT_SECRET) return process.env.GROK_AGENT_SECRET;
+  const secretFile = path.join(rootDir(), ".ui-secret");
+  try {
+    const existing = fs.readFileSync(secretFile, "utf8").trim();
+    if (existing.length >= 16) return existing;
+  } catch {}
+  const fresh = crypto.randomBytes(16).toString("hex");
+  try { fs.writeFileSync(secretFile, fresh, "utf8"); } catch {}
+  return fresh;
+}
+const UI_SECRET = resolveUiSecret();
+process.env.GROK_AGENT_SECRET = UI_SECRET;
 function httpGet(url, timeoutMs = 2000) {
   return new Promise((resolve) => {
     const req = http.get(url, { timeout: timeoutMs }, (res) => {
