@@ -155,7 +155,6 @@ function noteAgentFiles(paths,meta){
  state.touched=state.touched.slice(0,24);
  paintTabs();
  if(state.open)loadList(state.rel).catch(()=>{});
- else paintTree({root:state.root,parent:state.rel==="."?null:state.rel,dirs:state.dirs,files:state.files});
  const auto=!!(meta&&meta.autoOpen);
  const kind=String((meta&&meta.kind)||"");
  const wrote=/write|edit|diff|patch|create|update/i.test(kind)||meta&&meta.wrote;
@@ -173,9 +172,13 @@ function closeTab(rel){
  state.tabs=state.tabs.filter(x=>x.rel!==rel);
  delete state.dirty[rel];
  if(state.active===rel){
-  state.active=state.tabs[0]?state.tabs[0].rel:null;
-  const ed=$("ideEditor");
-  if(ed){ed.value=state.active?(state.tabs.find(x=>x.rel===state.active)||{}).content||"":"";ed.dataset.rel=state.active||""}
+  state.active=null;
+  if(state.tabs[0])activate(state.tabs[0].rel);
+  else{
+   const ed=$("ideEditor");
+   if(ed){ed.value="";ed.dataset.rel=""}
+   const st=$("ideStatus");if(st)st.textContent="";
+  }
  }
  paintTabs();
 }
@@ -184,17 +187,19 @@ async function saveActive(){
  const t=state.tabs.find(x=>x.rel===rel);if(!t)return;
  const ed=$("ideEditor");
  if(ed&&ed.dataset.rel===rel)t.content=ed.value;
- await api.post("/api/fs/write",{path:rel,content:t.content});
- delete state.dirty[rel];
+ const saved=t.content;
+ await api.post("/api/fs/write",{path:rel,content:saved});
+ if(t.content===saved)delete state.dirty[rel];
  paintTabs();
  notify("saved "+rel);
  const st=$("ideStatus");if(st)st.textContent="saved · "+rel;
  return t;
 }
 function onEditorInput(){
- const ed=$("ideEditor");if(!ed||!state.active)return;
- const t=state.tabs.find(x=>x.rel===state.active);if(!t)return;
- t.content=ed.value;state.dirty[state.active]=true;paintTabs();
+ const ed=$("ideEditor");if(!ed||!ed.dataset.rel)return;
+ const rel=ed.dataset.rel;
+ const t=state.tabs.find(x=>x.rel===rel);if(!t)return;
+ t.content=ed.value;state.dirty[rel]=true;paintTabs();
 }
 function buildReviewPrompt(files){
  const parts=["# Grok Review — post-edit bug check","","You are reviewing local workspace edits in a Grok Remote IDE session.","Find bugs, security issues, regressions, missing edge cases, and suggest minimal fixes.","Structure:","1. Critical","2. Warnings","3. Suggestions","4. Optional patches as fenced code with filepath comments","","---",""];
@@ -219,7 +224,7 @@ async function reviewDirty(){
   if(state.active)return reviewActive();
   notify("no dirty files");return;
  }
- for(const t of dirty){state.active=t.rel;await saveActive()}
+ for(const t of dirty){activate(t.rel);await saveActive()}
  await sendReview(dirty);
 }
 async function sendReview(files){
@@ -280,8 +285,12 @@ function bind(){
  if(ed){
   ed.addEventListener("input",onEditorInput);
   ed.addEventListener("keydown",e=>{
-   if((e.ctrlKey||e.metaKey)&&e.key==="s"){e.preventDefault();saveActive().catch(err=>notify(String(err)))}
-   if((e.ctrlKey||e.metaKey)&&e.key==="s"&&e.shiftKey){e.preventDefault();reviewActive().catch(err=>notify(String(err)))}
+   const k=(e.key||"").toLowerCase();
+   if((e.ctrlKey||e.metaKey)&&k==="s"){
+    e.preventDefault();
+    if(e.shiftKey)reviewActive().catch(err=>notify(String(err)));
+    else saveActive().catch(err=>notify(String(err)));
+   }
   });
  }
  const bIde=$("btnIde");if(bIde)bIde.onclick=()=>{try{if(typeof window.closeMoreMenu==="function")window.closeMoreMenu()}catch(e){}toggleIde()};

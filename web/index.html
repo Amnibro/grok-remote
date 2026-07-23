@@ -1300,7 +1300,7 @@ const VARIANTS=[
   {id:"dos",label:"DOS-like",sw:"#ffff55",swLight:"#0000aa",brand:"DOS-LIKE",legacy:true,metaDark:"#0000aa",metaLight:"#0000aa"},
   {id:"amiga",label:"Amiga-like",sw:"#ff8800",swLight:"#ff8800",brand:"AMIGA-LIKE",legacy:true,metaDark:"#0055aa",metaLight:"#aaaaaa"}
 ];
-function esc(t){return String(t||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")}
+function esc(t){return String(t||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;")}
 function migrateTheme(raw){
   if(!raw)return{variant:"grok",mode:"dark"};
   if(raw==="light")return{variant:"grok",mode:"light"};
@@ -2338,7 +2338,8 @@ async function drainMsgQueue(){
     localEchoUntil=Date.now()+5000;
     promoteSessionAfterMessage(itemSid).catch(()=>{});
     try{if(window.grokVoice)window.grokVoice.onTaskSent(item.tRaw)}catch(e){}
-    await dispatchPromptPayload(item.tRaw,item.files||[],item.mode||"queue",{fromQueue:true,wasBusy:item.mode!=="fyi",sessionId:itemSid,sessionGen:sessionGen});
+    const ok=await dispatchPromptPayload(item.tRaw,item.files||[],item.mode||"queue",{fromQueue:true,wasBusy:item.mode!=="fyi",sessionId:itemSid,sessionGen:sessionGen});
+    if(!ok){msgQueue.unshift(item);paintMsgQueue()}
   }catch(e){chip("queue drain: "+e);msgQueue.unshift(item);paintMsgQueue()}
   finally{msgDrainBusy=false}
 }
@@ -3532,7 +3533,6 @@ function clearSessionFeed(){
   historyOlderBefore=0;
   historyLoadingOlder=false;
   agentQueueNote="";
-  msgQueue.length=0;
   try{if(feed)feed.dataset.sid=""}catch(e){}
   try{paintMsgQueue()}catch(e){}
   closeOpen();
@@ -3550,6 +3550,27 @@ function startPoll(){
 }
 function stopPoll(){if(pollTimer){clearInterval(pollTimer);pollTimer=null}}
 
+function isNoiseSession(s){
+  if(!s)return false;
+  const t=String(s.title||s.generated_title||"").trim();
+  const cwd=String(s.cwd||"").replace(/\\/g,"/").toLowerCase();
+  if(!t)return false;
+  if(/you are azno'?s automated market-watch/i.test(t))return true;
+  if(/market[-\s]?watch/i.test(t))return true;
+  if(/\bco-?pilot\b/i.test(t)&&/(azno|ticker|entry|exit|verdict|signal|json|ohlcv|market)/i.test(t))return true;
+  if(/(^|\b)(azno\s+)?ta\s+(cache|json|probe)\b/i.test(t)&&/(ticker|verdict|action|signal|watch|trade)/i.test(t))return true;
+  if(/ticker\s+(market\s+)?verdict|verdict\s+lines?\s+(for|from)|watch\s+probe/i.test(t))return true;
+  if(/\bohlcv\b/i.test(t)&&/(probe|ticker|verdict|action|breakout|cache|json)/i.test(t))return true;
+  if(/generate\s+(one-line\s+|per-)?(ticker|verdict)/i.test(t))return true;
+  if(/entry\s*exit\s*(signal|line|alert|stock|ticker)/i.test(t))return true;
+  if(/consider-entry|stand-aside/i.test(t))return true;
+  if(/process\s+(azno\s+)?ta\s+(cache\s+)?json/i.test(t))return true;
+  if(/azno\s+live\s+trading\s+(health\s+check|stack)/i.test(t))return true;
+  if(/\/azno-v2\/?$/.test(cwd)&&/(ticker\s+verdict|ta\s+(json|probe)|ohlcv|entry\s*exit|probe\s+ticker|multi-ticker)/i.test(t))return true;
+  if(/(amni[-\s]?chat).*(watchdog|keepalive|healthz|relay\s+tick)/i.test(t))return true;
+  if(/(watchdog|keepalive).*(amni|azno|relay|adam)/i.test(t))return true;
+  return false;
+}
 function normalizeSessions(raw){
   let s=raw;
   for(let i=0;i<4&&s&&!Array.isArray(s);i++){
@@ -3558,7 +3579,7 @@ function normalizeSessions(raw){
     break;
   }
   if(!Array.isArray(s))s=[];
-  return s;
+  return s.filter(x=>x&&x.sessionId&&!isNoiseSession(x));
 }
 function sessionStamp(s){
   if(!s)return 0;
@@ -3579,7 +3600,7 @@ function sessionStamp(s){
   return 0;
 }
 function pickBestSession(list){
-  const arr=(list||[]).filter(s=>s&&s.sessionId&&!isArchived(s.sessionId));
+  const arr=(list||[]).filter(s=>s&&s.sessionId&&!isArchived(s.sessionId)&&!isNoiseSession(s));
   if(!arr.length)return null;
   const cwd=(document.getElementById("cwd")&&document.getElementById("cwd").value||defaultCwd||"").replace(/\\/g,"/").toLowerCase();
   const score=s=>{
@@ -3650,6 +3671,7 @@ async function fetchSessions(){
 function renderSessions(){
   const q=(document.getElementById("sessFilter").value||"").toLowerCase().trim();
   const items=sessions.filter(s=>{
+    if(isNoiseSession(s))return false;
     const id=String(s.sessionId||"");
     const arch=isArchived(id);
     if(sessScope==="active"&&arch)return false;
@@ -3742,15 +3764,6 @@ function abortSessionSwitch(){
   if(catchupTimer){clearTimeout(catchupTimer);catchupTimer=null}
   catchupBusy=false;loadExpectSid=null;sendInFlight=false;handleMsg._waitPrompt=null;
   try{pending.forEach((p,id)=>{try{p.reject(new Error("session switched"))}catch(e){} pending.delete(id)})}catch(e){}
-  try{
-    const keep=[];
-    while(msgQueue.length){
-      const it=msgQueue.shift();
-      if(it&&it.sessionId&&String(it.sessionId)===String(sid))keep.push(it);
-    }
-    msgQueue.push(...keep);
-    paintMsgQueue();
-  }catch(e){msgQueue.length=0}
 }
 
 function rememberSessionSid(id,cwd){
@@ -3907,6 +3920,7 @@ async function newSession(cwd,firstMsg){
     const newId=r&& (r.sessionId||r.session_id||(r.session&&r.session.sessionId));
     if(!newId)throw new Error("session/new returned no id · "+JSON.stringify(r||{}).slice(0,180));
     sid=String(newId);window.sid=sid;loadExpectSid=null;rememberSessionSid(sid,sidCwd);
+    composerBoundSid=sid;
     if(!permBySession[sid])permBySession[sid]=getPermLevel()||"always";
     permLevel=getPermLevel(sid);paintPermChip();savePermLevels();
     clearSessionFeed();
@@ -3916,7 +3930,7 @@ async function newSession(cwd,firstMsg){
     setConn(true,"new chat",false);
   }catch(e){
     if(gen===sessionGen){
-      sid=null;window.sid=null;
+      sid=null;window.sid=null;composerBoundSid=null;
       loadExpectSid=null;sessionSwitching=false;replaying=false;sessionFresh=false;setBusy(false);hideHorizon();
       chip("new session failed: "+e);alert(e);
     }
@@ -4179,6 +4193,7 @@ async function connect(opts){
   ws.onclose=()=>{
     connecting=false;
     stopPoll();setBusy(false);setPhase("idle");
+    try{pending.forEach((p,id)=>{try{p.reject(new Error("connection closed"))}catch(e){} pending.delete(id)})}catch(e){}
     const keepSid=sid;
     if(intentionalClose){intentionalClose=false;return}
     sid=null;window.sid=null;hideHorizon();

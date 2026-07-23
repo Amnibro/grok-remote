@@ -13,21 +13,25 @@ MAX_WRITE=4_000_000
 TEXT_EXT={".py",".js",".ts",".tsx",".jsx",".json",".md",".txt",".css",".html",".htm",".xml",".yml",".yaml",".toml",".ini",".cfg",".env",".sh",".ps1",".bat",".cmd",".rs",".go",".java",".c",".h",".cpp",".hpp",".cs",".rb",".php",".sql",".r",".swift",".kt",".vue",".svelte",".scss",".less",".svg",".gitignore",".dockerfile",".cmake",".gradle",".log",".diff",".patch",".csv"}
 def lan_ip():
  try:
-  s=socket.socket(socket.AF_INET,socket.SOCK_DGRAM);s.connect(("8.8.8.8",80));ip=s.getsockname()[0];s.close();return ip
+  with socket.socket(socket.AF_INET,socket.SOCK_DGRAM) as s:
+   s.connect(("8.8.8.8",80));return s.getsockname()[0]
  except Exception:return "127.0.0.1"
 def find_grok():
  for p in (Path.home()/".grok"/"bin"/"grok.exe",Path.home()/".grok"/"bin"/"grok",shutil.which("grok") or ""):
   if p and Path(p).is_file():return str(Path(p))
  return None
 def listen_pids_port(port:int,exclude_self=True):
- pids=[];needle=":%d"%port;me=os.getpid()
+ pids=[];me=os.getpid()
  try:
   out=subprocess.run(["netstat","-ano"],capture_output=True,text=True,timeout=8,encoding="utf-8",errors="replace")
   for line in (out.stdout or "").splitlines():
    if "LISTENING" not in line:continue
-   if needle not in line:continue
    parts=line.split()
-   if not parts:continue
+   if len(parts)<5:continue
+   addr=parts[1]
+   try:
+    if int(addr.rsplit(":",1)[1])!=port:continue
+   except Exception:continue
    try:pid=int(parts[-1])
    except Exception:continue
    if pid<=0:continue
@@ -39,7 +43,7 @@ def kill_pids_list(pids):
  killed=[]
  for pid in pids:
   try:
-   r=subprocess.run(["taskkill","/F","/PID",str(pid)],capture_output=True,text=True,timeout=8)
+   r=subprocess.run(["taskkill","/F","/PID",str(pid)],capture_output=True,text=True,timeout=8,encoding="utf-8",errors="replace")
    killed.append({"pid":pid,"ok":r.returncode==0,"out":((r.stdout or "")+(r.stderr or ""))[:120]})
   except Exception as e:
    killed.append({"pid":pid,"ok":False,"out":str(e)[:120]})
@@ -57,7 +61,7 @@ def write_run_agent_cmd(secret:str,agent_port:int,cwd:str):
  cmd_path=log_dir/"run-agent.cmd"
  cwd_s=str(cwd).replace('"','')
  body="@echo off\r\ncd /d \"%s\"\r\nset GROK_AGENT_SECRET=%s\r\n\"%s\" agent --always-approve --no-leader serve --bind 127.0.0.1:%d --secret %s >> \"%s\" 2>&1\r\n"%(cwd_s,secret,grok,agent_port,secret,agent_log)
- cmd_path.write_text(body,encoding="ascii",errors="replace")
+ cmd_path.write_text(body,encoding="utf-8",errors="replace")
  return cmd_path
 def start_agent_process(secret:str,agent_port:int,cwd:str):
  cmd=write_run_agent_cmd(secret,agent_port,cwd)
@@ -228,7 +232,9 @@ def read_session_updates(session_dir:Path,limit=1600,max_bytes=8_000_000,since_b
      f.seek(max(0,size-min(max_bytes,512_000)));f.readline()
     window_start=f.tell()
     raw=f.read()
-    end_pos=f.tell()
+    cut=raw.rfind(b"\n")+1
+    if cut>0 and cut<len(raw):raw=raw[:cut]
+    end_pos=window_start+len(raw)
     for line in raw.splitlines():
      try:s=line.decode("utf-8","replace")
      except Exception:s=""
@@ -403,6 +409,24 @@ def scan_skills(cwd):
  out.sort(key=lambda x:(order.get(x["source"],9),x["name"].lower()))
  return out
 
+UI_KEY_COOKIE="grok_remote_key"
+def make_auth_middleware(token:str):
+ from aiohttp import web
+ @web.middleware
+ async def auth_mw(request,handler):
+  if not token:return await handler(request)
+  if request.query.get("demo")=="1":return await handler(request)
+  if request.path=="/health":return await handler(request)
+  supplied=request.query.get("key") or request.cookies.get(UI_KEY_COOKIE) or request.headers.get("X-Grok-Remote-Key") or ""
+  if supplied!=token:
+   if request.path=="/ws":raise web.HTTPUnauthorized(text="unauthorized")
+   return web.json_response({"error":"unauthorized · open the paired link from connect.url, or add ?key=<secret>"},status=401)
+  resp=await handler(request)
+  if request.path!="/ws" and request.query.get("key")==token:
+   try:resp.set_cookie(UI_KEY_COOKIE,token,max_age=30*86400,httponly=True,samesite="Lax")
+   except Exception:pass
+  return resp
+ return auth_mw
 def under_root(path:Path,root:Path):
  try:
   path=path.resolve();root=root.resolve()
@@ -424,6 +448,7 @@ class AgentHub:
   self._init_done=False
   self._last_err=""
   self._rpc_futs={}
+  self._agent_req_ids=set()
  def _next_id(self):
   self._nid+=1
   return self._nid
@@ -477,15 +502,17 @@ class AgentHub:
    self._reader=asyncio.create_task(self._pump())
    print("[hub] upstream agent connected · clients=%d"%len(self.clients),flush=True)
   except Exception as e:
-   self._last_err=str(e)[:200]
+   self._last_err=re.sub(r"server-key=[^&'\s]+","server-key=***",str(e))[:200]
    print("[hub] upstream open failed:",e,flush=True)
    await self._close_unlocked(keep_init=False)
  async def _close_unlocked(self,keep_init=False):
   self._alive=False
-  if self._reader:
+  if self._reader and self._reader is not asyncio.current_task():
    self._reader.cancel()
    try:await self._reader
    except Exception:pass
+   self._reader=None
+  elif self._reader:
    self._reader=None
   if self._agent is not None:
    try:
@@ -503,6 +530,10 @@ class AgentHub:
     if not client.closed:
      await client.send_str(json.dumps({"jsonrpc":"2.0","id":orig,"error":{"code":-32001,"message":"agent disconnected"}}))
    except Exception:pass
+  dead_rpc=list(self._rpc_futs.items())
+  self._rpc_futs.clear()
+  for nid,fut in dead_rpc:
+   if not fut.done():fut.set_exception(RuntimeError("agent disconnected"))
   if not keep_init:
    self._init_result=None
    self._init_error=None
@@ -556,6 +587,7 @@ class AgentHub:
     if client is not None and not client.closed:await client.send_str(data)
    except Exception:pass
    return
+  if rid is not None and obj.get("method"):self._agent_req_ids.add(rid)
   await self._broadcast(raw if isinstance(raw,str) else json.dumps(obj,separators=(",",":")))
  async def _broadcast(self,data:str):
   dead=[]
@@ -631,6 +663,9 @@ class AgentHub:
     self.pending.pop(nid,None)
     await self._reply_err(client,orig,str(e))
    return
+  if orig is not None and not method:
+   if orig not in self._agent_req_ids:return
+   self._agent_req_ids.discard(orig)
   try:await self._agent.send_str(json.dumps(obj,separators=(",",":")))
   except Exception as e:await self._reply_err(client,orig,str(e))
 def parse_loop_interval(raw:str):
@@ -681,6 +716,7 @@ class RemoteLoopManager:
     if isinstance(raw,dict) and isinstance(raw.get("jobs"),list):
      for j in raw["jobs"]:
       if isinstance(j,dict) and j.get("id") and j.get("sessionId") and j.get("prompt"):
+       if not j.get("expires_at"):j["expires_at"]=float(j.get("created_at") or time.time())+7*86400
        self.jobs[j["id"]]=j
   except Exception as e:print("[loop] load failed:",e,flush=True)
  def _save(self):
@@ -761,7 +797,8 @@ async def main_async(a):
  state={"cwd":str(work_root)}
  hub=AgentHub(agent_ws)
  loops=RemoteLoopManager(hub,LOOP_STORE)
- cfg={"agent_host":agent_host,"agent_port":a.agent_port,"secret":"(held server-side)","cwd":state["cwd"],"ws_url":"ws://%s:%d/ws"%(lan,a.port),"ws_path":"/ws","ui":"http://%s:%d/"%(lan,a.port),"watch":"http://%s:%d/watch"%(lan,a.port),"lan_ip":lan,"proxy":True,"hub":True,"ide":True,"features":["fs","ide","review","multi-client-hub","skills-scan","git","project-context","stop-turn","todos","voice-tts","voice-go","xr-ar","watch-companion","msg-queue","remote-loop","effort"]}
+ keyq=("?key=%s"%a.secret) if a.secret else ""
+ cfg={"agent_host":agent_host,"agent_port":a.agent_port,"secret":"(held server-side)","cwd":state["cwd"],"ws_url":"ws://%s:%d/ws"%(lan,a.port),"ws_path":"/ws","ui":"http://%s:%d/%s"%(lan,a.port,keyq),"watch":"http://%s:%d/watch%s"%(lan,a.port,keyq),"lan_ip":lan,"proxy":True,"hub":True,"ide":True,"auth":bool(a.secret),"features":["fs","ide","review","multi-client-hub","skills-scan","git","project-context","stop-turn","todos","voice-tts","voice-go","xr-ar","watch-companion","msg-queue","remote-loop","effort"]}
  try:(ROOT/"runtime-config.json").write_text(json.dumps(cfg,indent=2),encoding="utf-8")
  except Exception:pass
  def root_path():
@@ -786,18 +823,19 @@ async def main_async(a):
  async def static(request):
   name=request.match_info.get("name","")
   p=(WEB/name).resolve()
-  if not str(p).startswith(str(WEB.resolve())) or not p.is_file():raise web.HTTPNotFound()
+  if not under_root(p,WEB) or not p.is_file():raise web.HTTPNotFound()
   ctype=mimetypes.guess_type(str(p))[0] or "application/octet-stream"
   if name.endswith(".webmanifest"):ctype="application/manifest+json"
   return web.FileResponse(p,headers={"Content-Type":ctype})
  async def health(_):
   ok=False;detail=""
   try:
-   import websockets
-   async with websockets.connect(agent_ws,open_timeout=3) as w:
-    await w.send(json.dumps({"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":1,"clientInfo":{"name":"health","version":"0"},"clientCapabilities":{}}}))
-    raw=await asyncio.wait_for(w.recv(),timeout=5);ok="result" in json.loads(raw)
-  except Exception as e:detail=str(e)[:200]
+   async with ClientSession(timeout=ClientTimeout(total=6,connect=3)) as s:
+    async with s.ws_connect(agent_ws,heartbeat=None) as w:
+     await w.send_str(json.dumps({"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":1,"clientInfo":{"name":"health","version":"0"},"clientCapabilities":{}}}))
+     msg=await asyncio.wait_for(w.receive(),timeout=5)
+     ok=msg.type==WSMsgType.TEXT and "result" in json.loads(msg.data)
+  except Exception as e:detail=re.sub(r"server-key=[^&'\s]+","server-key=***",str(e))[:200]
   return web.json_response({"ok":ok,"agent_ws_local":"ws://%s:%d/ws"%(agent_host,a.agent_port),"detail":detail,"cwd":state["cwd"],"hub_clients":len(hub.clients),"hub_up":hub._agent is not None and not getattr(hub._agent,"closed",True),"hub_err":getattr(hub,"_last_err","") or "","init_cached":bool(getattr(hub,"_init_done",False))})
  async def fs_root(_):
   r=root_path()
@@ -843,10 +881,8 @@ async def main_async(a):
   if not is_text_path(p):
    return web.json_response({"path":str(p),"binary":True,"size":size,"text":False})
   data=p.read_bytes()
-  try:text=data.decode("utf-8")
-  except UnicodeDecodeError:
-   try:text=data.decode("utf-8-sig")
-   except Exception:text=data.decode("latin-1",errors="replace")
+  try:text=data.decode("utf-8-sig")
+  except UnicodeDecodeError:text=data.decode("latin-1",errors="replace")
   return web.json_response({"path":str(p),"rel":str(p.relative_to(root_path())).replace("\\","/"),"text":True,"content":text,"size":size,"name":p.name})
  async def fs_write(request):
   try:body=await request.json()
@@ -1120,7 +1156,7 @@ async def main_async(a):
   await client.prepare(request)
   await hub.handle_client(client)
   return client
- app=web.Application(client_max_size=8*1024*1024)
+ app=web.Application(client_max_size=8*1024*1024,middlewares=[make_auth_middleware(a.secret)])
  app.router.add_get("/",index)
  app.router.add_get("/index.html",index)
  app.router.add_get("/watch",watch_page)
@@ -1200,8 +1236,9 @@ async def main_async(a):
  app.router.add_delete("/api/loops",loops_stop)
  app.router.add_post("/api/loops/stop",loops_stop)
  app.router.add_post("/api/effort",effort_set)
- print("Grok Remote UI+hub   http://%s:%d/"%(lan,a.port),flush=True)
+ print("Grok Remote UI+hub   http://%s:%d/%s"%(lan,a.port,keyq),flush=True)
  print("Multi-client WS      ws://%s:%d/ws  -> shared agent %s:%d"%(lan,a.port,agent_host,a.agent_port),flush=True)
+ if a.secret:print("Access key required   paired link above carries it once; unauthenticated requests get 401",flush=True)
  print("Workspace            %s"%state["cwd"],flush=True)
  runner=web.AppRunner(app);await runner.setup()
  site=web.TCPSite(runner,a.bind,a.port)
@@ -1245,8 +1282,6 @@ def main():
  if a.claim_ports or os.environ.get("GROK_REMOTE_CLAIM_PORTS")=="1":
   claim_port(a.port,"ui")
   claim_port(a.agent_port,"agent")
- else:
-  claim_port(a.port,"ui")
  a.ensure_agent=bool(a.ensure_agent or os.environ.get("GROK_REMOTE_ENSURE_AGENT","1")!="0")
  try:asyncio.run(main_async(a))
  except KeyboardInterrupt:pass

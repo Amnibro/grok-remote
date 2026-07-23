@@ -6,6 +6,8 @@ const fs = require("fs");
 const crypto = require("crypto");
 const UI_PORT = Number(process.env.GROK_REMOTE_UI_PORT || 2421);
 const AGENT_PORT = Number(process.env.GROK_REMOTE_AGENT_PORT || 2419);
+const UI_SECRET = process.env.GROK_AGENT_SECRET || crypto.randomBytes(16).toString("hex");
+process.env.GROK_AGENT_SECRET = UI_SECRET;
 let workspaceCwd = process.env.GROK_REMOTE_CWD || path.join(process.env.USERPROFILE || process.env.HOME || "", "Documents", "ai");
 let mainWindow = null;
 let stackProc = null;
@@ -35,7 +37,7 @@ function httpGet(url, timeoutMs = 2000) {
   });
 }
 async function stackHealthy() {
-  const h = await httpGet(`http://127.0.0.1:${UI_PORT}/health`);
+  const h = await httpGet(`http://127.0.0.1:${UI_PORT}/health?key=${UI_SECRET}`);
   return !!(h.ok && h.body && (h.body.ok === true || h.body.ok === "true"));
 }
 function findGrok() {
@@ -55,8 +57,7 @@ function startStack(cwd) {
     if (await stackHealthy()) return resolve({ ok: true, already: true });
     const root = rootDir();
     const startPs1 = path.join(root, "start.ps1");
-    const secret = process.env.GROK_AGENT_SECRET || crypto.randomBytes(16).toString("hex");
-    process.env.GROK_AGENT_SECRET = secret;
+    const secret = UI_SECRET;
     const useCwd = cwd || workspaceCwd;
     if (process.platform === "win32" && fs.existsSync(startPs1)) {
       stackProc = spawn(
@@ -100,7 +101,7 @@ function stopStack() {
   }
 }
 function uiUrl(extra) {
-  const q = new URLSearchParams({ auto: "1", desktop: "1", electron: "1", layout: "desktop", cwd: workspaceCwd, v: String(Date.now()) });
+  const q = new URLSearchParams({ key: UI_SECRET, auto: "1", desktop: "1", electron: "1", layout: "desktop", cwd: workspaceCwd, v: String(Date.now()) });
   if (extra) Object.entries(extra).forEach(([k, v]) => q.set(k, v));
   return `http://127.0.0.1:${UI_PORT}/?${q.toString()}`;
 }
@@ -130,7 +131,7 @@ async function chooseWorkspace() {
   if (r.canceled || !r.filePaths[0]) return null;
   workspaceCwd = r.filePaths[0];
   try {
-    await fetchJson(`http://127.0.0.1:${UI_PORT}/api/fs/root`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ path: workspaceCwd }) });
+    await fetchJson(`http://127.0.0.1:${UI_PORT}/api/fs/root?key=${UI_SECRET}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ path: workspaceCwd }) });
   } catch {}
   return workspaceCwd;
 }

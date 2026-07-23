@@ -66,11 +66,11 @@ Write-Host "=== Grok Remote Control ===" -ForegroundColor Yellow
 Write-Host "Grok:     $Grok"
 Write-Host "CWD:      $Cwd"
 Write-Host "Agent:    127.0.0.1:$Port  (localhost only)"
-Write-Host "Phone UI: http://${lan}:${UiPort}/"
-Write-Host "Phone WS: ws://${lan}:${UiPort}/ws  (proxied, secret server-side)"
-Write-Host "Secret:   $Secret"
+Write-Host "Phone UI: http://${lan}:${UiPort}/?key=$Secret"
+Write-Host "Phone WS: ws://${lan}:${UiPort}/ws  (proxied, key-gated, secret server-side)"
+Write-Host "Secret:   $Secret  (also the access key — anyone with this URL can use your agent)"
 Write-Host ""
-Write-Host "On Android: open  http://${lan}:${UiPort}/?auto=1" -ForegroundColor Cyan
+Write-Host "On Android: open  http://${lan}:${UiPort}/?key=$Secret&auto=1" -ForegroundColor Cyan
 Write-Host "Never: Stop-Process -Name grok  (kills desktop TUI)" -ForegroundColor DarkYellow
 Write-Host ""
 $agentLog = Join-Path $logDir "agent.log"
@@ -136,9 +136,9 @@ if (-not $NoUi) {
   } else {
     Write-Host "UI+proxy OK  http://${lan}:${UiPort}/" -ForegroundColor Green
   }
-  "http://${lan}:${UiPort}/?auto=1" | Set-Content (Join-Path $here "connect.url") -Encoding ASCII
+  "http://${lan}:${UiPort}/?key=$Secret&auto=1" | Set-Content (Join-Path $here "connect.url") -Encoding ASCII
   try {
-    $h = Invoke-RestMethod "http://127.0.0.1:${UiPort}/health" -TimeoutSec 5
+    $h = Invoke-RestMethod "http://127.0.0.1:${UiPort}/health?key=$Secret" -TimeoutSec 5
     if ($h.ok) { Write-Host "Health: agent reachable through proxy" -ForegroundColor Green }
     else { Write-Host "Health: agent NOT reachable - $($h.detail)" -ForegroundColor Red }
   } catch {

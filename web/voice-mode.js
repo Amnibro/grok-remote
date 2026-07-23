@@ -3,7 +3,7 @@ const LS_VOICE="grok_remote_voice";
 const VOICES=["eve","ara","leo","rex","sal","luna","orion","helix"];
 const ACKS=["Got it. Working on that.","On it.","Task received. Working.","Heard you. Starting now.","Roger. On it."];
 let cfg={mode:"off",voiceId:"eve",autoSend:true,speakAck:true,speakResult:true,lang:"en-US",wake:"hey grok"};
-let rec=null,listening=false,busy=false,audioEl=null,audioCtx=null,ttsOk=null,queue=[],speaking=false,xrSess=null,pauseTimer=null,finalBuf="",interim="",lastTurnSpeak=0;
+let rec=null,listening=false,busy=false,audioEl=null,audioCtx=null,ttsOk=null,queue=[],speaking=false,xrSess=null,pauseTimer=null,finalBuf="",interim="",lastTurnSpeak=0,micFatal=false;
 function $(id){return document.getElementById(id)}
 function chip(t){try{if(typeof window.chip==="function")window.chip(t)}catch(e){}}
 function loadCfg(){
@@ -119,12 +119,15 @@ async function grokSpeak(text){
  const blob=await r.blob();
  const url=URL.createObjectURL(blob);
  return new Promise((resolve,reject)=>{
-  if(audioEl){try{audioEl.pause()}catch(e){}}
+  if(audioEl){try{audioEl.pause()}catch(e){}try{if(audioEl._settle)audioEl._settle()}catch(e){}}
   audioEl=new Audio(url);
-  audioEl.onended=()=>{URL.revokeObjectURL(url);resolve(true)};
-  audioEl.onerror=()=>{URL.revokeObjectURL(url);reject(new Error("audio play failed"))};
+  let done=false;
+  const settle=(fn,v)=>{if(done)return;done=true;URL.revokeObjectURL(url);audioEl&&(audioEl._settle=null);fn(v)};
+  audioEl._settle=()=>settle(resolve,false);
+  audioEl.onended=()=>settle(resolve,true);
+  audioEl.onerror=()=>settle(reject,new Error("audio play failed"));
   ensureAudioCtx();
-  audioEl.play().catch(reject);
+  audioEl.play().catch(e=>settle(reject,e));
  });
 }
 async function speak(text,kind){
@@ -148,6 +151,7 @@ async function speak(text,kind){
 function stopSpeak(){
  queue=[];
  try{if(audioEl)audioEl.pause()}catch(e){}
+ try{if(audioEl&&audioEl._settle)audioEl._settle()}catch(e){}
  try{if(window.speechSynthesis)window.speechSynthesis.cancel()}catch(e){}
  speaking=false;paintHud();
 }
@@ -217,6 +221,7 @@ function maybeWake(text){
 function startListen(continuous){
  const C=SR();
  if(!C){chip("Speech recognition not supported here");return}
+ micFatal=false;
  stopListen(false);
  ensureAudioCtx();
  const r=new C();
@@ -250,10 +255,14 @@ function startListen(continuous){
  r.onerror=e=>{
   if(e&&e.error==="no-speech"&&(cfg.mode==="go"||cfg.mode==="xr"))return;
   listening=false;paintHud();
+  if(e&&["not-allowed","audio-capture","service-not-allowed"].includes(e.error)){
+   micFatal=true;chip("mic: "+e.error+" — voice mode stopped");setMode("off");return;
+  }
   if(e&&e.error&&e.error!=="aborted")chip("mic: "+e.error);
  };
  r.onend=()=>{
   listening=false;rec=null;paintHud();
+  if(micFatal)return;
   if((cfg.mode==="go"||cfg.mode==="xr")&&!busy&&!speaking)setTimeout(()=>startListen(true),400);
  };
  rec=r;r.start();listening=true;paintHud();

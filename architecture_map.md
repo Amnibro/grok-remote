@@ -1,6 +1,31 @@
 # Grok Remote — architecture map
 
-**Updated:** 2026-07-18 · v33 composer bind (type → session id)
+**Updated:** 2026-07-23 · v35 endpoint auth
+
+## Endpoint auth (v35)
+
+Every HTTP/WS route runs through `make_auth_middleware(token)` in server.py, keyed on the existing `--secret` (already required at startup; already a fresh random value each launch via `start.ps1`/`desktop/main.js` — reused, not duplicated).
+
+| Piece | Behavior |
+|-------|----------|
+| Bootstrap | First request with `?key=<secret>` in the query string is checked, then an httpOnly cookie (`grok_remote_key`, 30d) is set on the response |
+| Steady state | Cookie sent automatically by the browser on same-origin fetch/WS — **no client JS reads or sends the key itself** |
+| Fallback | `X-Grok-Remote-Key` header also accepted (non-browser callers) |
+| Exempt | `?demo=1` (privacy-safe sample data, screenshots) and `/health` (boolean + sanitized string; polled unauthenticated by `ensure-running.ps1`, `start.ps1`'s own check, and the desktop cockpit before the stack — even — is known to be up) |
+| Pairing | `connect.url` and printed links embed `?key=$Secret`; a link generated before v35 needs a fresh `start.ps1` run to pick up the key |
+| Desktop cockpit | `desktop/main.js` holds one `UI_SECRET` for the window load, health poll, and fs/root POST — repo-only, not shipped with the installed plugin |
+
+## Session noise filter (v1)
+
+Automated Azno market-watch co-pilot ticks create a **new Grok session every run** (titles like *Azno Market Watch…*, *Market Watch Co-Pilot…*, *Azno TA Cache JSON to Ticker Verdicts*). Amni-chat/azno watchdog-style titles are treated the same.
+
+| Piece | Behavior |
+|-------|----------|
+| `isNoiseSession(s)` | Title/cwd heuristics for market-watch, co-pilot ticker verdicts, TA cache OHLCV probes, amni-chat/azno watchdog labels |
+| `normalizeSessions` | Drops noise from the in-memory list after `_x.ai/sessions/list` |
+| `renderSessions` / `pickBestSession` | Defense-in-depth: never paint or auto-open noise |
+
+Does **not** delete disk sessions under `~/.grok/sessions/` — only hides them from the remote chat rail.
 
 ## Layout
 
