@@ -9,6 +9,7 @@ if not exist "%ENSURE%" (
   exit /b 1
 )
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%ENSURE%" -Force -IgnoreConfig -Reason "shortcut"
-timeout /t 2 /nobreak >nul
-start "" "http://127.0.0.1:2421/?auto=1"
+set "OPENUI=%ROOT%\scripts\open-remote-ui.ps1"
+if not exist "%OPENUI%" set "OPENUI=%USERPROFILE%\.grok\plugins\grok-remote\scripts\open-remote-ui.ps1"
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%OPENUI%"
 exit /b 0

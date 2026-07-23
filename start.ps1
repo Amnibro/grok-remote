@@ -68,7 +68,7 @@ Write-Host "CWD:      $Cwd"
 Write-Host "Agent:    127.0.0.1:$Port  (localhost only)"
 Write-Host "Phone UI: http://${lan}:${UiPort}/?key=$Secret"
 Write-Host "Phone WS: ws://${lan}:${UiPort}/ws  (proxied, key-gated, secret server-side)"
-Write-Host "Secret:   $Secret  (also the access key — anyone with this URL can use your agent)"
+Write-Host "Secret:   $Secret  (also the access key - anyone with this URL can use your agent)"
 Write-Host ""
 Write-Host "On Android: open  http://${lan}:${UiPort}/?key=$Secret&auto=1" -ForegroundColor Cyan
 Write-Host "Never: Stop-Process -Name grok  (kills desktop TUI)" -ForegroundColor DarkYellow

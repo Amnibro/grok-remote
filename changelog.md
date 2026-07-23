@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-07-23 — Fix the desktop shortcut breaking under v35 auth (v35.1)
+
+- **Symptom:** double-clicking "Grok Remote.lnk" opened the browser to a raw `{"error": "unauthorized ..."}` JSON response instead of the UI.
+- **Cause 1:** `launch-remote.cmd` still opened the hardcoded `http://127.0.0.1:2421/?auto=1` with no key — it predated v35's auth requirement and was never updated. A first-pass fix tried extracting the secret via a nested `for /f` + inline PowerShell inside batch, which is exactly as fragile as it sounds and doesn't reliably run before the server's first-ever `connect.url` write completes anyway (a flat 2-second `timeout` before opening the browser, vs. the stack's actual multi-second boot time).
+- **Cause 2 (the sneaky one):** the PowerShell fix-attempt itself, `scripts/open-remote-ui.ps1`, used an em-dash (`—`) inside a double-quoted string. Windows PowerShell 5.1 run via `-File` on a BOM-less UTF-8 script can misread that multibyte character and lose track of the string terminator — `"The string is missing the terminator"` — silently killing the script. `start.ps1` had the identical landmine in a `Write-Host` line, unrelated to this bug but caught by the same sweep. Same failure class as the changelog mojibake fixed earlier this session; scanned every `.ps1` in the repo and parse-checked all of them with the real Windows PowerShell tokenizer — all clean now.
+- **Fix:** `launch-remote.cmd` now calls `scripts/open-remote-ui.ps1`, which polls `/health` (unauthenticated, exempt from auth) for up to 25s, then reads the already-correct `connect.url` (written by `start.ps1` as its last boot step, always carrying the current key) and opens *that* — no manual secret extraction anywhere. Falls back to a plain unkeyed URL with a console warning only if the stack genuinely never came up in time.
+- Deployed to `~/.grok/plugins/grok-remote/`; live-tested end to end against a running instance (silent success = healthy path, correct keyed URL read from `connect.url`).
+
 ## 2026-07-23 — Auth: gate every endpoint behind the pairing secret (v35)
 
 - **Gap:** none of the HTTP/WS endpoints required authentication — anyone on the LAN who found `:2421` could read/write any file under the workspace, inject prompts into any session, or kill the stack via `/api/stack/stop`. Called out as deferred (C1) at the end of the v34 bug sweep.
