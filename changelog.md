@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-07-23 — Stop rotating the pairing secret on every launch (v35.2)
+
+- **Symptom:** the shortcut kept landing on the raw `{"error": "unauthorized ..."}` response even seconds after a fresh instance had been confirmed healthy and its key confirmed working.
+- **Cause:** `start.ps1` minted a brand-new random `--secret` on *every single invocation* — including every `ensure-running.ps1` fire from the shortcut. Any already-open tab, or a second click landing while the first was still mid-boot, held a key that had already rotated out from under it the moment a new instance spun up. This is what made v35.1's health-polling fix insufficient on its own — the instance being polled could be perfectly healthy and still reject a request carrying yesterday's (or ten-seconds-ago's) key.
+- **Fix:** the secret is now resolved once and persisted to `.ui-secret` next to `start.ps1` (gitignored, machine-local) — explicit `--secret`/env var still wins, then the persisted file, then generate-and-save only if neither exists. `desktop/main.js`'s Electron cockpit reads/writes the same file so it can never mint a secret that disagrees with the shortcut path. The key now stays constant across restarts; `connect.url` only ever changes if you delete `.ui-secret` yourself.
+
 ## 2026-07-23 — Fix the desktop shortcut breaking under v35 auth (v35.1)
 
 - **Symptom:** double-clicking "Grok Remote.lnk" opened the browser to a raw `{"error": "unauthorized ..."}` JSON response instead of the UI.
