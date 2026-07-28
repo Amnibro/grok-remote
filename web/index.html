@@ -1254,7 +1254,7 @@ const skillsSheet=document.getElementById("skillsSheet"),taskSheet=document.getE
 /* themeSheet / btnTheme / logo bound after THEMES helpers if present */
 const themeSheet=document.getElementById("themeSheet"),btnTheme=document.getElementById("btnTheme"),logoEl=document.getElementById("logo");
 
-let ws=null,sid=null,sidCwd=".",nid=0,pending=new Map(),busy=false,defaultCwd=".",sessions=[];
+let ws=null,sid=null,selectedSid=null,sidCwd=".",nid=0,pending=new Map(),busy=false,defaultCwd=".",sessions=[];
 let replaying=false,showThoughts=true,stickBottom=true,autoScroll=true,page="setup";
 let curUser=null,curAgent=null,curThought=null,toolMap={},curThoughtRow=null;
 let seenEvents=new Set(),seenUserTexts=new Set(),promptCount=0,commands=[];
@@ -3688,8 +3688,59 @@ async function fetchSessions(){
   const r=await req("_x.ai/sessions/list",{},30000);
   sessions=normalizeSessions(r);renderSessions();return sessions;
 }
+function railSessionId(){
+  const a=String(selectedSid||"").trim();
+  if(a)return a;
+  const b=String(sid||"").trim();
+  if(b)return b;
+  try{return String((feed&&feed.dataset&&feed.dataset.sid)||"").trim()}catch(e){return""}
+}
+function sessionIdsMatch(a,b){
+  const x=String(a||"").trim(),y=String(b||"").trim();
+  if(!x||!y)return false;
+  if(x===y)return true;
+  if(x.length>=8&&y.length>=8&&(x.startsWith(y)||y.startsWith(x)))return true;
+  return false;
+}
+function paintSessionCurrent(){
+  if(!sessList)return;
+  const want=railSessionId();
+  sessList.querySelectorAll(".item").forEach(el=>{
+    const id=String(el.dataset.sid||"");
+    const on=sessionIdsMatch(id,want);
+    el.classList.toggle("current",on);
+    const t=el.querySelector(".t");
+    if(!t)return;
+    let badge=t.querySelector(".badge.open-mark");
+    if(on){
+      if(!badge){
+        badge=document.createElement("span");
+        badge.className="badge live open-mark";
+        badge.textContent="open";
+        t.insertBefore(badge,t.firstChild);
+      }
+    }else if(badge)badge.remove();
+  });
+  try{
+    const cur=sessList.querySelector(".item.current");
+    if(cur&&typeof cur.scrollIntoView==="function"){
+      const r=sessList.getBoundingClientRect(),cr=cur.getBoundingClientRect();
+      if(cr.top<r.top||cr.bottom>r.bottom)cur.scrollIntoView({block:"nearest",inline:"nearest"});
+    }
+  }catch(e){}
+}
+function setSelectedSession(id,opts){
+  opts=opts||{};
+  const k=id?String(id).trim():"";
+  selectedSid=k||null;
+  if(opts.bindSid){sid=selectedSid;window.sid=selectedSid}
+  try{if(feed){if(k)feed.dataset.sid=k;else delete feed.dataset.sid}}catch(e){}
+  if(opts.render){try{renderSessions()}catch(e){paintSessionCurrent()}}
+  else paintSessionCurrent();
+}
 function renderSessions(){
   const q=(document.getElementById("sessFilter").value||"").toLowerCase().trim();
+  const want=railSessionId();
   const items=sessions.filter(s=>{
     if(isNoiseSession(s))return false;
     const id=String(s.sessionId||"");
@@ -3715,14 +3766,15 @@ function renderSessions(){
   items.forEach(s=>{
     const id=String(s.sessionId||"");
     const arch=isArchived(id);
-    const cur=sid&&id===String(sid);
+    const cur=sessionIdsMatch(id,want);
     const d=document.createElement("div");d.className="item"+(arch?" archived":"")+(cur?" current":"");
+    d.dataset.sid=id;
     d.title=ux.privacy?"":(sessionTitle(s)+(s.cwd?" · "+String(s.cwd):""));
     const body=document.createElement("div");body.className="body";
     const when=sessionStamp(s);const ago=relTime(when);
     const path=shortPath(s.cwd||"");
     const actBadge=s.resident?"live":(s.activity&&!/dormant|idle/i.test(String(s.activity))?s.activity:"");
-    body.innerHTML='<div class="t spoiler">'+(cur?'<span class="badge live">open</span>':'')+(s.resident?'<span class="badge live">live</span>':'')+(arch?'<span class="badge">archived</span>':'')+(actBadge&&!s.resident?'<span class="badge idle">'+esc(actBadge)+'</span>':'')+'<span class="spoiler">'+esc(sessionTitle(s))+'</span></div><div class="m spoiler">'+(path?'<span class="spoiler-path">'+esc(path)+"</span>":"")+(ago?(path?" · ":"")+esc(ago):"")+"</div>";
+    body.innerHTML='<div class="t spoiler">'+(cur?'<span class="badge live open-mark">open</span>':'')+(s.resident?'<span class="badge live">live</span>':'')+(arch?'<span class="badge">archived</span>':'')+(actBadge&&!s.resident?'<span class="badge idle">'+esc(actBadge)+'</span>':'')+'<span class="spoiler">'+esc(sessionTitle(s))+'</span></div><div class="m spoiler">'+(path?'<span class="spoiler-path">'+esc(path)+"</span>":"")+(ago?(path?" · ":"")+esc(ago):"")+"</div>";
     const acts=document.createElement("div");acts.className="acts";
     const ab=document.createElement("button");ab.type="button";ab.textContent=arch?"Unarchive":"Archive";
     ab.onclick=e=>toggleArchive(id,e);
@@ -3731,9 +3783,10 @@ function renderSessions(){
     pb.onclick=e=>{e.stopPropagation();if(window.grokCockpit)window.grokCockpit.pinSession(s);chip("pinned "+sessionTitle(s))};
     acts.appendChild(pb);
     d.appendChild(body);d.appendChild(acts);
-    d.onclick=e=>{if(e.target.closest&&e.target.closest(".acts"))return;if(isDemoMode()){sid=id;sidCwd=s.cwd||"";renderSessions();paintDemoChat();page="chat";updateChrome();return}openSession(s)};
+    d.onclick=e=>{if(e.target.closest&&e.target.closest(".acts"))return;if(isDemoMode()){setSelectedSession(id,{bindSid:true});sidCwd=s.cwd||"";renderSessions();paintDemoChat();page="chat";updateChrome();return}openSession(s)};
     sessList.appendChild(d);
   });
+  paintSessionCurrent();
 }
 
 const HORIZON_PUNS=[
@@ -3821,7 +3874,7 @@ function resolveSendSid(){
 }
 async function openSession(s){
   if(!s||!s.sessionId){chip("bad session");return}
-  const prevSid=String(sid||"");
+  const prevSid=String(sid||selectedSid||"");
   if(prevSid)saveComposerDraft(prevSid);
   abortSessionSwitch();
   stopPoll();
@@ -3831,15 +3884,18 @@ async function openSession(s){
   historyPainting=false;
   const gen=++sessionGen;
   const openId=String(s.sessionId);
+  setSelectedSession(openId,{render:true});
   sid=null;window.sid=null;loadExpectSid=null;
   sidCwd=String(s.cwd||defaultCwd||".").replace(/\\\\/g,"\\");
   clearSessionFeed();
+  try{if(feed)feed.dataset.sid=openId}catch(e){}
   showPage("chat");replaying=true;setBusy(true);stickBottom=true;
   showHorizon("loading recent");
   setConn(true,"loading…",true);
   let painted=0;
   try{
-    sid=openId;window.sid=sid;rememberSessionSid(sid,sidCwd);
+    sid=openId;window.sid=sid;selectedSid=openId;rememberSessionSid(sid,sidCwd);
+    paintSessionCurrent();
     loadComposerDraft(openId);
     permLevel=getPermLevel(openId);
     paintPermChip();
@@ -3889,6 +3945,10 @@ async function openSession(s){
   }finally{
     if(gen===sessionGen&&String(sid)===openId){
       loadExpectSid=null;sessionSwitching=false;replaying=false;setBusy(false);closeOpen();
+      selectedSid=openId;window.sid=sid;
+      try{if(feed)feed.dataset.sid=openId}catch(e){}
+      paintSessionCurrent();
+      try{renderSessions()}catch(e){}
       stickBottom=true;
       hideHorizon();
       forceScrollBottom({pin:true,settle:true,settleMs:120});
@@ -3924,7 +3984,8 @@ async function newSession(cwd,firstMsg){
   sessionSwitching=true;
   sessionFresh=true;
   const gen=++sessionGen;
-  sid=null;window.sid=null;loadExpectSid=null;
+  sid=null;window.sid=null;selectedSid=null;loadExpectSid=null;
+  paintSessionCurrent();
   const c=(cwd||document.getElementById("cwd").value||defaultCwd||".").trim();
   if(!c){sessionSwitching=false;sessionFresh=false;alert("cwd required");return}
   sidCwd=c;
@@ -3939,7 +4000,9 @@ async function newSession(cwd,firstMsg){
     try{applyModelState(r&&r.models)}catch(e){}
     const newId=r&& (r.sessionId||r.session_id||(r.session&&r.session.sessionId));
     if(!newId)throw new Error("session/new returned no id · "+JSON.stringify(r||{}).slice(0,180));
-    sid=String(newId);window.sid=sid;loadExpectSid=null;rememberSessionSid(sid,sidCwd);
+    sid=String(newId);window.sid=sid;selectedSid=sid;loadExpectSid=null;rememberSessionSid(sid,sidCwd);
+    try{if(feed)feed.dataset.sid=sid}catch(e){}
+    paintSessionCurrent();
     composerBoundSid=sid;
     if(!permBySession[sid])permBySession[sid]=getPermLevel()||"always";
     permLevel=getPermLevel(sid);paintPermChip();savePermLevels();
@@ -3950,8 +4013,9 @@ async function newSession(cwd,firstMsg){
     setConn(true,"new chat",false);
   }catch(e){
     if(gen===sessionGen){
-      sid=null;window.sid=null;composerBoundSid=null;
+      sid=null;window.sid=null;selectedSid=null;composerBoundSid=null;
       loadExpectSid=null;sessionSwitching=false;replaying=false;sessionFresh=false;setBusy(false);hideHorizon();
+      paintSessionCurrent();
       chip("new session failed: "+e);alert(e);
     }
     return;
@@ -3962,7 +4026,8 @@ async function newSession(cwd,firstMsg){
   clearSessionFeed();
   sessionFresh=true;
   startPoll();
-  try{await fetchSessions()}catch(e){}
+  try{await fetchSessions()}catch(e){try{renderSessions()}catch(x){}}
+  paintSessionCurrent();
   try{await loadCommands()}catch(e){}
   if(firstMsg&&String(firstMsg).trim()){
     sessionFresh=false;

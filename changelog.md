@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-07-28 — Session rail highlight matches open chat (v36.2)
+
+- **Symptom:** left sessions list highlighted a different chat than the feed
+- **Cause:** `.current` only applied inside `renderSessions()`, and `openSession` never re-rendered after changing `sid` (demo path did). Mid-switch `sid=null` also left the previous row lit.
+- **Fix:** `selectedSid` + `paintSessionCurrent()` / `setSelectedSession()`; highlight immediately on open/new; re-sync after load; `data-sid` on rows; open badge tracks selection
+- Hard-refresh. Backup: `backups/index.html.v_sess_highlight.bak`
+
 ## 2026-07-28 — Stop duplicate You bubble after attach send (v36.1)
 
 - **Symptom:** text+images painted correctly, then a second You bubble with the same text only

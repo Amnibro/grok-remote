@@ -1,8 +1,8 @@
 # Grok Remote — architecture map
 
-**Updated:** 2026-07-27 · v36 New chat only + image+text local paint
+**Updated:** 2026-07-28 · v36.2 session rail highlight sync
 
-## Chat chrome (v36)
+## Chat chrome (v36 → v36.2)
 
 | Piece | Behavior |
 |-------|----------|
@@ -10,6 +10,7 @@
 | Command deck (9-dot) | No New task / Sessions menu rows; Skills + Delivery remain |
 | `paintLocalUserTurn` | One You bubble: stripped text then image/file previews |
 | Echo skip | Do not pre-set `lastLocalUserPlain` before local paint; keep media nodes when re-rendering text |
+| `selectedSid` / `paintSessionCurrent` | Rail `.current` + open badge follow the chat in the feed; set on open/new before async load finishes |
 
 ## Endpoint auth (v35)
 
