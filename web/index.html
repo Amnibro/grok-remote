@@ -972,10 +972,8 @@ body.voice-go #voiceHud,body.voice-xr #voiceHud{bottom:calc(var(--stack-h,120px)
           <div class="mm-status" id="moreMenuStatus" aria-live="polite"></div>
         </div>
         <div class="mm-body">
-        <div class="mm-sec"><span class="mm-sec-dot"></span>Chat</div>
+        <div class="mm-sec"><span class="mm-sec-dot"></span>Session</div>
         <button type="button" id="btnSkills" role="menuitem"><span class="mm-ico" aria-hidden="true">✦</span><span class="mm-lab">Skills</span><span class="mm-k">/</span></button>
-        <button type="button" id="btnNewTask" role="menuitem"><span class="mm-ico" aria-hidden="true">＋</span><span class="mm-lab">New task</span><span class="mm-k">task</span></button>
-        <button type="button" id="btnSess" role="menuitem"><span class="mm-ico" aria-hidden="true">≡</span><span class="mm-lab">Sessions</span><span class="mm-k">list</span></button>
         <button type="button" id="btnMsgModeMenu" role="menuitem"><span class="mm-ico" aria-hidden="true">⇉</span><span class="mm-lab">Delivery</span><span class="mm-k">queue</span></button>
         <button type="button" class="mm-tog" id="btnPermCycle" role="menuitem" title="Tap to cycle Always → Ask → Plan"><span class="mm-ico" aria-hidden="true">◈</span><span class="mm-lab">Permission</span><span class="mm-k">always</span></button>
         <div class="mm-sec"><span class="mm-sec-dot"></span>Tools</div>
@@ -1063,7 +1061,6 @@ body.voice-go #voiceHud,body.voice-xr #voiceHud{bottom:calc(var(--stack-h,120px)
     </div>
     <div class="rowbtns">
       <button class="pri" id="newSess">+ New chat</button>
-      <button id="btnTaskFromList">New task…</button>
       <button id="refreshSess">Refresh</button>
     </div>
     <label>Search</label>
@@ -2333,8 +2330,8 @@ async function drainMsgQueue(){
     msgQueue.unshift(item);paintMsgQueue();msgDrainBusy=false;return
   }
   try{
-    if(item.tRaw)appendUser((item.mode==="fyi"?"FYI · ":"")+(item.mode==="queue"?"Queued · ":"")+(item.mode==="interject"?"Interject · ":"")+item.tRaw);
-    if(item.files&&item.files.length)showLocalAttachments(item.files);
+    const qDisp=(item.mode==="fyi"?"FYI · ":"")+(item.mode==="queue"?"Queued · ":"")+(item.mode==="interject"?"Interject · ":"")+(item.tRaw||"");
+    if(item.tRaw||(item.files&&item.files.length))paintLocalUserTurn(qDisp,item.files||[]);
     localEchoUntil=Date.now()+5000;
     promoteSessionAfterMessage(itemSid).catch(()=>{});
     try{if(window.grokVoice)window.grokVoice.onTaskSent(item.tRaw)}catch(e){}
@@ -2778,13 +2775,34 @@ function noteSeenUser(key){
   seenUserTexts.add(k);
   const plain=stripPromptChrome(k).trim();
   if(plain)seenUserTexts.add(plain);
+  if(plain)seenUserTexts.add(plain.replace(/\s+/g," "));
   if(seenUserTexts.size>400){const a=[...seenUserTexts];seenUserTexts=new Set(a.slice(-200))}
+}
+function normUserEcho(text){
+  return stripPromptChrome(String(text||"")).replace(/\s+/g," ").trim();
+}
+function isLocalUserEcho(text){
+  if(Date.now()>=localEchoUntil)return false;
+  const plain=normUserEcho(text);
+  if(!plain)return true;
+  if(seenUserTexts.has(plain)||seenUserTexts.has(String(text||"").trim())||seenUserTexts.has(stripPromptChrome(text||"").trim()))return true;
+  const last=normUserEcho(lastLocalUserPlain);
+  if(last&&(plain===last||plain.endsWith(last)||last.endsWith(plain)))return true;
+  try{
+    const rows=feed?feed.querySelectorAll(".row.me .bub"):[];
+    for(let i=rows.length-1;i>=Math.max(0,rows.length-4);i--){
+      const raw=normUserEcho(rows[i].dataset.raw||"");
+      if(raw&&(raw===plain||plain.endsWith(raw)||raw.endsWith(plain)))return true;
+    }
+  }catch(e){}
+  return false;
 }
 function paintHistoryUser(text){
   userWireBuf="";
   curAgent=null;curThought=null;curThoughtRow=null;curUser=null;
   const display=stripPromptChrome(text||"");
   if(!display.trim())return false;
+  if(!replaying&&isLocalUserEcho(display)){noteSeenUser(display);return false}
   const bub=addRow("You");
   bub.classList.add("md");
   bub.dataset.raw=display;
@@ -2795,19 +2813,18 @@ function paintHistoryUser(text){
 }
 function paintHistoryAgent(text){
   userWireBuf="";
-  curUser=null;curThought=null;curThoughtRow=null;curAgent=null;
+  curUser=null;
   const t=String(text||"");
   if(!t.trim())return false;
-  const bub=addRow("Grok");
-  bub.dataset.raw=t;
-  renderAgentBubble(bub,t);
-  curAgent=null;
+  if(!curAgent){curAgent=addRow("Grok");curAgent.dataset.raw=""}
+  curAgent.dataset.raw=(curAgent.dataset.raw||"")+t;
+  renderAgentBubble(curAgent,curAgent.dataset.raw);
   return true;
 }
 function appendUser(text,opts){
   opts=opts||{};
   if(opts.html||opts.node){
-    if(!curUser){curUser=addRow("You");curUser.classList.add("md");curUser.dataset.raw=""}
+    if(!curUser){curUser=addRow("You");curUser.classList.add("md");curUser.dataset.raw=curUser.dataset.raw||""}
     if(opts.html){const n=document.createElement("div");n.innerHTML=opts.html;curUser.appendChild(n)}
     if(opts.node)curUser.appendChild(opts.node);
     scroll();
@@ -2824,18 +2841,18 @@ function appendUser(text,opts){
     const display=stripPromptChrome(userWireBuf);
     if(!display.trim())return;
     const key=display.trim();
-    const plain=stripPromptChrome(key).trim();
-    const echoWin=Date.now()<localEchoUntil;
-    if(!opts.force&&echoWin&&(seenUserTexts.has(key)||seenUserTexts.has(plain)||(lastLocalUserPlain&&(plain===lastLocalUserPlain||key===lastLocalUserPlain||plain.endsWith(lastLocalUserPlain)||lastLocalUserPlain.endsWith(plain))))){
+    if(!opts.force&&isLocalUserEcho(display)){
       userWireBuf="";
       return;
     }
-    if(!opts.force&&curUser&&(curUser.dataset.raw||"").trim()===key)return;
+    if(!opts.force&&curUser&&normUserEcho(curUser.dataset.raw||"")===normUserEcho(key))return;
     if(wasEmpty)curUser=null;
     if(!curUser){curUser=addRow("You");curUser.classList.add("md")}
+    const keepMedia=[...curUser.querySelectorAll(".att-prev,.file-chip")];
     curUser.dataset.raw=display;
     curUser.innerHTML="";
     curUser.appendChild(renderMdBlock(display));
+    keepMedia.forEach(n=>curUser.appendChild(n));
     noteSeenUser(key);
     scroll();
     return;
@@ -2851,10 +2868,12 @@ function appendUser(text,opts){
     lastLocalUserPlain=key;
   }
   if(!curUser){curUser=addRow("You");curUser.classList.add("md");curUser.dataset.raw=""}
+  const keepMedia=[...curUser.querySelectorAll(".att-prev,.file-chip")];
   curUser.dataset.raw=(curUser.dataset.raw||"")+t;
   curUser.dataset.raw=stripPromptChrome(curUser.dataset.raw);
   curUser.innerHTML="";
-  curUser.appendChild(renderMdBlock(curUser.dataset.raw||""));
+  if(curUser.dataset.raw)curUser.appendChild(renderMdBlock(curUser.dataset.raw||""));
+  keepMedia.forEach(n=>curUser.appendChild(n));
   scroll();
 }
 function appendAgent(text,opts){
@@ -2870,7 +2889,6 @@ function appendAgent(text,opts){
   renderAgentBubble(curAgent,curAgent.dataset.raw);scroll();
 }
 function appendThought(text){
-  curAgent=null;
   if(!showThoughts)return;
   if(!curThought){
     const row=document.createElement("div");
@@ -3183,6 +3201,7 @@ function handleUpdate(u,sessionId,meta){
   const t=u.sessionUpdate;
   if(t==="user_message_chunk"){
     const txt=(u.content&&u.content.text)||"";
+    if(!replaying&&isLocalUserEcho(txt)){userWireBuf="";return}
     if(replaying||historyPainting){paintHistoryUser(txt);return}
     curAgent=null;curThought=null;
     if(!userWireBuf)curUser=null;
@@ -3197,12 +3216,13 @@ function handleUpdate(u,sessionId,meta){
     if(!replaying){setBusy(true);setPhase("responding")}
   }
   else if(t==="agent_thought_chunk"){
-    if(replaying||historyPainting){userWireBuf="";curUser=null;curAgent=null}
+    if(replaying||historyPainting){userWireBuf="";curUser=null}
     appendThought((u.content&&u.content.text)||"");
     if(!replaying){setBusy(true);setPhase("thinking")}
   }
   else if(t==="tool_call"||t==="tool_call_update"){
-    if(replaying||historyPainting){userWireBuf="";curUser=null;curAgent=null}
+    if(replaying||historyPainting){userWireBuf="";curUser=null;curAgent=null;curThought=null;curThoughtRow=null}
+    else{curAgent=null;curThought=null;curThoughtRow=null}
     upsertTool(u);
     if(!replaying){setBusy(true);setPhase("tools",u.title||u.kind||u.toolName||"")}
   }
@@ -4068,7 +4088,7 @@ async function autoOpenBestSession(){
   if(window.__wantSession||window.__wantTask)return;
   const best=pickBestSession(sessions);
   if(!best){
-    chip("No sessions yet — New chat or Task");
+    chip("No sessions yet — New chat");
     return;
   }
   chip("opening latest · "+(best.title||String(best.sessionId).slice(0,8))+(best.resident?" · resident":""));
@@ -4166,7 +4186,7 @@ async function connect(opts){
       }else if(!sid){
         await autoOpenBestSession();
       }
-      if(!sid&&!feed.childElementCount)chip("Pick a session · or New chat / Task");
+      if(!sid&&!feed.childElementCount)chip("Pick a session · or New chat");
     }catch(e){
       const msg=String(e&&e.message||e);
       setConn(false,"init failed");setPhase("error",msg.slice(0,60));
@@ -4296,6 +4316,41 @@ function showLocalAttachments(files){
     }
   });
 }
+function paintLocalUserTurn(text,files){
+  const t=stripPromptChrome(String(text||""));
+  const list=files||[];
+  if(!t&&!list.length)return;
+  curUser=null;userWireBuf="";
+  if(t){
+    curUser=addRow("You");curUser.classList.add("md");
+    curUser.dataset.raw=t;
+    curUser.appendChild(renderMdBlock(t));
+  }
+  list.forEach(f=>{
+    if(!curUser){curUser=addRow("You");curUser.classList.add("md");curUser.dataset.raw=""}
+    if(isImage(f)){
+      const url=URL.createObjectURL(f);
+      const img=document.createElement("img");img.className="att-prev";img.src=url;img.alt=f.name||"image";
+      curUser.appendChild(img);
+    }else{
+      const chip=document.createElement("div");chip.className="file-chip";
+      chip.textContent=(isTextish(f)?"📄 ":"📦 ")+(f.name||"file")+" · "+Math.round((f.size||0)/1024)+"kb";
+      curUser.appendChild(chip);
+    }
+  });
+  lastLocalUserPlain=t||lastLocalUserPlain;
+  if(t){
+    noteSeenUser(t);
+    noteSeenUser(normUserEcho(t));
+    try{
+      seenUserTexts.add(t);
+      seenUserTexts.add(String(text||"").trim());
+      seenUserTexts.add(normUserEcho(text));
+    }catch(e){}
+  }
+  localEchoUntil=Math.max(localEchoUntil,Date.now()+15000);
+  scroll();
+}
 function loadPersonas(){
   if(!window.grokPresets)return;
   try{window.__grokCwdHint=(document.getElementById("cwd")&&document.getElementById("cwd").value)||defaultCwd||""}catch(e){}
@@ -4407,21 +4462,13 @@ async function sendPrompt(forcedMode){
       interjected=true;
     }
     localEchoUntil=Date.now()+12000;
-    lastLocalUserPlain=stripPromptChrome(tRaw).trim();
     sessionFresh=false;
     const display=(mode==="fyi"?"FYI · ":"")+(interjected?"Interject · ":"")+tRaw;
-    if(tRaw&&viewing){
-      appendUser(display);
-      try{
-        seenUserTexts.add(tRaw.trim());
-        seenUserTexts.add(display.trim());
-        seenUserTexts.add(lastLocalUserPlain);
-        noteSeenUser(lastLocalUserPlain);
-      }catch(e){}
+    if(viewing&&(tRaw||files.length)){
+      paintLocalUserTurn(display,files);
     }else if(tRaw&&!viewing){
       chip("sent → "+sendSid.slice(0,8)+" (typed there)");
     }
-    if(files.length&&viewing)showLocalAttachments(files);
     closeOpen();
     userWireBuf="";
     if(viewing){
@@ -4490,20 +4537,25 @@ const cmdFilter=document.getElementById("cmdFilter");if(cmdFilter)cmdFilter.onin
 skillsSheet.addEventListener("click",e=>{if(e.target===skillsSheet)closeAllSheets()});
 
 function openTaskSheet(){
-  document.getElementById("taskCwd").value=document.getElementById("cwd").value||defaultCwd||"";
-  document.getElementById("taskMsg").value="";
+  if(!taskSheet)return;
+  const tc=document.getElementById("taskCwd"),tm=document.getElementById("taskMsg");
+  if(tc)tc.value=(document.getElementById("cwd")&&document.getElementById("cwd").value)||defaultCwd||"";
+  if(tm)tm.value="";
   openSheet(taskSheet,btnNewTask);
 }
 if(btnNewTask)btnNewTask.onclick=()=>{closeMoreMenu();openTaskSheet()};
-document.getElementById("btnTaskFromList").onclick=openTaskSheet;
-document.getElementById("closeTask").onclick=()=>closeAllSheets();
-taskSheet.addEventListener("click",e=>{if(e.target===taskSheet)closeAllSheets()});
-document.getElementById("taskGo").onclick=async()=>{
-  const c=document.getElementById("taskCwd").value.trim();
-  const m=document.getElementById("taskMsg").value.trim();
+const btnTaskFromList=document.getElementById("btnTaskFromList");
+if(btnTaskFromList)btnTaskFromList.onclick=openTaskSheet;
+const closeTask=document.getElementById("closeTask");
+if(closeTask)closeTask.onclick=()=>closeAllSheets();
+if(taskSheet)taskSheet.addEventListener("click",e=>{if(e.target===taskSheet)closeAllSheets()});
+const taskGo=document.getElementById("taskGo");
+if(taskGo)taskGo.onclick=async()=>{
+  const c=(document.getElementById("taskCwd")&&document.getElementById("taskCwd").value.trim())||"";
+  const m=(document.getElementById("taskMsg")&&document.getElementById("taskMsg").value.trim())||"";
   if(!c){alert("cwd required");return}
   closeAllSheets();
-  document.getElementById("cwd").value=c;
+  if(document.getElementById("cwd"))document.getElementById("cwd").value=c;
   try{await newSession(c,m)}catch(e){alert(e)}
 };
 const btnRail=document.getElementById("btnRail"),btnCollapseRail=document.getElementById("btnCollapseRail"),railTab=document.getElementById("railTab");
@@ -4857,7 +4909,7 @@ const TOUR_STEPS=[
   {title:"2 · Sessions",body:"After connect, the left rail (or Sessions on phone) lists chats. New chat starts clean. Search filters titles. Archive only hides on this device.",sel:"#picker,#newSess",prep:()=>{try{if(isLinked())showPage("sessions",true);else showPage("setup",true)}catch(e){}}},
   {title:"3 · Chat",body:"The feed is live history + streaming replies. Tool cards show edits and terminal output. Use Search this chat to jump around.",sel:"#chatStage,#feed",prep:()=>{try{if(isLinked()&&sid)showPage("chat",true);else if(isLinked())showPage("sessions",true)}catch(e){}}},
   {title:"4 · Composer",body:"+ attaches files. Mic sits next to the box for Go voice. When busy: Interject / Queue / FYI. Cancel is its own button next to Send.",sel:"#foot .composer,#box,#send,#btnPlus,#btnComposerVoice,#msgModeRow,#btnCancelTurn",prep:()=>{try{if(isLinked())showPage("chat",true)}catch(e){}}},
-  {title:"5 · Menu ☰",body:"One menu: Skills/task, permission (tap to cycle), tools (Todos/Terminal/Git…), hide & collapse grids, apps, theme, tour. Composer still has Mic / XR.",sel:"#btnMore",prep:()=>{try{closeAllSheets();const m=document.getElementById("moreMenu");if(m){m.hidden=false;m.classList.add("on")}}catch(e){}}},
+  {title:"5 · Menu ☰",body:"One menu: Skills, delivery, permission (tap to cycle), tools (Todos/Terminal/Git…), hide & collapse grids, apps, theme, tour. Composer still has Mic / XR. New chat lives on the sessions rail.",sel:"#btnMore",prep:()=>{try{closeAllSheets();const m=document.getElementById("moreMenu");if(m){m.hidden=false;m.classList.add("on")}}catch(e){}}},
   {title:"6 · Watch & XR",body:"Mic / XR sit next to the composer. Watch companion is under ☰ → Apps → Watch (/watch for Galaxy Watch).",sel:"#btnComposerXr,#btnComposerVoice,#btnMore",prep:()=>{try{closeAllSheets()}catch(e){}}},
   {title:"7 · Link control",body:"The planet shows link health. Click it for Start server / Stop remote / Health. Stop remote only kills the remote UI + agent serve — not your desktop Grok chat.",sel:"#orbit",prep:()=>{try{closeAllSheets();closeMoreMenu&&closeMoreMenu()}catch(e){}}},
   {title:"You’re ready",body:"From any Grok Build window: /remote · /remote stop · /remote-autostart. Re-open this tour from ☰ anytime. Have fun.",sel:null,prep:()=>{try{closeAllSheets()}catch(e){}}}

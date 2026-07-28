@@ -1,6 +1,15 @@
 # Grok Remote — architecture map
 
-**Updated:** 2026-07-23 · v35 endpoint auth
+**Updated:** 2026-07-27 · v36 New chat only + image+text local paint
+
+## Chat chrome (v36)
+
+| Piece | Behavior |
+|-------|----------|
+| Sessions rail | **+ New chat** + Refresh only (no New task button) |
+| Command deck (9-dot) | No New task / Sessions menu rows; Skills + Delivery remain |
+| `paintLocalUserTurn` | One You bubble: stripped text then image/file previews |
+| Echo skip | Do not pre-set `lastLocalUserPlain` before local paint; keep media nodes when re-rendering text |
 
 ## Endpoint auth (v35)
 
@@ -76,6 +85,15 @@ grok-remote/
 | Horizon | Accretion-disk loader + rotating space puns during session open/new |
 
 Session isolation: `sessionGen`, `sessionSwitching`, `loadExpectSid`. Unscoped `session/update` only accepted during intentional load when `loadExpectSid===sid`. New chat clears `sid` first, re-clears feed after `session/new`, never sets `loadExpectSid`.
+
+## Chat chrome (v36)
+
+| Piece | Behavior |
+|-------|----------|
+| Sessions rail | **+ New chat** + Refresh only (no New task) |
+| Command deck | No New task / Sessions entries; Skills + Delivery remain |
+| `paintLocalUserTurn` | One You bubble: stripped text + image/file previews |
+| Echo skip | Do not set `lastLocalUserPlain` before local paint; media nodes preserved on text re-render |
 
 ## Composer bind (v33)
 

@@ -1,5 +1,26 @@
 # Changelog
 
+## 2026-07-28 — Stop duplicate You bubble after attach send (v36.1)
+
+- **Symptom:** text+images painted correctly, then a second You bubble with the same text only
+- **Cause:** disk live catch-up uses `paintHistoryUser` with `historyPainting` and **no** local-echo dedupe; WS/history re-echoed the prompt after `paintLocalUserTurn`
+- **Fix:** `isLocalUserEcho` / `normUserEcho`; skip in `handleUpdate`, `paintHistoryUser` (when not replaying full history), and wire `appendUser`; extend local echo window on local turn paint
+- Hard-refresh. Backup: `backups/index.html.v_dup_user_echo.bak`
+
+## 2026-07-27 — New chat only + image+text shows both (v36)
+
+- **UI:** Sessions rail is **+ New chat** only (removed **New task…**). Command deck (9-dot) no longer lists New task or Sessions — Skills / Delivery stay; use the rail for chats.
+- **Bug:** Sending an image with caption text painted **only the image**. Cause: `lastLocalUserPlain` + `localEchoUntil` were set *before* `appendUser`, so local text was treated as a duplicate echo and skipped; attachments then opened a You-bubble with media only.
+- **Fix:** `paintLocalUserTurn(text, files)` builds one You bubble (markdown then previews); queue drain uses the same path; `appendUser` keeps `.att-prev` / `.file-chip` when re-rendering text.
+- Hard-refresh remote UI. Backup: `backups/index.html.v_newchat_attach_text.bak`
+
+## 2026-07-23 — Agent reply no longer splits into multiple Grok bubbles
+
+- **Symptom:** one reply painted as several short Grok bubbles (mid-sentence fragments before tools)
+- **Cause:** every `agent_thought_chunk` did `curAgent=null`, so the next text chunk opened a **new** bubble; history paint also forced a new row per agent event
+- **Fix:** thoughts no longer close the open Grok bubble; history agent chunks coalesce into the open bubble; tool calls still close it so post-tool text lands after tools
+- Hard-refresh remote UI. Backup: `backups/index.html.v_agent_bubble_split.bak`
+
 ## 2026-07-23 — Stop rotating the pairing secret on every launch (v35.2)
 
 - **Symptom:** the shortcut kept landing on the raw `{"error": "unauthorized ..."}` response even seconds after a fresh instance had been confirmed healthy and its key confirmed working.

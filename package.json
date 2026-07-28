@@ -1,6 +1,6 @@
 {
     "name": "grok-remote",
-    "version": "1.4.0",
+    "version": "1.4.2",
     "private": true,
     "description": "Live phone/browser controller for Grok Build",
     "repository": {
