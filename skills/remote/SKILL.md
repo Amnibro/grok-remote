@@ -34,9 +34,9 @@ Parse the first token:
 
 | Arg | Action |
 |-----|--------|
-| *(empty)* or `start` | Start remote control for the current project cwd (`ensure-running.ps1 -Force -IgnoreConfig` or `start.ps1`) |
+| *(empty)* or `start` | Start/heal **single stack** (`ensure-running.ps1 -Force -IgnoreConfig`) — kills older listeners on control ports first |
 | `stop` | Run `scripts/stop-remote.ps1` — **only** listeners on 2421 + 2419 (never `Stop-Process -Name grok`) |
-| `status` | Check ports 2419/2421, print connect URL, health |
+| `status` | Run `scripts/status-remote.ps1` — loud MODE (HEALTHY / UI_ZOMBIE / STOPPED), ports, PIDs, hub_clients |
 | `url` | Print the LAN connect URL only |
 | `task <cwd> [message…]` | Tell the user the phone **Task** button / deep link for a new session at cwd |
 | extra path | Optional cwd override after the verb |
@@ -102,20 +102,35 @@ Start-Process powershell -ArgumentList @('-NoProfile','-ExecutionPolicy','Bypass
 - Auto-approve tools only for the remote agent serve process.
 - Tell the user if firewall blocks inbound 2421.
 
+## Single-stack rules (no multi-remote confusion)
+
+- **One stack only:** UI `2421` + agent `2419` (from config).
+- **Start/heal** always **reclaims** those ports (kill older LISTENING PIDs only — never by process name).
+- **Healthy** means both ports listening **and** `/health` → `ok: true`. UI-only = `UI_ZOMBIE` → keepalive restarts.
+- Status file: `~/.grok/plugin-data/grok-remote/stack-status.json`
+- Lock file: `~/.grok/plugin-data/grok-remote/stack.lock` (prevents double-start races)
+
+| Script | Role |
+|--------|------|
+| `scripts/status-remote.ps1` | MODE + ports + PIDs |
+| `scripts/ensure-running.ps1` | heal if degraded; start if down |
+| `scripts/stop-remote.ps1` | free control ports |
+| `scripts/port-control.ps1` | shared reclaim/lock/status helpers |
+
 ## Autostart (`/remote-autostart`)
 
 Config: `~/.grok/plugin-data/grok-remote/config.json` (or `GROK_PLUGIN_DATA`).
 
 | Command | Effect |
 |---------|--------|
-| `/remote-autostart on` | `autostart=true`, SessionStart hook + global `~/.grok/hooks/grok-remote-autostart.json` |
+| `/remote-autostart on` | `autostart=true` + SessionStart hook + **keepalive** task |
 | `/remote-autostart boot` | same + Windows logon task `GrokRemoteAutostart` |
-| `/remote-autostart off` | disable flags, remove task + global hook |
-| `/remote-autostart status` | show config + health |
+| `/remote-autostart off` | disable flags, remove autostart + keepalive tasks + global hook |
+| `/remote-autostart status` | run `status-remote.ps1` |
 
-Scripts: `scripts/install-autostart.ps1`, `scripts/ensure-running.ps1` (idempotent; no-op if `/health` ok).
+Scripts: `scripts/install-autostart.ps1 -Boot -KeepAlive`, `ensure-running.ps1` (strict health; free ports on fail).
 
-Default `autostart` is **false** until the user enables it.
+Defaults: `autostart`, `autostart_on_boot`, `keepalive` **true**; keepalive every **2 minutes**.
 
 ## Example user messages
 

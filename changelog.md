@@ -1,11 +1,14 @@
 # Changelog
 
-## 1.5.0 — 2026-08-01
+## 2026-08-02 — Detach-safe turns: leave page without killing work (v37.7)
 
-Release marker covering everything since **1.4.0**: KaTeX math rendering, the Braid
-layout, chat rename, the orbit status cluster, session rail fixes, and the cancel /
-turn-token corrections. KaTeX is vendored under `web/vendor/katex/` with its MIT
-licence. Plugin + package version aligned to **1.5.0**.
+- **Bug:** Leaving the remote page (navigate away, phone sleep, tab background) felt like it **interrupted** the agent turn
+- **Causes:** (1) hub reverse-RPC fulfillment had regressed — tools needed the phone to answer `fs/*` / `terminal/*` / permissions; (2) WS `onclose` rejected in-flight prompts and cleared the session, so the UI looked cancelled even when the PC could keep going
+- **Hub:** restore `HubTerminal` + `_handle_reverse` (read/write/terminal/auto-allow permission); on client leave **detach** pending RPCs (reparent to hub) instead of dropping/cancelling
+- **UI:** soft-close keeps session id; phase `sync · bg on PC`; no prompt-fail on link loss; `visibilitychange` / `pageshow` / `online` re-arm reconnect; maxReconnect 80
+- Restart remote UI once (server.py); hard-refresh phone
+- Backups: `server.py.v_detach_nav.bak`, `index.html.v_detach_nav.bak`
+- Checklist: `docs/checklists/checklist_detach_nav_v1.md`
 
 ## 2026-08-01 — Math formatting on mobile (v37.6)
 

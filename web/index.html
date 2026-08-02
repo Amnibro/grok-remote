@@ -1318,7 +1318,7 @@ let historyHasMore=false,historyOlderBefore=0,historyLoadingOlder=false;
 let sessionGen=0,sessionSwitching=false,loadExpectSid=null,sessionFresh=false,historyPainting=false,suppressLive=false;
 let turnToken=0,activeTurnToken=0,cancelInFlight=false,suppressStreamBusyUntil=0;
 let linkState="standby",agentPhase="idle",phaseDetail="",wantReconnect=false,reconnectTimer=null,connectAttempt=0;
-let connecting=false,intentionalClose=false,reconnectArmed=false,maxReconnect=5,startInFlight=false;
+let connecting=false,intentionalClose=false,reconnectArmed=false,maxReconnect=80,startInFlight=false,softDetach=false;
 Object.defineProperty(window,"replaying",{get:()=>replaying,set:v=>{replaying=!!v},configurable:true});
 Object.defineProperty(window,"sessionSwitching",{get:()=>sessionSwitching,set:v=>{sessionSwitching=!!v},configurable:true});
 let variant="grok",mode="dark";
@@ -2558,6 +2558,11 @@ async function dispatchPromptPayload(tRaw,files,mode,opts){
       if(handleMsg._waitPrompt===id)handleMsg._waitPrompt=null;
       try{if(window.grokVoice)window.grokVoice.setBusyFlag(false)}catch(x){}
       const msg=String(e&&e.message||e);
+      if(/connection closed|detached|link lost/i.test(msg)){
+        softDetach=true;
+        if(stillHere())setPhase("sync","bg on PC");
+        return;
+      }
       if(/cancel/i.test(msg)){
         if(stillHere()){setBusy(false);setPhase("idle")}
         return;
@@ -3652,6 +3657,19 @@ function handleMsg(data){
     }
     return;
   }
+  if(method==="_x.ai/remote/rpc_done"){
+    if(params&&params.detached){
+      softDetach=false;
+      if(handleMsg._waitPrompt!=null){try{pending.delete(handleMsg._waitPrompt)}catch(e){}handleMsg._waitPrompt=null}
+      if(!cancelInFlight&&!replaying){setBusy(false);setPhase("idle");scheduleCatchup(120);scheduleMsgDrain(200)}
+    }
+    return;
+  }
+  if(method==="_x.ai/remote/auto_permission"||method==="_x.ai/remote/client_rpc"){
+    touchLive();
+    if(method==="_x.ai/remote/client_rpc"&&params&&params.ok&&!replaying&&!cancelInFlight)setPhase("tools",params.method||"tool");
+    return;
+  }
   if(method==="session/update"){
     handleUpdate(params.update,params.sessionId,params._meta||(params.update&&params.update._meta)||data._meta);
     return;
@@ -4619,6 +4637,12 @@ function scheduleReconnect(ms,reason){
   if(connecting)return;
   if(ws&&ws.readyState===1)return;
   if(connectAttempt>=maxReconnect){
+    if(typeof document!=="undefined"&&document.visibilityState==="hidden"){
+      wantReconnect=true;
+      if(reconnectTimer)clearTimeout(reconnectTimer);
+      reconnectTimer=setTimeout(()=>{reconnectTimer=null;if(document.visibilityState==="visible"){connectAttempt=0;scheduleReconnect(400,"visible after cap")}else scheduleReconnect(8000,"wait visible")},5000);
+      return;
+    }
     stopReconnectLoop();
     setConn(false,"agent down");setPhase("error","hit Start Server");
     try{chip("stopped reconnecting after "+maxReconnect+" tries · use Start Server")}catch(e){}
@@ -4626,7 +4650,7 @@ function scheduleReconnect(ms,reason){
   }
   wantReconnect=true;
   if(reconnectTimer)clearTimeout(reconnectTimer);
-  const delay=ms!=null?ms:Math.min(10000,1500+connectAttempt*900);
+  const delay=ms!=null?ms:Math.min(12000,1200+connectAttempt*700);
   reconnectTimer=setTimeout(()=>{
     reconnectTimer=null;
     if(!wantReconnect&&!reconnectArmed)return;
@@ -4636,6 +4660,41 @@ function scheduleReconnect(ms,reason){
     setConn(false,"reconnecting… #"+connectAttempt+(reason?" · "+reason:""));
     connect({fromReconnect:true}).catch(()=>{});
   },delay);
+}
+function detachPendingOnSoftClose(){
+  let n=0;
+  try{
+    pending.forEach((p,id)=>{
+      if(!p)return;
+      if(p.kind==="prompt"||p.kind==="cancel"){
+        p.detached=true;
+        n++;
+        return;
+      }
+      try{p.reject(new Error("connection closed"))}catch(e){}
+      pending.delete(id);
+    });
+  }catch(e){}
+  return n;
+}
+function resumeAfterSoftReconnect(){
+  softDetach=false;
+  try{
+    const dropWait=handleMsg._waitPrompt!=null&&pending.has(handleMsg._waitPrompt)&&pending.get(handleMsg._waitPrompt)&&pending.get(handleMsg._waitPrompt).detached;
+    pending.forEach((p,id)=>{
+      if(p&&p.detached){try{pending.delete(id)}catch(e){}}
+    });
+    if(dropWait)handleMsg._waitPrompt=null;
+  }catch(e){}
+  try{if(sid){startPoll();scheduleCatchup(200);softCatchup().catch(()=>{})}}catch(e){}
+}
+function onPageBecameVisible(){
+  if(intentionalClose)return;
+  reconnectArmed=true;wantReconnect=true;
+  if(ws&&ws.readyState===1){try{startPoll();scheduleCatchup(150)}catch(e){}return}
+  if(connecting)return;
+  connectAttempt=Math.min(connectAttempt,2);
+  scheduleReconnect(350,"page visible");
 }
 async function autoOpenBestSession(){
   if(sid)return;
@@ -4704,6 +4763,8 @@ async function connect(opts){
   ws.onopen=async()=>{
     log("open");
     try{
+      const keepSid=String(sid||window.__wantSession||"");
+      const wasDetach=!!softDetach||!!opts.fromReconnect;
       const initRes=await req("initialize",{protocolVersion:1,clientInfo:{name:"grok-remote",version:"3.6"},clientCapabilities:{fs:{readTextFile:true,writeTextFile:true},terminal:true}},30000);
       try{
         const meta=(initRes&&initRes._meta)||{};
@@ -4720,26 +4781,34 @@ async function connect(opts){
         paintEffortChip();
       }catch(e){}
       connectAttempt=0;reconnectArmed=true;wantReconnect=true;
-      setConn(true,opts.fromReconnect?"reconnected":"connected",false);setPhase("idle");
+      setConn(true,opts.fromReconnect?"reconnected":"connected",false);
+      if(!wasDetach||agentPhase==="error"||agentPhase==="idle")setPhase("idle");
+      else setPhase(agentPhase==="tools"||agentPhase==="thinking"||agentPhase==="responding"||agentPhase==="waiting"?agentPhase:"sync","resume");
       await fetchSessions();
       updateLayoutClass();
       if(isWideLayout()){
         showPage("chat");
         picker.classList.add("on");
         try{history.replaceState({page:"chat"},"","#chat")}catch(e){}
-      }else{
+      }else if(!wasDetach||!keepSid){
         showPage("sessions");
         try{history.replaceState({page:"sessions"},"","#sessions")}catch(e){}
       }
       if(window.__wantSession){
-        const s=sessions.find(x=>String(x.sessionId).startsWith(window.__wantSession));
-        if(s)await openSession(s);
-        else chip("session not in list · "+window.__wantSession);
+        const want=String(window.__wantSession);
+        const s=sessions.find(x=>String(x.sessionId).startsWith(want)||String(x.sessionId)===want);
+        if(s){
+          if(String(sid)===String(s.sessionId)){window.__wantSession=null;resumeAfterSoftReconnect()}
+          else await openSession(s);
+        }else chip("session not in list · "+want);
       }else if(window.__wantTask){
         await newSession(document.getElementById("cwd").value,window.__wantTask);
+      }else if(keepSid&&String(sid)===keepSid){
+        resumeAfterSoftReconnect();
       }else if(!sid){
         await autoOpenBestSession();
       }
+      if(wasDetach){try{chip("back online · work kept running on PC")}catch(e){}}
       if(!sid&&!feed.childElementCount)chip("Pick a session · or New chat");
     }catch(e){
       const msg=String(e&&e.message||e);
@@ -4766,23 +4835,38 @@ async function connect(opts){
   };
   ws.onclose=()=>{
     connecting=false;
-    stopPoll();setBusy(false);setPhase("idle");
-    try{pending.forEach((p,id)=>{try{p.reject(new Error("connection closed"))}catch(e){} pending.delete(id)})}catch(e){}
-    const keepSid=sid;
-    if(intentionalClose){intentionalClose=false;return}
-    sid=null;window.sid=null;hideHorizon();
-    if(reconnectArmed&&wantReconnect&&connectAttempt<maxReconnect){
+    stopPoll();
+    const keepSid=sid||selectedSid||window.__wantSession||"";
+    if(intentionalClose){
+      intentionalClose=false;
+      softDetach=false;
+      try{pending.forEach((p,id)=>{try{p.reject(new Error("connection closed"))}catch(e){} pending.delete(id)})}catch(e){}
+      setBusy(false);setPhase("idle");
+      return;
+    }
+    const nDet=detachPendingOnSoftClose();
+    softDetach=true;
+    if(keepSid){window.__wantSession=String(keepSid);try{if(!sid){sid=String(keepSid);window.sid=sid}}catch(e){}}
+    if(nDet||busy){setPhase("sync","bg on PC");try{chip("phone left · turn keeps running on PC")}catch(e){}}
+    else setPhase("idle");
+    if(reconnectArmed&&wantReconnect){
       setConn(false,"link lost");
-      if(keepSid)window.__wantSession=String(keepSid);
       scheduleReconnect(null,"socket closed");
     }else{
       setConn(false,"closed");
-      if(connectAttempt>=maxReconnect)showPage("setup");
-      else if(!reconnectArmed)showPage("setup");
+      if(!reconnectArmed)showPage("setup");
     }
   };
-  ws.onerror=()=>{if(!intentionalClose){setConn(false,"error");setPhase("error","socket error")}};
+  ws.onerror=()=>{if(!intentionalClose){setConn(false,"error");if(!softDetach)setPhase("error","socket error")}};
 }
+document.addEventListener("visibilitychange",()=>{
+  if(document.visibilityState==="visible")onPageBecameVisible();
+});
+window.addEventListener("pageshow",e=>{
+  if(e.persisted||document.visibilityState==="visible")onPageBecameVisible();
+});
+window.addEventListener("online",()=>onPageBecameVisible());
+
 
 const MAX_ATTACH=8,MAX_ATTACH_BYTES=6*1024*1024;
 let pendingFiles=[];

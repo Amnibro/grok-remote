@@ -1,6 +1,6 @@
 # Grok Remote — architecture map
 
-**Updated:** 2026-08-01 · v37.5 rename chat + orbit status
+**Updated:** 2026-08-02 · v37.7 detach-safe turns (navigate away)
 
 ## Chat rename (v37.5)
 
@@ -141,6 +141,18 @@ Session isolation: `sessionGen`, `sessionSwitching`, `loadExpectSid`. Unscoped `
 | `sendPrompt` | Freezes send target via resolve; does not overwrite bind from live `sid` if already set |
 | `dispatchPromptPayload` | Always `session/prompt` with pinned `sessionId`; `allowCrossSession` for off-screen send |
 
+## Detach-safe turns (v37.7)
+
+Navigating away / phone sleep / tab background **must not cancel** the PC agent turn.
+
+| Piece | Behavior |
+|-------|----------|
+| Hub reverse RPC | Hub fulfills `fs/*`, `terminal/*`, `session/request_permission` on the PC — **no phone required mid-tool** |
+| Client leave | In-flight `session/prompt` RPCs are **detached** (reparented to hub), not cancelled |
+| Soft WS close | UI keeps `sid`, does not reject prompts as errors; phase → `sync · bg on PC` |
+| Reconnect | `visibilitychange` / `pageshow` / `online` re-arms reconnect; resume same session + disk catchup |
+| maxReconnect | 80 (and keeps retrying while tab hidden) |
+
 ## Live status + sessions (v7)
 
 | Piece | Behavior |
@@ -150,7 +162,7 @@ Session isolation: `sessionGen`, `sessionSwitching`, `loadExpectSid`. Unscoped `
 | Session list | Unwrap nested `result.sessions`; sort by `lastChangeUnixMs`; highlight open |
 | Auto-open | After connect, open best session (cwd match + newest) unless `?session=` / `?task=` |
 | Agent serve | `grok agent --always-approve --no-leader serve` (not `--leader serve`) |
-| Hub | Retry ensure, cache initialize for multi-client, keep UI WS when agent flaps |
+| Hub | Retry ensure, cache initialize for multi-client, keep UI WS when agent flaps; reverse RPC owned by hub |
 
 ## Feature tour (v6)
 

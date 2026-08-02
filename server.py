@@ -452,6 +452,66 @@ def under_root(path:Path,root:Path):
   path=path.resolve();root=root.resolve()
   return str(path).startswith(str(root)+os.sep) or path==root
  except Exception:return False
+class HubTerminal:
+ def __init__(self,tid,proc,limit=1_048_576):
+  self.id=tid
+  self.proc=proc
+  self.limit=max(1024,int(limit or 1_048_576))
+  self.buf=bytearray()
+  self.truncated=False
+  self.exit_code=None
+  self.signal=None
+  self._done=asyncio.Event()
+  self._lock=asyncio.Lock()
+  self._tasks=[]
+ def start_readers(self):
+  if self.proc.stdout:self._tasks.append(asyncio.create_task(self._pump(self.proc.stdout)))
+  if self.proc.stderr:self._tasks.append(asyncio.create_task(self._pump(self.proc.stderr)))
+  self._tasks.append(asyncio.create_task(self._wait_proc()))
+ async def _pump(self,stream):
+  try:
+   while True:
+    chunk=await stream.read(4096)
+    if not chunk:break
+    async with self._lock:
+     self.buf.extend(chunk)
+     if len(self.buf)>self.limit:
+      overflow=len(self.buf)-self.limit
+      del self.buf[:overflow]
+      self.truncated=True
+  except Exception:pass
+ async def _wait_proc(self):
+  try:
+   code=await self.proc.wait()
+   self.exit_code=code
+  except Exception:
+   self.exit_code=-1
+  finally:
+   self._done.set()
+ async def output(self):
+  async with self._lock:
+   text=self.buf.decode("utf-8","replace")
+   trunc=self.truncated
+  st=None
+  if self._done.is_set():
+   st={"exitCode":self.exit_code,"signal":self.signal}
+  return {"output":text,"truncated":trunc,"exitStatus":st}
+ async def wait_exit(self):
+  await self._done.wait()
+  return {"exitCode":self.exit_code,"signal":self.signal}
+ async def kill(self):
+  if self.proc.returncode is None:
+   try:self.proc.kill()
+   except Exception:pass
+   try:await asyncio.wait_for(self.proc.wait(),timeout=3)
+   except Exception:pass
+  self._done.set()
+  return {}
+ async def release(self):
+  await self.kill()
+  for t in self._tasks:
+   t.cancel()
+  return {}
 class AgentHub:
  def __init__(self,agent_ws:str):
   self.agent_ws=agent_ws
@@ -469,9 +529,15 @@ class AgentHub:
   self._last_err=""
   self._rpc_futs={}
   self._agent_req_ids=set()
+  self._terms={}
+  self._hub_rev_ids=set()
+  self._term_n=0
  def _next_id(self):
   self._nid+=1
   return self._nid
+ def _next_term_id(self):
+  self._term_n+=1
+  return "term-%d-%s"%(self._term_n,uuid.uuid4().hex[:8])
  async def call_rpc(self,method:str,params=None,timeout=90.0):
   if not await self.ensure():
    raise RuntimeError("agent offline · "+(self._last_err or "no hub"))
@@ -543,11 +609,18 @@ class AgentHub:
    try:await self._session.close()
    except Exception:pass
    self._session=None
+  for tid,term in list(self._terms.items()):
+   try:await term.release()
+   except Exception:pass
+  self._terms.clear()
+  self._hub_rev_ids.clear()
   dead=list(self.pending.items())
   self.pending.clear()
-  for nid,(client,orig) in dead:
+  for nid,ent in dead:
+   client=ent[0] if ent else None
+   orig=ent[1] if ent and len(ent)>1 else None
    try:
-    if not client.closed:
+    if client is not None and not client.closed and orig is not None:
      await client.send_str(json.dumps({"jsonrpc":"2.0","id":orig,"error":{"code":-32001,"message":"agent disconnected"}}))
    except Exception:pass
   dead_rpc=list(self._rpc_futs.items())
@@ -576,18 +649,132 @@ class AgentHub:
    print("[hub] upstream closed · reconnect on next traffic",flush=True)
    async with self._lock:
     await self._close_unlocked(keep_init=False)
+ async def _reply_agent(self,rid,result=None,error=None):
+  if self._agent is None or self._agent.closed:return
+  if rid is not None:self._hub_rev_ids.discard(rid)
+  payload={"jsonrpc":"2.0","id":rid,"error":error} if error is not None else {"jsonrpc":"2.0","id":rid,"result":result}
+  try:await self._agent.send_str(json.dumps(payload,separators=(",",":")))
+  except Exception as e:print("[hub] reverse reply failed:",e,flush=True)
+ async def _handle_reverse(self,obj):
+  method=str(obj.get("method") or "")
+  rid=obj.get("id")
+  params=obj.get("params") if isinstance(obj.get("params"),dict) else {}
+  if rid is not None:self._hub_rev_ids.add(rid)
+  try:
+   if method in ("fs/read_text_file","fs/readTextFile"):
+    path=str(params.get("path") or "")
+    if not path:raise ValueError("path required")
+    p=Path(path)
+    if not p.is_file():raise FileNotFoundError(path)
+    raw=p.read_text(encoding="utf-8",errors="replace")
+    lines=raw.splitlines(keepends=True)
+    line=params.get("line")
+    limit=params.get("limit")
+    if line is not None:
+     try:start=max(0,int(line)-1)
+     except Exception:start=0
+     lines=lines[start:]
+    if limit is not None:
+     try:lines=lines[:max(0,int(limit))]
+     except Exception:pass
+    content="".join(lines)
+    if len(content)>MAX_READ:content=content[:MAX_READ]
+    await self._reply_agent(rid,{"content":content})
+    await self._broadcast(json.dumps({"jsonrpc":"2.0","method":"_x.ai/remote/client_rpc","params":{"method":method,"path":path,"ok":True}},separators=(",",":")))
+    return True
+   if method in ("fs/write_text_file","fs/writeTextFile"):
+    path=str(params.get("path") or "")
+    content=params.get("content")
+    if content is None:content=""
+    if not path:raise ValueError("path required")
+    p=Path(path)
+    p.parent.mkdir(parents=True,exist_ok=True)
+    text=str(content)
+    if len(text.encode("utf-8",errors="replace"))>MAX_WRITE:raise ValueError("content too large")
+    p.write_text(text,encoding="utf-8")
+    await self._reply_agent(rid,{})
+    await self._broadcast(json.dumps({"jsonrpc":"2.0","method":"_x.ai/remote/client_rpc","params":{"method":method,"path":path,"ok":True}},separators=(",",":")))
+    return True
+   if method=="terminal/create":
+    cmd=str(params.get("command") or "")
+    args=params.get("args") if isinstance(params.get("args"),list) else []
+    cwd=params.get("cwd") or None
+    env_list=params.get("env") if isinstance(params.get("env"),list) else []
+    limit=params.get("outputByteLimit") or 1_048_576
+    if not cmd:raise ValueError("command required")
+    env=os.environ.copy()
+    for e in env_list:
+     if isinstance(e,dict) and e.get("name"):env[str(e["name"])]=str(e.get("value") or "")
+    work=cwd if cwd and Path(str(cwd)).is_dir() else None
+    creation=getattr(subprocess,"CREATE_NO_WINDOW",0) if sys.platform=="win32" else 0
+    argv=[str(a) for a in args]
+    if argv:
+     proc=await asyncio.create_subprocess_exec(cmd,*argv,cwd=work,env=env,stdout=asyncio.subprocess.PIPE,stderr=asyncio.subprocess.PIPE,creationflags=creation)
+    elif sys.platform=="win32":
+     proc=await asyncio.create_subprocess_exec("powershell.exe","-NoProfile","-NonInteractive","-Command",cmd,cwd=work,env=env,stdout=asyncio.subprocess.PIPE,stderr=asyncio.subprocess.PIPE,creationflags=creation)
+    else:
+     proc=await asyncio.create_subprocess_shell(cmd,cwd=work,env=env,stdout=asyncio.subprocess.PIPE,stderr=asyncio.subprocess.PIPE)
+    tid=self._next_term_id()
+    term=HubTerminal(tid,proc,limit=limit)
+    self._terms[tid]=term
+    term.start_readers()
+    await self._reply_agent(rid,{"terminalId":tid})
+    await self._broadcast(json.dumps({"jsonrpc":"2.0","method":"_x.ai/remote/client_rpc","params":{"method":method,"terminalId":tid,"command":cmd,"ok":True}},separators=(",",":")))
+    return True
+   if method=="terminal/output":
+    tid=str(params.get("terminalId") or "")
+    term=self._terms.get(tid)
+    if not term:raise KeyError("unknown terminal")
+    await self._reply_agent(rid,await term.output())
+    return True
+   if method in ("terminal/wait_for_exit","terminal/waitForExit"):
+    tid=str(params.get("terminalId") or "")
+    term=self._terms.get(tid)
+    if not term:raise KeyError("unknown terminal")
+    await self._reply_agent(rid,await term.wait_exit())
+    return True
+   if method=="terminal/kill":
+    tid=str(params.get("terminalId") or "")
+    term=self._terms.get(tid)
+    if not term:raise KeyError("unknown terminal")
+    await self._reply_agent(rid,await term.kill())
+    return True
+   if method=="terminal/release":
+    tid=str(params.get("terminalId") or "")
+    term=self._terms.pop(tid,None)
+    if term:await term.release()
+    await self._reply_agent(rid,{})
+    return True
+   if method in ("session/request_permission","session/requestPermission") or "permission" in method or "ask_user" in method:
+    opts=params.get("options") if isinstance(params.get("options"),list) else []
+    allow="allow"
+    for o in opts:
+     if not isinstance(o,dict):continue
+     oid=str(o.get("optionId") or o.get("id") or "")
+     if re.search(r"allow|approve|yes|accept",oid,re.I):
+      allow=oid;break
+    if allow=="allow" and opts and isinstance(opts[0],dict):
+     allow=str(opts[0].get("optionId") or opts[0].get("id") or "allow")
+    await self._reply_agent(rid,{"outcome":{"outcome":"selected","optionId":allow}})
+    await self._broadcast(json.dumps({"jsonrpc":"2.0","method":"_x.ai/remote/auto_permission","params":{"optionId":allow,"tool":(params.get("toolCall") or {}).get("title") if isinstance(params.get("toolCall"),dict) else None}},separators=(",",":")))
+    return True
+  except Exception as e:
+   print("[hub] reverse %s failed: %s"%(method,e),flush=True)
+   await self._reply_agent(rid,error={"code":-32000,"message":str(e)[:400]})
+   return True
+  return False
  async def _from_agent(self,raw:str):
   try:obj=json.loads(raw)
   except Exception:
    await self._broadcast(raw);return
   rid=obj.get("id",None)
-  is_resp=rid is not None and "method" not in obj
+  method=obj.get("method")
+  is_resp=rid is not None and method is None
   if is_resp:
    fut=self._rpc_futs.pop(rid,None)
    if fut is not None and not fut.done():
     fut.set_result(obj)
-    if "method" not in obj:
-     await self._broadcast(json.dumps({"jsonrpc":"2.0","method":"_x.ai/remote/rpc_done","params":{"id":rid,"ok":"error" not in obj}},separators=(",",":")))
+    await self._broadcast(json.dumps({"jsonrpc":"2.0","method":"_x.ai/remote/rpc_done","params":{"id":rid,"ok":"error" not in obj}},separators=(",",":")))
     return
    ent=self.pending.pop(rid,None)
    if not ent:return
@@ -606,8 +793,13 @@ class AgentHub:
    try:
     if client is not None and not client.closed:await client.send_str(data)
    except Exception:pass
+   if meta.get("detached"):
+    await self._broadcast(json.dumps({"jsonrpc":"2.0","method":"_x.ai/remote/rpc_done","params":{"id":orig,"ok":"error" not in obj,"detached":True}},separators=(",",":")))
    return
-  if rid is not None and obj.get("method"):self._agent_req_ids.add(rid)
+  if rid is not None and method:
+   handled=await self._handle_reverse(obj)
+   if handled:return
+   self._agent_req_ids.add(rid)
   await self._broadcast(raw if isinstance(raw,str) else json.dumps(obj,separators=(",",":")))
  async def _broadcast(self,data:str):
   dead=[]
@@ -618,10 +810,18 @@ class AgentHub:
    except Exception:dead.append(c)
   for c in dead:
    self.clients.discard(c)
-   self._drop_client_pending(c)
+   self._detach_client_pending(c)
+ def _detach_client_pending(self,client):
+  for k,v in list(self.pending.items()):
+   if not v or v[0] is not client:continue
+   orig=v[1] if len(v)>1 else None
+   meta=dict(v[2]) if len(v)>2 and isinstance(v[2],dict) else {}
+   meta["detached"]=True
+   self.pending[k]=(None,orig,meta)
+  n=sum(1 for v in self.pending.values() if isinstance(v,tuple) and len(v)>2 and isinstance(v[2],dict) and v[2].get("detached"))
+  if n:print("[hub] detached %d in-flight RPC(s) · turns keep running on PC"%n,flush=True)
  def _drop_client_pending(self,client):
-  dead=[k for k,v in self.pending.items() if v[0] is client]
-  for k in dead:self.pending.pop(k,None)
+  self._detach_client_pending(client)
  async def _reply_err(self,client,orig,msg,code=-32000):
   if orig is None:
    try:await client.send_str(json.dumps({"jsonrpc":"2.0","method":"error","params":{"message":msg}}))
@@ -648,8 +848,8 @@ class AgentHub:
    print("[hub] client error:",e,flush=True)
   finally:
    self.clients.discard(client)
-   self._drop_client_pending(client)
-   print("[hub] client leave · n=%d"%len(self.clients),flush=True)
+   self._detach_client_pending(client)
+   print("[hub] client leave · n=%d · in-flight turns stay on hub"%len(self.clients),flush=True)
  async def _to_agent(self,client,raw:str):
   try:obj=json.loads(raw)
   except Exception:
@@ -684,6 +884,7 @@ class AgentHub:
     await self._reply_err(client,orig,str(e))
    return
   if orig is not None and not method:
+   if orig in self._hub_rev_ids:return
    if orig not in self._agent_req_ids:return
    self._agent_req_ids.discard(orig)
   try:await self._agent.send_str(json.dumps(obj,separators=(",",":")))
