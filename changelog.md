@@ -1,5 +1,69 @@
 # Changelog
 
+## 1.5.0 — 2026-08-01
+
+Release marker covering everything since **1.4.0**: KaTeX math rendering, the Braid
+layout, chat rename, the orbit status cluster, session rail fixes, and the cancel /
+turn-token corrections. KaTeX is vendored under `web/vendor/katex/` with its MIT
+licence. Plugin + package version aligned to **1.5.0**.
+
+## 2026-08-01 — Math formatting on mobile (v37.6)
+
+- **Bug:** LaTeX/`$...$`/`$$...$$` showed as raw text — markdown renderer had no math engine
+- **Fix:** ship KaTeX under `web/vendor/katex/`; extract math before markdown; typeset inline + display; ` ```math ` fences; nested `/static/{name:.*}` for fonts
+- Mobile: scrollable display math, slightly tuned font size
+- Restart remote UI once for static route; hard-refresh phone
+
+## 2026-08-01 — Orbit dialed back (v37.5.1)
+
+- **Orbit:** one solid ring + one moon (removed dashed spinner, extra rings, multi-sats, corner LED on the path)
+- **Online** lives in the side pill with its own dot — not on the satellite track
+- Hard-refresh
+
+## 2026-08-01 — Chat rename + orbit status cluster (v37.5)
+
+- **Rename chat:** session row **Rename**, double-click title, chat bar title, Command deck **Rename chat**
+- Persists via `POST /api/session/rename` → `summary.json` (`remote_title` + `generated_title`) and local `grok_remote_titles` fallback
+- **Orbit (top-right):** planet + ring + status pill (header `#status` hidden)
+- Hard-refresh UI; **restart remote UI** once so `/api/session/rename` is registered
+- Backups: `index.html.v_rename_orbit.bak`, `server.py.v_rename_orbit.bak`, `braid-layout.css.v_rename_orbit.bak`
+
+## 2026-08-01 — Braid filter z-stack + top-3 collapse (v37.4)
+
+- **Bug:** conversation **⌕ filter** pop was clipped / buried under the session list (`#picker{overflow:hidden}` + list paint order)
+- **Fix:** filter pop uses **`position:fixed` + z-index 20060**, placed from the ⌕ button; picker/head overflow visible; list `z-index:1`
+- **Rail:** always show **top 3** sessions; **▸ N more conversations** expands an **Older** section; **▴ Show less** collapses (search still shows full matches)
+- Hard-refresh. Backups: `braid-layout.css.v_filter_z.bak`, `index.html.v_filter_z.bak`
+
+## 2026-07-29 — Cancel / interject actually sticks (v37.3)
+
+- **Bug:** Cancel looked like it worked (UI went idle) then a **stale** `session/prompt` resolve or `turn_completed` from the cancelled turn cleared the **new** turn’s busy state — or interject re-prompted before cancel settled
+- **Fix:** turn tokens (`activeTurnToken`) so only the current prompt can set idle; drop pending prompts on cancel; send cancel as **notification + request**; await ~320ms before interject send; ignore stale turn_complete / queue_changed during cancel; Cancel button targets bound session id
+- Hard-refresh. Backup: `index.html.v_cancel_interject.bak`
+
+## 2026-07-29 — Fix sidebar clipped by chat (v37.2)
+
+- **Cause:** `.panel{max-width/margin}` applied to `#picker`; invisible Archive/Pin still ate row width; chat/footer could paint over the rail (same z-index + overflow)
+- **Fix:** locked sidebar column (`minmax(280–300px)`); picker `z-index:5`, full width, no max-width/margin; session actions **absolutely positioned** on hover; chat/footer `min-width:0` + `overflow:hidden`
+- Hard-refresh. Backup: `braid-layout.css.v_sidebar_clip.bak`
+
+## 2026-07-29 — Braid compact chrome + full-width chat (v37.1)
+
+- **Chat column:** feed + composer use the full center stage (no 760px bottle-neck); shared `--braid-chat-pad`; agent bubbles ~920–1120px
+- **Sessions rail:** compact head — **+ New chat** / ↻ / **⌕** filter menu (search + Active/Live/Archived/All); hide path/meta until hover; archive/pin on hover
+- **List collapse:** Braid shows **first 3** sessions + **Show N more** (keeps open chat in the visible set); **Show less** when expanded
+- **Livebar:** quiet strip (link · phase · perm · effort); **···** reveals git/cost/hint
+- Hard-refresh. Backups: `index.html.v_braid_compact.bak`, `braid-layout.css.v_compact.bak`
+
+## 2026-07-29 — Braid layout shell (v37)
+
+- **Default UI:** clean **Braid** shell (Haven-Braid language) — soft surfaces, quiet chrome, channel-style sessions, 280px rail, centered ~760px chat, pill composer
+- **Legacy preserved:** full previous mission-control look kept as layout **Legacy**
+- **Switch:** Setup + Theme sheet **Layout** chips, Command deck **Layout**, or `?skin=braid|legacy`
+- **Persist:** `localStorage.grok_remote_layout`; early `<head>` bootstrap sets `data-layout` before first paint
+- **CSS:** `web/braid-layout.css` (scoped under `html[data-layout="braid"]` — no JS logic rewrite)
+- Hard-refresh remote UI. Backup: `backups/index.html.v_braid_layout.bak`
+
 ## 2026-07-28 — Session rail highlight matches open chat (v36.2)
 
 - **Symptom:** left sessions list highlighted a different chat than the feed

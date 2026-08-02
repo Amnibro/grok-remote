@@ -412,14 +412,34 @@ def scan_skills(cwd):
 UI_KEY_COOKIE="grok_remote_key"
 def make_auth_middleware(token:str):
  from aiohttp import web
+ def _loopback(request):
+  try:
+   peer=request.remote or ""
+  except Exception:peer=""
+  if peer in ("127.0.0.1","::1","::ffff:127.0.0.1"):return True
+  if str(peer).startswith("127."):return True
+  # X-Forwarded-For is not trusted for bypass — only the TCP peer.
+  return False
  @web.middleware
  async def auth_mw(request,handler):
   if not token:return await handler(request)
   if request.query.get("demo")=="1":return await handler(request)
   if request.path=="/health":return await handler(request)
+  # Same machine as the stack: pairing key is for phones/LAN, not the desktop double-click.
+  if _loopback(request):return await handler(request)
   supplied=request.query.get("key") or request.cookies.get(UI_KEY_COOKIE) or request.headers.get("X-Grok-Remote-Key") or ""
   if supplied!=token:
    if request.path=="/ws":raise web.HTTPUnauthorized(text="unauthorized")
+   acc=(request.headers.get("Accept") or "").lower()
+   if "text/html" in acc and request.method=="GET":
+    local="http://127.0.0.1:%s/?key=%s&auto=1"%(request.url.port or 2421,token)
+    html=("<!doctype html><meta charset=utf-8><title>Grok Remote — pair</title>"
+     "<body style=\"font-family:system-ui;max-width:36rem;margin:3rem auto;padding:0 1rem;line-height:1.5\">"
+     "<h1 style=\"font-size:1.2rem\">Pairing key required</h1>"
+     "<p>Open the paired link (includes <code>?key=…</code>), or on this PC:</p>"
+     "<p><a href=\""+local+"\">Open Grok Remote on this computer</a></p>"
+     "</body>")
+    return web.Response(text=html,status=401,content_type="text/html")
    return web.json_response({"error":"unauthorized · open the paired link from connect.url, or add ?key=<secret>"},status=401)
   resp=await handler(request)
   if request.path!="/ws" and request.query.get("key")==token:
@@ -822,11 +842,15 @@ async def main_async(a):
   return web.json_response(cfg,headers={"Cache-Control":"no-store"})
  async def static(request):
   name=request.match_info.get("name","")
+  name=unquote(str(name or "")).replace("\\","/").lstrip("/")
+  if not name or ".." in name.split("/"):raise web.HTTPNotFound()
   p=(WEB/name).resolve()
   if not under_root(p,WEB) or not p.is_file():raise web.HTTPNotFound()
   ctype=mimetypes.guess_type(str(p))[0] or "application/octet-stream"
   if name.endswith(".webmanifest"):ctype="application/manifest+json"
-  return web.FileResponse(p,headers={"Content-Type":ctype})
+  if name.endswith(".woff2"):ctype="font/woff2"
+  elif name.endswith(".woff"):ctype="font/woff"
+  return web.FileResponse(p,headers={"Content-Type":ctype,"Cache-Control":"public, max-age=86400"})
  async def health(_):
   ok=False;detail=""
   try:
@@ -990,6 +1014,38 @@ async def main_async(a):
   else:
    raise web.HTTPBadRequest(text="ids[] or id required")
   return web.json_response({"ok":True,"ids":ids,"count":len(ids)},headers={"Cache-Control":"no-store"})
+ async def session_rename(request):
+  try:body=await request.json()
+  except Exception:raise web.HTTPBadRequest(text="json required")
+  sid=str(body.get("sessionId") or body.get("id") or "").strip()
+  title=str(body.get("title") or body.get("name") or "").strip()
+  cwd=str(body.get("cwd") or state.get("cwd") or "").strip()
+  if not sid:raise web.HTTPBadRequest(text="sessionId required")
+  if not title:raise web.HTTPBadRequest(text="title required")
+  if len(title)>160:title=title[:160].rstrip()
+  sdir=find_session_dir(sid,cwd or None)
+  if not sdir:
+   return web.json_response({"ok":False,"error":"session dir not found","sessionId":sid},status=404,headers={"Cache-Control":"no-store"})
+  summ_path=sdir/"summary.json"
+  summ={}
+  try:
+   if summ_path.is_file():
+    summ=json.loads(summ_path.read_text(encoding="utf-8",errors="replace")) or {}
+    if not isinstance(summ,dict):summ={}
+  except Exception:summ={}
+  prev=str(summ.get("remote_title") or summ.get("generated_title") or summ.get("session_summary") or "")
+  summ["remote_title"]=title
+  summ["generated_title"]=title
+  summ["session_summary"]=title
+  try:
+   from datetime import datetime,timezone
+   summ["updated_at"]=datetime.now(timezone.utc).isoformat().replace("+00:00","Z")
+  except Exception:pass
+  try:
+   summ_path.write_text(json.dumps(summ,ensure_ascii=False,indent=2),encoding="utf-8")
+  except Exception as e:
+   return web.json_response({"ok":False,"error":str(e),"sessionId":sid},status=500,headers={"Cache-Control":"no-store"})
+  return web.json_response({"ok":True,"sessionId":sid,"title":title,"previous":prev,"dir":str(sdir)},headers={"Cache-Control":"no-store"})
  async def voice_status(_):
   key=xai_api_key()
   return web.json_response({"ok":True,"tts":bool(key),"stt":"browser","provider":"xai" if key else "browser-fallback","voices":["eve","ara","leo","rex","sal","luna","orion","helix"],"hint":None if key else "Set XAI_API_KEY for real Grok voice (else browser speechSynthesis)"},headers={"Cache-Control":"no-store"})
@@ -1165,7 +1221,7 @@ async def main_async(a):
  app.router.add_get("/config",config)
  app.router.add_get("/health",health)
  app.router.add_get("/ws",ws_proxy)
- app.router.add_get("/static/{name}",static)
+ app.router.add_get("/static/{name:.*}",static)
  app.router.add_get("/api/fs/root",fs_root)
  app.router.add_post("/api/fs/root",fs_set_root)
  app.router.add_get("/api/fs/list",fs_list)
@@ -1177,6 +1233,7 @@ async def main_async(a):
  app.router.add_get("/api/session/signals",session_signals)
  app.router.add_get("/api/session/archived",session_archived_get)
  app.router.add_post("/api/session/archived",session_archived_set)
+ app.router.add_post("/api/session/rename",session_rename)
  app.router.add_get("/api/voice/status",voice_status)
  app.router.add_post("/api/tts",tts_proxy)
  app.router.add_get("/api/git/status",git_status)

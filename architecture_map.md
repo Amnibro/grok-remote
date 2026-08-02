@@ -1,6 +1,40 @@
 # Grok Remote — architecture map
 
-**Updated:** 2026-07-28 · v36.2 session rail highlight sync
+**Updated:** 2026-08-01 · v37.5 rename chat + orbit status
+
+## Chat rename (v37.5)
+
+| Piece | Behavior |
+|-------|----------|
+| UI | Session **Rename**, dbl-click title, `#chatTitle`, Command deck **Rename chat** |
+| API | `POST /api/session/rename` `{sessionId,title,cwd?}` |
+| Disk | `~/.grok/sessions/.../summary.json` → `remote_title` + `generated_title` |
+| Local | `localStorage.grok_remote_titles` mirror (works if API fails) |
+| Display | `sessionTitle()` prefers override → `remote_title` → `title` |
+
+## Orbit status (v37.5)
+
+| Piece | Behavior |
+|-------|----------|
+| Location | Header top-right cluster (`#orbit` + `#orbitStatus`) |
+| States | offline / connecting / online / sync|think|tools|live / error |
+| Visual | multi-ring SVG, dual sats, halo, LED corner, status pill |
+| Header | `#status` text hidden (orbit owns “online”) |
+
+## Layout skins (v37 → v37.1)
+
+| Piece | Behavior |
+|-------|----------|
+| Default | **Braid** — clean shell; chat column uses full center width (`--braid-chat-pad`); bubbles up to ~920–1120px |
+| Legacy | Previous mission-control chrome (pulse frames, orbit glow, denser cards, full filter stack) |
+| Storage | `localStorage.grok_remote_layout` = `braid` \| `legacy` |
+| URL | `?skin=braid` or `?skin=legacy` (not `?layout=` — that forces desktop/mobile width) |
+| CSS | `web/braid-layout.css` gated by `html[data-layout="braid"]` |
+| Controls | Setup + Theme sheet **Layout** chips; Command deck **Layout** toggles |
+| Sessions rail (braid) | Compact head: **+ New chat** + refresh; **⌕** opens **fixed** search/scope pop (`z-index:20060`); list always shows **top 3**, then **▸ N more** → **Older** section / **▴ Show less** (open chat kept in top set) |
+| Livebar (braid) | link + phase + perm + effort; **···** expands git/cost/hint |
+
+Early bootstrap in `<head>` sets `data-layout` before paint to avoid FOUC.
 
 ## Chat chrome (v36 → v36.2)
 
@@ -41,7 +75,8 @@ Does **not** delete disk sessions under `~/.grok/sessions/` — only hides them 
 
 ```
 grok-remote/
-  web/index.html          # Phone + browser + Electron UI (default theme: grok)
+  web/index.html          # Phone + browser + Electron UI (default theme: grok; default layout: braid)
+  web/braid-layout.css    # BRAID shell overrides (data-layout=braid)
   web/voice-mode.js       # STT / conversational Go / XR HUD / Grok TTS playback
   web/ide.js              # Built-in IDE + Grok Review
   server.py               # static + /ws proxy + /api/fs/* + /api/tts
