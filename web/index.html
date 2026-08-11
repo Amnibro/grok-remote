@@ -560,6 +560,8 @@ button.cancel-turn:hover{background:var(--bad);transform:translateY(-1px)}
 .sess .item{border:1px solid color-mix(in srgb,var(--line) 90%,var(--acc));border-radius:12px;padding:clamp(10px,.8vw,14px);margin:8px 0;background:var(--panel);cursor:pointer;display:flex;gap:8px;align-items:flex-start;transition:border-color .18s,box-shadow .18s,transform .12s}
 .sess .item:hover,.sess .item:active{border-color:var(--acc);box-shadow:0 0 0 1px var(--acc-dim),0 0 18px -10px var(--acc-glow);transform:translateY(-1px)}
 .sess .item.archived{opacity:.72}
+.sess-scope-rail{display:flex;flex-wrap:wrap;gap:6px;padding:0 clamp(12px,1.5vw,18px) 8px;margin:0}
+.sess-scope-rail .mode-chip{font-size:11px;padding:5px 10px}
 .sess .item .body{flex:1;min-width:0}
 .sess .item .acts{flex:none;display:flex;flex-direction:column;gap:4px}
 .sess .item .acts button{border:1px solid var(--line);background:var(--panel2);color:var(--mut);border-radius:8px;padding:5px 8px;font-size:10px;font-weight:700;font-family:var(--font-mono);cursor:pointer;white-space:nowrap}
@@ -793,7 +795,8 @@ footer{border-top:1px solid var(--hairline)!important;background:var(--glass)!im
 .orbit-wrap:hover{transform:scale(1.08);filter:drop-shadow(0 0 8px var(--acc-glow))}
 .pulse-frame{animation:frame-pulse 5.5s var(--ease) infinite;border-color:color-mix(in srgb,var(--acc) 12%,var(--line))!important}
 @keyframes frame-pulse{0%,100%{border-color:color-mix(in srgb,var(--acc) 10%,var(--line));box-shadow:inset 0 0 0 0 transparent}50%{border-color:color-mix(in srgb,var(--acc) 38%,var(--line));box-shadow:inset 0 0 24px -16px var(--acc-glow)}}
-main{scroll-behavior:smooth}
+main{scroll-behavior:auto}
+main.smooth-scroll{scroll-behavior:smooth}
 main::-webkit-scrollbar,.sess::-webkit-scrollbar,.sheet .card::-webkit-scrollbar,.ide-tree::-webkit-scrollbar,#ideEditor::-webkit-scrollbar{width:8px;height:8px}
 main::-webkit-scrollbar-track,.sess::-webkit-scrollbar-track,.sheet .card::-webkit-scrollbar-track{background:transparent}
 main::-webkit-scrollbar-thumb,.sess::-webkit-scrollbar-thumb,.sheet .card::-webkit-scrollbar-thumb,.ide-tree::-webkit-scrollbar-thumb{background:color-mix(in srgb,var(--mut) 35%,transparent);border-radius:999px;border:2px solid transparent;background-clip:padding-box}
@@ -926,6 +929,11 @@ header::-webkit-scrollbar{display:none}
 #chatStage.loading-history main#feed{opacity:0!important;pointer-events:none;visibility:hidden}
 #chatStage.loading-history main#feed .row{animation:none!important}
 body.loading-chat #jumpBottom{display:none!important}
+#linkBanner{display:none;position:sticky;top:0;z-index:30;padding:10px 14px;background:color-mix(in srgb,var(--bad) 18%,var(--panel));border-bottom:1px solid color-mix(in srgb,var(--bad) 40%,var(--line));color:var(--tx);font-size:13px;font-weight:600;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+#linkBanner.on{display:flex}
+#linkBanner .lb-msg{flex:1;min-width:140px}
+#linkBanner button{border-radius:10px;padding:8px 12px;font-weight:700;border:1px solid var(--line);background:var(--panel2);color:var(--tx);cursor:pointer}
+#linkBanner button.pri{background:var(--acc);color:#05070a;border-color:transparent}
 .btn-term-hot{border-color:var(--acc)!important;color:var(--acc)!important;box-shadow:0 0 0 1px var(--acc-dim)}
 @media (prefers-reduced-motion:reduce){
   .horizon-disk,.horizon-disk::after,.horizon-core,.horizon-ring{animation:none!important}
@@ -1069,7 +1077,29 @@ body.voice-go #voiceHud,body.voice-xr #voiceHud{bottom:calc(var(--stack-h,120px)
 </header>
 
 <div class="panel on pulse-frame" id="setup">
-  <p style="margin:0 0 8px">Phone live controller for Grok Build · clean Braid shell (or Legacy chrome).</p>
+  <div id="easyConnect" style="margin:0 0 14px;padding:12px 14px;border:1px solid var(--line);border-radius:14px;background:var(--panel2)">
+    <div style="font-weight:700;margin:0 0 6px">Phone setup (3 steps)</div>
+    <ol style="margin:0 0 10px;padding-left:18px;color:var(--mut);font-size:.92em;line-height:1.45">
+      <li>Same Wi‑Fi as this PC</li>
+      <li>Copy the link (or scan QR)</li>
+      <li>Open it in your phone browser</li>
+    </ol>
+    <label>Phone link</label>
+    <input id="phoneUrl" readonly placeholder="loading…" style="font-size:13px"/>
+    <div class="rowbtns" style="margin-top:8px">
+      <button class="pri" type="button" id="btnCopyPhone">Copy link</button>
+      <button type="button" id="btnOpenPhonePc">Open on this PC</button>
+      <button type="button" id="btnRefreshPhone">Refresh</button>
+    </div>
+    <div style="display:flex;gap:12px;align-items:flex-start;margin-top:10px;flex-wrap:wrap">
+      <img id="phoneQr" alt="QR code for phone" width="148" height="148" style="border-radius:10px;background:#fff;border:1px solid var(--line);display:none"/>
+      <p class="hint" style="margin:0;flex:1;min-width:160px">No app install. Bookmark the link on your phone. If it 401s, re-copy after Start Server — the key rotates when the stack restarts.</p>
+    </div>
+  </div>
+  <p style="margin:0 0 8px">Live controller for Grok Build on this PC.</p>
+  <details id="setupAdvanced" style="margin:0 0 8px">
+    <summary style="cursor:pointer;color:var(--mut);font-size:.92em">Advanced (theme, websocket, cwd)</summary>
+    <div style="margin-top:10px">
   <label>Layout</label>
   <div class="mode-row" id="layoutChips"></div>
   <label>Mode</label>
@@ -1082,6 +1112,8 @@ body.voice-go #voiceHud,body.voice-xr #voiceHud{bottom:calc(var(--stack-h,120px)
   <input id="wsurl" placeholder="ws://192.168.x.x:2421/ws"/>
   <label>Default cwd for new sessions / tasks</label>
   <input id="cwd" placeholder="C:\\Users\\antho\\Documents\\ai"/>
+    </div>
+  </details>
   <div class="rowbtns">
     <button class="pri" id="connect">Connect</button>
     <button class="pri" id="btnStartSetup" title="Start/restart agent serve (:2419)">Start Server</button>
@@ -1091,8 +1123,7 @@ body.voice-go #voiceHud,body.voice-xr #voiceHud{bottom:calc(var(--stack-h,120px)
     <button id="btnTourSetup" title="Interactive feature tour">Feature tour</button>
     <button id="btnStopSetup" class="danger" title="Stop remote stack">Stop Remote</button>
   </div>
-  <p class="hint">From any Grok Build chat: <b>/remote</b> start · <b>/remote stop</b> · <b>/remote-autostart on</b></p>
-  <p class="hint">New here? Hit <b>Feature tour</b> for a walkthrough, or paste the tutorial prompt into chat after you connect.</p>
+  <p class="hint">Easiest: double‑click Desktop <b>Grok Remote</b> (opens browser). Phone uses the link above.</p>
   <div id="log"></div>
 </div>
 
@@ -1109,17 +1140,25 @@ body.voice-go #voiceHud,body.voice-xr #voiceHud{bottom:calc(var(--stack-h,120px)
       <button class="pri" id="newSess">+ New chat</button>
       <button type="button" id="refreshSess" title="Refresh sessions">↻</button>
     </div>
+    <div class="mode-row sess-scope-rail" id="sessScopeChips" title="Session list scope"></div>
     <div class="sess-filter-pop" id="sessFilterPop" hidden>
       <label class="sess-filter-lab">Search</label>
       <input id="sessFilter" placeholder="title, cwd, id…" autocomplete="off"/>
       <label class="sess-filter-lab">Scope</label>
-      <div class="mode-row" id="sessScopeChips"></div>
+      <div class="mode-row" id="sessScopeChipsPop"></div>
     </div>
   </div>
   <div class="sess" id="sessList"></div>
 </div>
 <button type="button" class="rail-tab" id="railTab" title="Show sessions">Sessions ›</button>
 
+<div id="linkBanner" role="status" aria-live="polite">
+  <span class="lb-msg" id="linkBannerMsg">Offline · reconnecting…</span>
+  <span style="display:flex;gap:8px;flex-wrap:wrap">
+    <button type="button" class="pri" id="btnBannerReconnect">Reconnect</button>
+    <button type="button" id="btnBannerSetup">Setup / phone link</button>
+  </span>
+</div>
 <div id="chatStage">
 <div class="chat-top" id="chatTop">
   <button type="button" class="chat-title" id="chatTitle" title="Rename chat">Chat</button>
@@ -1313,12 +1352,17 @@ let seenEvents=new Set(),seenUserTexts=new Set(),promptCount=0,commands=[];
 let pollTimer=null,catchupBusy=false,lastLiveAt=0,localEchoUntil=0,sendInFlight=false,lastLocalUserPlain="",ignoreScrollUntil=0,scrollSettleTimer=0;
 let composerBoundSid=null,composerDrafts={};
 let historyFileSize=0,diskCatchupBusy=false;
-const HISTORY_PAGE=80;
+const HISTORY_PAGE=36;
+const HISTORY_MAX_BYTES=700000;
+const FEED_DOM_CAP=90;
+const SEEN_EVENTS_CAP=1500;
 let historyHasMore=false,historyOlderBefore=0,historyLoadingOlder=false;
 let sessionGen=0,sessionSwitching=false,loadExpectSid=null,sessionFresh=false,historyPainting=false,suppressLive=false;
 let turnToken=0,activeTurnToken=0,cancelInFlight=false,suppressStreamBusyUntil=0;
 let linkState="standby",agentPhase="idle",phaseDetail="",wantReconnect=false,reconnectTimer=null,connectAttempt=0;
 let connecting=false,intentionalClose=false,reconnectArmed=false,maxReconnect=80,startInFlight=false,softDetach=false;
+let linkKeepaliveTimer=null,linkLastRx=0,connectGen=0,reconnectParked=false,busySid=null;
+let hubUp=true,hubReinitBusy=false;
 Object.defineProperty(window,"replaying",{get:()=>replaying,set:v=>{replaying=!!v},configurable:true});
 Object.defineProperty(window,"sessionSwitching",{get:()=>sessionSwitching,set:v=>{sessionSwitching=!!v},configurable:true});
 let variant="grok",mode="dark";
@@ -1765,16 +1809,69 @@ function markSessionLive(sessionId){
 let sessListExpanded=false,sessFilterOpen=false;
 function isBraidLayout(){return(document.documentElement.getAttribute("data-layout")||"braid")!=="legacy"}
 function paintSessScopeChips(){
-  const host=document.getElementById("sessScopeChips");
-  if(!host)return;
-  host.innerHTML="";
-  [["active","Active"],["live","Live"],["archived","Archived"],["all","All"]].forEach(([id,lab])=>{
-    const b=document.createElement("button");
-    b.type="button";b.className="mode-chip"+(sessScope===id?" on":"");b.textContent=lab;
-    b.onclick=()=>{sessScope=id;saveSessScope();renderSessions();paintSessScopeChips();syncSessFilterChrome()};
-    host.appendChild(b);
+  const hosts=[document.getElementById("sessScopeChips"),document.getElementById("sessScopeChipsPop")].filter(Boolean);
+  if(!hosts.length)return;
+  const nArch=archived.size;
+  const _chatsOnly=s=>s&&s.sessionId&&!isArchived(s.sessionId)&&!isNoiseSession(s)&&sessionOrigin(s)==="Chats";
+  const nLive=(sessions||[]).filter(s=>_chatsOnly(s)&&s.resident).length;
+  const nActive=(sessions||[]).filter(_chatsOnly).length;
+  const appCounts={};
+  (sessions||[]).forEach(s=>{
+    if(!s||!s.sessionId||isArchived(s.sessionId))return;
+    if(isNoiseSession(s))return;
+    const o=sessionOrigin(s);
+    if(o!=="Chats")appCounts[o]=(appCounts[o]||0)+1;
+  });
+  const labels={
+    active:"Active"+(nActive?" · "+nActive:""),
+    live:"Live"+(nLive?" · "+nLive:""),
+    archived:"Archived"+(nArch?" · "+nArch:""),
+    all:"All"
+  };
+  hosts.forEach(host=>{
+    host.innerHTML="";
+    const chipDefs=[["active","Active"],["live","Live"],["archived","Archived"],["all","All"]]
+      .concat(Object.keys(appCounts).sort().map(n=>["app:"+n,n]));
+    chipDefs.forEach(([id,plainLabel])=>{
+      labels[id]=labels[id]||(plainLabel+" · "+appCounts[plainLabel]);
+      const b=document.createElement("button");
+      b.type="button";b.className="mode-chip"+(sessScope===id?" on":"");
+      b.textContent=labels[id]||id;
+      b.onclick=()=>{
+        sessScope=id;saveSessScope();
+        if(id==="archived"||id==="all"){
+          mergeArchivedStubs();
+          hydrateSessionTitles(sessions).catch(()=>{});
+        }
+        renderSessions();paintSessScopeChips();syncSessFilterChrome();
+      };
+      host.appendChild(b);
+    });
   });
   syncSessFilterChrome();
+}
+function mergeArchivedStubs(){
+  if(!archived||!archived.size)return 0;
+  const have=new Set((sessions||[]).map(s=>String(s&&s.sessionId||"")).filter(Boolean));
+  let n=0;
+  for(const id of archived){
+    const k=String(id||"").trim();
+    if(!k||have.has(k))continue;
+    const ov=titleOverrides[k]||"";
+    sessions.push({
+      sessionId:k,
+      title:ov||"",
+      generated_title:ov||"",
+      remote_title:ov||"",
+      cwd:"",
+      resident:false,
+      activity:"archived",
+      lastChangeUnixMs:0,
+      _fromArchive:true
+    });
+    have.add(k);n++;
+  }
+  return n;
 }
 function placeSessFilterPop(){
   const pop=document.getElementById("sessFilterPop");
@@ -2045,26 +2142,46 @@ function atBottom(){
 function forceScrollBottom(opts){
   opts=opts||{};
   if(!feed)return;
+  if(replaying||historyPainting||sessionSwitching){if(opts.pin)stickBottom=true;return}
   if(opts.pin)stickBottom=true;
-  ignoreScrollUntil=Date.now()+220;
+  ignoreScrollUntil=Date.now()+180;
   try{feed.scrollTop=feed.scrollHeight}catch(e){}
   if(opts.settle){
     if(scrollSettleTimer)clearTimeout(scrollSettleTimer);
     scrollSettleTimer=setTimeout(()=>{
       scrollSettleTimer=0;
+      if(replaying||historyPainting||sessionSwitching)return;
       try{if(feed)feed.scrollTop=feed.scrollHeight}catch(e){}
-      ignoreScrollUntil=Date.now()+160;
+      ignoreScrollUntil=Date.now()+120;
       updateJump();
-    },opts.settleMs||90);
+    },opts.settleMs||60);
   }else updateJump();
 }
 function scroll(){
-  if(replaying||sessionSwitching||historyLoadingOlder||(feed&&feed.classList.contains("loading-history"))){updateJump();return}
+  if(replaying||sessionSwitching||historyPainting||historyLoadingOlder||(feed&&feed.classList.contains("loading-history"))){updateJump();return}
   if(autoScroll&&stickBottom){
-    ignoreScrollUntil=Date.now()+120;
+    ignoreScrollUntil=Date.now()+80;
     try{if(feed)feed.scrollTop=feed.scrollHeight}catch(e){}
   }
   updateJump();
+}
+function trimFeedDom(){
+  if(!feed||historyPainting||replaying||sessionSwitching)return;
+  const kids=feed.children;
+  const n=kids.length;
+  if(n<=FEED_DOM_CAP)return;
+  const drop=n-FEED_DOM_CAP;
+  let removed=0;
+  for(let i=0;i<drop&&feed.firstChild;i++){
+    const el=feed.firstChild;
+    if(el.id==="histMore"||el.id==="jumpBtn"){if(el.nextSibling){feed.removeChild(el.nextSibling);removed++;continue}else break}
+    try{feed.removeChild(el);removed++}catch(e){break}
+  }
+  if(removed){
+    historyHasMore=true;
+    paintHistoryMoreChip();
+    if(seenEvents.size>SEEN_EVENTS_CAP){const a=[...seenEvents];seenEvents=new Set(a.slice(-Math.floor(SEEN_EVENTS_CAP/2)))}
+  }
 }
 feed.addEventListener("scroll",()=>{
   if(replaying||sessionSwitching||feed.classList.contains("loading-history")||historyLoadingOlder){updateJump();return}
@@ -2320,11 +2437,13 @@ function setPhase(phase,detail){
 }
 function setConn(on,msg,isBusy){
   if(on)linkState=isBusy?"sync":"uplink";
-  else linkState=(msg&&/connect/i.test(msg))?"connecting":"standby";
+  else linkState=(msg&&/connect|reconnect|link lost|offline/i.test(msg))?"connecting":"standby";
   if(!on){agentPhase="idle";phaseDetail=""}
   else if(isBusy&&agentPhase==="idle")agentPhase="sync";
   paintOrbitStatus();
   paintLivebar();
+  try{paintLinkBanner(on?"":(msg||"Offline"))}catch(e){}
+  if(on)try{clearLoadingChrome()}catch(e){}
 }
 function touchLive(){
   lastLiveAt=Date.now();
@@ -2333,9 +2452,15 @@ function touchLive(){
   paintOrbitStatus();
   paintLivebar();
 }
-function setBusy(b){
-  busy=b;window.busy=!!b;
-  const turning=!!b&&!replaying;
+function setBusy(b,forSid){
+  const want=String(forSid||sid||"").trim();
+  if(b){
+    busy=true;busySid=want||String(sid||"")||busySid;window.busy=true;
+  }else{
+    if(want&&busySid&&String(busySid)!==want&&String(busySid)!==String(sid||""))return;
+    busy=false;busySid=null;window.busy=false;
+  }
+  const turning=!!busy&&!replaying&&(!busySid||!sid||String(busySid)===String(sid));
   document.body.classList.toggle("busy-turn",turning);
   if(send){
     send.disabled=false;
@@ -2350,15 +2475,22 @@ function setBusy(b){
   }
   const orphan=document.getElementById("btnStop");
   if(orphan){try{orphan.remove()}catch(e){try{orphan.style.display="none"}catch(x){}}}
-  if(!b){
+  if(!busy){
     if(agentPhase!=="error")setPhase("idle");
   }else if(agentPhase==="idle"||agentPhase==="error"){
     setPhase("waiting");
   }
   paintOrbitStatus();
-  if(!b&&window.grokCockpit&&window.grokCockpit.paintCtxMeter)try{window.grokCockpit.paintCtxMeter()}catch(e){}
+  if(!busy&&window.grokCockpit&&window.grokCockpit.paintCtxMeter)try{window.grokCockpit.paintCtxMeter()}catch(e){}
   paintMsgQueue();
   try{if(window.measureBottomStack)measureBottomStack();if(window.updateJump)updateJump()}catch(e){}
+}
+function liveBelongsHere(sessionId){
+  if(!sid)return false;
+  if(sessionSwitching||suppressLive)return false;
+  const want=String(sid),got=String(sessionId||"").trim();
+  if(!got)return false;
+  return got===want||(got.length>=12&&want.startsWith(got))||(want.length>=12&&got.startsWith(want));
 }
 window.setBusy=setBusy;
 window.setPhase=setPhase;
@@ -3249,10 +3381,10 @@ function appendAgent(text,opts){
   renderAgentBubble(curAgent,curAgent.dataset.raw);scroll();
 }
 function appendThought(text){
-  if(!showThoughts)return;
+  if(!showThoughts||ux.hideThink)return;
   if(!curThought){
     const row=document.createElement("div");
-    row.className="row thought-row"+(ux.collapseThink?" collapsed":"");
+    row.className="row thought-row"+(ux.collapseThink||historyPainting||replaying?" collapsed":"");
     row.innerHTML='<div class="nm tog"><span class="chev">▾</span><span>Thinking</span></div><div class="bub thought md"></div>';
     const head=row.querySelector(".nm");
     head.onclick=()=>row.classList.toggle("collapsed");
@@ -3260,6 +3392,14 @@ function appendThought(text){
   }
   curThought.dataset.raw=(curThought.dataset.raw||"")+(text||"");
   const raw=curThought.dataset.raw;
+  if(historyPainting||replaying){
+    if(curThoughtRow){
+      const lab=curThoughtRow.querySelector(".nm span:last-child");
+      if(lab)lab.textContent="Thinking · "+Math.min(9999,raw.length)+"c";
+    }
+    if(curThought&&!curThought.dataset.stub){curThought.dataset.stub="1";curThought.innerHTML="<span class='mut'>collapsed · expand to load</span>"}
+    return;
+  }
   const parts=formatAgentHtml(raw);
   curThought.innerHTML="";
   parts.forEach(p=>{
@@ -3401,7 +3541,7 @@ function upsertTool(u){
   let el=toolMap[id];
   if(!el){
     el=document.createElement("div");
-    el.className="tool"+(ux.collapseTools?" collapsed":"");
+    el.className="tool"+(ux.collapseTools||historyPainting||replaying?" collapsed":"");
     el.innerHTML='<div class="tool-head"><span class="chev">▾</span><span class="tt"></span><span class="st"></span></div><div class="tool-body"></div>';
     el.querySelector(".tool-head").onclick=()=>el.classList.toggle("collapsed");
     el._tool={id:id,title:"",kind:"",status:"",content:"",input:"",output:"",locs:[]};
@@ -3551,15 +3691,18 @@ function handleUpdate(u,sessionId,meta){
   if(sessionSwitching&&!historyPainting)return;
   if(!sid)return;
   const want=String(sid);
-  if(sessionId){if(String(sessionId)!==want)return}
-  else if(!historyPainting)return;
+  if(sessionId){
+    const got=String(sessionId);
+    if(got!==want&&!(historyPainting&&got.slice(0,12)===want.slice(0,12)))return;
+    if(!historyPainting&&got!==want)return;
+  }else if(!historyPainting)return;
   const eid=meta&&meta.eventId;
   if(eid){
     if(seenEvents.has(eid))return;
     seenEvents.add(eid);
-    if(seenEvents.size>5000){const a=[...seenEvents];seenEvents=new Set(a.slice(-2500))}
+    if(seenEvents.size>SEEN_EVENTS_CAP){const a=[...seenEvents];seenEvents=new Set(a.slice(-Math.floor(SEEN_EVENTS_CAP/2)))}
   }
-  if(!replaying)touchLive();
+  if(!replaying&&!historyPainting)touchLive();
   if(meta&&window.grokCockpit&&window.grokCockpit.noteContextFromMeta)try{window.grokCockpit.noteContextFromMeta(meta)}catch(e){}
   const t=u.sessionUpdate;
   if(t==="user_message_chunk"){
@@ -3576,18 +3719,18 @@ function handleUpdate(u,sessionId,meta){
     userWireBuf="";
     curUser=null;
     appendAgent(txt);
-    if(!replaying&&!cancelInFlight&&(Date.now()>=suppressStreamBusyUntil||handleMsg._waitPrompt)){setBusy(true);setPhase("responding")}
+    if(!replaying&&!cancelInFlight&&(Date.now()>=suppressStreamBusyUntil||handleMsg._waitPrompt)){setBusy(true,want);setPhase("responding")}
   }
   else if(t==="agent_thought_chunk"){
     if(replaying||historyPainting){userWireBuf="";curUser=null}
     appendThought((u.content&&u.content.text)||"");
-    if(!replaying&&!cancelInFlight&&(Date.now()>=suppressStreamBusyUntil||handleMsg._waitPrompt)){setBusy(true);setPhase("thinking")}
+    if(!replaying&&!cancelInFlight&&(Date.now()>=suppressStreamBusyUntil||handleMsg._waitPrompt)){setBusy(true,want);setPhase("thinking")}
   }
   else if(t==="tool_call"||t==="tool_call_update"){
     if(replaying||historyPainting){userWireBuf="";curUser=null;curAgent=null;curThought=null;curThoughtRow=null}
     else{curAgent=null;curThought=null;curThoughtRow=null}
     upsertTool(u);
-    if(!replaying&&!cancelInFlight&&(Date.now()>=suppressStreamBusyUntil||handleMsg._waitPrompt)){setBusy(true);setPhase("tools",u.title||u.kind||u.toolName||"")}
+    if(!replaying&&!cancelInFlight&&(Date.now()>=suppressStreamBusyUntil||handleMsg._waitPrompt)){setBusy(true,want);setPhase("tools",u.title||u.kind||u.toolName||"")}
   }
   else if(t==="plan"){
     const level=getPermLevel(sid);
@@ -3608,7 +3751,7 @@ function handleUpdate(u,sessionId,meta){
       if(waitingNewer||cancelInFlight){
         /* stale completion from cancelled/prior turn — keep current busy/wait intact */
       }else{
-        setBusy(false);setPhase("idle");
+        setBusy(false,want);setPhase("idle");
         chip(t==="task_completed"?"task done":"turn done");
         if(t==="task_completed"&&window.grokCockpit)window.grokCockpit.trackBg({id:u.taskId||u.id||("task-"+Date.now()),title:u.title||"task",status:"completed"});
         try{if(window.grokVoice)window.grokVoice.onTurnDone()}catch(e){}
@@ -3661,11 +3804,13 @@ function handleMsg(data){
     if(params&&params.detached){
       softDetach=false;
       if(handleMsg._waitPrompt!=null){try{pending.delete(handleMsg._waitPrompt)}catch(e){}handleMsg._waitPrompt=null}
-      if(!cancelInFlight&&!replaying){setBusy(false);setPhase("idle");scheduleCatchup(120);scheduleMsgDrain(200)}
+      if(!cancelInFlight&&!replaying){setBusy(false,sid);setPhase("idle");scheduleCatchup(120);scheduleMsgDrain(200)}
     }
     return;
   }
   if(method==="_x.ai/remote/auto_permission"||method==="_x.ai/remote/client_rpc"){
+    if(params&&params.sessionId&&!liveBelongsHere(params.sessionId))return;
+    if(!busy||(busySid&&sid&&String(busySid)!==String(sid)))return;
     touchLive();
     if(method==="_x.ai/remote/client_rpc"&&params&&params.ok&&!replaying&&!cancelInFlight)setPhase("tools",params.method||"tool");
     return;
@@ -3678,7 +3823,7 @@ function handleMsg(data){
     handleUpdate(params.update||params,params.sessionId,params._meta);return;
   }
   if(method==="_x.ai/queue/changed"){
-    if(sessionSwitching||!sid||(params.sessionId&&params.sessionId!==sid))return;
+    if(sessionSwitching||!sid||(params.sessionId&&!liveBelongsHere(params.sessionId)))return;
     const entries=params.entries||[];const run=params.runningPromptId;
     agentQueueNote=(run?"working… ":"")+(entries.length?("agent queue: "+entries.map(e=>(e.text||"").slice(0,48)).join(" · ")):"");
     if(!agentQueueNote.trim())agentQueueNote="";
@@ -3775,7 +3920,7 @@ async function paintDiskEvents(events,sessionId,opts){
       const update=params.update;
       if(!update)continue;
       const evSid=params.sessionId||(params.update&&params.update.sessionId)||null;
-      if(evSid&&expectSid&&String(evSid)!==expectSid&&String(evSid).slice(0,8)!==String(expectSid).slice(0,8))continue;
+      if(evSid&&expectSid&&String(evSid)!==String(expectSid))continue;
       const meta=params._meta||update._meta||null;
       handleUpdate(update,expectSid,meta);
       n++;
@@ -3913,13 +4058,13 @@ async function diskLiveCatchup(){
       n=await paintDiskEvents(events,expect,{replay:false,gen:gen});
       if(String(sid)!==expect||gen!==sessionGen)return 0;
       if(n){
-        setBusy(true);
+        setBusy(true,expect);
         const last=events[events.length-1];
         const kind=((last.params||{}).update||{}).sessionUpdate||"";
         if(kind==="agent_thought_chunk")setPhase("thinking");
         else if(kind==="agent_message_chunk")setPhase("responding");
         else if(kind==="tool_call"||kind==="tool_call_update")setPhase("tools");
-        else if(kind==="turn_completed"||kind==="task_completed"){setBusy(false);setPhase("idle")}
+        else if(kind==="turn_completed"||kind==="task_completed"){setBusy(false,expect);setPhase("idle")}
       }
     }
     if(String(sid)!==expect||gen!==sessionGen)return 0;
@@ -3952,9 +4097,66 @@ function clearSessionFeed(){
   historyOlderBefore=0;
   historyLoadingOlder=false;
   agentQueueNote="";
+  busySid=null;
   try{if(feed)feed.dataset.sid=""}catch(e){}
   try{paintMsgQueue()}catch(e){}
   closeOpen();
+}
+function adoptDiskTitle(sessionId,title,cwd){
+  const id=String(sessionId||"").trim();
+  const t=String(title||"").trim();
+  if(!id||!t)return;
+  if(!titleOverrides[id]){
+    const s=sessions.find(x=>String(x.sessionId)===id);
+    if(s){
+      if(!s.title||!String(s.title).trim()||/^untitled$/i.test(String(s.title))){s.title=t;s.generated_title=t}
+      if(!s.remote_title)s.remote_title=t;
+      if(cwd&&!s.cwd)s.cwd=cwd;
+    }
+  }
+  try{paintChatTitle();renderSessions()}catch(e){}
+}
+async function hydrateSessionTitles(list){
+  const arr=list||sessions||[];
+  let ids=arr.map(s=>String(s&&s.sessionId||"")).filter(Boolean);
+  if(sessScope==="archived"||sessScope==="all"){
+    for(const id of archived){const k=String(id||"");if(k&&!ids.includes(k))ids.push(k)}
+  }
+  ids=ids.slice(0,200);
+  if(!ids.length)return;
+  const missing=ids.filter(id=>{
+    const s=sessions.find(x=>String(x.sessionId)===id);
+    if(!s)return true;
+    const cur=String(s.title||s.generated_title||s.remote_title||titleOverrides[id]||"").trim();
+    return !cur||/^untitled$/i.test(cur)||s._fromArchive;
+  });
+  const batch=missing.length?missing:ids.slice(0,80);
+  try{
+    const r=await fetch("/api/session/titles",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({ids:batch,cwd:defaultCwd||sidCwd||""})});
+    const text=await r.text();
+    let j=null;try{j=JSON.parse(String(text).replace(/^\uFEFF/,"").trim())}catch(e){j=null}
+    if(!r.ok||!j||!j.ok||!j.titles)return;
+    const map=j.titles||{};
+    let n=0;
+    for(const id of Object.keys(map)){
+      const row=map[id]||{};
+      const t=String(row.title||"").trim();
+      let s=sessions.find(x=>String(x.sessionId)===id);
+      if(!s){
+        s={sessionId:id,title:"",cwd:"",resident:false,activity:isArchived(id)?"archived":"",_fromArchive:isArchived(id)};
+        sessions.push(s);
+      }
+      if(titleOverrides[id])continue;
+      if(t){
+        const cur=String(s.title||s.generated_title||s.remote_title||"").trim();
+        if(!cur||/^untitled$/i.test(cur)||s._fromArchive){s.title=t;s.generated_title=t;s.remote_title=t;n++}
+        else if(!s.generated_title)s.generated_title=t;
+      }
+      if(row.cwd&&!s.cwd)s.cwd=row.cwd;
+      if(row.mtime||row.updatedAt)s.lastChangeUnixMs=Number(row.mtime||row.updatedAt)||s.lastChangeUnixMs||0;
+    }
+    if(n||Object.keys(map).length){try{renderSessions();paintSessScopeChips();paintChatTitle()}catch(e){}}
+  }catch(e){}
 }
 async function silentReload(expectSid,gen){
   const want=expectSid||sid;
@@ -3965,10 +4167,45 @@ async function silentReload(expectSid,gen){
 }
 function startPoll(){
   stopPoll();
-  pollTimer=setInterval(()=>{softCatchup().catch(()=>{})},500);
+  pollTimer=setInterval(()=>{
+    if(document.visibilityState==="hidden")return;
+    softCatchup().catch(()=>{});
+    try{trimFeedDom()}catch(e){}
+  },1200);
 }
 function stopPoll(){if(pollTimer){clearInterval(pollTimer);pollTimer=null}}
 
+function sessionOrigin(s){
+  /* Every app that drives the shared agent leaves its fingerprint in the session cwd -
+     Braid seats run in Amni-Delve workspace, watchers in Temp scratchpads, loops in the
+     plugin root. Group by that instead of blacklisting title patterns app by app:
+     new apps sort themselves out on day one. "Chats" = the remote own workspace. */
+  const norm=t=>String(t||"").split(BSLASH).join("/").toLowerCase().replace(/[/]+$/,"");
+  const cwd=norm(s&&s.cwd);
+  if(!cwd){
+    const v0=(String(s&&s.sessionId||"").match(/^[0-9a-f]{8}-[0-9a-f]{4}-([0-9a-f])/)||[])[1]||"";
+    return v0==="4"?"Apps":"Chats";
+  }
+  const home=norm(defaultCwd&&defaultCwd!=="."?defaultCwd:(document.getElementById("cwd")||{}).value);
+  const sidv=(String(s&&s.sessionId||"").match(/^[0-9a-f]{8}-[0-9a-f]{4}-([0-9a-f])/)||[])[1]||"";
+  if(home&&cwd===home){
+    /* Apps that drive the shared agent from THIS workspace still give themselves away:
+       they mint their session ids (uuid v4) while grok-native sessions are v7. Braid
+       re-pins every couple of turns, which is exactly the flood. */
+    return sidv==="4"?"Apps":"Chats";
+  }
+  if(cwd.indexOf("/appdata/local/temp/")>=0||cwd.indexOf("/scratchpad/")>=0)return "Background";
+  if(cwd.indexOf("/amni-delve")>=0)return "Braid";
+  if(cwd.indexOf("/.grok/plugins/grok-remote")>=0)return "Grok Remote";
+  if(cwd.indexOf("/azno")>=0)return "Azno";
+  if(home&&cwd.indexOf(home+"/")===0){
+    const rest=cwd.slice(home.length+1).split("/")[0];
+    return rest?rest.charAt(0).toUpperCase()+rest.slice(1):"Chats";
+  }
+  const base=cwd.split("/").filter(Boolean).pop()||"Other";
+  return base==="antho"?"Home":base.charAt(0).toUpperCase()+base.slice(1);
+}
+const BSLASH=String.fromCharCode(92);
 function isNoiseSession(s){
   if(!s)return false;
   const t=String(s.title||s.generated_title||"").trim();
@@ -4149,10 +4386,16 @@ async function fetchSessions(){
   if(isDemoMode()){
     sessions=DEMO_SESSIONS.slice();
     renderSessions();
+    paintSessScopeChips();
     return sessions;
   }
   const r=await req("_x.ai/sessions/list",{},30000);
-  sessions=normalizeSessions(r);renderSessions();return sessions;
+  sessions=normalizeSessions(r);
+  mergeArchivedStubs();
+  renderSessions();
+  paintSessScopeChips();
+  hydrateSessionTitles(sessions).catch(()=>{});
+  return sessions;
 }
 function railSessionId(){
   const a=String(selectedSid||"").trim();
@@ -4165,7 +4408,8 @@ function sessionIdsMatch(a,b){
   const x=String(a||"").trim(),y=String(b||"").trim();
   if(!x||!y)return false;
   if(x===y)return true;
-  if(x.length>=8&&y.length>=8&&(x.startsWith(y)||y.startsWith(x)))return true;
+  const short=x.length<=y.length?x:y,long=x.length<=y.length?y:x;
+  if(short.length>=12&&long.startsWith(short)&&(long.length===short.length||long[short.length]==="-"))return true;
   return false;
 }
 function paintSessionCurrent(){
@@ -4206,19 +4450,32 @@ function setSelectedSession(id,opts){
   try{paintChatTitle()}catch(e){}
 }
 function renderSessions(){
-  const q=(document.getElementById("sessFilter").value||"").toLowerCase().trim();
+  if(sessScope==="archived"||sessScope==="all")try{mergeArchivedStubs()}catch(e){}
+  const q=((document.getElementById("sessFilter")||{}).value||"").toLowerCase().trim();
   const want=railSessionId();
   const items=sessions.filter(s=>{
-    if(isNoiseSession(s))return false;
+    if(!s||!s.sessionId)return false;
+    if(!s._fromArchive&&isNoiseSession(s))return false;
     const id=String(s.sessionId||"");
     const arch=isArchived(id);
+    /* user chats and app-driven sessions live in different rooms now: the default scopes
+       show YOUR chats; each app gets its own chip. */
+    const __org=s._fromArchive?"Chats":sessionOrigin(s);
+    const __app=String(sessScope||"").indexOf("app:")===0?String(sessScope).slice(4):null;
+    if(__app){if(__org!==__app||arch)return false}
+    else if(__org!=="Chats")return false;
     if(sessScope==="active"&&arch)return false;
     if(sessScope==="archived"&&!arch)return false;
     if(sessScope==="live"&&!s.resident)return false;
     if(sessScope==="live"&&arch)return false;
     if(!q)return true;
-    return [s.sessionId,s.title,s.cwd,s.modelId,s.activity,arch?"archived":""].join(" ").toLowerCase().includes(q);
+    return [s.sessionId,s.title,s.generated_title,s.remote_title,s.cwd,s.modelId,s.activity,arch?"archived":""].join(" ").toLowerCase().includes(q);
   }).sort((a,b)=>{
+    if(sessScope==="archived"){
+      const ta=sessionStamp(a),tb=sessionStamp(b);
+      if(tb!==ta)return tb-ta;
+      return String(b.sessionId||"").localeCompare(String(a.sessionId||""));
+    }
     const ar=(isArchived(a.sessionId)?0:1)-(isArchived(b.sessionId)?0:1);
     if(ar)return -ar;
     const rr=(b.resident?1:0)-(a.resident?1:0);if(rr)return rr;
@@ -4227,10 +4484,12 @@ function renderSessions(){
   sessList.innerHTML="";
   if(!items.length){
     const empty=document.createElement("div");empty.className="sess-empty";
-    empty.textContent=sessScope==="archived"?"No archived chats":(q?"No matches":"No sessions yet — New chat");
+    empty.textContent=sessScope==="archived"
+      ?(archived.size?"Archived ids loaded · titles hydrating… tap ↻":"No archived chats yet · Archive on a session row")
+      :(q?"No matches":"No sessions yet — New chat");
     sessList.appendChild(empty);syncSessFilterChrome();return;
   }
-  const PREVIEW=3;
+  const PREVIEW=sessScope==="archived"?50:3;
   const braid=isBraidLayout();
   const useCollapse=braid&&!q&&items.length>PREVIEW;
   let head=items;
@@ -4254,8 +4513,10 @@ function renderSessions(){
     const body=document.createElement("div");body.className="body";
     const when=sessionStamp(s);const ago=relTime(when);
     const path=shortPath(s.cwd||"");
-    const actBadge=s.resident?"live":(s.activity&&!/dormant|idle/i.test(String(s.activity))?s.activity:"");
-    body.innerHTML='<div class="t spoiler">'+(cur?'<span class="badge live open-mark">open</span>':'')+(s.resident?'<span class="badge live">live</span>':'')+(arch?'<span class="badge">archived</span>':'')+(actBadge&&!s.resident?'<span class="badge idle">'+esc(actBadge)+'</span>':'')+'<span class="spoiler">'+esc(sessionTitle(s))+'</span></div><div class="m spoiler">'+(path?'<span class="spoiler-path">'+esc(path)+"</span>":"")+(ago?(path?" · ":"")+esc(ago):"")+"</div>";
+    const actBadge=s.resident?"live":(s.activity&&!/dormant|idle|archived/i.test(String(s.activity))?s.activity:"");
+    const title=sessionTitle(s);
+    const titleShow=title&&title!=="Untitled"?title:("Chat · "+id.slice(0,8));
+    body.innerHTML='<div class="t spoiler">'+(cur?'<span class="badge live open-mark">open</span>':'')+(s.resident?'<span class="badge live">live</span>':'')+(arch?'<span class="badge">archived</span>':'')+(actBadge&&!s.resident?'<span class="badge idle">'+esc(actBadge)+'</span>':'')+'<span class="spoiler">'+esc(titleShow)+'</span></div><div class="m spoiler">'+(path?'<span class="spoiler-path">'+esc(path)+"</span>":(arch?esc(id.slice(0,13)+"…"):""))+(ago?(path||arch?" · ":"")+esc(ago):"")+"</div>";
     const acts=document.createElement("div");acts.className="acts";
     const rb=document.createElement("button");rb.type="button";rb.textContent="Rename";rb.title="Rename chat";
     rb.onclick=e=>{e.stopPropagation();renameSession(id).catch(err=>chip(String(err)))};
@@ -4339,6 +4600,30 @@ function hideHorizon(){
   if(feed){feed.style.visibility="";feed.style.opacity="";feed.classList.remove("loading-history")}
   document.body.classList.remove("loading-chat");
 }
+function clearLoadingChrome(reason){
+  try{hideHorizon()}catch(e){}
+  try{
+    if(feed){feed.style.visibility="";feed.style.opacity="";feed.style.display=page==="chat"?"block":feed.style.display;feed.classList.remove("loading-history")}
+    const stage=document.getElementById("chatStage");
+    if(stage)stage.classList.remove("loading-history");
+    document.body.classList.remove("loading-chat");
+  }catch(e){}
+  try{sessionSwitching=false;replaying=false;historyPainting=false;suppressLive=false}catch(e){}
+  paintLinkBanner(reason);
+}
+function paintLinkBanner(reason){
+  const el=document.getElementById("linkBanner");
+  const msg=document.getElementById("linkBannerMsg");
+  if(!el)return;
+  const linked=!!(ws&&ws.readyState===1);
+  const offline=!linked;
+  if(!offline){el.classList.remove("on");return}
+  el.classList.add("on");
+  if(msg){
+    const t=reason||(linkState==="connecting"?"Connecting to this PC…":"Offline · not linked to Grok on this PC");
+    msg.textContent=t+(location.hostname==="127.0.0.1"||location.hostname==="localhost"?"":" · same Wi‑Fi + paired link required");
+  }
+}
 function abortSessionSwitch(){
   stopPoll();
   if(catchupTimer){clearTimeout(catchupTimer);catchupTimer=null}
@@ -4409,30 +4694,22 @@ async function openSession(s){
     try{if(feed)feed.dataset.sid=openId}catch(e){}
     if(gen!==sessionGen)return;
     try{
-      let hist=await paintDiskHistory(openId,sidCwd,{limit:HISTORY_PAGE,max_bytes:2500000,chat_only:true,gen:gen});
+      let hist=await paintDiskHistory(openId,sidCwd,{limit:HISTORY_PAGE,max_bytes:HISTORY_MAX_BYTES,chat_only:true,gen:gen});
       if(gen!==sessionGen||String(sid)!==openId)return;
       if(hist&&hist.stale)return;
       painted=hist.count||0;
-      if(!(painted>0)){
-        hist=await paintDiskHistory(openId,sidCwd,{limit:Math.max(HISTORY_PAGE,80),max_bytes:4000000,chat_only:false,gen:gen});
+      if(!(painted>0)&&sidCwd){
+        hist=await paintDiskHistory(openId,"",{limit:HISTORY_PAGE,max_bytes:HISTORY_MAX_BYTES,chat_only:true,gen:gen});
         if(gen!==sessionGen||String(sid)!==openId)return;
         if(hist&&!hist.stale)painted=hist.count||0;
       }
-      if(!(painted>0)&&sidCwd){
-        hist=await paintDiskHistory(openId,"",{limit:HISTORY_PAGE,max_bytes:2500000,chat_only:true,gen:gen});
+      if(!(painted>0)){
+        hist=await paintDiskHistory(openId,sidCwd,{limit:HISTORY_PAGE,max_bytes:HISTORY_MAX_BYTES,chat_only:false,gen:gen});
         if(gen!==sessionGen||String(sid)!==openId)return;
         if(hist&&!hist.stale)painted=hist.count||0;
       }
       if(hist&&hist.dir)try{feed.dataset.histDir=String(hist.dir)}catch(e){}
-      const youN=feed?feed.querySelectorAll(".row.me").length:0;
-      const grokN=feed?feed.querySelectorAll(".row.msg:not(.me)").length:0;
-      if(painted>0&&youN===0&&grokN===0&&gen===sessionGen){
-        chip("history painted 0 rows · retry");
-        clearSessionFeed();
-        try{if(feed)feed.dataset.sid=openId}catch(x){}
-        hist=await paintDiskHistory(openId,sidCwd,{limit:Math.max(HISTORY_PAGE,100),max_bytes:5000000,chat_only:true,gen:gen});
-        if(hist&&!hist.stale)painted=hist.count||0;
-      }
+      if(hist&&hist.title)adoptDiskTitle(openId,hist.title,sidCwd);
     }catch(e){
       if(gen===sessionGen&&String(sid)===openId){
         clearSessionFeed();
@@ -4457,12 +4734,18 @@ async function openSession(s){
       paintSessionCurrent();
       try{renderSessions()}catch(e){}
       stickBottom=true;
-      hideHorizon();
-      forceScrollBottom({pin:true,settle:true,settleMs:120});
+      clearLoadingChrome();
+      try{trimFeedDom()}catch(e){}
+      requestAnimationFrame(()=>{
+        if(gen!==sessionGen||String(sid)!==openId)return;
+        forceScrollBottom({pin:true,settle:true,settleMs:40});
+        try{if(feed)feed.classList.add("smooth-scroll")}catch(e){}
+      });
       startPoll();
       updateJump();
-    }else if(gen!==sessionGen){
-      suppressLive=true;
+    }else{
+      try{clearLoadingChrome("switched chat")}catch(e){}
+      if(gen!==sessionGen)suppressLive=true;
     }
   }
   if(gen!==sessionGen||String(sid)!==openId)return;
@@ -4628,38 +4911,51 @@ function renderCommands(){
   });
 }
 
+function stopLinkKeepalive(){if(linkKeepaliveTimer){clearInterval(linkKeepaliveTimer);linkKeepaliveTimer=null}}
+function startLinkKeepalive(){
+  stopLinkKeepalive();
+  linkLastRx=Date.now();
+  linkKeepaliveTimer=setInterval(()=>{
+    if(!ws||ws.readyState!==1)return;
+    const silent=Date.now()-linkLastRx;
+    if(silent>40000){
+      try{chip("link stale · forcing reconnect")}catch(e){}
+      try{ws.close()}catch(e){}
+      reconnectArmed=true;wantReconnect=true;
+      scheduleReconnect(300,"stale link");
+      return;
+    }
+    if(silent>10000){
+      try{ws.send(JSON.stringify({jsonrpc:"2.0",method:"_x.ai/remote/ping",params:{t:Date.now()}}))}catch(e){}
+    }
+  },7000);
+}
 function stopReconnectLoop(){
-  reconnectArmed=false;wantReconnect=false;
+  reconnectArmed=false;wantReconnect=false;reconnectParked=false;
   if(reconnectTimer){clearTimeout(reconnectTimer);reconnectTimer=null}
+  stopLinkKeepalive();
 }
 function scheduleReconnect(ms,reason){
   if(!reconnectArmed&&!wantReconnect)return;
   if(connecting)return;
   if(ws&&ws.readyState===1)return;
-  if(connectAttempt>=maxReconnect){
-    if(typeof document!=="undefined"&&document.visibilityState==="hidden"){
-      wantReconnect=true;
-      if(reconnectTimer)clearTimeout(reconnectTimer);
-      reconnectTimer=setTimeout(()=>{reconnectTimer=null;if(document.visibilityState==="visible"){connectAttempt=0;scheduleReconnect(400,"visible after cap")}else scheduleReconnect(8000,"wait visible")},5000);
-      return;
-    }
-    stopReconnectLoop();
-    setConn(false,"agent down");setPhase("error","hit Start Server");
-    try{chip("stopped reconnecting after "+maxReconnect+" tries · use Start Server")}catch(e){}
-    return;
-  }
   wantReconnect=true;
   if(reconnectTimer)clearTimeout(reconnectTimer);
-  const delay=ms!=null?ms:Math.min(12000,1200+connectAttempt*700);
+  const hidden=typeof document!=="undefined"&&document.visibilityState==="hidden";
+  const over=connectAttempt>=maxReconnect;
+  reconnectParked=!!over;
+  const base=ms!=null?ms:(over?(hidden?18000:Math.min(45000,10000+connectAttempt*250)):Math.min(10000,600+connectAttempt*550+Math.floor(Math.random()*350)));
+  if(over&&!hidden)try{setConn(false,"link weak · slow retry");setPhase("sync","wifi retry")}catch(e){}
   reconnectTimer=setTimeout(()=>{
     reconnectTimer=null;
     if(!wantReconnect&&!reconnectArmed)return;
     if(ws&&ws.readyState===1)return;
     if(connecting)return;
+    if(hidden&&document.visibilityState==="hidden"){scheduleReconnect(12000,"still hidden");return}
     connectAttempt++;
     setConn(false,"reconnecting… #"+connectAttempt+(reason?" · "+reason:""));
     connect({fromReconnect:true}).catch(()=>{});
-  },delay);
+  },base);
 }
 function detachPendingOnSoftClose(){
   let n=0;
@@ -4690,11 +4986,12 @@ function resumeAfterSoftReconnect(){
 }
 function onPageBecameVisible(){
   if(intentionalClose)return;
-  reconnectArmed=true;wantReconnect=true;
-  if(ws&&ws.readyState===1){try{startPoll();scheduleCatchup(150)}catch(e){}return}
+  reconnectArmed=true;wantReconnect=true;reconnectParked=false;
+  try{if(sid)startPoll()}catch(e){}
+  if(ws&&ws.readyState===1){linkLastRx=Date.now();try{startPoll();scheduleCatchup(150);startLinkKeepalive()}catch(e){}return}
   if(connecting)return;
-  connectAttempt=Math.min(connectAttempt,2);
-  scheduleReconnect(350,"page visible");
+  connectAttempt=Math.min(connectAttempt,1);
+  scheduleReconnect(200,"page visible");
 }
 async function autoOpenBestSession(){
   if(sid)return;
@@ -4740,18 +5037,50 @@ async function startRemoteStack(opts){
     return false;
   }finally{startInFlight=false}
 }
+function initParams(){return {protocolVersion:1,clientInfo:{name:"grok-remote",version:"3.8"},clientCapabilities:{fs:{readTextFile:true,writeTextFile:true},terminal:true}}}
+function onHubState(up){
+  /* the ws to the hub stays healthy while the AGENT behind it dies, so pings kept the link
+     looking alive while every real request failed. The hub now says which side is down -
+     paint it, and when the agent returns, re-initialize on the SAME socket instead of
+     tearing the connection down. */
+  if(up===undefined||up===null)return;
+  up=!!up;
+  if(up===hubUp)return;
+  hubUp=up;
+  if(!up){try{setConn(true,"agent restarting…");setPhase("sync","agent")}catch(e){}return}
+  if(hubReinitBusy)return;
+  hubReinitBusy=true;
+  (async()=>{try{
+    await req("initialize",initParams(),15000);
+    try{setConn(true,"connected")}catch(e){}
+    try{await fetchSessions()}catch(e){}
+    try{chip("agent back · sessions refreshed")}catch(e){}
+  }catch(e){
+    try{scheduleReconnect(1200,"reinit failed")}catch(x){}
+  }finally{hubReinitBusy=false}})();
+}
+(function(){var f=document.getElementById("wsurl");if(f)f.addEventListener("input",function(){window.__wsCustom=true})})();
 async function connect(opts){
   opts=opts||{};
   if(connecting)return;
   connecting=true;
+  const myGen=++connectGen;
   let url=document.getElementById("wsurl").value.trim()||defaultWs();
   defaultCwd=document.getElementById("cwd").value.trim()||".";
-  if(url.includes("127.0.0.1")&&location.hostname!=="127.0.0.1"&&location.hostname!=="localhost"){
-    url=defaultWs();document.getElementById("wsurl").value=url;
-  }
-  if(ws&&(ws.readyState===0||ws.readyState===1)){
-    try{intentionalClose=true;ws.onclose=null;ws.onerror=null;ws.close()}catch(e){}
-    ws=null;intentionalClose=false;
+  /* The auth cookie is scoped to the host in the ADDRESS BAR. A stored ws url pointing at a
+     different interface (LAN vs meshnet vs loopback) dials a host the cookie will not ride
+     to - 401, close, retry forever. Unless the user typed a custom url this session, the
+     socket always follows the page's own host. */
+  try{
+    const uh=new URL(url.replace(/^ws/,"http")).host;
+    if(!window.__wsCustom&&uh!==location.host){url=defaultWs();document.getElementById("wsurl").value=url}
+  }catch(e){url=defaultWs();document.getElementById("wsurl").value=url}
+  if(ws&&(ws.readyState===0||ws.readyState===1||ws.readyState===2)){
+    const old=ws;
+    try{old.onclose=null;old.onerror=null;old.onmessage=null;old.close()}catch(e){}
+    if(ws===old)ws=null;
+    await new Promise(r=>setTimeout(r,180));
+    if(myGen!==connectGen){connecting=false;return}
   }
   setConn(false,opts.fromReconnect?("reconnecting… #"+(connectAttempt||1)):"connecting…");
   setPhase("sync");log("connect "+url);
@@ -4760,12 +5089,16 @@ async function connect(opts){
     if(opts.fromReconnect||reconnectArmed)scheduleReconnect(2500,"bad url");
     return;
   }
+  const sock=ws;
   ws.onopen=async()=>{
+    if(myGen!==connectGen||ws!==sock){try{sock.close()}catch(e){}return}
     log("open");
+    linkLastRx=Date.now();
     try{
       const keepSid=String(sid||window.__wantSession||"");
       const wasDetach=!!softDetach||!!opts.fromReconnect;
-      const initRes=await req("initialize",{protocolVersion:1,clientInfo:{name:"grok-remote",version:"3.6"},clientCapabilities:{fs:{readTextFile:true,writeTextFile:true},terminal:true}},30000);
+      const initRes=await req("initialize",initParams(),20000);
+      if(myGen!==connectGen||ws!==sock)return;
       try{
         const meta=(initRes&&initRes._meta)||{};
         const ms=meta.modelState||{};
@@ -4780,11 +5113,13 @@ async function connect(opts){
         }
         paintEffortChip();
       }catch(e){}
-      connectAttempt=0;reconnectArmed=true;wantReconnect=true;
+      connectAttempt=0;reconnectArmed=true;wantReconnect=true;reconnectParked=false;
       setConn(true,opts.fromReconnect?"reconnected":"connected",false);
+      startLinkKeepalive();
       if(!wasDetach||agentPhase==="error"||agentPhase==="idle")setPhase("idle");
       else setPhase(agentPhase==="tools"||agentPhase==="thinking"||agentPhase==="responding"||agentPhase==="waiting"?agentPhase:"sync","resume");
       await fetchSessions();
+      if(myGen!==connectGen||ws!==sock)return;
       updateLayoutClass();
       if(isWideLayout()){
         showPage("chat");
@@ -4810,6 +5145,7 @@ async function connect(opts){
       }
       if(wasDetach){try{chip("back online · work kept running on PC")}catch(e){}}
       if(!sid&&!feed.childElementCount)chip("Pick a session · or New chat");
+      try{if(sid)startPoll()}catch(e){}
     }catch(e){
       const msg=String(e&&e.message||e);
       setConn(false,"init failed");setPhase("error",msg.slice(0,60));
@@ -4821,44 +5157,65 @@ async function connect(opts){
         const ok=await startRemoteStack({force:true});
         if(ok)return;
       }
-      try{intentionalClose=true;ws&&ws.close();intentionalClose=false}catch(x){}
-      reconnectArmed=true;
-      scheduleReconnect(2800,"init failed");
-    }finally{connecting=false}
+      try{if(ws===sock){ws.onclose=null;sock.close()}}catch(x){}
+      reconnectArmed=true;wantReconnect=true;
+      scheduleReconnect(2200,"init failed");
+    }finally{if(myGen===connectGen)connecting=false}
   };
   ws.onmessage=ev=>{
+    linkLastRx=Date.now();
     try{
       const raw=String(ev.data||"").replace(/^\uFEFF/,"").trim();
       if(!raw)return;
-      handleMsg(JSON.parse(raw));
+      const obj=JSON.parse(raw);
+      if(obj&&obj.method==="_x.ai/remote/pong"){onHubState(obj.params&&obj.params.hub_up);return}
+      if(obj&&obj.method==="_x.ai/remote/hub"){onHubState(obj.params&&obj.params.up);return}
+      handleMsg(obj);
     }catch(e){try{log("ws parse: "+String(e).slice(0,120)+" · "+String(ev.data).slice(0,80))}catch(x){}}
   };
   ws.onclose=()=>{
-    connecting=false;
-    stopPoll();
+    if(ws!==sock&&ws)return;
+    if(myGen===connectGen)connecting=false;
+    stopLinkKeepalive();
+    clearLoadingChrome("link lost");
     const keepSid=sid||selectedSid||window.__wantSession||"";
     if(intentionalClose){
       intentionalClose=false;
       softDetach=false;
+      stopPoll();
       try{pending.forEach((p,id)=>{try{p.reject(new Error("connection closed"))}catch(e){} pending.delete(id)})}catch(e){}
       setBusy(false);setPhase("idle");
+      paintLinkBanner("Disconnected");
       return;
     }
     const nDet=detachPendingOnSoftClose();
     softDetach=true;
     if(keepSid){window.__wantSession=String(keepSid);try{if(!sid){sid=String(keepSid);window.sid=sid}}catch(e){}}
-    if(nDet||busy){setPhase("sync","bg on PC");try{chip("phone left · turn keeps running on PC")}catch(e){}}
-    else setPhase("idle");
-    if(reconnectArmed&&wantReconnect){
-      setConn(false,"link lost");
+    try{if(sid)startPoll()}catch(e){}
+    if(nDet||busy){setPhase("sync","bg on PC");try{chip("wifi blip · catch-up on HTTP · PC keeps working")}catch(e){}}
+    else setPhase("sync","reconnecting");
+    if(reconnectArmed||wantReconnect||softDetach){
+      reconnectArmed=true;wantReconnect=true;
+      setConn(false,"reconnecting");
       scheduleReconnect(null,"socket closed");
+      if(page==="chat"&&(!feed||!feed.childElementCount)){
+        try{showPage(isWideLayout()?"sessions":"sessions")}catch(e){}
+      }
     }else{
       setConn(false,"closed");
-      if(!reconnectArmed)showPage("setup");
+      showPage("setup");
     }
   };
-  ws.onerror=()=>{if(!intentionalClose){setConn(false,"error");if(!softDetach)setPhase("error","socket error")}};
+  ws.onerror=()=>{if(!intentionalClose){setConn(false,"error");if(!softDetach)setPhase("error","socket error");clearLoadingChrome("socket error")}};
 }
+window.connect=connect;
+window.clearLoadingChrome=clearLoadingChrome;
+(function wireLinkBanner(){
+  const r=document.getElementById("btnBannerReconnect");
+  const s=document.getElementById("btnBannerSetup");
+  if(r)r.onclick=()=>{reconnectArmed=true;wantReconnect=true;connectAttempt=0;clearLoadingChrome("manual reconnect");connect({fromReconnect:true}).catch(()=>{})};
+  if(s)s.onclick=()=>{clearLoadingChrome();showPage("setup",true);loadCfg().catch(()=>{})};
+})();
 document.addEventListener("visibilitychange",()=>{
   if(document.visibilityState==="visible")onPageBecameVisible();
 });
@@ -5440,6 +5797,23 @@ box.addEventListener("paste",e=>{
   if(files.length){e.preventDefault();addFiles(files)}
 });
 
+function paintPhoneConnect(cfg){
+  const urlEl=document.getElementById("phoneUrl");
+  const qr=document.getElementById("phoneQr");
+  let url="";
+  try{
+    if(cfg&&cfg.ui)url=String(cfg.ui);
+    else if(location.origin&&location.origin.indexOf("http")===0)url=location.origin+"/"+location.search;
+  }catch(e){}
+  if(url&&url.indexOf("auto=")===-1)url+=(url.indexOf("?")>=0?"&":"?")+"auto=1";
+  if(urlEl)urlEl.value=url||"";
+  if(qr&&url){
+    qr.style.display="block";
+    qr.src="https://api.qrserver.com/v1/create-qr-code/?size=148x148&margin=8&data="+encodeURIComponent(url);
+    qr.onerror=()=>{qr.style.display="none"};
+  }
+  return url;
+}
 async function loadCfg(){
   try{
     const r=await fetch("/config.json",{cache:"no-store"});
@@ -5448,9 +5822,24 @@ async function loadCfg(){
     if(!r.ok||!c)throw new Error("config not json");
     if(c.ws_url)document.getElementById("wsurl").value=c.ws_url;else document.getElementById("wsurl").value=defaultWs();
     if(c.cwd){document.getElementById("cwd").value=c.cwd;defaultCwd=c.cwd}
+    paintPhoneConnect(c);
     log("cfg "+c.ui);return c;
-  }catch(e){document.getElementById("wsurl").value=defaultWs();return null}
+  }catch(e){document.getElementById("wsurl").value=defaultWs();paintPhoneConnect(null);return null}
 }
+(function wirePhoneConnect(){
+  const copy=document.getElementById("btnCopyPhone");
+  const openPc=document.getElementById("btnOpenPhonePc");
+  const refresh=document.getElementById("btnRefreshPhone");
+  if(copy)copy.onclick=async()=>{
+    const v=(document.getElementById("phoneUrl")||{}).value||"";
+    if(!v){chip("no link yet · Start Server");return}
+    try{await navigator.clipboard.writeText(v);chip("phone link copied")}catch(e){
+      try{const el=document.getElementById("phoneUrl");el&&el.select();document.execCommand("copy");chip("phone link copied")}catch(x){alert(v)}
+    }
+  };
+  if(openPc)openPc.onclick=()=>{const v=(document.getElementById("phoneUrl")||{}).value||location.href;window.open(v,"_blank")};
+  if(refresh)refresh.onclick=()=>loadCfg().then(()=>chip("link refreshed")).catch(()=>{});
+})();
 document.getElementById("reloadCfg").onclick=loadCfg;
 document.getElementById("pingHealth").onclick=async()=>{
   try{
@@ -5772,18 +6161,34 @@ window.addEventListener("resize",()=>{
       renderSessions();
     }
   }
+  clearLoadingChrome("boot");
+  paintLinkBanner("Starting…");
   const doAuto=!isDemoMode()&&(q.get("auto")==="1"||q.get("auto")!=="0"&&(window.grokRemote&&window.grokRemote.autoConnect!==false||!window.grokRemote&&location.protocol!=="file:"));
   if(doAuto){
     reconnectArmed=true;wantReconnect=true;connectAttempt=0;
+    showPage("setup",true);
     try{
       const h=await fetch("/health",{cache:"no-store"}).then(r=>r.json()).catch(()=>null);
       if(h&&h.ok===false){
         chip("agent offline at boot · Start Server…");
+        paintLinkBanner("Agent offline · starting…");
         await startRemoteStack({force:true});
       }else{
+        paintLinkBanner("Connecting…");
         await connect();
       }
-    }catch(e){await connect()}
+    }catch(e){
+      paintLinkBanner("Connect failed · tap Reconnect");
+      try{await connect()}catch(x){}
+    }
+    if(!(ws&&ws.readyState===1)){
+      showPage("setup",true);
+      paintLinkBanner("Still offline · check Wi‑Fi + Start Server, or copy phone link below");
+      chip("offline · use Copy link / Start Server");
+    }
+  }else{
+    showPage("setup",true);
+    paintLinkBanner("Tap Connect when ready");
   }
   const forceTour=q.get("tour")==="1"||q.get("tour")==="force";
   let tourDone=false;try{tourDone=localStorage.getItem("grok_remote_tour_done")==="1"}catch(e){}

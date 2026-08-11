@@ -1,4 +1,79 @@
+## 2026-08-11 v1.7.0 — connection reliability + session organization
+Anthony: "persistent reconnection and first connection bugs" then "other apps are prompting
+grok-remote and those chats flood my active space — put secondary access in a different
+organization than user chats."
+
+CONNECTION (each verified with a live killed-process gauntlet):
+- FIRST CONNECT: the stored ws url pointed at one interface (192.168.0.7) while the auth cookie
+  is scoped to whatever host is in the address bar - browse via meshnet/loopback and the socket
+  dialed a host the cookie never rides to: 401, close, retry forever. The socket now always
+  follows the page's own host unless the url was hand-typed this session.
+- COLD BOOT: the web port serves BEFORE the agent finishes booting (up to ~18s); initialize used
+  to get "agent offline" after 0.6s of retry, fail the connection, and loop. handle_client waits
+  up to 12s, initialize up to 15s - the client just shows "connecting..." like it should.
+- SUPERVISOR MURDER LOOP: bind-busy triggered claim_port, which KILLS the existing listener.
+  Stacked supervisors (ensure-running spawns cmd-supervise; supervisor.log shows three "start"
+  entries with no ends) made servers kill each other, dropping every client each cycle. A server
+  that finds a HEALTHY instance on the port now stands down with exit 97 and every supervisor
+  loop (cmd + template) stops respawning on 97.
+- CONNECTED-BUT-DEAD: client pings are answered by the HUB, so the link looked alive while the
+  agent behind it was gone. The hub now broadcasts _x.ai/remote/hub up/down; the client paints
+  "agent restarting..." and, on recovery, re-initializes ON THE SAME SOCKET (no teardown).
+  Upstream watcher retries every 2s (was 10) while clients wait, and respawns grok.exe itself
+  (rate-limited 30s) - agent death used to be permanent until the next hook fired.
+- INIT ERROR CACHE: one transient initialize error was cached and served to every later client
+  until the upstream happened to cycle. Only success is cached now.
+- Gauntlet: first connect OPEN in 1.5s; agent killed under a live client -> "hub false" in 2.5s,
+  auto-respawn, hub true + same socket re-init in 15s; server killed -> client reconnected in 5s.
+
+SESSIONS (v1.7.0 organization):
+- sessionOrigin(): cwd fingerprint (Amni-Delve->Braid, Temp/scratchpad->Background, plugin root,
+  Azno, per-folder) PLUS the uuid-version tell: apps that pin their own session ids mint uuid v4
+  (Braid re-pins every ~2 turns - THE flood), grok-native sessions are v7. Home-cwd v4 -> "Apps".
+- Scope chips now include one chip per origin with counts; Active/Live/Archived/All cover YOUR
+  chats only. Measured on the live store: Active 190 -> 5 real chats; 185 sessions filed under
+  Apps; store-wide split 525 v4 vs 1043 v7.
+- The old isNoiseSession title-regex blacklist stays as a second net but no longer needs a new
+  regex per app.
+
 # Changelog
+
+## 2026-08-11 — Archived chats actually list (v38.4)
+
+- **Bug:** Archived scope filtered the *agent live list only* — ~318 archive ids on disk never appeared once dropped from agent sessions
+- **Fix:** merge archive stubs into the rail; hydrate titles/cwd from disk; show **Active / Live / Archived / All** chips on the rail (not buried only in ⌕); Archived preview 50 rows
+- Hard-refresh UI. Archive count shows on the chip (e.g. Archived · 318)
+
+## 2026-08-11 — Blank offline/connecting screen (v38.3)
+
+- **Bug:** disconnect mid chat-load left horizon/loading chrome with feed `visibility:hidden` → blank page while orbit said offline/connecting
+- **Fix:** `clearLoadingChrome()` on boot, close, connect fail; sticky **Reconnect / Setup** banner when offline; auto-connect starts on setup (not empty chat); 401 pair page shows phone + localhost links
+- Auth sets pairing cookie on successful key (path=/); loopback also seeds cookie
+- Bounce UI (supervisor respawn). Hard-refresh phone.
+
+## 2026-08-10 — Stay up + simple phone open + chat perf (v38.2)
+
+- **UI kept dying:** bare `server.py` exits left remote “up” only on paper. **`scripts/supervise-ui.ps1`** watches `/health` and respawns UI; `ensure-running` + `start.ps1` use it
+- **Basic setup:** setup panel **Phone setup (3 steps)** — copy link, open on PC, QR; advanced theme/ws collapsed; Desktop **Grok Remote** still one-click; `start.ps1` opens browser with key
+- **Chat perf / memory:** open loads **36** chat events (~700KB) not 80/multi‑MB; no mid-paint scroll; thoughts/tools stubbed+collapsed on history; DOM cap **90** rows; catch-up poll **1.2s** + skip when tab hidden; smaller event de-dupe set
+- Hard-refresh phone after UI is healthy. Backups: `*.v_simple_perf.bak`
+
+## 2026-08-10 — Session isolation / no more Untitled bleed (v38.1)
+
+- **Symptom:** Open chat rail showed **Untitled** while feed was another conversation (e.g. Haven Mobile); livebar tools/busy could flash from a different session
+- **Title:** agent session list often has empty titles — hydrate from disk `summary.json` via `POST /api/session/titles`; openSession applies history `title` into rail + chat title
+- **Live:** `busySid` so busy/tools phase only for the open session; gate hub `client_rpc` / auto-permission noise; strict event `sessionId` match when painting disk events (dropped 8-char fuzzy keep)
+- **Disk:** `find_session_dir` multi-hit prefers matching cwd before newest-mtime fallback
+- Hard-refresh phone; UI restarted. Backups: `*.v_session_bleed.bak`
+
+## 2026-08-07 — Wireless resilience (v38)
+
+- **Problem:** Phone Wi‑Fi link felt fragile — constant hub join/leave thrash, dual reconnect loops, reconnect giving up, catch-up poll dying with the socket
+- **Client:** app-level WS keepalive + silent-death reconnect; never permanently stop retry while page open (slow park after cap); single-flight connect; **HTTP disk catch-up keeps running** when WS soft-drops
+- **Server:** client heartbeat 12s, `_x.ai/remote/ping`→`pong`, hub watch keeps upstream agent warm
+- **Cockpit:** dual `setupReconnect` interval removed (was opening a second socket)
+- Restart UI once; hard-refresh phone (or re-open paired URL)
+- Backups: `*.v_wireless_resilience.bak` · checklist: `docs/checklists/checklist_wireless_resilience_v38.md`
 
 ## 2026-08-02 — Detach-safe turns: leave page without killing work (v37.7)
 

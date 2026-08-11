@@ -156,9 +156,39 @@ def find_session_dir(session_id:str,cwd:str|None=None):
  except Exception:pass
  if len(hits)==1:return hits[0]
  if len(hits)>1:
+  if cwd:
+   try:
+    cnorm=str(Path(cwd).expanduser().resolve()).replace("/","\\").lower() if os.name=="nt" else str(Path(cwd).expanduser().resolve())
+   except Exception:
+    cnorm=str(cwd or "").replace("/","\\").lower() if os.name=="nt" else str(cwd or "")
+   cwd_hits=[]
+   for d in hits:
+    try:
+     parent=unquote(d.parent.name).replace("/","\\")
+     pl=parent.lower() if os.name=="nt" else parent
+     if cnorm and (pl==cnorm or pl.endswith(cnorm) or cnorm.endswith(pl)):cwd_hits.append(d)
+    except Exception:pass
+   if len(cwd_hits)==1:return cwd_hits[0]
+   if cwd_hits:hits=cwd_hits
   hits.sort(key=lambda d:(d/"updates.jsonl").stat().st_mtime if (d/"updates.jsonl").is_file() else 0,reverse=True)
   return hits[0]
  return None
+def read_session_title(sdir:Path):
+ if not sdir:return ""
+ try:
+  summ=json.loads((sdir/"summary.json").read_text(encoding="utf-8",errors="replace"))
+  return str(summ.get("remote_title") or summ.get("generated_title") or summ.get("session_summary") or "").strip()
+ except Exception:return ""
+def read_session_info(sdir:Path):
+ out={"title":"","cwd":""}
+ if not sdir:return out
+ try:
+  summ=json.loads((sdir/"summary.json").read_text(encoding="utf-8",errors="replace"))
+  out["title"]=str(summ.get("remote_title") or summ.get("generated_title") or summ.get("session_summary") or "").strip()
+  info=summ.get("info") if isinstance(summ.get("info"),dict) else {}
+  out["cwd"]=str(info.get("cwd") or summ.get("cwd") or "").strip()
+ except Exception:pass
+ return out
 def _parse_update_line(line,live=False):
  line=(line or "").strip()
  if not line:return None
@@ -425,25 +455,28 @@ def make_auth_middleware(token:str):
   if not token:return await handler(request)
   if request.query.get("demo")=="1":return await handler(request)
   if request.path=="/health":return await handler(request)
-  # Same machine as the stack: pairing key is for phones/LAN, not the desktop double-click.
-  if _loopback(request):return await handler(request)
   supplied=request.query.get("key") or request.cookies.get(UI_KEY_COOKIE) or request.headers.get("X-Grok-Remote-Key") or ""
-  if supplied!=token:
+  loop=_loopback(request)
+  if not loop and supplied!=token:
    if request.path=="/ws":raise web.HTTPUnauthorized(text="unauthorized")
    acc=(request.headers.get("Accept") or "").lower()
    if "text/html" in acc and request.method=="GET":
     local="http://127.0.0.1:%s/?key=%s&auto=1"%(request.url.port or 2421,token)
-    html=("<!doctype html><meta charset=utf-8><title>Grok Remote — pair</title>"
-     "<body style=\"font-family:system-ui;max-width:36rem;margin:3rem auto;padding:0 1rem;line-height:1.5\">"
-     "<h1 style=\"font-size:1.2rem\">Pairing key required</h1>"
-     "<p>Open the paired link (includes <code>?key=…</code>), or on this PC:</p>"
-     "<p><a href=\""+local+"\">Open Grok Remote on this computer</a></p>"
+    phone=("http://%s:%s/?key=%s&auto=1"%(lan_ip(),request.url.port or 2421,token))
+    html=("<!doctype html><meta charset=utf-8><meta name=viewport content=\"width=device-width,initial-scale=1\">"
+     "<title>Grok Remote — pair</title>"
+     "<body style=\"font-family:system-ui;max-width:36rem;margin:2rem auto;padding:0 1rem;line-height:1.5;background:#0b0d10;color:#e8eaed\">"
+     "<h1 style=\"font-size:1.25rem\">Pairing key required</h1>"
+     "<p>Open the <b>paired link</b> (has <code>?key=…</code>). Same Wi‑Fi as the PC.</p>"
+     "<p><a style=\"color:#7dd3fc\" href=\""+phone+"\">Open phone link</a></p>"
+     "<p style=\"word-break:break-all;font-size:12px;opacity:.85\">"+phone+"</p>"
+     "<p><a style=\"color:#a7f3d0\" href=\""+local+"\">Open on this PC (localhost)</a></p>"
      "</body>")
     return web.Response(text=html,status=401,content_type="text/html")
    return web.json_response({"error":"unauthorized · open the paired link from connect.url, or add ?key=<secret>"},status=401)
   resp=await handler(request)
-  if request.path!="/ws" and request.query.get("key")==token:
-   try:resp.set_cookie(UI_KEY_COOKIE,token,max_age=30*86400,httponly=True,samesite="Lax")
+  if request.path!="/ws" and (request.query.get("key")==token or (loop and token)):
+   try:resp.set_cookie(UI_KEY_COOKIE,token,max_age=30*86400,httponly=True,samesite="Lax",path="/")
    except Exception:pass
   return resp
  return auth_mw
@@ -532,6 +565,44 @@ class AgentHub:
   self._terms={}
   self._hub_rev_ids=set()
   self._term_n=0
+  self._watch_task=None
+ def _maybe_spawn_agent(self):
+  """The agent was only ever spawned at server BOOT - if grok.exe died later the hub
+  retried a dead port forever while clients waited. Respawn it, at most twice a minute."""
+  fn=getattr(self,"spawn_agent",None)
+  if not fn:return
+  now=time.time()
+  if now-getattr(self,"_last_agent_spawn",0)<30:return
+  self._last_agent_spawn=now
+  try:
+   print("[hub] agent port dead — respawning grok agent serve",flush=True)
+   fn()
+  except Exception as e:print("[hub] agent respawn failed:",e,flush=True)
+ def start_watch(self):
+  if self._watch_task and not self._watch_task.done():return
+  self._watch_task=asyncio.create_task(self._watch_loop())
+ async def _notify_hub_state(self,up):
+  """Clients used to look 'connected' while the agent behind the hub was gone - their
+  pings are answered by the hub itself, so the link never went stale. Tell them."""
+  msg=json.dumps({"jsonrpc":"2.0","method":"_x.ai/remote/hub","params":{"up":bool(up)}},separators=(",",":"))
+  for c in list(self.clients):
+   try:
+    if not c.closed:await c.send_str(msg)
+   except Exception:pass
+ async def _watch_loop(self):
+  while True:
+   try:
+    down=self._agent is None or self._agent.closed
+    # a dead upstream with clients waiting is an outage, not a curiosity - hurry
+    await asyncio.sleep(2 if (down and self.clients) else 10)
+    if self.clients or self.pending or self._rpc_futs:
+     ok=await self.ensure(retries=2,delay=0.25)
+     if not ok:self._maybe_spawn_agent()
+    elif self._agent is None or self._agent.closed:
+     await self.ensure(retries=1,delay=0.15)
+   except asyncio.CancelledError:return
+   except Exception as e:
+    print("[hub] watch:",e,flush=True)
  def _next_id(self):
   self._nid+=1
   return self._nid
@@ -582,11 +653,12 @@ class AgentHub:
   await self._close_unlocked(keep_init=False)
   try:
    self._session=ClientSession(timeout=ClientTimeout(total=6,connect=2,sock_connect=2,sock_read=None))
-   self._agent=await self._session.ws_connect(self.agent_ws,heartbeat=20,max_msg_size=16*1024*1024,autoping=True)
+   self._agent=await self._session.ws_connect(self.agent_ws,heartbeat=12,max_msg_size=16*1024*1024,autoping=True,receive_timeout=None)
    self._alive=True
    self._last_err=""
    self._reader=asyncio.create_task(self._pump())
    print("[hub] upstream agent connected · clients=%d"%len(self.clients),flush=True)
+   asyncio.create_task(self._notify_hub_state(True))
   except Exception as e:
    self._last_err=re.sub(r"server-key=[^&'\s]+","server-key=***",str(e))[:200]
    print("[hub] upstream open failed:",e,flush=True)
@@ -646,9 +718,10 @@ class AgentHub:
   except asyncio.CancelledError:return
   except Exception as e:print("[hub] pump error:",e,flush=True)
   finally:
-   print("[hub] upstream closed · reconnect on next traffic",flush=True)
+   print("[hub] upstream closed · watcher retries every 2s while clients wait",flush=True)
    async with self._lock:
     await self._close_unlocked(keep_init=False)
+   await self._notify_hub_state(False)
  async def _reply_agent(self,rid,result=None,error=None):
   if self._agent is None or self._agent.closed:return
   if rid is not None:self._hub_rev_ids.discard(rid)
@@ -785,9 +858,13 @@ class AgentHub:
      self._init_error=None
      self._init_done=True
     elif "error" in obj:
-     self._init_error=obj.get("error")
+     # Cache SUCCESS only. A cached init error was served to every later client until the
+     # upstream happened to cycle - one transient failure during agent boot poisoned the
+     # hub for everyone. The requester still gets this error; the next initialize goes
+     # upstream fresh.
+     self._init_error=None
      self._init_result=None
-     self._init_done=True
+     self._init_done=False
    obj["id"]=orig
    data=json.dumps(obj,separators=(",",":"))
    try:
@@ -834,7 +911,10 @@ class AgentHub:
   self.clients.add(client)
   print("[hub] client join from remote · n=%d"%len(self.clients),flush=True)
   try:
-   up=await self.ensure(retries=4,delay=0.25)
+   # A cold boot spawns the agent AFTER the web port is serving, so the first phone can
+   # arrive up to ~18s before :2419 listens. Wait it out instead of failing the first
+   # connection - the client is showing "connecting..." either way.
+   up=await self.ensure(retries=24,delay=0.5)
    if not up:
     try:await client.send_str(json.dumps({"jsonrpc":"2.0","method":"error","params":{"message":"agent hub unavailable · start agent serve on :2419 · "+(self._last_err or "")}}))
     except Exception:pass
@@ -861,6 +941,12 @@ class AgentHub:
    return
   method=obj.get("method")
   orig=obj.get("id",None)
+  if method=="_x.ai/remote/ping":
+   params=obj.get("params") if isinstance(obj.get("params"),dict) else {}
+   try:
+    await client.send_str(json.dumps({"jsonrpc":"2.0","method":"_x.ai/remote/pong","params":{"t":params.get("t"),"s":time.time(),"clients":len(self.clients),"hub_up":bool(self._agent and not self._agent.closed)}},separators=(",",":")))
+   except Exception:pass
+   return
   if method=="initialize" and orig is not None and self._init_done and self._init_result is not None:
    try:await client.send_str(json.dumps({"jsonrpc":"2.0","id":orig,"result":self._init_result},separators=(",",":")))
    except Exception:pass
@@ -869,7 +955,12 @@ class AgentHub:
    try:await client.send_str(json.dumps({"jsonrpc":"2.0","id":orig,"error":self._init_error},separators=(",",":")))
    except Exception:pass
    return
-  if not await self.ensure():
+  # initialize is the one request worth waiting for: it is how every client starts, and
+  # "agent offline" here is what made first connections fail while the agent was still
+  # booting. Everything else keeps the fast path - a prompt against a dead agent should
+  # error quickly, not hang.
+  patient=(method=="initialize")
+  if not await self.ensure(retries=(30 if patient else 3),delay=(0.5 if patient else 0.2)):
    await self._reply_err(client,orig,"agent offline · is serve on :2419? "+(self._last_err or ""),-32001)
    return
   if orig is not None and method:
@@ -1156,15 +1247,39 @@ async def main_async(a):
   if not sdir:
    return web.json_response({"ok":False,"error":"session dir not found","sessionId":sid,"cwd":cwd,"events":[],"meta":{"has_more":False}},status=404,headers={"Cache-Control":"no-store"})
   events,meta=await asyncio.get_event_loop().run_in_executor(None,lambda:read_session_updates(sdir,limit=limit,max_bytes=max_bytes,since_bytes=since_bytes,live=live,before_bytes=before_bytes,chat_only=chat_only))
-  title=""
-  try:
-   summ=json.loads((sdir/"summary.json").read_text(encoding="utf-8",errors="replace"))
-   title=summ.get("generated_title") or summ.get("session_summary") or ""
-  except Exception:pass
+  info=read_session_info(sdir)
+  title=info.get("title") or ""
   meta=dict(meta or {})
   meta["resolvedSid"]=sid
   meta["resolvedDir"]=str(sdir)
+  if info.get("cwd"):meta["resolvedCwd"]=info.get("cwd")
   return web.json_response({"ok":True,"sessionId":sid,"cwd":cwd,"title":title,"dir":str(sdir),"events":events,"meta":meta,"count":len(events)},headers={"Cache-Control":"no-store"})
+ async def session_titles(request):
+  body={}
+  try:body=await request.json()
+  except Exception:pass
+  ids=body.get("ids") or body.get("sessionIds") or []
+  if isinstance(ids,str):ids=[ids]
+  cwd=str(body.get("cwd") or state["cwd"] or "")
+  out={}
+  for raw in list(ids)[:250]:
+   sid=str(raw or "").strip()
+   if not sid or sid in out:continue
+   sdir=find_session_dir(sid,cwd or None)
+   if not sdir:sdir=find_session_dir(sid,None)
+   if not sdir:continue
+   info=read_session_info(sdir)
+   mtime=0
+   try:
+    up=sdir/"updates.jsonl"
+    if up.is_file():mtime=int(up.stat().st_mtime*1000)
+    else:
+     sm=sdir/"summary.json"
+     if sm.is_file():mtime=int(sm.stat().st_mtime*1000)
+   except Exception:pass
+   if info.get("title") or info.get("cwd") or mtime:
+    out[sid]={"title":info.get("title") or "","cwd":info.get("cwd") or "","dir":str(sdir),"mtime":mtime,"updatedAt":mtime}
+  return web.json_response({"ok":True,"titles":out,"count":len(out)},headers={"Cache-Control":"no-store"})
  async def session_signals(request):
   sid=(request.rel_url.query.get("sessionId") or request.rel_url.query.get("id") or "").strip()
   cwd=(request.rel_url.query.get("cwd") or state["cwd"] or "").strip()
@@ -1409,7 +1524,7 @@ async def main_async(a):
   except Exception as e:
    return web.json_response({"ok":False,"error":str(e)},status=500)
  async def ws_proxy(request):
-  client=web.WebSocketResponse(heartbeat=30,max_msg_size=16*1024*1024)
+  client=web.WebSocketResponse(heartbeat=12,max_msg_size=16*1024*1024,autoping=True)
   await client.prepare(request)
   await hub.handle_client(client)
   return client
@@ -1431,6 +1546,7 @@ async def main_async(a):
  app.router.add_post("/api/fs/mkdir",fs_mkdir)
  app.router.add_get("/api/skills/list",skills_list)
  app.router.add_get("/api/session/history",session_history)
+ app.router.add_post("/api/session/titles",session_titles)
  app.router.add_get("/api/session/signals",session_signals)
  app.router.add_get("/api/session/archived",session_archived_get)
  app.router.add_post("/api/session/archived",session_archived_set)
@@ -1503,7 +1619,21 @@ async def main_async(a):
  try:
   await site.start()
  except OSError as e:
-  print("[bind] :%d busy (%s) — claiming port and retry"%(a.port,e),flush=True)
+  # Port busy is NOT automatically a zombie. Two stacked supervisors used to reach this
+  # branch and claim_port would MURDER the healthy instance, whose supervisor respawned it
+  # and murdered ours - every cycle dropped all phone clients. If whoever holds the port
+  # answers /health like a live grok-remote, this copy stands down (exit 97 tells the
+  # supervisor loop to stop respawning).
+  try:
+   from aiohttp import ClientSession,ClientTimeout
+   async with ClientSession(timeout=ClientTimeout(total=4,connect=2)) as _s:
+    async with _s.get("http://127.0.0.1:%d/health"%a.port) as _r:
+     if _r.status==200 and "ok" in (await _r.text())[:200]:
+      print("[bind] :%d already served by a HEALTHY grok-remote — standing down"%a.port,flush=True)
+      sys.exit(97)
+  except SystemExit:raise
+  except Exception:pass
+  print("[bind] :%d busy (%s) — no healthy responder, claiming port and retry"%(a.port,e),flush=True)
   claim_port(a.port,"ui")
   await asyncio.sleep(0.6)
   site=web.TCPSite(runner,a.bind,a.port)
@@ -1517,9 +1647,13 @@ async def main_async(a):
    await hub.ensure(retries=5,delay=0.35)
   except Exception as e:
    print("[boot] agent ensure failed:",e,flush=True)
+ if str(a.agent_host) in ("127.0.0.1","localhost","::1"):
+  hub.spawn_agent=lambda:start_agent_process(a.secret,a.agent_port,state["cwd"])
  try:
   loops.start_all()
+  hub.start_watch()
   print("[loop] restored %d job(s)"%len(loops.jobs),flush=True)
+  print("[hub] wireless watch · client heartbeat 12s · upstream keepalive",flush=True)
   while True:await asyncio.sleep(3600)
  finally:
   for t in list(loops._tasks.values()):

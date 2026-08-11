@@ -1,6 +1,5 @@
-# Waits for the UI to be healthy, then opens the browser WITH the pairing key.
-# Never open a bare http://127.0.0.1:port/ — that 401s as raw JSON.
-param([int]$UiPort = 2421, [int]$TimeoutSec = 25)
+param([int]$UiPort = 2421, [int]$TimeoutSec = 30, [switch]$NoBrowser)
+$ErrorActionPreference = "Continue"
 $here = Split-Path -Parent $MyInvocation.MyCommand.Path
 $pluginRoot = Split-Path -Parent $here
 $healthy = $false
@@ -10,7 +9,7 @@ while ((Get-Date) -lt $deadline) {
     $h = Invoke-RestMethod "http://127.0.0.1:$UiPort/health" -TimeoutSec 2
     if ($h.ok) { $healthy = $true; break }
   } catch {}
-  Start-Sleep -Milliseconds 500
+  Start-Sleep -Milliseconds 400
 }
 $url = ""
 $connectFile = Join-Path $pluginRoot "connect.url"
@@ -19,19 +18,27 @@ if (Test-Path $connectFile) {
   if ($line -match "^https?://" -and $line -match "[\?&]key=") { $url = $line }
 }
 if (-not $url) {
+  try {
+    $c = Invoke-RestMethod "http://127.0.0.1:$UiPort/config.json" -TimeoutSec 3
+    if ($c.ui) { $url = [string]$c.ui }
+  } catch {}
+}
+if (-not $url) {
   $secretFile = Join-Path $pluginRoot ".ui-secret"
   $secret = ""
   if (Test-Path $secretFile) { $secret = (Get-Content $secretFile -Raw).Trim() }
-  if ($secret) {
-    $url = "http://127.0.0.1:$UiPort/?key=$secret&auto=1"
-  } else {
-    $url = "http://127.0.0.1:$UiPort/?auto=1"
-  }
+  if (-not $secret) { $secret = $env:GROK_AGENT_SECRET }
+  if ($secret) { $url = "http://127.0.0.1:$UiPort/?key=$secret&auto=1" }
+  else { $url = "http://127.0.0.1:$UiPort/?auto=1" }
 }
-Start-Process $url
+if ($url -notmatch "auto=") { $url += ($(if ($url -match "\?") { "&" } else { "?" }) + "auto=1") }
+if (-not $NoBrowser) {
+  try { Start-Process $url } catch { Write-Host "Could not open browser: $url" }
+}
+Write-Host $url
 if (-not $healthy) {
-  Write-Host ("Grok Remote did not report healthy within {0}s - check logs under {1}\logs" -f $TimeoutSec, $pluginRoot) -ForegroundColor Yellow
+  Write-Host ("Grok Remote not healthy within {0}s — run Desktop shortcut again or scripts\ensure-running.ps1 -Force" -f $TimeoutSec) -ForegroundColor Yellow
 }
 if ($url -notmatch "[\?&]key=") {
-  Write-Host "Opened without a pairing key - expect 401 until connect.url or .ui-secret exists." -ForegroundColor Yellow
+  Write-Host "Opened without pairing key — expect 401 until stack restarts with a secret." -ForegroundColor Yellow
 }

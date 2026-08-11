@@ -49,16 +49,75 @@ if (-not $cwd -or ("$cwd".Trim() -eq "")) {
   else { $cwd = $env:USERPROFILE }
 }
 $start = Join-Path $pluginRoot "start.ps1"
-if (-not (Test-Path $start)) { Log "error: start.ps1 missing"; exit 0 }
+$sup = Join-Path $pluginRoot "scripts\supervise-ui.ps1"
+if (-not (Test-Path $start) -and -not (Test-Path $sup)) { Log "error: start.ps1 / supervise-ui.ps1 missing"; exit 0 }
 $agentPort = 2419
 try { if ($cfg.agent_port) { $agentPort = [int]$cfg.agent_port } } catch {}
-$psArgs = @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $start, "-Cwd", $cwd, "-UiPort", "$uiPort", "-Port", "$agentPort")
-if ($cfg.always_approve -ne $false) { $psArgs += "-AlwaysApprove" }
-Log ("starting ({0}) cwd={1} ui={2}" -f $Reason, $cwd, $uiPort)
+$agentUp = $false
 try {
-  Start-Process -FilePath "powershell.exe" -ArgumentList $psArgs -WindowStyle Hidden | Out-Null
-  Log "spawned start.ps1"
-} catch {
-  Log ("spawn failed: {0}" -f $_.Exception.Message)
+  $al = netstat -ano | Select-String (":{0}\s+.*LISTENING" -f $agentPort)
+  if ($al) { $agentUp = $true }
+} catch {}
+if (-not $agentUp -and (Test-Path $start)) {
+  $psArgs = @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $start, "-Cwd", $cwd, "-UiPort", "$uiPort", "-Port", "$agentPort", "-NoUi")
+  if ($cfg.always_approve -ne $false) { $psArgs += "-AlwaysApprove" }
+  Log ("starting agent via start.ps1 ({0}) cwd={1}" -f $Reason, $cwd)
+  try { Start-Process -FilePath "powershell.exe" -ArgumentList $psArgs -WindowStyle Hidden | Out-Null } catch { Log ("agent spawn failed: {0}" -f $_.Exception.Message) }
+  Start-Sleep -Seconds 2
+}
+$cmdSup = Join-Path $logDir "cmd-supervise.cmd"
+$cmdAlive = Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object { $_.CommandLine -and $_.CommandLine -match "cmd-supervise\.cmd" }
+if (-not $cmdAlive) {
+  $secret = $env:GROK_AGENT_SECRET
+  if (-not $secret) {
+    $sf = Join-Path $pluginRoot ".ui-secret"
+    if (Test-Path $sf) { $secret = (Get-Content $sf -Raw).Trim() }
+  }
+  if (-not $secret) {
+    $rac = Join-Path $logDir "run-agent.cmd"
+    if (Test-Path $rac) {
+      $m = Select-String -Path $rac -Pattern "GROK_AGENT_SECRET=(\S+)|--secret\s+(\S+)" | Select-Object -First 1
+      if ($m) { $secret = @($m.Matches[0].Groups[1].Value, $m.Matches[0].Groups[2].Value) | Where-Object { $_ } | Select-Object -First 1 }
+    }
+  }
+  $py = (Get-Command python -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source)
+  if (-not $py) { $py = "C:\Users\antho\AppData\Local\Programs\Python\Python312\python.exe" }
+  if ($secret -and (Test-Path (Join-Path $pluginRoot "server.py"))) {
+    $body = @"
+@echo off
+cd /d "$pluginRoot"
+set GROK_AGENT_SECRET=$secret
+echo [%date% %time%] cmd-supervise start>> logs\supervisor.log
+:loop
+echo [%date% %time%] spawn>> logs\supervisor.log
+"$py" -u server.py --port $uiPort --bind 0.0.0.0 --agent-host 127.0.0.1 --agent-port $agentPort --secret $secret --cwd "$cwd" --ensure-agent >> logs\ui.out.log 2>> logs\ui.err.log
+echo [%date% %time%] exit=%ERRORLEVEL%>> logs\supervisor.log
+if "%ERRORLEVEL%"=="97" (
+echo [%date% %time%] healthy instance owns the port - supervisor exiting>> logs\supervisor.log
+goto :eof
+)
+ping -n 4 127.0.0.1 >nul
+goto loop
+"@
+    [System.IO.File]::WriteAllText($cmdSup, $body)
+    try {
+      $null = ([wmiclass]"Win32_Process").Create("cmd.exe /c `"$cmdSup`"")
+      Log ("spawned cmd-supervise ({0}) ui={1}" -f $Reason, $uiPort)
+    } catch {
+      Log ("cmd-supervise failed: {0}" -f $_.Exception.Message)
+    }
+  } elseif (Test-Path $sup) {
+    Log ("starting supervise-ui ({0}) ui={1}" -f $Reason, $uiPort)
+    $supArgs = @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $sup, "-UiPort", "$uiPort", "-AgentPort", "$agentPort", "-Cwd", $cwd)
+    try { Start-Process -FilePath "powershell.exe" -ArgumentList $supArgs -WindowStyle Hidden | Out-Null; Log "spawned supervise-ui.ps1" } catch { Log ("supervise spawn failed: {0}" -f $_.Exception.Message) }
+  }
+} else {
+  Log ("cmd-supervise already running ({0})" -f $Reason)
+}
+if (-not (Test-Path $cmdSup) -and (Test-Path $start) -and -not $cmdAlive) {
+  $psArgs = @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $start, "-Cwd", $cwd, "-UiPort", "$uiPort", "-Port", "$agentPort")
+  if ($cfg.always_approve -ne $false) { $psArgs += "-AlwaysApprove" }
+  Log ("fallback start.ps1 ({0})" -f $Reason)
+  try { Start-Process -FilePath "powershell.exe" -ArgumentList $psArgs -WindowStyle Hidden | Out-Null } catch {}
 }
 exit 0

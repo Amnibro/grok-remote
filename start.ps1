@@ -133,9 +133,20 @@ if (-not $NoUi) {
     "set GROK_AGENT_SECRET=$Secret",
     $uiLine
   ) | Set-Content -Path $runUi -Encoding ASCII
-  $ui = Start-Process -FilePath "cmd.exe" -ArgumentList @("/c", $runUi) -WorkingDirectory $here -PassThru -WindowStyle Hidden
-  $script:OurPids += $ui.Id
-  Start-Sleep -Seconds 3
+  $supPs1 = Join-Path $here "scripts\supervise-ui.ps1"
+  if (Test-Path $supPs1) {
+    $sup = Start-Process -FilePath "powershell.exe" -ArgumentList @(
+      "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $supPs1,
+      "-UiPort", "$UiPort", "-AgentPort", "$Port", "-Secret", $Secret, "-Cwd", $Cwd
+    ) -WorkingDirectory $here -PassThru -WindowStyle Hidden
+    $script:OurPids += $sup.Id
+    $ui = $sup
+    Write-Host "UI supervisor started (auto-restarts if it dies)" -ForegroundColor Green
+  } else {
+    $ui = Start-Process -FilePath "cmd.exe" -ArgumentList @("/c", $runUi) -WorkingDirectory $here -PassThru -WindowStyle Hidden
+    $script:OurPids += $ui.Id
+  }
+  Start-Sleep -Seconds 4
   $uiOk = netstat -an | Select-String "0.0.0.0:$UiPort\s+.*LISTENING|\[::\]:$UiPort\s+.*LISTENING|:$UiPort\s+.*LISTENING"
   if (-not $uiOk) {
     Write-Host "UI failed to bind 0.0.0.0:$UiPort - is an old server holding the port?" -ForegroundColor Red
@@ -144,7 +155,8 @@ if (-not $NoUi) {
   } else {
     Write-Host "UI+proxy OK  http://${lan}:${UiPort}/" -ForegroundColor Green
   }
-  "http://${lan}:${UiPort}/?key=$Secret&auto=1" | Set-Content (Join-Path $here "connect.url") -Encoding ASCII
+  $phoneUrl = "http://${lan}:${UiPort}/?key=$Secret&auto=1"
+  $phoneUrl | Set-Content (Join-Path $here "connect.url") -Encoding ASCII
   try {
     $h = Invoke-RestMethod "http://127.0.0.1:${UiPort}/health?key=$Secret" -TimeoutSec 5
     if ($h.ok) { Write-Host "Health: agent reachable through proxy" -ForegroundColor Green }
@@ -152,14 +164,20 @@ if (-not $NoUi) {
   } catch {
     Write-Host "Health check failed: $_" -ForegroundColor Yellow
   }
+  Write-Host ""
+  Write-Host "PHONE:  $phoneUrl" -ForegroundColor Cyan
+  Write-Host "PC:     http://127.0.0.1:${UiPort}/?key=$Secret&auto=1" -ForegroundColor Cyan
+  try {
+    Start-Process ("http://127.0.0.1:${UiPort}/?key=$Secret&auto=1")
+    Write-Host "Opened browser on this PC" -ForegroundColor Green
+  } catch {}
 }
 Write-Host ""
-Write-Host "Press Ctrl+C to stop remote control only." -ForegroundColor DarkGray
+Write-Host "Leave this window open, or use Desktop 'Grok Remote' (supervised). Ctrl+C stops remote only." -ForegroundColor DarkGray
 try {
   while ($true) {
-    Start-Sleep -Seconds 2
+    Start-Sleep -Seconds 5
     if ($agent.HasExited) { Write-Host "Agent process exited" -ForegroundColor Red; break }
-    if ($ui -and $ui.HasExited) { Write-Host "UI process exited" -ForegroundColor Red; break }
   }
 } finally {
   Stop-Ours

@@ -1,6 +1,45 @@
 # Grok Remote — architecture map
 
-**Updated:** 2026-08-02 · v37.7 detach-safe turns (navigate away)
+**Updated:** 2026-08-10 · v38.2 supervised UI + simple phone + chat perf
+
+## Stay-up + simple open (v38.2)
+
+| Piece | Behavior |
+|-------|----------|
+| Supervisor | `scripts/supervise-ui.ps1` — health loop, respawn UI on death |
+| Launch | Desktop **Grok Remote** → `ensure-running` (agent if needed + supervise) → `open-remote-ui` with `?key=` |
+| Setup UI | Phone 3-step card (copy / QR / open PC); advanced under `<details>` |
+| Chat open | `HISTORY_PAGE=36`, `HISTORY_MAX_BYTES=700k`, chat-only first; one scroll after paint |
+| Memory | `FEED_DOM_CAP=90`, thought stubs on history, poll 1.2s, no catch-up when tab hidden |
+
+## Session isolation (v38.1)
+
+| Piece | Behavior |
+|-------|----------|
+| Titles | `POST /api/session/titles` hydrates rail from `summary.json` (`remote_title` / `generated_title` / `session_summary`) |
+| Open | History response `title` applied via `adoptDiskTitle` so chat isn’t stuck as Untitled |
+| Live busy | `busySid` + `setBusy(b, forSid)` — tools/thinking phase only for open session |
+| Hub noise | `_x.ai/remote/client_rpc` / auto_permission ignored unless this session is busy |
+| Events | Disk paint requires exact `params.sessionId` match; no 8-char fuzzy accept |
+| Dir resolve | Multi-hit `find_session_dir` prefers cwd-encoded path before newest mtime |
+
+## Wireless link (v38)
+
+| Piece | Behavior |
+|-------|----------|
+| Client keepalive | App ping `_x.ai/remote/ping` every ~7–10s when idle; force reconnect if silent >40s |
+| Reconnect | Never permanently gives up while page open; slow park after max tries; reset on visibility/`online` |
+| Single-flight | `connectGen` + short settle after closing old socket (stops n=2 thrash from dual loops) |
+| Soft drop | On WS close: keep **HTTP disk catch-up poll** so chat still moves; PC turn stays on hub |
+| Cockpit | Removed second reconnect interval (was fighting main UI) |
+| Hub | Client WS heartbeat 12s; hub watch re-ensures agent; responds with `_x.ai/remote/pong` |
+
+## Detach-safe turns (v37.7)
+
+| Piece | Behavior |
+|-------|----------|
+| Soft close | Phone leave does not cancel PC turns; hub detaches reverse-RPC to itself |
+| Resume | `visibilitychange` / `pageshow` / `online` re-arm reconnect and catch-up |
 
 ## Chat rename (v37.5)
 

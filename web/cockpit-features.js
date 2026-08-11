@@ -374,30 +374,7 @@ function startVoice(){
 }
 function paintVoice(on){const b=$("btnVoice");if(b)b.classList.toggle("on",!!on)}
 function setupReconnect(){
- let timer=null;
- const orig=window.connect;
- // observe ws close via interval
- setInterval(()=>{
- const ws=window.ws;
- if(!ws)return;
- if(ws.readyState===3){
- if(timer)return;
- timer=setTimeout(async()=>{
- timer=null;S.reconnects++;
- chip("reconnecting... #"+S.reconnects);
- try{
- if(typeof window.connect==="function")await window.connect();
- const want=window.sid;
- if(want&&typeof window.fetchSessions==="function"){
- await window.fetchSessions();
- const s=(window.sessions||[]).find(x=>x.sessionId===want);
- if(s&&typeof window.openSession==="function")await window.openSession(s);
- }
- chip("reconnected");
- }catch(e){chip("reconnect failed")}
- },1200);
- }
- },2000);
+ S.reconnects=0;
 }
 function pinSession(s){
  if(!s||!s.sessionId)return;
