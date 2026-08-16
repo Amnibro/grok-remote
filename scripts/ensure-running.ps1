@@ -81,7 +81,7 @@ if (-not $cmdAlive) {
     }
   }
   $py = (Get-Command python -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source)
-  if (-not $py) { $py = "C:\Users\antho\AppData\Local\Programs\Python\Python312\python.exe" }
+  if (-not $py) { $py = "python" }
   if ($secret -and (Test-Path (Join-Path $pluginRoot "server.py"))) {
     $body = @"
 @echo off
