@@ -24,7 +24,7 @@ if (-not $Secret) {
 if (-not $Secret) { throw "No secret: set GROK_AGENT_SECRET or run start.ps1 once" }
 if (-not $Cwd) { $Cwd = Join-Path $env:USERPROFILE "Documents\ai"; if (-not (Test-Path $Cwd)) { $Cwd = $env:USERPROFILE } }
 $py = (Get-Command python -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source)
-if (-not $py) { $py = "C:\Users\antho\AppData\Local\Programs\Python\Python312\python.exe" }
+if (-not $py) { $py = "python" }
 $server = Join-Path $pluginRoot "server.py"
 $env:GROK_AGENT_SECRET = $Secret
 $supLog = Join-Path $logDir "supervisor.log"

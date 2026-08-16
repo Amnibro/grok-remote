@@ -1,3 +1,23 @@
+﻿## 2026-08-13 v1.8.0 — radio chips + cheap health + /pair
+- `/health` is cheap (`ok` = UI alive, `hub_up` / `agent_listening` / `ready`). Supervisor 2s timeout no longer waits on agent `initialize`.
+- `/health/deep` keeps the old initialize probe.
+- `/pair` wired (loopback-only). Startup prints QR banner. Pair page uses Braid paper/lavender.
+- `/` is `Cache-Control: no-store`.
+- Phone radio chip paints pong RTT + hub + quiet-age. Chat meta shows cwd + short sid. Braid session list cwd always visible; livebar extra not hidden.
+- Catch-up poll skips when WS is fresh (2.8s idle / 0.9s busy). First reconnect ~120ms. Stale force-close 15s. Ping every 4s.
+- Tests: `tests/test_radio_v18.py`. Restart UI to load.
+## 2026-08-12 silent keepalive (blank cmd flash)
+- `GrokRemoteKeepAlive` every 2m was launching visible `powershell.exe` (blank cmd flash then close).
+- Tasks now run `wscript.exe ensure-running.vbs` (window 0). `Win32_Process.Create(cmd)` replaced with `Start-Process -WindowStyle Hidden`.
+- Session hook + actor hook prefer silent launchers (`wscript` / `pythonw`).
+## 2026-08-12 v39 — chat load fast (long sessions)
+Anthony: chats take forever to load, especially long ones (updates.jsonl up to ~450MB).
+
+- **Server** `find_session_dir`: sid→dir index (60s) + per-lookup cache (90s) — no full walk of ~1800 sessions every open
+- **Server** `chat_only` history: byte-prefilter message lines, scan grow to **64MB**, coalesce then slice; text cap 120k
+- **Client**: first page 24 msgs / 450k; fast plain paint during history; `upgradeRichBubbles` after open; no full-history fallback; older pages stay chat_only
+- Bench (local): top 458MB session → **24 events in ~28ms** (was sparse misses under 8MB cap)
+
 ## 2026-08-11 v1.7.0 — connection reliability + session organization
 Anthony: "persistent reconnection and first connection bugs" then "other apps are prompting
 grok-remote and those chats flood my active space — put secondary access in a different
@@ -518,7 +538,7 @@ Files: `web/cockpit-features.js`, index wiring. Hard-refresh after stack up.
 - **Persona flyout:** personalities (Concise, Unhinged, Programmer, Engineer, Manager, Clown, Warlord, …)
 - **Directions:** Build, Debug, Review, Explore, Plan, Ship, Refactor, Security, Docs, Teach, Speedrun
 - Setup preamble on first send per session; **Inject setup now** button
-- **Risk** persona owner-gated (`Users\antho` path or `?owner=1` unlock); not shown to others by default
+- **Risk** persona owner-gated (local owner path or `?owner=1` unlock); not shown to others by default
 - Prefs: `grok_remote_persona`, `grok_remote_direction`
 
 ## 2026-07-09 — Cockpit IDE + auto-stack + Grok Review v4.0
@@ -581,3 +601,4 @@ Files: `web/cockpit-features.js`, index wiring. Hard-refresh after stack up.
 - **Collapse:** thinking rows, fenced code, tool cards — defaults + per-block tap
 - **Borders vs clean:** bordered cards or clean edge-accent layout
 - Prefs: `localStorage.grok_remote_ux`
+

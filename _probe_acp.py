@@ -17,7 +17,7 @@ async def main():
     print("EVT",json.dumps(data)[:300])
   r=await req("initialize",{"protocolVersion":1,"clientInfo":{"name":"android-probe","version":"0.1"},"clientCapabilities":{"fs":{"readTextFile":True,"writeTextFile":True},"terminal":True}})
   print("INIT",json.dumps(r)[:800])
-  r2=await req("session/new",{"cwd":r"C:\\Users\\antho\\Documents\\ai","mcpServers":[]})
+  r2=await req("session/new",{"cwd":r"C:\\path\\to\\projects","mcpServers":[]})
   print("NEW",json.dumps(r2)[:800])
   sid=(r2.get("result") or {}).get("sessionId")
   if not sid:print("no session");return

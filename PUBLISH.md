@@ -14,21 +14,21 @@ Grok does **not** currently push community plugins to a single global xAI store 
 ## 1. Local install (slash commands on your PC)
 
 ```powershell
-cd C:\Users\antho\Documents\ai\grok-remote
+cd <repos>\grok-remote
 .\install-local.ps1
 ```
 
 Or:
 
 ```powershell
-grok plugin install C:\Users\antho\Documents\ai\grok-remote --trust
+grok plugin install <repos>\grok-remote --trust
 grok plugin enable grok-remote
 ```
 
 ### Local marketplace (already set up)
 
 ```powershell
-grok plugin marketplace add C:\Users\antho\Documents\ai\marketplace\grok-remote-market
+grok plugin marketplace add <repos>\marketplace\grok-remote-market
 grok plugin marketplace list
 ```
 
@@ -52,7 +52,7 @@ Then:
 4. Tag a release:
 
 ```powershell
-cd C:\Users\antho\Documents\ai\grok-remote
+cd <repos>\grok-remote
 git init   # if needed
 git add .
 git commit -m "Grok-Remote v1.0.0"

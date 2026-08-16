@@ -201,6 +201,11 @@ header{padding:clamp(8px,1.2vw,14px) clamp(10px,1.5vw,18px);border-bottom:1px so
 .orbit-status{display:inline-flex;align-items:center;gap:7px;font:700 11px/1.1 var(--font);letter-spacing:.04em;text-transform:uppercase;color:var(--mut);padding:6px 11px 6px 9px;border-radius:999px;border:1px solid color-mix(in srgb,var(--line) 90%,transparent);background:color-mix(in srgb,var(--panel2) 88%,transparent);min-width:4.8em;user-select:none;transition:color .2s,border-color .2s,background .2s,box-shadow .2s;flex:none}
 .orbit-status .orbit-dot{width:7px;height:7px;border-radius:50%;background:var(--mut);box-shadow:none;flex:none;transition:background .2s,box-shadow .2s}
 .orbit-status .orbit-status-t{min-width:3.4em}
+.radio-chip{display:inline-flex;align-items:center;gap:6px;font:650 10px/1.1 var(--font-mono,ui-monospace,Consolas,monospace);letter-spacing:.02em;color:var(--mut);padding:5px 9px;border-radius:999px;border:1px solid color-mix(in srgb,var(--line) 90%,transparent);background:color-mix(in srgb,var(--panel2) 80%,transparent);flex:none;max-width:min(42vw,280px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.radio-chip[data-q="good"]{color:var(--ok);border-color:color-mix(in srgb,var(--ok) 35%,var(--line))}
+.radio-chip[data-q="fair"]{color:var(--acc);border-color:color-mix(in srgb,var(--acc) 35%,var(--line))}
+.radio-chip[data-q="bad"]{color:var(--bad);border-color:color-mix(in srgb,var(--bad) 35%,var(--line))}
+.chat-meta{display:inline-flex;align-items:center;gap:6px;min-width:0;max-width:min(46vw,360px);font:600 11px/1.2 var(--font-mono,ui-monospace,Consolas,monospace);color:var(--mut);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .orbit-status[data-state="online"],.orbit-status[data-state="live"]{color:var(--ok);border-color:color-mix(in srgb,var(--ok) 40%,var(--line));background:color-mix(in srgb,var(--ok) 10%,var(--panel2));box-shadow:0 0 12px -6px color-mix(in srgb,var(--ok) 45%,transparent)}
 .orbit-status[data-state="online"] .orbit-dot,.orbit-status[data-state="live"] .orbit-dot{background:var(--ok);box-shadow:0 0 8px color-mix(in srgb,var(--ok) 55%,transparent)}
 .orbit-status[data-state="sync"],.orbit-status[data-state="busy"]{color:var(--acc);border-color:color-mix(in srgb,var(--acc) 45%,var(--line));background:color-mix(in srgb,var(--acc) 10%,var(--panel2));box-shadow:0 0 14px -6px var(--acc-glow)}
@@ -1066,6 +1071,7 @@ body.voice-go #voiceHud,body.voice-xr #voiceHud{bottom:calc(var(--stack-h,120px)
         </svg>
       </button>
       <span class="orbit-status" id="orbitStatus" aria-live="polite"><i class="orbit-dot" aria-hidden="true"></i><span class="orbit-status-t">offline</span></span>
+      <span class="radio-chip" id="radioChip" title="Link quality">—</span>
       <div class="orbit-menu" id="orbitMenu" role="menu" hidden>
         <div class="om-meta" id="orbitMenuMeta">link · standby</div>
         <button type="button" id="btnStartRemote" role="menuitem" title="Start / restart agent serve on :2419">Start server</button>
@@ -1111,7 +1117,7 @@ body.voice-go #voiceHud,body.voice-xr #voiceHud{bottom:calc(var(--stack-h,120px)
   <label>WebSocket</label>
   <input id="wsurl" placeholder="ws://192.168.x.x:2421/ws"/>
   <label>Default cwd for new sessions / tasks</label>
-  <input id="cwd" placeholder="C:\\Users\\antho\\Documents\\ai"/>
+  <input id="cwd" placeholder="C:\\path\\to\\projects"/>
     </div>
   </details>
   <div class="rowbtns">
@@ -1162,6 +1168,7 @@ body.voice-go #voiceHud,body.voice-xr #voiceHud{bottom:calc(var(--stack-h,120px)
 <div id="chatStage">
 <div class="chat-top" id="chatTop">
   <button type="button" class="chat-title" id="chatTitle" title="Rename chat">Chat</button>
+  <span class="chat-meta" id="chatMeta" hidden></span>
   <input type="search" id="chatTopSearch" placeholder="Search this chat…" autocomplete="off" enterkeyhint="search"/>
 </div>
 <main id="feed" class="pulse-frame"></main>
@@ -1256,7 +1263,7 @@ body.voice-go #voiceHud,body.voice-xr #voiceHud{bottom:calc(var(--stack-h,120px)
   <div class="card">
     <h3>New task <button type="button" class="sheet-x" id="closeTask" aria-label="Close">×</button></h3>
     <label>Working directory on PC</label>
-    <input id="taskCwd" placeholder="C:\\Users\\antho\\Documents\\ai\\Amni-Ai"/>
+    <input id="taskCwd" placeholder="C:\\path\\to\\projects\\Amni-Ai"/>
     <label>First message / task (optional)</label>
     <textarea class="field" id="taskMsg" rows="3" placeholder="Build X, fix Y, explore Z…"></textarea>
     <div class="rowbtns">
@@ -1352,9 +1359,10 @@ let seenEvents=new Set(),seenUserTexts=new Set(),promptCount=0,commands=[];
 let pollTimer=null,catchupBusy=false,lastLiveAt=0,localEchoUntil=0,sendInFlight=false,lastLocalUserPlain="",ignoreScrollUntil=0,scrollSettleTimer=0;
 let composerBoundSid=null,composerDrafts={};
 let historyFileSize=0,diskCatchupBusy=false;
-const HISTORY_PAGE=36;
-const HISTORY_MAX_BYTES=700000;
-const FEED_DOM_CAP=90;
+const HISTORY_PAGE=24;
+const HISTORY_MAX_BYTES=450000;
+const FEED_DOM_CAP=72;
+const HISTORY_RICH_CAP=48000;
 const SEEN_EVENTS_CAP=1500;
 let historyHasMore=false,historyOlderBefore=0,historyLoadingOlder=false;
 let sessionGen=0,sessionSwitching=false,loadExpectSid=null,sessionFresh=false,historyPainting=false,suppressLive=false;
@@ -1362,6 +1370,7 @@ let turnToken=0,activeTurnToken=0,cancelInFlight=false,suppressStreamBusyUntil=0
 let linkState="standby",agentPhase="idle",phaseDetail="",wantReconnect=false,reconnectTimer=null,connectAttempt=0;
 let connecting=false,intentionalClose=false,reconnectArmed=false,maxReconnect=80,startInFlight=false,softDetach=false;
 let linkKeepaliveTimer=null,linkLastRx=0,connectGen=0,reconnectParked=false,busySid=null;
+let linkRtt=null,linkLastPong=0;
 let hubUp=true,hubReinitBusy=false;
 Object.defineProperty(window,"replaying",{get:()=>replaying,set:v=>{replaying=!!v},configurable:true});
 Object.defineProperty(window,"sessionSwitching",{get:()=>sessionSwitching,set:v=>{sessionSwitching=!!v},configurable:true});
@@ -2285,6 +2294,10 @@ function paintLivebar(){
   if(ex){
     const bits=[];
     if(phaseDetail)bits.push(phaseDetail);
+    if(linkRtt!=null)bits.push(linkRtt+"ms");
+    const folder=shortFolder(sidCwd||defaultCwd||"");
+    if(folder)bits.push(folder);
+    if(sid)bits.push(String(sid).slice(0,8));
     if(lastLiveAt&&(linkState==="uplink"||linkState==="sync"))bits.push(new Date(lastLiveAt).toLocaleTimeString());
     ex.textContent=bits.length?("· "+bits.join(" · ")):"";
   }
@@ -2417,13 +2430,35 @@ function paintOrbitStatus(){
     const t=el.querySelector(".orbit-status-t");
     if(t)t.textContent=lab;else el.textContent=lab;
   }
+  paintRadioChip();
   if(statusEl){statusEl.textContent=lab;statusEl.hidden=true;statusEl.setAttribute("aria-hidden","true")}
   if(orbit){
     orbit.classList.toggle("on",!!on&&agentPhase!=="error");
     orbit.classList.toggle("off",!on);
     orbit.classList.toggle("busy",!!busyNow&&!!on);
-    orbit.title="Link · "+lab+(msgPhaseDetail());
+    orbit.title="Link · "+lab+(msgPhaseDetail())+(linkRtt!=null?" · "+linkRtt+"ms":"");
   }
+}
+function shortFolder(p){
+  const s=String(p||"").replace(/\\/g,"/").replace(/\/+$/,"");
+  if(!s||s==="."||s==="/")return "";
+  const parts=s.split("/").filter(Boolean);
+  return parts.length?parts[parts.length-1]:s;
+}
+function paintRadioChip(){
+  const el=document.getElementById("radioChip");
+  if(!el)return;
+  const on=linkState==="uplink"||linkState==="sync";
+  const bits=[];
+  let q="fair";
+  if(!on){el.textContent="no link";el.dataset.q="bad";el.title="Not linked to this PC";return}
+  if(linkRtt!=null){bits.push(linkRtt+"ms");q=linkRtt<80?"good":(linkRtt<180?"fair":"bad")}
+  bits.push(hubUp===false?"hub down":"hub");
+  const quiet=linkLastRx?Date.now()-linkLastRx:0;
+  if(quiet>8000){bits.push(Math.round(quiet/1000)+"s quiet");if(quiet>15000)q="bad"}
+  el.textContent=bits.join(" · ")||"—";
+  el.dataset.q=hubUp===false?"bad":q;
+  el.title="RTT / hub · last packet "+(quiet?Math.round(quiet/1000)+"s ago":"now");
 }
 function msgPhaseDetail(){
   const active=agentPhase!=="idle"&&agentPhase!=="error";
@@ -2954,7 +2989,9 @@ function kwSet(lang){
   return new Set(base.concat(LANG_KW.js.slice(0,20)));
 }
 function highlightCode(src,lang){
+  if(historyPainting||replaying)return esc(String(src||""));
   const text=String(src||"");
+  if(text.length>24000)return esc(text.slice(0,24000))+"\n…";
   const kws=kwSet(lang);
   const L=(lang||"").toLowerCase();
   const hashCmt=/\b(py|sh|bash|ps1|yaml|yml|toml|rb|r)\b/.test(L)||L==="python";
@@ -3002,8 +3039,12 @@ function fillCodeLines(pre,body,lang,startLine){
   pre.innerHTML="";
   const lines=String(body||"").replace(/\r\n/g,"\n").split("\n");
   const start=Math.max(1,startLine||1);
-  const maxLines=4000;
+  const maxLines=(historyPainting||replaying)?120:4000;
   const slice=lines.length>maxLines?lines.slice(0,maxLines):lines;
+  if(historyPainting||replaying){
+    pre.textContent=slice.join("\n")+(lines.length>maxLines?"\n… +"+(lines.length-maxLines)+" lines":"");
+    return;
+  }
   const frag=document.createDocumentFragment();
   for(let i=0;i<slice.length;i++){
     const row=document.createElement("div");row.className="code-line";
@@ -3230,8 +3271,37 @@ function formatAgentHtml(text){
   return parts.length?parts:[{type:"md",v:rest}];
 }
 function renderAgentBubble(el,fullText){
-  const parts=formatAgentHtml(fullText);
+  let text=String(fullText||"");
+  const fast=!!(historyPainting||replaying);
+  if(fast&&text.length>HISTORY_RICH_CAP){
+    text=text.slice(0,HISTORY_RICH_CAP)+"\n…[truncated — open on PC for full]";
+    el.dataset.truncated="1";
+  }
+  if(fast){
+    el.innerHTML="";el.classList.add("md");
+    el.dataset.needsRich="1";
+    const parts=formatAgentHtml(text);
+    parts.forEach(p=>{
+      if(p.type==="code"){
+        const pre=document.createElement("pre");pre.className="code-body";
+        const body=String(p.v||"");
+        pre.textContent=body.length>8000?body.slice(0,8000)+"\n…":body;
+        const wrap=document.createElement("div");wrap.className="collapsible code collapsed";
+        wrap.innerHTML='<div class="code-head"><span class="chev">▾</span><span></span></div>';
+        wrap.querySelector(".code-head span:last-child").textContent=(p.lang||"code")+" · fast";
+        wrap.querySelector(".code-head").onclick=()=>wrap.classList.toggle("collapsed");
+        wrap.appendChild(pre);el.appendChild(wrap);
+      }else{
+        const d=document.createElement("div");d.className="md-p";
+        d.innerHTML=esc(String(p.v||"")).replace(/\n/g,"<br>");
+        el.appendChild(d);
+      }
+    });
+    return;
+  }
+  const parts=formatAgentHtml(text);
   el.innerHTML="";el.classList.add("md");
+  delete el.dataset.needsRich;
   parts.forEach(p=>{
     if(p.type==="code"){
       if(/^(math|latex|tex)$/i.test(p.lang||""))el.appendChild(makeMathBlock(p.v));
@@ -3239,6 +3309,24 @@ function renderAgentBubble(el,fullText){
     }else el.appendChild(renderMdBlock(p.v));
   });
   queueMathTypeset(el);
+}
+function upgradeRichBubbles(root){
+  const host=root||feed;
+  if(!host)return;
+  const nodes=host.querySelectorAll(".bub.md[data-needs-rich='1']");
+  let i=0;
+  const step=()=>{
+    const end=Math.min(i+3,nodes.length);
+    for(;i<end;i++){
+      const el=nodes[i];
+      if(!el||!el.isConnected)continue;
+      const raw=el.dataset.raw||el.textContent||"";
+      delete el.dataset.needsRich;
+      renderAgentBubble(el,raw);
+    }
+    if(i<nodes.length)requestAnimationFrame(step);
+  };
+  if(nodes.length)requestAnimationFrame(step);
 }
 let userWireBuf="";
 function stripPromptChrome(text){
@@ -3299,7 +3387,11 @@ function paintHistoryUser(text){
   bub.classList.add("md");
   bub.dataset.raw=display;
   bub.innerHTML="";
-  bub.appendChild(renderMdBlock(display));
+  if(historyPainting||replaying){
+    const d=document.createElement("div");d.className="md-p";
+    d.innerHTML=esc(display.length>HISTORY_RICH_CAP?display.slice(0,HISTORY_RICH_CAP)+"\n…":display).replace(/\n/g,"<br>");
+    bub.appendChild(d);
+  }else bub.appendChild(renderMdBlock(display));
   curUser=null;
   return true;
 }
@@ -3924,7 +4016,7 @@ async function paintDiskEvents(events,sessionId,opts){
       const meta=params._meta||update._meta||null;
       handleUpdate(update,expectSid,meta);
       n++;
-      if(asReplay&&i>0&&i%80===0)await new Promise(r=>requestAnimationFrame(r));
+      if(asReplay&&i>0&&i%12===0)await new Promise(r=>requestAnimationFrame(r));
     }
   }finally{
     historyPainting=prevHist;
@@ -3942,6 +4034,7 @@ async function paintDiskEvents(events,sessionId,opts){
       if(!aborted&&expectGen===sessionGen&&String(sid||"")===expectSid){
         const last=feed&&feed.querySelector(".row.msg:last-of-type");
         if(last)markLatestMsg(last);
+        try{upgradeRichBubbles(feed)}catch(e){}
       }
     }
     else if(n&&!aborted){touchLive();if(stickBottom||atBottom())scroll()}
@@ -4007,7 +4100,7 @@ async function loadOlderHistory(){
   if(marker)marker.innerHTML='<span>loading earlier…</span>';
   ignoreScrollUntil=Date.now()+2000;
   try{
-    const hist=await paintDiskHistory(expect,sidCwd,{limit:Math.max(HISTORY_PAGE,60),before:historyOlderBefore,prepend:true,max_bytes:2500000,gen:gen});
+    const hist=await paintDiskHistory(expect,sidCwd,{limit:Math.max(HISTORY_PAGE,40),before:historyOlderBefore,prepend:true,max_bytes:1200000,chat_only:true,gen:gen});
     if(String(sid)!==expect||gen!==sessionGen||(hist&&hist.stale))return;
     if(!(hist.count>0)){historyHasMore=false;paintHistoryMoreChip();return}
     const delta=feed.scrollHeight-prevH;
@@ -4169,9 +4262,12 @@ function startPoll(){
   stopPoll();
   pollTimer=setInterval(()=>{
     if(document.visibilityState==="hidden")return;
+    const live=ws&&ws.readyState===1;
+    const fresh=lastLiveAt&&(Date.now()-lastLiveAt)<10000;
+    if(live&&!busy&&!softDetach&&fresh){try{trimFeedDom()}catch(e){}return}
     softCatchup().catch(()=>{});
     try{trimFeedDom()}catch(e){}
-  },1200);
+  },busy||softDetach?900:2800);
 }
 function stopPoll(){if(pollTimer){clearInterval(pollTimer);pollTimer=null}}
 
@@ -4318,12 +4414,22 @@ function applyLocalTitle(sessionId,title){
 }
 function paintChatTitle(){
   const el=document.getElementById("chatTitle");
+  const meta=document.getElementById("chatMeta");
   if(!el)return;
-  if(!sid){el.textContent="Chat";el.title="Rename chat";return}
-  const s=sessions.find(x=>String(x.sessionId)===String(sid))||{sessionId:sid,title:titleOverrides[String(sid)]||""};
+  if(!sid){el.textContent="Chat";el.title="Rename chat";if(meta){meta.hidden=true;meta.textContent=""};return}
+  const s=sessions.find(x=>String(x.sessionId)===String(sid))||{sessionId:sid,title:titleOverrides[String(sid)]||"",cwd:sidCwd||""};
   const t=sessionTitle(s);
   el.textContent=t;
   el.title="Rename · "+t;
+  if(meta){
+    const folder=shortFolder(s.cwd||sidCwd||defaultCwd||"");
+    const bits=[];
+    if(folder)bits.push(folder);
+    bits.push(String(sid).slice(0,8));
+    meta.textContent=bits.join(" · ");
+    meta.hidden=!bits.length;
+    meta.title=(s.cwd||sidCwd||"")+" · "+sid;
+  }
 }
 async function renameSession(sessionId,opts){
   opts=opts||{};
@@ -4703,13 +4809,9 @@ async function openSession(s){
         if(gen!==sessionGen||String(sid)!==openId)return;
         if(hist&&!hist.stale)painted=hist.count||0;
       }
-      if(!(painted>0)){
-        hist=await paintDiskHistory(openId,sidCwd,{limit:HISTORY_PAGE,max_bytes:HISTORY_MAX_BYTES,chat_only:false,gen:gen});
-        if(gen!==sessionGen||String(sid)!==openId)return;
-        if(hist&&!hist.stale)painted=hist.count||0;
-      }
       if(hist&&hist.dir)try{feed.dataset.histDir=String(hist.dir)}catch(e){}
       if(hist&&hist.title)adoptDiskTitle(openId,hist.title,sidCwd);
+      try{if(painted>0)upgradeRichBubbles(feed)}catch(e){}
     }catch(e){
       if(gen===sessionGen&&String(sid)===openId){
         clearSessionFeed();
@@ -4918,17 +5020,14 @@ function startLinkKeepalive(){
   linkKeepaliveTimer=setInterval(()=>{
     if(!ws||ws.readyState!==1)return;
     const silent=Date.now()-linkLastRx;
-    if(silent>40000){
+    try{ws.send(JSON.stringify({jsonrpc:"2.0",method:"_x.ai/remote/ping",params:{t:Date.now()}}))}catch(e){}
+    if(silent>15000){
       try{chip("link stale · forcing reconnect")}catch(e){}
       try{ws.close()}catch(e){}
       reconnectArmed=true;wantReconnect=true;
-      scheduleReconnect(300,"stale link");
-      return;
+      scheduleReconnect(120,"stale link");
     }
-    if(silent>10000){
-      try{ws.send(JSON.stringify({jsonrpc:"2.0",method:"_x.ai/remote/ping",params:{t:Date.now()}}))}catch(e){}
-    }
-  },7000);
+  },4000);
 }
 function stopReconnectLoop(){
   reconnectArmed=false;wantReconnect=false;reconnectParked=false;
@@ -4944,14 +5043,15 @@ function scheduleReconnect(ms,reason){
   const hidden=typeof document!=="undefined"&&document.visibilityState==="hidden";
   const over=connectAttempt>=maxReconnect;
   reconnectParked=!!over;
-  const base=ms!=null?ms:(over?(hidden?18000:Math.min(45000,10000+connectAttempt*250)):Math.min(10000,600+connectAttempt*550+Math.floor(Math.random()*350)));
+  const midTurn=!!busySid;
+  const base=ms!=null?ms:(over?(hidden&&!midTurn?18000:Math.min(20000,4000+connectAttempt*200)):Math.min(6000,120+connectAttempt*400+Math.floor(Math.random()*180)));
   if(over&&!hidden)try{setConn(false,"link weak · slow retry");setPhase("sync","wifi retry")}catch(e){}
   reconnectTimer=setTimeout(()=>{
     reconnectTimer=null;
     if(!wantReconnect&&!reconnectArmed)return;
     if(ws&&ws.readyState===1)return;
     if(connecting)return;
-    if(hidden&&document.visibilityState==="hidden"){scheduleReconnect(12000,"still hidden");return}
+    if(hidden&&!midTurn&&document.visibilityState==="hidden"){scheduleReconnect(8000,"still hidden");return}
     connectAttempt++;
     setConn(false,"reconnecting… #"+connectAttempt+(reason?" · "+reason:""));
     connect({fromReconnect:true}).catch(()=>{});
@@ -4990,8 +5090,8 @@ function onPageBecameVisible(){
   try{if(sid)startPoll()}catch(e){}
   if(ws&&ws.readyState===1){linkLastRx=Date.now();try{startPoll();scheduleCatchup(150);startLinkKeepalive()}catch(e){}return}
   if(connecting)return;
-  connectAttempt=Math.min(connectAttempt,1);
-  scheduleReconnect(200,"page visible");
+  connectAttempt=0;
+  scheduleReconnect(80,"page visible");
 }
 async function autoOpenBestSession(){
   if(sid)return;
@@ -5004,10 +5104,23 @@ async function autoOpenBestSession(){
   chip("opening latest · "+(best.title||String(best.sessionId).slice(0,8))+(best.resident?" · resident":""));
   try{await openSession(best)}catch(e){chip("auto-open failed: "+e)}
 }
+async function waitForHub(maxMs){
+  const t0=Date.now();let n=0;
+  while(Date.now()-t0<maxMs){
+    n++;
+    try{const h=await fetch("/health?ts="+Date.now(),{cache:"no-store"});if(h&&h.status<500)return true}catch(e){}
+    const left=Math.max(0,Math.ceil((maxMs-(Date.now()-t0))/1000));
+    try{setConn(false,"hub down · retry "+n+" · "+left+"s left")}catch(e){}
+    await new Promise(r=>setTimeout(r,3000));
+  }
+  return false;
+}
 async function startRemoteStack(opts){
   if(startInFlight)return false;
   startInFlight=true;
   const force=!(opts&&opts.force===false);
+  try{
+  for(let attempt=0;attempt<2;attempt++){
   setConn(false,"starting server…");setPhase("sync","agent");
   try{chip("starting agent serve · force="+force)}catch(e){}
   try{
@@ -5032,9 +5145,26 @@ async function startRemoteStack(opts){
     await connect({fromStart:true,didStart:true});
     return true;
   }catch(e){
+    const net=(e instanceof TypeError)||/failed to fetch|networkerror|load failed|abort/i.test(String(e));
+    if(net&&attempt===0){
+      setConn(false,"hub down · waiting");setPhase("sync","hub");
+      try{chip("hub unreachable — waiting up to 160s for it to come back (keepalive task revives it)…")}catch(x){}
+      const back=await waitForHub(160000);
+      if(back){
+        try{chip("hub is back · starting agent…")}catch(x){}
+        continue;
+      }
+      setConn(false,"hub down");setPhase("error","hub down");
+      try{chip("hub still down after 160s — on the PC run scripts\\launch-remote.cmd")}catch(x){}
+      alert("The remote hub (:2421) is not running and did not come back within 160s.\n\nOn the PC: run scripts\\launch-remote.cmd, start a Grok session, or wait for the GrokRemoteKeepalive task (every 2 min).");
+      return false;
+    }
     setConn(false,"start error");setPhase("error");
     try{chip("start error: "+e)}catch(x){}
     return false;
+  }
+  }
+  return false;
   }finally{startInFlight=false}
 }
 function initParams(){return {protocolVersion:1,clientInfo:{name:"grok-remote",version:"3.8"},clientCapabilities:{fs:{readTextFile:true,writeTextFile:true},terminal:true}}}
@@ -5168,7 +5298,15 @@ async function connect(opts){
       const raw=String(ev.data||"").replace(/^\uFEFF/,"").trim();
       if(!raw)return;
       const obj=JSON.parse(raw);
-      if(obj&&obj.method==="_x.ai/remote/pong"){onHubState(obj.params&&obj.params.hub_up);return}
+      if(obj&&obj.method==="_x.ai/remote/pong"){
+        const p=obj.params||{};
+        const sent=Number(p.t);
+        if(sent)linkRtt=Math.max(0,Date.now()-sent);
+        linkLastPong=Date.now();
+        onHubState(p.hub_up);
+        try{paintOrbitStatus();paintLivebar()}catch(e){}
+        return;
+      }
       if(obj&&obj.method==="_x.ai/remote/hub"){onHubState(obj.params&&obj.params.up);return}
       handleMsg(obj);
     }catch(e){try{log("ws parse: "+String(e).slice(0,120)+" · "+String(ev.data).slice(0,80))}catch(x){}}

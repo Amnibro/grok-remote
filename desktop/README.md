@@ -5,7 +5,7 @@
 ## One-time setup
 
 ```powershell
-cd C:\Users\antho\Documents\ai\grok-remote\desktop
+cd <repos>\grok-remote\desktop
 npm install
 ```
 

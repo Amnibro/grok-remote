@@ -116,7 +116,7 @@ p.write_text(text,encoding="utf-8")
 print("wrote",p.stat().st_size)
 ns={}
 exec(helper,{"Path":Path},ns)
-items=ns["scan_skills"](r"C:\\Users\\antho\\Documents\\ai")
+items=ns["scan_skills"](r"C:\\path\\to\\projects")
 print("scanned",len(items))
 print([i["name"]+":"+i["source"] for i in items[:30]])
 print("design",any(i["name"]=="design" for i in items))
