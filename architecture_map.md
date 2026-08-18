@@ -1,6 +1,65 @@
 # Grok Remote — architecture map
 
-**Updated:** 2026-08-10 · v38.2 supervised UI + simple phone + chat perf
+**Updated:** 2026-08-18 · v1.9.3 pair phone + one-line session filters
+## Pair + session rail (v1.9.3)
+- Orbit menu + command deck Help: **Pair phone**. Loopback → `/pair`; LAN → Setup QR card.
+- Session chips: Active / Live / Arch / All only. No cwd-origin "module" chips.
+- `.sess-scope-rail` is nowrap + overflow-x auto (braid and base).
+- Default brand GROK BUILD. Dead AMNI product skins remapped to Grok. Amni-Delve off the Apps menu.
+
+**Updated:** 2026-08-17 · v1.9.2 hidden-tab persistence
+## Hidden tab persistence (v1.9.2)
+- **A browser tab cannot keep its own link alive.** Chrome throttles background timers and drops
+  them to roughly once a minute after 5 minutes hidden. Any client-side "nothing arrived for N
+  seconds, reconnect" rule therefore fires on a perfectly healthy socket. Liveness must be pushed
+  from the hub: `_watch_loop` broadcasts `_x.ai/remote/hub` every 15s while clients are connected,
+  and `ws.onmessage` stamps `linkLastRx` on every frame, so **no client timer is required**.
+- `WebSocketResponse(heartbeat=12,autoping=True)` is NOT enough. Protocol pings are answered inside
+  the browser's network stack and never reach `onmessage`, so they keep the TCP connection open
+  while the app still believes the link is dead.
+- Three client gates must stay consistent: `startPoll` (catch up every 15s while hidden, not never),
+  `startLinkKeepalive` (never force-close from a hidden tab), `scheduleReconnect` (back off to 30s
+  while hidden, never park forever — the old code re-parked on every retry).
+- **Server-side persistence was already correct** and is not the bug: `handle_client` logs
+  "client leave · in-flight turns stay on hub", `_watch_loop` keeps the agent connection with zero
+  clients, and `LoopJobs._run` fires on its own task. A turn does not need a browser.
+- Testing note: pages opened through CDP report `visibilityState:"visible"` even when another tab is
+  selected, and minimising the window does not reach them. A hidden-tab claim cannot be verified
+  through that harness — measure the server half in isolation and check the tab by hand.
+
+
+**Updated:** 2026-08-14 · v1.8.2 stale-link loop
+## Stale-link / attach (v1.8.2)
+- Client pings answered in the hub read loop (never queued behind `session/load`).
+- Hub→agent: no WS heartbeat; `ClientTimeout(total=None)`.
+- `session/load` 90s; stale reconnect only after 45s idle and empty RPC queue.
+- Agent spawn is `grok.exe` directly (cmd wrapper missed the bind).
+
+**Updated:** 2026-08-14 · v1.8.1 mirror grok-build
+## Mirror grok-build (v1.8.1)
+- Serve stays `--no-leader` so `:2419` binds (`--leader serve` attaches to TUI and never listens).
+- Never `claim_port(:2419)` unless explicit force. Healthy UI/agent left alone on `/remote` start.
+- Disk catch-up always runs (0.5–0.9s) so grok-build `updates.jsonl` paints on the phone.
+
+## Radio + pair (v1.8.0)
+- Cheap `GET /health` (no initialize). `GET /health/deep` for agent handshake.
+- `GET /pair` loopback-only via `pairing.py`. QR SVGs get a `viewBox` (segno does not emit one) so CSS scale cannot clip the modules.
+- Client: `#radioChip` RTT, `#chatMeta` cwd/sid, WS-first catch-up, faster reconnect.
+- Braid: session cwd always shown; livebar extra visible.
+**Updated:** 2026-08-12 · v39 chat load fast (long sessions)
+
+## Chat load fast (v39)
+
+| Piece | Behavior |
+|-------|----------|
+| Session index | `_rebuild_sid_index` maps sid→dirs (~2980 sessions, 130ms); 60s TTL; per-lookup cache 90s. A miss forces a rebuild **at most once per 5s** — unthrottled it cost 250 rebuilds per titles batch (19s stall) |
+| Titles batch | `session_titles` resolves up to 250 sessions **in the executor**. On the event loop it froze every other handler while it worked |
+| chat_only scan | Byte prefilter (`user_message_chunk` / `agent_message_chunk`); grow window up to **64MB**, reading only the newly exposed older prefix each round; coalesce **once at the end** (`_coalesce_chat` mutates its inputs, so per-round coalescing double-appends text) |
+| Payload | `_trim_chat_text` caps event text at 120k |
+| First paint | `HISTORY_PAGE=24`, `HISTORY_MAX_BYTES=450k`, chat-only only (no full-history fallback) |
+| Client paint | Fast plain/code stubs while `historyPainting`; `upgradeRichBubbles` rAF after open |
+| Older | Scroll-up loads chat_only pages (`max_bytes` 1.2M) |
+| DOM | `FEED_DOM_CAP=72` |
 
 ## Stay-up + simple open (v38.2)
 
@@ -9,8 +68,8 @@
 | Supervisor | `scripts/supervise-ui.ps1` — health loop, respawn UI on death |
 | Launch | Desktop **Grok Remote** → `ensure-running` (agent if needed + supervise) → `open-remote-ui` with `?key=` |
 | Setup UI | Phone 3-step card (copy / QR / open PC); advanced under `<details>` |
-| Chat open | `HISTORY_PAGE=36`, `HISTORY_MAX_BYTES=700k`, chat-only first; one scroll after paint |
-| Memory | `FEED_DOM_CAP=90`, thought stubs on history, poll 1.2s, no catch-up when tab hidden |
+| Chat open | v39: see **Chat load fast** |
+| Memory | `FEED_DOM_CAP=72`, thought stubs on history, poll 1.2s, no catch-up when tab hidden |
 
 ## Session isolation (v38.1)
 
@@ -70,7 +129,7 @@
 | URL | `?skin=braid` or `?skin=legacy` (not `?layout=` — that forces desktop/mobile width) |
 | CSS | `web/braid-layout.css` gated by `html[data-layout="braid"]` |
 | Controls | Setup + Theme sheet **Layout** chips; Command deck **Layout** toggles |
-| Sessions rail (braid) | Compact head: **+ New chat** + refresh; **⌕** opens **fixed** search/scope pop (`z-index:20060`); list always shows **top 3**, then **▸ N more** → **Older** section / **▴ Show less** (open chat kept in top set) |
+| Sessions rail (braid) | Compact head: **+ New chat** + refresh; one-line **Active / Live / Arch / All**; **⌕** opens **fixed** search/scope pop (`z-index:20060`); list always shows **top 3**, then **▸ N more** → **Older** section / **▴ Show less** (open chat kept in top set) |
 | Livebar (braid) | link + phase + perm + effort; **···** expands git/cost/hint |
 
 Early bootstrap in `<head>` sets `data-layout` before paint to avoid FOUC.

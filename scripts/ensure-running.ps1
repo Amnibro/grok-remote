@@ -65,8 +65,35 @@ if (-not $agentUp -and (Test-Path $start)) {
   try { Start-Process -FilePath "powershell.exe" -ArgumentList $psArgs -WindowStyle Hidden | Out-Null } catch { Log ("agent spawn failed: {0}" -f $_.Exception.Message) }
   Start-Sleep -Seconds 2
 }
-$cmdSup = Join-Path $logDir "cmd-supervise.cmd"
-$cmdAlive = Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object { $_.CommandLine -and $_.CommandLine -match "cmd-supervise\.cmd" }
+# cmd reads a batch file line by line while it runs, so rewriting this path under a live
+# supervisor corrupts that loop mid-flight (it exits 0 within milliseconds). Give every
+# supervisor its own file and let old ones age out.
+$cmdSup = Join-Path $logDir ("cmd-supervise-{0}.cmd" -f (Get-Date -Format "yyyyMMdd-HHmmss"))
+Get-ChildItem (Join-Path $logDir "cmd-supervise-*.cmd") -ErrorAction SilentlyContinue |
+  Where-Object { $_.LastWriteTime -lt (Get-Date).AddDays(-1) } |
+  Remove-Item -Force -ErrorAction SilentlyContinue
+# Match the supervisor process itself, not anything that merely mentions it. A shell whose
+# command line contained the word used to count as "already running", so this script would
+# skip the spawn and nothing ever started.
+$cmdAlive = @(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object { $_.Name -eq "cmd.exe" -and $_.CommandLine -and $_.CommandLine -match "cmd-supervise" })
+# Supervisors have stacked before: several loops each respawning the server every few seconds,
+# all fighting for the port so none of them ever holds it. Keep the oldest, retire the rest,
+# and clear out any server.py that is running without owning the port.
+if ($cmdAlive.Count -gt 1) {
+  $keep = ($cmdAlive | Sort-Object CreationDate | Select-Object -First 1).ProcessId
+  foreach ($p in $cmdAlive) { if ($p.ProcessId -ne $keep) { Stop-Process -Id $p.ProcessId -Force -ErrorAction SilentlyContinue } }
+  Log ("retired {0} duplicate supervisor(s), kept {1}" -f ($cmdAlive.Count - 1), $keep)
+  $cmdAlive = @($cmdAlive | Where-Object { $_.ProcessId -eq $keep })
+}
+$owner = @(Get-NetTCPConnection -LocalPort $uiPort -State Listen -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess -Unique)
+if (-not $owner) {
+  $orphans = @(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object { $_.Name -match "^python" -and $_.CommandLine -and $_.CommandLine -match "server\.py" })
+  if ($orphans.Count) {
+    foreach ($o in $orphans) { Stop-Process -Id $o.ProcessId -Force -ErrorAction SilentlyContinue }
+    Log ("cleared {0} server.py process(es) that were not listening on {1}" -f $orphans.Count, $uiPort)
+    Start-Sleep -Milliseconds 600
+  }
+}
 if (-not $cmdAlive) {
   $secret = $env:GROK_AGENT_SECRET
   if (-not $secret) {
@@ -81,28 +108,48 @@ if (-not $cmdAlive) {
     }
   }
   $py = (Get-Command python -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source)
-  if (-not $py) { $py = "python" }
+  if (-not $py) { $py = "C:\Users\antho\AppData\Local\Programs\Python\Python312\python.exe" }
+  # cmd holds an exclusive lock on a >> target. Two supervisors sharing one log meant the
+  # second could not even launch python: the redirect failed, the line never ran, and it span
+  # at "exit=0" forever. Per-instance logs remove the collision.
+  $stamp = Get-Date -Format "yyyyMMdd-HHmmss"
+  $outLog = Join-Path $logDir ("ui-{0}.out.log" -f $stamp)
+  $errLog = Join-Path $logDir ("ui-{0}.err.log" -f $stamp)
+  Get-ChildItem (Join-Path $logDir "ui-*.log") -ErrorAction SilentlyContinue |
+    Where-Object { $_.LastWriteTime -lt (Get-Date).AddDays(-3) } |
+    Remove-Item -Force -ErrorAction SilentlyContinue
   if ($secret -and (Test-Path (Join-Path $pluginRoot "server.py"))) {
     $body = @"
 @echo off
 cd /d "$pluginRoot"
 set GROK_AGENT_SECRET=$secret
 echo [%date% %time%] cmd-supervise start>> logs\supervisor.log
+set WAIT=4
+set FAILS=0
 :loop
 echo [%date% %time%] spawn>> logs\supervisor.log
-"$py" -u server.py --port $uiPort --bind 0.0.0.0 --agent-host 127.0.0.1 --agent-port $agentPort --secret $secret --cwd "$cwd" --ensure-agent >> logs\ui.out.log 2>> logs\ui.err.log
-echo [%date% %time%] exit=%ERRORLEVEL%>> logs\supervisor.log
-if "%ERRORLEVEL%"=="97" (
+"$py" -u server.py --port $uiPort --bind 0.0.0.0 --agent-host 127.0.0.1 --agent-port $agentPort --secret $secret --cwd "$cwd" --ensure-agent >> "$outLog" 2>> "$errLog"
+set RC=%ERRORLEVEL%
+rem a digit touching >> is read as a file handle, so keep a space before the redirect
+echo [%date% %time%] exit=%RC% >> logs\supervisor.log
+if "%RC%"=="97" (
 echo [%date% %time%] healthy instance owns the port - supervisor exiting>> logs\supervisor.log
 goto :eof
 )
-ping -n 4 127.0.0.1 >nul
+set /a FAILS+=1
+if %FAILS% GEQ 12 (
+echo [%date% %time%] 12 failed starts - standing down, the keepalive task will try again>> logs\supervisor.log
+goto :eof
+)
+ping -n %WAIT% 127.0.0.1 >nul
+set /a WAIT=%WAIT%*2
+if %WAIT% GTR 61 set WAIT=61
 goto loop
 "@
     [System.IO.File]::WriteAllText($cmdSup, $body)
     try {
-      $null = ([wmiclass]"Win32_Process").Create("cmd.exe /c `"$cmdSup`"")
-      Log ("spawned cmd-supervise ({0}) ui={1}" -f $Reason, $uiPort)
+      Start-Process -FilePath "cmd.exe" -ArgumentList @("/c", $cmdSup) -WindowStyle Hidden | Out-Null
+      Log ("spawned cmd-supervise hidden ({0}) ui={1}" -f $Reason, $uiPort)
     } catch {
       Log ("cmd-supervise failed: {0}" -f $_.Exception.Message)
     }

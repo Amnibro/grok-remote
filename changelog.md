@@ -1,4 +1,174 @@
-﻿## 2026-08-13 v1.8.0 — radio chips + cheap health + /pair
+## 2026-08-18 v1.9.4 - pair QR was clipped on camera scan
+
+Segno emits an SVG with width/height and **no viewBox**. The pair page then set
+`width:100%;height:auto`, so the modules got cropped. Setup's `#phoneQr` also used
+`border-radius` on the bitmap, which ate the finder corners.
+
+- `qr_svg` injects `viewBox` + `preserveAspectRatio`, quiet zone `border=4`, bigger scale
+- Pair page: `overflow:visible`, `aspect-ratio:1`, more pad, no grid overflow on narrow windows
+- Setup QR sits in a white pad (no radius on the code), 220px + margin 16
+
+## 2026-08-18 v1.9.3 - pair phone back in the header, session filters one line
+
+Anthony: pairing gone from the upper-right menu, amni-scient / leftover module chips still
+clogging the left Sessions rail, filters wrapping off a single line.
+
+- **Pair phone** is back on the orbit menu (status cluster) and the command deck Help row.
+  Loopback opens `/pair` (QR codes). A LAN phone falls back to Setup with the copy/QR card.
+- Session scope chips are **Active / Live / Arch / All** only. Cwd-derived "modules"
+  (Amni-scient, folder leftovers, Apps, Background, …) no longer paint as filters.
+  A leftover `app:*` scope in localStorage snaps back to Active.
+- Rail + filter pop stay **one line** (`flex-wrap:nowrap`, horizontal scroll if the rail is
+  tight). Archived chip shortens to **Arch**.
+- Default wordmark is GROK BUILD. Scient + the other AMNI product skins (AI / Explore / Calc /
+  Learn / Crypt / Haven / Core) are hidden and remapped to Grok. Amni-Delve is off the Apps menu.
+
+## 2026-08-17 v1.9.2 - a hidden tab put its own link to sleep
+
+Anthony: *"the persistence issue with grok-remote not continuing if the tab isn't forefront on the
+pc."* Three separate gates fire when a tab goes to the background, and together they park the tab
+completely.
+
+- `startPoll` returned early while hidden, so a hidden tab ran **no** catch-up. Anything the room
+  produced behind your back was not on that tab when you came back to it.
+- `startLinkKeepalive` runs on a **4s** `setInterval` and closes the socket when nothing has arrived
+  for 45s. Chrome throttles background timers and drops them to about **once a minute** after five
+  minutes hidden - so `silent > 45000` is true on the first fire regardless of how healthy the link
+  is. The stale-link guard was killing the connection it exists to protect.
+- `scheduleReconnect` then re-parked on every retry because the tab was *still* hidden, so the link
+  never came back until the tab was looked at.
+
+The socket was never the problem. `web.WebSocketResponse(heartbeat=12,autoping=True)` already sends
+protocol-level pings, but the browser answers those in its network stack - they never reach
+`onmessage`, so they cannot refresh `linkLastRx`. **Liveness has to arrive as an application frame.**
+
+- Server: `_watch_loop` broadcasts `_x.ai/remote/hub` every 15s while any client is connected. That
+  method is one the client **already** handles, and `ws.onmessage` stamps `linkLastRx` on every
+  frame - so the link stays fresh with no client timer at all, which is what makes it immune to
+  throttling.
+- Client: hidden tabs catch up every 15s instead of never; the link is never torn down from a hidden
+  tab; a reconnect while hidden backs off to 30s instead of parking forever.
+
+Measured: an idle client that sends nothing gets **0** application frames in 50s from the old server
+and **4** from the new one, and 2 in 40s from the live :2421 after restart. A visible tab held one
+socket for 7+ minutes with zero reconnect churn. The end-to-end hidden-tab case is **not** verified
+here - CDP pages report `visible` even when another tab is selected, so the harness cannot produce
+the condition. See `docs/checklists/checklist_hidden_tab_persistence_v1.9.2.md` for the 30-second
+manual check.
+
+## 2026-08-14 v1.9.1 - opening a session: 13.3 s to 41 ms
+
+Opening a conversation stalled the whole server. On a cold page load, `/api/session/titles`
+took **19035 ms of server time**, and every request issued beside it finished at the same
+instant: history 18212 ms, git status 16641 ms, signals 16641 ms, room feed 18377 ms. Later
+requests then showed `queued: 13265 ms` — the browser's connection pool backed up behind the
+stalled ones. `openSession()` measured 13347 ms.
+
+- **`find_session_dir()` rebuilt the whole session index on every miss.** A miss called
+  `_sid_index(force=True)`, which walks 2981 session directories (130 ms). `session_titles`
+  does that for up to 250 ids, and twice per id when the cwd lookup fails first — roughly
+  32 s of rebuilds to answer one request. The forced rebuild is now rate-limited to once
+  per 5 s, so a new session still appears promptly and a batch of misses costs one rebuild.
+- **`session_titles` ran its 250-session loop directly on the event loop**, so while it worked
+  nothing else in the server could answer. It now runs in the executor, the same way
+  `session_history` already did. That is what let one slow handler freeze history and signals.
+- **`read_session_updates(chat_only=True)` re-read and re-parsed its whole window on every
+  doubling** (1.9 MB, then 5.9, 11.9, 23.9 MB, each from scratch) to return 24 messages. It now
+  reads only the newly exposed older prefix and keeps what it already parsed. Coalescing moved
+  to a single pass at the end, because `_coalesce_chat()` mutates the events it merges and
+  running it per round double-appended message text.
+
+`tests/test_history_scan.py` compares the new reader against the v1.8.4 backup on the six
+largest transcripts (458 MB down to 125 MB) and asserts identical events for the open page,
+load-older, a bigger page, and the untouched live and non-chat paths. Same output, 1.0-1.9x
+faster warm and up to 26x when the window has to grow.
+
+Measured after, on a fresh navigation: titles 267 ms, history 24 ms, git status 40 ms, nothing
+queued. Session opens run 23-273 ms and settle in 133-422 ms, first navigation and
+renavigation alike.
+
+Also fixed a clock flake in `tests/test_room.py`: `members(window=0)` compares `now-ts > 0`,
+which is false when Windows returns the same coarse tick. The test now waits 50 ms and uses a
+10 ms window. All 11 room tests pass.
+
+## 2026-08-14 v1.9.0 - agent room (beta)
+
+A short-message channel shared by every agent on this hub. Not a transcript: one line each,
+240 characters, newest last.
+
+- `room.py` - append-only JSONL in the plugin data dir, with a CLI: `say`, `read`, `watch`,
+  `who`, `clear`. Text is collapsed to a single line and capped rather than rejected, empty
+  messages are refused, the author name is bounded at 32 chars, and a corrupt line in the store
+  is skipped instead of killing the read.
+- API: `GET /api/room/feed?since=&limit=`, `POST /api/room/say`, `GET /api/room/members`,
+  `POST /api/room/clear`.
+- **Agents need no key.** The auth middleware already exempts loopback, so an agent on this PC
+  posts with one curl, or `python room.py say --who Name "..."`. The UI prints the exact command
+  for the current host.
+- UI: a dock in the bottom-right corner with a BETA badge, live member list, 240-char counter
+  and Enter-to-send. It is `position:fixed` **on purpose** - it never joins `#app`'s grid, which
+  is where the sidebar-collapse breakage lived. Open state persists in localStorage.
+- 11 tests in `tests/test_room.py`. Verified end to end: three agents posting over both the HTTP
+  and CLI paths, the browser posting as `you`, members listing all four, and the feed surviving
+  a server restart.
+
+## 2026-08-14 v1.8.4 - hiding the sessions rail no longer wrecks the layout
+
+Collapsing the sidebar left a dead column, squeezed the chat into a corner and stranded the
+session list in the bottom-right. Two causes, both in braid-layout.css:
+
+- The Braid picker rule `html[data-layout=braid] body.desktop #picker.panel.on` sets
+  `display:flex` and `grid-area:side` with `!important` at specificity (1,4,2). The generic
+  collapse rule in index.html is (1,4,1), so it lost. The picker stayed laid out, still asking
+  for a `side` area that the collapsed template does not define, and the browser invented
+  implicit columns for it - the computed grid read `0px 820px 0px 454px` instead of two tracks.
+- The `min-width:1200px` block re-states the *expanded* grid, so above 1200px it also beat the
+  collapsed rule from the 900px block (equal specificity, later wins).
+
+Fixes: hide `#picker` in Braid's own collapsed rule so it wins on specificity, covering the
+whole desktop range from 900px up; and restate the collapsed grid inside the 1200px block.
+Verified at 1052, 1274 and 1500px, toggling repeatedly: collapsed gives `0px <full width>` with
+the picker display:none, expanded gives `280-300px <rest>`, and it survives round trips.
+
+Also: the stylesheet link is re-keyed (`braid-layout.css?v=1.8.4`). Without it the browser kept
+serving a cached copy and the fix appeared not to work.
+
+## 2026-08-14 v1.8.3 - the reconnect storm, root-caused
+
+**Two supervisors sharing one log file was the whole problem.** The generated `cmd-supervise` batch appends the server's output with `>> logs\ui.out.log`. cmd takes an *exclusive* lock on a `>>` target, so when a second supervisor existed its python line could not launch at all: the redirect failed, the command never ran, and the loop recorded `exit=0` within the same millisecond and span again 3 seconds later, forever. Neither supervisor ever held :2421, so the UI was unreachable and the phone sat on CONNECTING / no link.
+
+Fixes, in the order they matter:
+- **Per-instance log files** (`ui-<stamp>.out.log`). No shared handle, no lock collision.
+- **Per-instance batch file.** cmd reads a batch line by line *while running it*, so regenerating `cmd-supervise.cmd` under a live supervisor corrupted that loop mid-flight. Each supervisor gets its own file now; old ones age out after a day.
+- **The "already running" guard matched any process whose command line merely mentioned cmd-supervise** - including a shell that referenced it. ensure-running.ps1 would then skip the spawn and nothing started. It now requires Name -eq cmd.exe, and the orphan sweep likewise requires a python process.
+- **Backoff and a give-up cap**: 4s, 8s, 16s ... 61s, standing down after 12 failed starts so the 2-minute keepalive owns the retry instead of a 3-second hot loop.
+- **Duplicate retirement + orphan cleanup**: keep the oldest supervisor, kill the rest, clear any server.py running without owning the port.
+- `exit=%RC%` never logged a value, because a digit touching `>>` is parsed as a file handle. It has a space now.
+
+Verified: one supervisor, one server, /health 200 with ready/hub_up/agent_listening true. Header went from `CONNECTING - no link` to `TOOLS - 1ms - hub`; footer from `link: connecting` to `link: live - running tools`.
+
+## 2026-08-14 client - status spam and a self-inflicted disconnect
+- **A slow session list no longer drops a live link.** init ran fetchSessions() inside its try block, so when the PC was busy and _x.ai/sessions/list blew its 30s timeout, the exception tore down a connection that had already succeeded, restarted the agent and armed a reconnect. It now keeps the link, keeps the list it already has, says so once, and refills in the background with backoff.
+- **Repeated chips collapse.** chip() appended a fresh line every time, so eleven identical "wifi blip - catch-up on HTTP" pills buried the conversation. Same text as the previous chip increments a count on it instead.
+
+﻿## 2026-08-14 v1.8.2 — stale-link / session/load death loop
+Anthony: `link stale · forcing reconnect` then `timeout: session/load` then `init failed: connection closed` ×5.
+
+- **Root:** hub `async for` awaited `session/load`/`ensure` so **pings never ran**. 15s silence → client `ws.close()` mid-init.
+- **Root:** `session/load` client timeout was **10s**; grok 1.0.3 attach of an existing chat is slower.
+- **Root:** hub→agent WS used aiohttp `heartbeat=12` + `ClientTimeout(total=6)` — agent often ignores WS pings → **upstream closed** → `:2419` looks dead. cmd.exe spawn sometimes never bound the port.
+- **Fix:** answer pings in the read loop (never behind RPC). session/load waits 90s. stale only after 45s and no in-flight RPC. No protocol heartbeat to agent. Spawn `grok.exe` directly. Hard-refresh phone.
+
+## 2026-08-14 v1.8.1 — mirror grok-build + stop random disconnects
+Anthony: grok-remote dropped the phone and lagged behind grok-build.
+
+- **Root:** `/api/stack/start` defaulted `force=true` and `start_agent_process` always `claim_port(:2419)`, so Start / init-blip / supervisor murdered a live agent (log: `[claim] free agent :2419` then `[hub] upstream closed`).
+- **Root:** client skipped disk catch-up while WS looked “fresh”, so grok-build TUI turns never painted on the phone.
+- **Note:** `grok agent --leader serve` does **not** bind `:2419` (it attaches to the TUI leader with no local WS). Remote still uses `--no-leader serve` so the hub has a socket. Live mirror is **disk** (`updates.jsonl`) on a 0.5–0.9s poll.
+- **Fix:** Never kill a listening agent unless `force`. stack_start defaults force off. Watchdog respawns only if the port is empty. `start.ps1` leaves healthy :2419/:2421 alone. Phone always polls disk so grok-build and remote stay in step.
+- Hard-refresh the phone UI after this drop.
+
+## 2026-08-13 v1.8.0 — radio chips + cheap health + /pair
 - `/health` is cheap (`ok` = UI alive, `hub_up` / `agent_listening` / `ready`). Supervisor 2s timeout no longer waits on agent `initialize`.
 - `/health/deep` keeps the old initialize probe.
 - `/pair` wired (loopback-only). Startup prints QR banner. Pair page uses Braid paper/lavender.
@@ -538,7 +708,7 @@ Files: `web/cockpit-features.js`, index wiring. Hard-refresh after stack up.
 - **Persona flyout:** personalities (Concise, Unhinged, Programmer, Engineer, Manager, Clown, Warlord, …)
 - **Directions:** Build, Debug, Review, Explore, Plan, Ship, Refactor, Security, Docs, Teach, Speedrun
 - Setup preamble on first send per session; **Inject setup now** button
-- **Risk** persona owner-gated (local owner path or `?owner=1` unlock); not shown to others by default
+- **Risk** persona owner-gated (`Users\antho` path or `?owner=1` unlock); not shown to others by default
 - Prefs: `grok_remote_persona`, `grok_remote_direction`
 
 ## 2026-07-09 — Cockpit IDE + auto-stack + Grok Review v4.0

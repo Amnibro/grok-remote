@@ -3,6 +3,10 @@ import os,sys,json,socket,argparse,asyncio,mimetypes,subprocess,shutil,re,time,u
 from pathlib import Path
 from urllib.parse import quote,unquote
 ROOT=Path(__file__).resolve().parent
+try:
+ import room as room_store
+except Exception:
+ room_store=None
 WEB=ROOT/"web"
 GROK_SESSIONS=Path.home()/".grok"/"sessions"
 LOOP_STORE=Path.home()/".grok"/"plugin-data"/"grok-remote"/"loops.json"
@@ -53,24 +57,40 @@ def claim_port(port:int,label="port"):
  if not pids:return []
  print("[claim] free %s :%d pids=%s"%(label,port,pids),flush=True)
  return kill_pids_list(pids)
-def write_run_agent_cmd(secret:str,agent_port:int,cwd:str):
+def use_leader_mode():
+ v=str(os.environ.get("GROK_REMOTE_LEADER") or "").strip().lower()
+ return v in ("1","true","yes","on")
+def write_run_agent_cmd(secret:str,agent_port:int,cwd:str,use_leader=None):
  log_dir=ROOT/"logs";log_dir.mkdir(parents=True,exist_ok=True)
  grok=find_grok()
  if not grok:return None
  agent_log=log_dir/"agent.log"
  cmd_path=log_dir/"run-agent.cmd"
  cwd_s=str(cwd).replace('"','')
- body="@echo off\r\ncd /d \"%s\"\r\nset GROK_AGENT_SECRET=%s\r\n\"%s\" agent --always-approve --no-leader serve --bind 127.0.0.1:%d --secret %s >> \"%s\" 2>&1\r\n"%(cwd_s,secret,grok,agent_port,secret,agent_log)
+ if use_leader is None:use_leader=use_leader_mode()
+ flag="--leader" if use_leader else "--no-leader"
+ body="@echo off\r\ncd /d \"%s\"\r\nset GROK_AGENT_SECRET=%s\r\n\"%s\" agent --always-approve %s serve --bind 127.0.0.1:%d --secret %s >> \"%s\" 2>&1\r\n"%(cwd_s,secret,grok,flag,agent_port,secret,agent_log)
  cmd_path.write_text(body,encoding="utf-8",errors="replace")
  return cmd_path
-def start_agent_process(secret:str,agent_port:int,cwd:str):
- cmd=write_run_agent_cmd(secret,agent_port,cwd)
- if not cmd:raise RuntimeError("grok.exe not found under ~/.grok/bin")
- claim_port(agent_port,"agent")
- creation=0x00000008|0x00000200 if sys.platform=="win32" else 0
- subprocess.Popen(["cmd.exe","/c",str(cmd)],cwd=str(cwd),creationflags=creation if sys.platform=="win32" else 0,
-  stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,stdin=subprocess.DEVNULL,close_fds=True)
- return str(cmd)
+def start_agent_process(secret:str,agent_port:int,cwd:str,force=False):
+ if not force and listen_pids_port(agent_port,exclude_self=False):
+  print("[boot] agent already on :%d — leave it"%agent_port,flush=True)
+  return "existing"
+ if force:claim_port(agent_port,"agent")
+ grok=find_grok()
+ if not grok:raise RuntimeError("grok.exe not found under ~/.grok/bin")
+ write_run_agent_cmd(secret,agent_port,cwd,use_leader=False)
+ log_dir=ROOT/"logs";log_dir.mkdir(parents=True,exist_ok=True)
+ log_path=log_dir/"agent.spawn.log"
+ try:logf=open(log_path,"a",encoding="utf-8",errors="replace")
+ except Exception:logf=subprocess.DEVNULL
+ creation=0x08000000 if sys.platform=="win32" else 0
+ env=dict(os.environ);env["GROK_AGENT_SECRET"]=str(secret)
+ subprocess.Popen([grok,"agent","--always-approve","--no-leader","serve","--bind","127.0.0.1:%d"%int(agent_port),"--secret",str(secret)],
+  cwd=str(cwd),stdout=logf,stderr=logf,stdin=subprocess.DEVNULL,
+  creationflags=creation if sys.platform=="win32" else 0,env=env,close_fds=False)
+ print("[boot] spawned grok agent serve :%d"%int(agent_port),flush=True)
+ return grok
 def wait_port(port:int,timeout=20.0):
  import time
  t0=time.time()
@@ -126,17 +146,57 @@ def encode_session_cwd(cwd:str):
  return quote(s,safe="")
 def _session_dir_ok(d:Path):
  return d.is_dir() and ((d/"updates.jsonl").is_file() or (d/"summary.json").is_file())
+_SID_INDEX=None
+_SID_INDEX_AT=0.0
+_SID_DIR_CACHE={}
+def _rebuild_sid_index():
+ global _SID_INDEX,_SID_INDEX_AT
+ idx={}
+ root=GROK_SESSIONS
+ if root.is_dir():
+  try:
+   for p in root.iterdir():
+    if not p.is_dir():continue
+    try:
+     for c in p.iterdir():
+      if not c.is_dir():continue
+      name=c.name
+      if ".." in name or "/" in name or "\\" in name:continue
+      if (c/"updates.jsonl").is_file() or (c/"summary.json").is_file():
+       idx.setdefault(name,[]).append(c)
+    except Exception:pass
+  except Exception:pass
+ _SID_INDEX=idx
+ _SID_INDEX_AT=time.time()
+ return idx
+def _sid_index(force=False):
+ global _SID_INDEX,_SID_INDEX_AT
+ if force or _SID_INDEX is None or (time.time()-_SID_INDEX_AT)>60:return _rebuild_sid_index()
+ return _SID_INDEX
+def _cache_session_dir(sid,cwd,d):
+ if not d:return d
+ _SID_DIR_CACHE[(sid,str(cwd or ""))]= (str(d),time.time()+90)
+ return d
 def find_session_dir(session_id:str,cwd:str|None=None):
  sid=str(session_id or "").strip()
  if not sid or ".." in sid or "/" in sid or "\\" in sid:return None
  root=GROK_SESSIONS
  if not root.is_dir():return None
- hits=[]
+ ck=(sid,str(cwd or ""))
+ hit=_SID_DIR_CACHE.get(ck)
+ if hit:
+  p,exp=hit
+  if time.time()<exp:
+   d=Path(p)
+   if _session_dir_ok(d):return d
+  else:_SID_DIR_CACHE.pop(ck,None)
  if cwd:
-  c=str(Path(cwd).expanduser().resolve()) if cwd not in (".","") else ""
+  c=""
+  try:c=str(Path(cwd).expanduser().resolve()) if cwd not in (".","") else ""
+  except Exception:c=str(cwd or "")
   variants=[]
   if c:
-   for v in (c,c.replace("/","\\"),c.replace("\\","/"),str(Path(c)),str(Path(c).resolve())):
+   for v in (c,c.replace("/","\\"),c.replace("\\","/"),str(Path(c))):
     if v and v not in variants:variants.append(v)
     if os.name=="nt":
      v2=v.replace("\\","\\\\")
@@ -144,17 +204,15 @@ def find_session_dir(session_id:str,cwd:str|None=None):
   for variant in variants:
    enc=encode_session_cwd(variant)
    d=root/enc/sid
-   if _session_dir_ok(d):return d
+   if _session_dir_ok(d):return _cache_session_dir(sid,cwd,d)
    enc2=quote(variant.replace("/","\\").replace("\\","\\\\") if os.name=="nt" else variant,safe="")
    d2=root/enc2/sid
-   if _session_dir_ok(d2):return d2
- try:
-  for p in root.iterdir():
-   if not p.is_dir():continue
-   d=p/sid
-   if _session_dir_ok(d):hits.append(d)
- except Exception:pass
- if len(hits)==1:return hits[0]
+   if _session_dir_ok(d2):return _cache_session_dir(sid,cwd,d2)
+ hits=list(_sid_index().get(sid) or [])
+ if not hits and (time.time()-_SID_INDEX_AT)>5.0:
+  hits=list(_sid_index(force=True).get(sid) or [])
+ hits=[d for d in hits if _session_dir_ok(d)]
+ if len(hits)==1:return _cache_session_dir(sid,cwd,hits[0])
  if len(hits)>1:
   if cwd:
    try:
@@ -168,10 +226,10 @@ def find_session_dir(session_id:str,cwd:str|None=None):
      pl=parent.lower() if os.name=="nt" else parent
      if cnorm and (pl==cnorm or pl.endswith(cnorm) or cnorm.endswith(pl)):cwd_hits.append(d)
     except Exception:pass
-   if len(cwd_hits)==1:return cwd_hits[0]
+   if len(cwd_hits)==1:return _cache_session_dir(sid,cwd,cwd_hits[0])
    if cwd_hits:hits=cwd_hits
   hits.sort(key=lambda d:(d/"updates.jsonl").stat().st_mtime if (d/"updates.jsonl").is_file() else 0,reverse=True)
-  return hits[0]
+  return _cache_session_dir(sid,cwd,hits[0])
  return None
 def read_session_title(sdir:Path):
  if not sdir:return ""
@@ -222,6 +280,20 @@ def _parse_update_line(line,live=False):
  }
 def _strip_ev(ev):
  return {k:v for k,v in ev.items() if not k.startswith("_")}
+_CHAT_TEXT_CAP=120_000
+_CHAT_MARK_A=b"user_message_chunk"
+_CHAT_MARK_B=b"agent_message_chunk"
+def _trim_chat_text(ev,cap=_CHAT_TEXT_CAP):
+ try:
+  u=((ev.get("params") or {}).get("update") or {})
+  c=u.get("content") if isinstance(u.get("content"),dict) else None
+  if not c:return ev
+  t=c.get("text")
+  if isinstance(t,str) and len(t)>cap:
+   c=dict(c);c["text"]=t[:cap]+"\n…[truncated for load speed]";u=dict(u);u["content"]=c
+   p=dict(ev.get("params") or {});p["update"]=u;ev=dict(ev);ev["params"]=p
+ except Exception:pass
+ return ev
 def _coalesce_chat(events):
  out=[]
  for ev in events:
@@ -266,49 +338,64 @@ def read_session_updates(session_dir:Path,limit=1600,max_bytes=8_000_000,since_b
     if cut>0 and cut<len(raw):raw=raw[:cut]
     end_pos=window_start+len(raw)
     for line in raw.splitlines():
+     if _CHAT_MARK_A not in line and _CHAT_MARK_B not in line and b"agent_thought_chunk" not in line and b"tool_call" not in line and b"turn_completed" not in line and b"task_completed" not in line and b"plan" not in line and b"session_recap" not in line:continue
      try:s=line.decode("utf-8","replace")
      except Exception:s=""
      ev=_parse_update_line(s,live=True)
      if ev:scored.append(ev)
     if len(scored)>limit:scored=scored[-limit:]
-    return [_strip_ev(ev) for ev in scored],{"path":str(path),"size":size,"end":end_pos,"returned":len(scored),"scanned":len(scored),"since":since,"live":True,"has_more":False,"window_start":window_start}
+    return [_trim_chat_text(_strip_ev(ev)) for ev in scored],{"path":str(path),"size":size,"end":end_pos,"returned":len(scored),"scanned":len(scored),"since":since,"live":True,"has_more":False,"window_start":window_start}
    end_cap=size if before_bytes is None else min(max(0,int(before_bytes)),size)
    if end_cap<=0:return [],{"path":str(path),"size":size,"has_more":False,"window_start":0,"window_end":0,"returned":0,"live":False}
    if chat_only:
     want=max(1,int(limit))
-    scan=max(int(max_bytes or 0),min(8_000_000,max(1_500_000,want*80000)))
+    max_scan=min(64_000_000,max(16_000_000,int(max_bytes or 0)*16,want*800_000))
+    scan=min(max_scan,max(1_200_000,want*80_000))
     collected=[]
     first_off=end_cap
     scanned_lines=0
+    start=end_cap
+    coalesced=[]
+    acc=[]
+    read_to=end_cap
+    end_pos=end_cap
+    window_start=end_cap
     while True:
      start=max(0,end_cap-scan)
      f.seek(start)
      if start>0:f.readline()
      window_start=f.tell()
-     blob=f.read(max(0,end_cap-window_start))
-     end_pos=window_start+len(blob)
-     lines=blob.splitlines(keepends=True)
-     scanned_lines=len(lines)
-     collected=[]
-     off=end_pos
-     for raw_line in reversed(lines):
-      off-=len(raw_line)
-      s=raw_line.decode("utf-8","replace").rstrip("\r\n")
-      if not s.strip():continue
-      ev=_parse_update_line(s,live=False)
-      if not ev or ev.get("_kind") not in msg_kinds:continue
-      ev["_off"]=off
-      collected.append(ev)
-      if len(collected)>=want:break
-     collected.reverse()
-     first_off=collected[0].get("_off",window_start) if collected else window_start
-     if len(collected)>=want or start<=0 or scan>=8_000_000:break
-     scan=min(8_000_000,scan*2)
-    collected=_coalesce_chat(collected)
+     if window_start<read_to:
+      blob=f.read(read_to-window_start)
+      if read_to==end_cap:end_pos=window_start+len(blob)
+      lines=blob.splitlines(keepends=True)
+      scanned_lines+=len(lines)
+      off=window_start+len(blob)
+      for raw_line in reversed(lines):
+       off-=len(raw_line)
+       if _CHAT_MARK_A not in raw_line and _CHAT_MARK_B not in raw_line:continue
+       s=raw_line.decode("utf-8","replace").rstrip("\r\n")
+       if not s.strip():continue
+       ev=_parse_update_line(s,live=False)
+       if not ev or ev.get("_kind") not in msg_kinds:continue
+       ev["_off"]=off
+       acc.append(ev)
+       if len(acc)>=want*4:break
+      read_to=window_start
+     groups=0;lastk=None
+     for ev in reversed(acc):
+      k=ev.get("_kind") or ""
+      if k not in msg_kinds or lastk is None or lastk!=k:groups+=1
+      lastk=k
+     if groups>=want or start<=0 or scan>=max_scan or len(acc)>=want*4:break
+     scan=min(max_scan,max(scan*2,scan+4_000_000))
+    coalesced=_coalesce_chat(list(reversed(acc)))
+    first_off=coalesced[0].get("_off",window_start) if coalesced else window_start
+    collected=coalesced
     if len(collected)>want:collected=collected[-want:]
     first_off=collected[0].get("_off",first_off) if collected else first_off
     has_more=bool(first_off>0 and (start>0 or len(collected)>=want))
-    return [_strip_ev(ev) for ev in collected],{"path":str(path),"size":size,"returned":len(collected),"scanned":scanned_lines,"live":False,"has_more":has_more,"window_start":int(first_off),"window_end":end_pos,"end":end_pos,"older_before":int(first_off),"chat_only":True}
+    return [_trim_chat_text(_strip_ev(ev)) for ev in collected],{"path":str(path),"size":size,"returned":len(collected),"scanned":scanned_lines,"live":False,"has_more":has_more,"window_start":int(first_off),"window_end":end_pos,"end":end_pos,"older_before":int(first_off),"chat_only":True}
    start=max(0,end_cap-max_bytes)
    f.seek(start)
    if start>0:f.readline()
@@ -320,6 +407,7 @@ def read_session_updates(session_dir:Path,limit=1600,max_bytes=8_000_000,since_b
   for line in lines:
    line_start=off
    off+=len(line)
+   if b"sessionUpdate" not in line and b"session_update" not in line:continue
    s=line.decode("utf-8","replace").rstrip("\r\n")
    if not s.strip():continue
    ev=_parse_update_line(s,live=False)
@@ -343,7 +431,7 @@ def read_session_updates(session_dir:Path,limit=1600,max_bytes=8_000_000,since_b
  else:
   kept=scored
  first_off=kept[0].get("_off",window_start) if kept else window_start
- events=[_strip_ev(ev) for ev in kept]
+ events=[_trim_chat_text(_strip_ev(ev)) for ev in kept]
  has_more=bool(window_start>0 or trimmed)
  return events,{"path":str(path),"size":size,"returned":len(events),"scanned":len(scored),"live":False,"has_more":has_more,"window_start":int(first_off),"window_end":end_pos,"end":end_pos,"older_before":int(first_off),"chat_only":bool(chat_only)}
 def is_text_path(p:Path):
@@ -454,7 +542,7 @@ def make_auth_middleware(token:str):
  async def auth_mw(request,handler):
   if not token:return await handler(request)
   if request.query.get("demo")=="1":return await handler(request)
-  if request.path=="/health":return await handler(request)
+  if request.path in ("/health","/health/deep"):return await handler(request)
   supplied=request.query.get("key") or request.cookies.get(UI_KEY_COOKIE) or request.headers.get("X-Grok-Remote-Key") or ""
   loop=_loopback(request)
   if not loop and supplied!=token:
@@ -567,8 +655,10 @@ class AgentHub:
   self._term_n=0
   self._watch_task=None
  def _maybe_spawn_agent(self):
-  """The agent was only ever spawned at server BOOT - if grok.exe died later the hub
-  retried a dead port forever while clients waited. Respawn it, at most twice a minute."""
+  port=getattr(self,"agent_port",2419)
+  try:
+   if listen_pids_port(int(port),exclude_self=False):return
+  except Exception:pass
   fn=getattr(self,"spawn_agent",None)
   if not fn:return
   now=time.time()
@@ -590,11 +680,20 @@ class AgentHub:
     if not c.closed:await c.send_str(msg)
    except Exception:pass
  async def _watch_loop(self):
+  hb=0.0
   while True:
    try:
     down=self._agent is None or self._agent.closed
     # a dead upstream with clients waiting is an outage, not a curiosity - hurry
     await asyncio.sleep(2 if (down and self.clients) else 10)
+    # A BACKGROUND TAB CANNOT KEEP ITS OWN LINK ALIVE. Chrome throttles setInterval to about
+    # once a minute in a hidden tab, so the client's 4s keepalive stops firing, its own
+    # "silent > 45s" check trips, and it closes the socket it was trying to protect. Inbound
+    # frames are NOT throttled, so liveness has to come from this side. The client already
+    # refreshes linkLastRx on every message and already handles this method.
+    if self.clients and time.time()-hb>=15:
+     hb=time.time()
+     await self._notify_hub_state(bool(self._agent and not self._agent.closed))
     if self.clients or self.pending or self._rpc_futs:
      ok=await self.ensure(retries=2,delay=0.25)
      if not ok:self._maybe_spawn_agent()
@@ -652,8 +751,8 @@ class AgentHub:
   from aiohttp import ClientSession,ClientTimeout
   await self._close_unlocked(keep_init=False)
   try:
-   self._session=ClientSession(timeout=ClientTimeout(total=6,connect=2,sock_connect=2,sock_read=None))
-   self._agent=await self._session.ws_connect(self.agent_ws,heartbeat=12,max_msg_size=16*1024*1024,autoping=True,receive_timeout=None)
+   self._session=ClientSession(timeout=ClientTimeout(total=None,connect=8,sock_connect=8,sock_read=None))
+   self._agent=await self._session.ws_connect(self.agent_ws,heartbeat=None,max_msg_size=16*1024*1024,autoping=False,receive_timeout=None)
    self._alive=True
    self._last_err=""
    self._reader=asyncio.create_task(self._pump())
@@ -919,11 +1018,22 @@ class AgentHub:
     try:await client.send_str(json.dumps({"jsonrpc":"2.0","method":"error","params":{"message":"agent hub unavailable · start agent serve on :2419 · "+(self._last_err or "")}}))
     except Exception:pass
    async for msg in client:
-    if msg.type==WSMsgType.TEXT:await self._to_agent(client,msg.data)
+    raw=None
+    if msg.type==WSMsgType.TEXT:raw=msg.data
     elif msg.type==WSMsgType.BINARY:
-     try:await self._to_agent(client,msg.data.decode("utf-8","replace"))
-     except Exception:pass
+     try:raw=msg.data.decode("utf-8","replace")
+     except Exception:raw=None
     elif msg.type in (WSMsgType.CLOSE,WSMsgType.ERROR,WSMsgType.CLOSED):break
+    if raw is None:continue
+    try:peek=json.loads(raw)
+    except Exception:peek=None
+    if isinstance(peek,dict) and peek.get("method")=="_x.ai/remote/ping":
+     params=peek.get("params") if isinstance(peek.get("params"),dict) else {}
+     try:
+      await client.send_str(json.dumps({"jsonrpc":"2.0","method":"_x.ai/remote/pong","params":{"t":params.get("t"),"s":time.time(),"clients":len(self.clients),"hub_up":bool(self._agent and not self._agent.closed)}},separators=(",",":")))
+     except Exception:pass
+     continue
+    await self._to_agent(client,raw)
   except Exception as e:
    print("[hub] client error:",e,flush=True)
   finally:
@@ -959,7 +1069,7 @@ class AgentHub:
   # "agent offline" here is what made first connections fail while the agent was still
   # booting. Everything else keeps the fast path - a prompt against a dead agent should
   # error quickly, not hang.
-  patient=(method=="initialize")
+  patient=method in ("initialize","session/load","session/new")
   if not await self.ensure(retries=(30 if patient else 3),delay=(0.5 if patient else 0.2)):
    await self._reply_err(client,orig,"agent offline · is serve on :2419? "+(self._last_err or ""),-32001)
    return
@@ -1108,6 +1218,7 @@ async def main_async(a):
  work_root=Path(a.cwd).expanduser().resolve()
  state={"cwd":str(work_root)}
  hub=AgentHub(agent_ws)
+ hub.agent_port=a.agent_port
  loops=RemoteLoopManager(hub,LOOP_STORE)
  keyq=("?key=%s"%a.secret) if a.secret else ""
  cfg={"agent_host":agent_host,"agent_port":a.agent_port,"secret":"(held server-side)","cwd":state["cwd"],"ws_url":"ws://%s:%d/ws"%(lan,a.port),"ws_path":"/ws","ui":"http://%s:%d/%s"%(lan,a.port,keyq),"watch":"http://%s:%d/watch%s"%(lan,a.port,keyq),"lan_ip":lan,"proxy":True,"hub":True,"ide":True,"auth":bool(a.secret),"features":["fs","ide","review","multi-client-hub","skills-scan","git","project-context","stop-turn","todos","voice-tts","voice-go","xr-ar","watch-companion","msg-queue","remote-loop","effort"]}
@@ -1124,7 +1235,7 @@ async def main_async(a):
   if not under_root(p,root):raise web.HTTPForbidden(text="path outside workspace")
   return p
  async def index(_):
-  return web.FileResponse(WEB/"index.html")
+  return web.FileResponse(WEB/"index.html",headers={"Cache-Control":"no-store"})
  async def watch_page(_):
   p=WEB/"watch.html"
   if not p.is_file():raise web.HTTPNotFound()
@@ -1143,7 +1254,15 @@ async def main_async(a):
   if name.endswith(".woff2"):ctype="font/woff2"
   elif name.endswith(".woff"):ctype="font/woff"
   return web.FileResponse(p,headers={"Content-Type":ctype,"Cache-Control":"public, max-age=86400"})
+ def _peer_loopback(request):
+  try:peer=request.remote or ""
+  except Exception:peer=""
+  return peer in ("127.0.0.1","::1","::ffff:127.0.0.1") or str(peer).startswith("127.")
  async def health(_):
+  ag=listen_pids_port(a.agent_port,exclude_self=False)
+  hub_up=hub._agent is not None and not getattr(hub._agent,"closed",True)
+  return web.json_response({"ok":True,"ui":True,"ready":bool(hub_up and ag),"agent_ws_local":"ws://%s:%d/ws"%(agent_host,a.agent_port),"detail":"","cwd":state["cwd"],"hub_clients":len(hub.clients),"hub_up":hub_up,"hub_err":getattr(hub,"_last_err","") or "","init_cached":bool(getattr(hub,"_init_done",False)),"agent_listening":bool(ag)},headers={"Cache-Control":"no-store"})
+ async def health_deep(_):
   ok=False;detail=""
   try:
    async with ClientSession(timeout=ClientTimeout(total=6,connect=3)) as s:
@@ -1152,7 +1271,19 @@ async def main_async(a):
      msg=await asyncio.wait_for(w.receive(),timeout=5)
      ok=msg.type==WSMsgType.TEXT and "result" in json.loads(msg.data)
   except Exception as e:detail=re.sub(r"server-key=[^&'\s]+","server-key=***",str(e))[:200]
-  return web.json_response({"ok":ok,"agent_ws_local":"ws://%s:%d/ws"%(agent_host,a.agent_port),"detail":detail,"cwd":state["cwd"],"hub_clients":len(hub.clients),"hub_up":hub._agent is not None and not getattr(hub._agent,"closed",True),"hub_err":getattr(hub,"_last_err","") or "","init_cached":bool(getattr(hub,"_init_done",False))})
+  hub_up=hub._agent is not None and not getattr(hub._agent,"closed",True)
+  return web.json_response({"ok":ok,"agent_ws_local":"ws://%s:%d/ws"%(agent_host,a.agent_port),"detail":detail,"cwd":state["cwd"],"hub_clients":len(hub.clients),"hub_up":hub_up,"hub_err":getattr(hub,"_last_err","") or "","init_cached":bool(getattr(hub,"_init_done",False))},headers={"Cache-Control":"no-store"})
+ async def pair(request):
+  if not _peer_loopback(request):
+   raise web.HTTPForbidden(text="pair is loopback-only")
+  try:
+   from pairing import addresses,page,ensure_segno
+   pub=getattr(a,"public_host","") or os.environ.get("GROK_REMOTE_PUBLIC_HOST","")
+   addrs=addresses(a.port,a.secret,public_host=pub)
+   html=page(addrs,cwd=state.get("cwd") or "",have_qr=ensure_segno(),port=a.port)
+  except Exception as e:
+   html="<!doctype html><meta charset=utf-8><title>Pair</title><p>Pairing unavailable: %s</p>"%str(e)[:240]
+  return web.Response(text=html,content_type="text/html",headers={"Cache-Control":"no-store"})
  async def fs_root(_):
   r=root_path()
   return web.json_response({"root":str(r),"exists":r.is_dir()})
@@ -1261,24 +1392,27 @@ async def main_async(a):
   ids=body.get("ids") or body.get("sessionIds") or []
   if isinstance(ids,str):ids=[ids]
   cwd=str(body.get("cwd") or state["cwd"] or "")
-  out={}
-  for raw in list(ids)[:250]:
-   sid=str(raw or "").strip()
-   if not sid or sid in out:continue
-   sdir=find_session_dir(sid,cwd or None)
-   if not sdir:sdir=find_session_dir(sid,None)
-   if not sdir:continue
-   info=read_session_info(sdir)
-   mtime=0
-   try:
-    up=sdir/"updates.jsonl"
-    if up.is_file():mtime=int(up.stat().st_mtime*1000)
-    else:
-     sm=sdir/"summary.json"
-     if sm.is_file():mtime=int(sm.stat().st_mtime*1000)
-   except Exception:pass
-   if info.get("title") or info.get("cwd") or mtime:
-    out[sid]={"title":info.get("title") or "","cwd":info.get("cwd") or "","dir":str(sdir),"mtime":mtime,"updatedAt":mtime}
+  def _titles():
+   out={}
+   for raw in list(ids)[:250]:
+    sid=str(raw or "").strip()
+    if not sid or sid in out:continue
+    sdir=find_session_dir(sid,cwd or None)
+    if not sdir:sdir=find_session_dir(sid,None)
+    if not sdir:continue
+    info=read_session_info(sdir)
+    mtime=0
+    try:
+     up=sdir/"updates.jsonl"
+     if up.is_file():mtime=int(up.stat().st_mtime*1000)
+     else:
+      sm=sdir/"summary.json"
+      if sm.is_file():mtime=int(sm.stat().st_mtime*1000)
+    except Exception:pass
+    if info.get("title") or info.get("cwd") or mtime:
+     out[sid]={"title":info.get("title") or "","cwd":info.get("cwd") or "","dir":str(sdir),"mtime":mtime,"updatedAt":mtime}
+   return out
+  out=await asyncio.get_event_loop().run_in_executor(None,_titles)
   return web.json_response({"ok":True,"titles":out,"count":len(out)},headers={"Cache-Control":"no-store"})
  async def session_signals(request):
   sid=(request.rel_url.query.get("sessionId") or request.rel_url.query.get("id") or "").strip()
@@ -1308,6 +1442,28 @@ async def main_async(a):
    "primaryModelId":sig.get("primaryModelId") or sig.get("primary_model_id"),
    "signals":sig
   },headers={"Cache-Control":"no-store"})
+ async def room_feed(request):
+  if room_store is None:return web.json_response({"ok":False,"error":"room module unavailable"},status=503)
+  since=request.query.get("since") or 0
+  limit=request.query.get("limit") or 200
+  msgs=room_store.feed(since,limit)
+  last=int(msgs[-1]["id"]) if msgs else int(since or 0)
+  return web.json_response({"ok":True,"messages":msgs,"last":last,"limit":room_store.LIMIT},
+   headers={"Cache-Control":"no-store"})
+ async def room_say(request):
+  if room_store is None:return web.json_response({"ok":False,"error":"room module unavailable"},status=503)
+  try:body=await request.json()
+  except Exception:body={}
+  who=body.get("who") or request.query.get("who") or "agent"
+  text=body.get("text") or request.query.get("text") or ""
+  out=room_store.say(who,text,body.get("kind") or "say")
+  return web.json_response(out,status=200 if out.get("ok") else 400,headers={"Cache-Control":"no-store"})
+ async def room_members(_):
+  if room_store is None:return web.json_response({"ok":False,"error":"room module unavailable"},status=503)
+  return web.json_response({"ok":True,"members":room_store.members()},headers={"Cache-Control":"no-store"})
+ async def room_clear(_):
+  if room_store is None:return web.json_response({"ok":False,"error":"room module unavailable"},status=503)
+  return web.json_response(room_store.clear())
  async def session_archived_get(_):
   ids=load_archived_ids()
   return web.json_response({"ok":True,"ids":ids,"count":len(ids),"path":str(archive_store_path())},headers={"Cache-Control":"no-store"})
@@ -1484,17 +1640,19 @@ async def main_async(a):
   body={}
   try:body=await request.json()
   except Exception:pass
-  force=True if "force" not in body and "restart" not in body else bool(body.get("force") or body.get("restart"))
+  force=bool(body.get("force") or body.get("restart"))
   cwd=str(body.get("cwd") or state["cwd"] or a.cwd)
   agent_up=bool(listen_pids_port(a.agent_port,exclude_self=False))
   killed=[];started=False;msg="";attempts=[]
   async def spawn_agent(reason):
    nonlocal killed,started,msg
-   killed=claim_port(a.agent_port,"agent")
-   try:await hub.close()
-   except Exception:pass
-   await asyncio.sleep(0.25)
-   start_agent_process(a.secret,a.agent_port,cwd)
+   hard=reason in ("force","hub-auth-retry")
+   if hard:
+    killed=claim_port(a.agent_port,"agent")
+    try:await hub.close()
+    except Exception:pass
+    await asyncio.sleep(0.25)
+   start_agent_process(a.secret,a.agent_port,cwd,force=hard)
    started=True
    ok_listen=await asyncio.get_event_loop().run_in_executor(None,lambda:wait_port(a.agent_port,24))
    attempts.append({"reason":reason,"listen":ok_listen,"killed":killed})
@@ -1536,6 +1694,8 @@ async def main_async(a):
  app.router.add_get("/config.json",config)
  app.router.add_get("/config",config)
  app.router.add_get("/health",health)
+ app.router.add_get("/health/deep",health_deep)
+ app.router.add_get("/pair",pair)
  app.router.add_get("/ws",ws_proxy)
  app.router.add_get("/static/{name:.*}",static)
  app.router.add_get("/api/fs/root",fs_root)
@@ -1548,6 +1708,10 @@ async def main_async(a):
  app.router.add_get("/api/session/history",session_history)
  app.router.add_post("/api/session/titles",session_titles)
  app.router.add_get("/api/session/signals",session_signals)
+ app.router.add_get("/api/room/feed",room_feed)
+ app.router.add_post("/api/room/say",room_say)
+ app.router.add_get("/api/room/members",room_members)
+ app.router.add_post("/api/room/clear",room_clear)
  app.router.add_get("/api/session/archived",session_archived_get)
  app.router.add_post("/api/session/archived",session_archived_set)
  app.router.add_post("/api/session/rename",session_rename)
@@ -1611,6 +1775,7 @@ async def main_async(a):
  app.router.add_post("/api/loops/stop",loops_stop)
  app.router.add_post("/api/effort",effort_set)
  print("Grok Remote UI+hub   http://%s:%d/%s"%(lan,a.port,keyq),flush=True)
+ print("Pair on this PC      http://127.0.0.1:%d/pair"%a.port,flush=True)
  print("Multi-client WS      ws://%s:%d/ws  -> shared agent %s:%d"%(lan,a.port,agent_host,a.agent_port),flush=True)
  if a.secret:print("Access key required   paired link above carries it once; unauthenticated requests get 401",flush=True)
  print("Workspace            %s"%state["cwd"],flush=True)
@@ -1654,6 +1819,11 @@ async def main_async(a):
   hub.start_watch()
   print("[loop] restored %d job(s)"%len(loops.jobs),flush=True)
   print("[hub] wireless watch · client heartbeat 12s · upstream keepalive",flush=True)
+  try:
+   from pairing import addresses,banner,ensure_segno,utf8_stdout
+   utf8_stdout();banner(addresses(a.port,a.secret,public_host=getattr(a,"public_host","") or ""),a.port,have_qr=ensure_segno())
+  except Exception as e:
+   print("[pair] banner skipped:",e,flush=True)
   while True:await asyncio.sleep(3600)
  finally:
   for t in list(loops._tasks.values()):
@@ -1666,6 +1836,7 @@ def main():
  ap.add_argument("--agent-host",default="127.0.0.1");ap.add_argument("--agent-port",type=int,default=2419)
  ap.add_argument("--secret",default=os.environ.get("GROK_AGENT_SECRET",""))
  ap.add_argument("--cwd",default=os.getcwd())
+ ap.add_argument("--public-host",default=os.environ.get("GROK_REMOTE_PUBLIC_HOST",""))
  ap.add_argument("--claim-ports",action="store_true",help="kill other listeners on UI+agent ports before bind")
  ap.add_argument("--ensure-agent",action="store_true",help="start agent serve if not listening")
  a=ap.parse_args()

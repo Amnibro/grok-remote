@@ -8,7 +8,7 @@
 <meta name="theme-color" content="#0a0b0e" id="themeColor"/>
 <title>Grok Remote · GROK BUILD</title>
 <script>(function(){try{var q=new URLSearchParams(location.search).get("skin");var s=localStorage.getItem("grok_remote_layout");var L=(q==="legacy"||q==="braid")?q:(s==="legacy"?"legacy":"braid");document.documentElement.setAttribute("data-layout",L)}catch(e){document.documentElement.setAttribute("data-layout","braid")}})();</script>
-<link rel="stylesheet" href="/static/braid-layout.css"/>
+<link rel="stylesheet" href="/static/braid-layout.css?v=1.8.4"/>
 <style>
 /* Surfaces: dark / light. Accents: product variant (Amni-Scient + grey Grok). */
 html[data-mode="dark"]{
@@ -479,7 +479,9 @@ body.clean header,body.clean footer{border-color:color-mix(in srgb,var(--line) 4
 body.clean .sess .item{background:transparent;border-bottom:1px solid color-mix(in srgb,var(--line) 50%,transparent);border-radius:0}
 body.clean .row{margin:14px 0}
 body.bordered .bub,body.bordered .tool,body.bordered .sess .item,body.bordered .collapsible{border-width:1px;border-style:solid}
-.chip{text-align:center;color:var(--mut);font-size:.8em;margin:8px 0}
+.chip{text-align:center;color:var(--mut);font-size:.8em;margin:5px 0}
+.chip .chipn{margin-left:6px;font-family:var(--font-mono);font-size:.85em;font-weight:600;opacity:.75;
+ border:1px solid color-mix(in srgb,var(--acc) 22%,var(--line));border-radius:999px;padding:1px 6px;background:var(--panel)}
 .chip span{border:1px solid color-mix(in srgb,var(--acc) 25%,var(--line));border-radius:999px;padding:3px 10px;background:var(--panel);box-shadow:0 0 12px -8px var(--acc-glow);font-family:var(--font-mono);letter-spacing:.3px}
 .chip.hist-more{margin:4px 0 10px;cursor:pointer;position:sticky;top:0;z-index:3}
 .chip.hist-more span{border-color:color-mix(in srgb,var(--acc) 40%,var(--line));color:var(--acc);background:color-mix(in srgb,var(--panel) 92%,transparent)}
@@ -565,8 +567,8 @@ button.cancel-turn:hover{background:var(--bad);transform:translateY(-1px)}
 .sess .item{border:1px solid color-mix(in srgb,var(--line) 90%,var(--acc));border-radius:12px;padding:clamp(10px,.8vw,14px);margin:8px 0;background:var(--panel);cursor:pointer;display:flex;gap:8px;align-items:flex-start;transition:border-color .18s,box-shadow .18s,transform .12s}
 .sess .item:hover,.sess .item:active{border-color:var(--acc);box-shadow:0 0 0 1px var(--acc-dim),0 0 18px -10px var(--acc-glow);transform:translateY(-1px)}
 .sess .item.archived{opacity:.72}
-.sess-scope-rail{display:flex;flex-wrap:wrap;gap:6px;padding:0 clamp(12px,1.5vw,18px) 8px;margin:0}
-.sess-scope-rail .mode-chip{font-size:11px;padding:5px 10px}
+.sess-scope-rail,.sess-scope-rail.mode-row{display:flex!important;flex-wrap:nowrap!important;gap:4px;padding:0 clamp(12px,1.5vw,18px) 8px;margin:0;overflow-x:auto;overflow-y:hidden;align-items:center}
+.sess-scope-rail .mode-chip{font-size:11px;padding:5px 8px;flex:none;white-space:nowrap}
 .sess .item .body{flex:1;min-width:0}
 .sess .item .acts{flex:none;display:flex;flex-direction:column;gap:4px}
 .sess .item .acts button{border:1px solid var(--line);background:var(--panel2);color:var(--mut);border-radius:8px;padding:5px 8px;font-size:10px;font-weight:700;font-family:var(--font-mono);cursor:pointer;white-space:nowrap}
@@ -588,6 +590,9 @@ button.cancel-turn:hover{background:var(--bad);transform:translateY(-1px)}
 .badge.live{color:var(--ok);border-color:color-mix(in srgb,var(--ok) 50%,var(--line));background:color-mix(in srgb,var(--ok) 12%,transparent)}
 .badge.idle{color:var(--acc)}
 .hint{color:var(--mut);font-size:clamp(11px,.2vw + 10px,13px);margin-top:6px}
+.phone-qr-wrap{display:none;background:#fff;padding:16px;border-radius:12px;border:1px solid var(--line);width:fit-content;overflow:visible}
+.phone-qr-wrap:not([hidden]){display:block}
+.phone-qr-wrap img{display:block;width:220px;height:220px;border-radius:0;background:#fff}
 .spoiler,.spoiler-path{border-radius:4px;transition:filter .12s ease,background .12s}
 body.privacy .spoiler,body.privacy .spoiler-path,body.privacy .sess .m,body.privacy .sess .item .t,body.privacy .sess .item .body .t,body.privacy .tool .loc,body.privacy .file-chip,body.privacy #hint,body.privacy .lb-sess,body.privacy .tool .inblock,body.privacy .tool .out,body.privacy .tool .tt,body.privacy .att-chip b,body.privacy .collapsible .code-head span:last-child,body.privacy .panel input,body.privacy #wsurl,body.privacy #cwd,body.privacy #log,body.privacy .git-strip,body.privacy .ide-tree-head span,body.privacy #ideStatus{
   filter:blur(9px);user-select:none;-webkit-user-select:none;cursor:default
@@ -1009,7 +1014,8 @@ body.voice-go #voiceHud,body.voice-xr #voiceHud{bottom:calc(var(--stack-h,120px)
 <header class="pulse-frame">
   <button class="hdrbtn" id="btnBack" style="display:none" title="Sessions">‹</button>
   <button class="hdrbtn" id="btnRail" style="display:none" title="Toggle sessions sidebar">☰</button>
-  <div class="logo" id="logo"><span class="brand">AMNI-SCIENT</span>Grok <b>Remote</b></div>
+  <button class="hdrbtn" id="btnRoom" title="Agent room (beta) — short messages between agents">◇</button>
+  <div class="logo" id="logo"><span class="brand">GROK BUILD</span>Grok <b>Remote</b></div>
   <div class="sub" id="status" hidden aria-hidden="true">offline</div>
   <div class="hdr-right">
     <div class="more-wrap">
@@ -1048,12 +1054,12 @@ body.voice-go #voiceHud,body.voice-xr #voiceHud{bottom:calc(var(--stack-h,120px)
         <button type="button" id="btnIde" role="menuitem"><span class="mm-ico" aria-hidden="true">&lt;/&gt;</span><span class="mm-lab">IDE</span><span class="mm-k">files</span></button>
         <button type="button" id="btnPersona" role="menuitem"><span class="mm-ico" aria-hidden="true">◎</span><span class="mm-lab">Persona</span><span class="mm-k">style</span></button>
         <button type="button" id="btnWatch" role="menuitem"><span class="mm-ico" aria-hidden="true">⌚</span><span class="mm-lab">Watch</span><span class="mm-k">galaxy</span></button>
-        <button type="button" id="btnDelve" role="menuitem"><span class="mm-ico" aria-hidden="true">◉</span><span class="mm-lab">Amni-Delve</span><span class="mm-k">hub</span></button>
         <div class="mm-sec"><span class="mm-sec-dot"></span>Appearance</div>
         <button type="button" id="btnTheme" role="menuitem"><span class="mm-ico" aria-hidden="true">▣</span><span class="mm-lab">Theme &amp; fonts</span><span class="mm-k">skin</span></button>
         <button type="button" id="btnLayoutToggle" role="menuitem" title="Toggle Braid vs Legacy layout"><span class="mm-ico" aria-hidden="true">◫</span><span class="mm-lab">Layout</span><span class="mm-k">braid</span></button>
         <button type="button" id="btnPrivacy" role="menuitem"><span class="mm-ico" aria-hidden="true">◌</span><span class="mm-lab">Spoiler</span><span class="mm-k">off</span></button>
         <div class="mm-sec"><span class="mm-sec-dot"></span>Help</div>
+        <button type="button" id="btnPairPhoneMore" role="menuitem" title="Pair a phone — QR on this PC"><span class="mm-ico" aria-hidden="true">▦</span><span class="mm-lab">Pair phone</span><span class="mm-k">QR</span></button>
         <button type="button" id="btnTour" role="menuitem"><span class="mm-ico" aria-hidden="true">?</span><span class="mm-lab">Feature tour</span><span class="mm-k">guide</span></button>
         <button type="button" id="btnPin" role="menuitem"><span class="mm-ico" aria-hidden="true">★</span><span class="mm-lab">Pin shortcuts</span><span class="mm-k">desk</span></button>
         </div>
@@ -1076,6 +1082,7 @@ body.voice-go #voiceHud,body.voice-xr #voiceHud{bottom:calc(var(--stack-h,120px)
         <div class="om-meta" id="orbitMenuMeta">link · standby</div>
         <button type="button" id="btnStartRemote" role="menuitem" title="Start / restart agent serve on :2419">Start server</button>
         <button type="button" class="danger" id="btnStopRemote" role="menuitem" title="Stop Grok Remote UI + agent serve (keeps desktop TUI)">Stop remote</button>
+        <button type="button" id="btnPairPhone" role="menuitem" title="Pair a phone — QR codes on this PC">Pair phone</button>
         <button type="button" id="btnOrbitHealth" role="menuitem">Health check…</button>
       </div>
     </div>
@@ -1098,7 +1105,7 @@ body.voice-go #voiceHud,body.voice-xr #voiceHud{bottom:calc(var(--stack-h,120px)
       <button type="button" id="btnRefreshPhone">Refresh</button>
     </div>
     <div style="display:flex;gap:12px;align-items:flex-start;margin-top:10px;flex-wrap:wrap">
-      <img id="phoneQr" alt="QR code for phone" width="148" height="148" style="border-radius:10px;background:#fff;border:1px solid var(--line);display:none"/>
+      <div id="phoneQrWrap" class="phone-qr-wrap" hidden><img id="phoneQr" alt="QR code for phone" width="220" height="220"/></div>
       <p class="hint" style="margin:0;flex:1;min-width:160px">No app install. Bookmark the link on your phone. If it 401s, re-copy after Start Server — the key rotates when the stack restarts.</p>
     </div>
   </div>
@@ -1117,7 +1124,7 @@ body.voice-go #voiceHud,body.voice-xr #voiceHud{bottom:calc(var(--stack-h,120px)
   <label>WebSocket</label>
   <input id="wsurl" placeholder="ws://192.168.x.x:2421/ws"/>
   <label>Default cwd for new sessions / tasks</label>
-  <input id="cwd" placeholder="C:\\path\\to\\projects"/>
+  <input id="cwd" placeholder="C:\\path\\to\\project"/>
     </div>
   </details>
   <div class="rowbtns">
@@ -1263,7 +1270,7 @@ body.voice-go #voiceHud,body.voice-xr #voiceHud{bottom:calc(var(--stack-h,120px)
   <div class="card">
     <h3>New task <button type="button" class="sheet-x" id="closeTask" aria-label="Close">×</button></h3>
     <label>Working directory on PC</label>
-    <input id="taskCwd" placeholder="C:\\path\\to\\projects\\Amni-Ai"/>
+    <input id="taskCwd" placeholder="C:\\path\\to\\project"/>
     <label>First message / task (optional)</label>
     <textarea class="field" id="taskMsg" rows="3" placeholder="Build X, fix Y, explore Z…"></textarea>
     <div class="rowbtns">
@@ -1369,7 +1376,7 @@ let sessionGen=0,sessionSwitching=false,loadExpectSid=null,sessionFresh=false,hi
 let turnToken=0,activeTurnToken=0,cancelInFlight=false,suppressStreamBusyUntil=0;
 let linkState="standby",agentPhase="idle",phaseDetail="",wantReconnect=false,reconnectTimer=null,connectAttempt=0;
 let connecting=false,intentionalClose=false,reconnectArmed=false,maxReconnect=80,startInFlight=false,softDetach=false;
-let linkKeepaliveTimer=null,linkLastRx=0,connectGen=0,reconnectParked=false,busySid=null;
+let linkKeepaliveTimer=null,linkLastRx=0,connectGen=0,reconnectParked=false,busySid=null,lastHiddenConnect=0;
 let linkRtt=null,linkLastPong=0;
 let hubUp=true,hubReinitBusy=false;
 Object.defineProperty(window,"replaying",{get:()=>replaying,set:v=>{replaying=!!v},configurable:true});
@@ -1404,16 +1411,18 @@ const VARIANTS=[
   {id:"amiga",label:"Amiga-like",sw:"#ff8800",swLight:"#ff8800",brand:"AMIGA-LIKE",legacy:true,metaDark:"#0055aa",metaLight:"#aaaaaa"}
 ];
 function esc(t){return String(t||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;")}
+const DEAD_VARIANTS=new Set(["scient","ai","explore","calc","learn","crypt","haven","core","prayer"]);
 function migrateTheme(raw){
   if(!raw)return{variant:"grok",mode:"dark"};
   if(raw==="light")return{variant:"grok",mode:"light"};
-  if(raw==="prayer")return{variant:"ai",mode:"dark"};
-  if(raw.indexOf("-")>=0){const p=raw.split("-");return{variant:p[0]==="scient"?"grok":p[0],mode:p[1]==="light"?"light":"dark"}}
-  if(VARIANTS.some(v=>v.id===raw))return{variant:raw==="scient"?"grok":raw,mode:"dark"};
-  return{variant:"grok",mode:"dark"};
+  let variant=raw,mode="dark";
+  if(raw.indexOf("-")>=0){const p=raw.split("-");variant=p[0];mode=p[1]==="light"?"light":"dark"}
+  if(DEAD_VARIANTS.has(variant)||!VARIANTS.some(v=>v.id===variant))variant="grok";
+  return{variant,mode};
 }
 function applyTheme(v,m,persist){
-  const vv=VARIANTS.find(x=>x.id===v)||VARIANTS.find(x=>x.id==="grok")||VARIANTS[0];
+  if(DEAD_VARIANTS.has(v))v="grok";
+  const vv=VARIANTS.find(x=>x.id===v&&!DEAD_VARIANTS.has(x.id))||VARIANTS.find(x=>x.id==="grok")||VARIANTS[0];
   variant=vv.id;mode=(m==="light")?"light":"dark";
   document.documentElement.setAttribute("data-variant",variant);
   document.documentElement.setAttribute("data-mode",mode);
@@ -1461,7 +1470,7 @@ function paintThemeChips(){
   const paintVar=host=>{
     if(!host)return;
     host.innerHTML="";
-    const prod=VARIANTS.filter(t=>!t.legacy);
+    const prod=VARIANTS.filter(t=>!t.legacy&&!DEAD_VARIANTS.has(t.id));
     const leg=VARIANTS.filter(t=>t.legacy);
     prod.forEach(t=>host.appendChild(paintChip(t)));
     if(leg.length){
@@ -1820,32 +1829,24 @@ function isBraidLayout(){return(document.documentElement.getAttribute("data-layo
 function paintSessScopeChips(){
   const hosts=[document.getElementById("sessScopeChips"),document.getElementById("sessScopeChipsPop")].filter(Boolean);
   if(!hosts.length)return;
+  if(String(sessScope||"").indexOf("app:")===0){sessScope="active";saveSessScope()}
   const nArch=archived.size;
   const _chatsOnly=s=>s&&s.sessionId&&!isArchived(s.sessionId)&&!isNoiseSession(s)&&sessionOrigin(s)==="Chats";
   const nLive=(sessions||[]).filter(s=>_chatsOnly(s)&&s.resident).length;
   const nActive=(sessions||[]).filter(_chatsOnly).length;
-  const appCounts={};
-  (sessions||[]).forEach(s=>{
-    if(!s||!s.sessionId||isArchived(s.sessionId))return;
-    if(isNoiseSession(s))return;
-    const o=sessionOrigin(s);
-    if(o!=="Chats")appCounts[o]=(appCounts[o]||0)+1;
-  });
   const labels={
-    active:"Active"+(nActive?" · "+nActive:""),
-    live:"Live"+(nLive?" · "+nLive:""),
-    archived:"Archived"+(nArch?" · "+nArch:""),
+    active:"Active"+(nActive?" "+nActive:""),
+    live:"Live"+(nLive?" "+nLive:""),
+    archived:"Arch"+(nArch?" "+nArch:""),
     all:"All"
   };
   hosts.forEach(host=>{
     host.innerHTML="";
-    const chipDefs=[["active","Active"],["live","Live"],["archived","Archived"],["all","All"]]
-      .concat(Object.keys(appCounts).sort().map(n=>["app:"+n,n]));
-    chipDefs.forEach(([id,plainLabel])=>{
-      labels[id]=labels[id]||(plainLabel+" · "+appCounts[plainLabel]);
+    [["active","Active"],["live","Live"],["archived","Archived"],["all","All"]].forEach(([id])=>{
       const b=document.createElement("button");
       b.type="button";b.className="mode-chip"+(sessScope===id?" on":"");
       b.textContent=labels[id]||id;
+      b.title=id==="archived"?"Archived":id.charAt(0).toUpperCase()+id.slice(1);
       b.onclick=()=>{
         sessScope=id;saveSessScope();
         if(id==="archived"||id==="all"){
@@ -2217,7 +2218,25 @@ if(typeof ResizeObserver!=="undefined"){
 }
 window.updateJump=updateJump;
 window.measureBottomStack=measureBottomStack;
-function chip(t){const d=document.createElement("div");d.className="chip";d.innerHTML="<span>"+esc(t)+"</span>";feed.appendChild(d);if(stickBottom)scroll();else updateJump()}
+/* Link chatter repeats: one wifi blip per drop, one per retry. Appending a fresh line each
+   time buried the conversation under a wall of identical pills. Same text as the last chip
+   collapses into it with a count instead. */
+function chip(t){
+  const txt=String(t==null?"":t);
+  const last=feed.lastElementChild;
+  if(last&&last.classList&&last.classList.contains("chip")&&last.dataset.chipT===txt){
+    const n=(parseInt(last.dataset.chipN,10)||1)+1;
+    last.dataset.chipN=String(n);
+    last.innerHTML="<span>"+esc(txt)+"</span><b class=\"chipn\">×"+n+"</b>";
+    if(stickBottom)scroll();else updateJump();
+    return;
+  }
+  const d=document.createElement("div");d.className="chip";
+  d.dataset.chipT=txt;d.dataset.chipN="1";
+  d.innerHTML="<span>"+esc(txt)+"</span>";
+  feed.appendChild(d);
+  if(stickBottom)scroll();else updateJump();
+}
 const PHASE_LABEL={idle:"idle",waiting:"waiting for response",thinking:"thinking",responding:"responding",tools:"running tools",error:"error",sync:"syncing…"};
 function loadPermLevels(){
   try{
@@ -4004,7 +4023,7 @@ async function paintDiskEvents(events,sessionId,opts){
   }
   try{
     const list=events||[];
-    userWireBuf="";curUser=null;curAgent=null;curThought=null;curThoughtRow=null;
+    if(asReplay||prepend){userWireBuf="";curUser=null;curAgent=null;curThought=null;curThoughtRow=null}
     for(let i=0;i<list.length;i++){
       if(expectGen!==sessionGen||String(sid||"")!==expectSid){aborted=true;break}
       const ev=list[i];
@@ -4260,14 +4279,19 @@ async function silentReload(expectSid,gen){
 }
 function startPoll(){
   stopPoll();
+  let lastHiddenCatchup=0;
   pollTimer=setInterval(()=>{
-    if(document.visibilityState==="hidden")return;
-    const live=ws&&ws.readyState===1;
-    const fresh=lastLiveAt&&(Date.now()-lastLiveAt)<10000;
-    if(live&&!busy&&!softDetach&&fresh){try{trimFeedDom()}catch(e){}return}
+    /* A hidden tab used to skip the catch-up entirely, so a turn that finished behind your back
+       had produced nothing on this tab until you looked at it again. Chrome already throttles
+       this interval to about once a minute while hidden, so doing the work costs one request a
+       minute - and the transcript is current the moment you come back. */
+    if(document.visibilityState==="hidden"){
+      if(Date.now()-lastHiddenCatchup<15000)return;
+      lastHiddenCatchup=Date.now();
+    }
     softCatchup().catch(()=>{});
     try{trimFeedDom()}catch(e){}
-  },busy||softDetach?900:2800);
+  },busy||softDetach?500:900);
 }
 function stopPoll(){if(pollTimer){clearInterval(pollTimer);pollTimer=null}}
 
@@ -4855,7 +4879,7 @@ async function openSession(s){
   (async()=>{
     const attachId=openId,attachGen=gen,attachCwd=sidCwd;
     try{
-      const loaded=await req("session/load",{sessionId:attachId,cwd:attachCwd,mcpServers:[]},10000);
+      const loaded=await req("session/load",{sessionId:attachId,cwd:attachCwd,mcpServers:[]},90000);
       try{applyModelState(loaded&&loaded.models)}catch(e){}
       try{
         const pref=(localStorage.getItem("grok_remote_effort")||reasoningEffort||"").toLowerCase();
@@ -5021,11 +5045,17 @@ function startLinkKeepalive(){
     if(!ws||ws.readyState!==1)return;
     const silent=Date.now()-linkLastRx;
     try{ws.send(JSON.stringify({jsonrpc:"2.0",method:"_x.ai/remote/ping",params:{t:Date.now()}}))}catch(e){}
-    if(silent>15000){
+    /* NEVER tear down the link from a hidden tab. This timer is throttled to roughly once a
+       minute while hidden, so `silent` is past 45s on the first fire no matter how healthy the
+       socket is - the stale-link guard was closing the one connection it exists to protect, and
+       scheduleReconnect then parked because the tab was still hidden. The hub heartbeat keeps
+       linkLastRx fresh from the other side; judge staleness only when the tab can be seen. */
+    if(document.visibilityState==="hidden")return;
+    if(silent>45000&&!(pending&&pending.size)){
       try{chip("link stale · forcing reconnect")}catch(e){}
       try{ws.close()}catch(e){}
       reconnectArmed=true;wantReconnect=true;
-      scheduleReconnect(120,"stale link");
+      scheduleReconnect(800,"stale link");
     }
   },4000);
 }
@@ -5051,7 +5081,11 @@ function scheduleReconnect(ms,reason){
     if(!wantReconnect&&!reconnectArmed)return;
     if(ws&&ws.readyState===1)return;
     if(connecting)return;
-    if(hidden&&!midTurn&&document.visibilityState==="hidden"){scheduleReconnect(8000,"still hidden");return}
+    /* Parking here was an endless loop: every retry saw the tab still hidden and re-parked, so a
+       link lost while hidden never came back until the tab was looked at. Back off instead of
+       giving up - a hidden tab still has to end the run it is holding. */
+    if(hidden&&!midTurn&&document.visibilityState==="hidden"&&Date.now()-lastHiddenConnect<30000){scheduleReconnect(8000,"still hidden");return}
+    if(document.visibilityState==="hidden")lastHiddenConnect=Date.now();
     connectAttempt++;
     setConn(false,"reconnecting… #"+connectAttempt+(reason?" · "+reason:""));
     connect({fromReconnect:true}).catch(()=>{});
@@ -5248,7 +5282,20 @@ async function connect(opts){
       startLinkKeepalive();
       if(!wasDetach||agentPhase==="error"||agentPhase==="idle")setPhase("idle");
       else setPhase(agentPhase==="tools"||agentPhase==="thinking"||agentPhase==="responding"||agentPhase==="waiting"?agentPhase:"sync","resume");
-      await fetchSessions();
+      /* A busy PC answers _x.ai/sessions/list slowly. That used to throw out of init, which
+         dropped an already-established link, restarted the agent and started a reconnect
+         storm. The link is up by this point — a slow list is a nuisance, not a disconnect.
+         Keep the session list we already have and refill it in the background. */
+      try{await fetchSessions()}
+      catch(e){
+        try{chip("session list is slow · the PC is busy · showing the list I already have")}catch(x){}
+        (function retryList(n){
+          setTimeout(()=>{
+            if(myGen!==connectGen||ws!==sock)return;
+            fetchSessions().catch(()=>{if(n<4)retryList(n+1)});
+          },Math.min(30000,6000*(n+1)));
+        })(0);
+      }
       if(myGen!==connectGen||ws!==sock)return;
       updateLayoutClass();
       if(isWideLayout()){
@@ -5284,7 +5331,7 @@ async function connect(opts){
       try{chip("init failed: "+msg.slice(0,120)+(needAgent?" · try Start Server":""))}catch(x){}
       if(needAgent&&!opts.didStart&&!opts.fromStart&&connectAttempt<2){
         connecting=false;
-        const ok=await startRemoteStack({force:true});
+        const ok=await startRemoteStack({force:false});
         if(ok)return;
       }
       try{if(ws===sock){ws.onclose=null;sock.close()}}catch(x){}
@@ -5938,6 +5985,7 @@ box.addEventListener("paste",e=>{
 function paintPhoneConnect(cfg){
   const urlEl=document.getElementById("phoneUrl");
   const qr=document.getElementById("phoneQr");
+  const wrap=document.getElementById("phoneQrWrap");
   let url="";
   try{
     if(cfg&&cfg.ui)url=String(cfg.ui);
@@ -5946,9 +5994,9 @@ function paintPhoneConnect(cfg){
   if(url&&url.indexOf("auto=")===-1)url+=(url.indexOf("?")>=0?"&":"?")+"auto=1";
   if(urlEl)urlEl.value=url||"";
   if(qr&&url){
-    qr.style.display="block";
-    qr.src="https://api.qrserver.com/v1/create-qr-code/?size=148x148&margin=8&data="+encodeURIComponent(url);
-    qr.onerror=()=>{qr.style.display="none"};
+    if(wrap)wrap.hidden=false;
+    qr.src="https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=16&data="+encodeURIComponent(url);
+    qr.onerror=()=>{if(wrap)wrap.hidden=true};
   }
   return url;
 }
@@ -5991,8 +6039,6 @@ document.getElementById("pingHealth").onclick=async()=>{
 if(btnPersona)btnPersona.onclick=()=>{closeMoreMenu();loadPersonas();openSheet(personaSheet,btnPersona)};
 const btnWatch=document.getElementById("btnWatch");
 if(btnWatch)btnWatch.onclick=()=>{closeMoreMenu();window.open("/watch","_blank")};
-const btnDelveMenu=document.getElementById("btnDelve");
-if(btnDelveMenu)btnDelveMenu.onclick=()=>{closeMoreMenu();if(window.grokCockpit&&window.grokCockpit.openDelve)window.grokCockpit.openDelve();else if(typeof openDelve==="function")openDelve();else window.open("http://127.0.0.1:8787/","_blank")};
 const btnMsgModeMenu=document.getElementById("btnMsgModeMenu");
 if(btnMsgModeMenu)btnMsgModeMenu.onclick=()=>{
   const order=["queue","interject","fyi"];
@@ -6072,6 +6118,22 @@ window.addEventListener("resize",()=>{
   const om=document.getElementById("orbitMenu");
   if(om&&om.classList.contains("on"))placeFixedMenu(om,orbit);
 });
+function openPairPhone(){
+  closeOrbitMenu();closeMoreMenu();
+  const host=(location.hostname||"").toLowerCase();
+  const local=host==="127.0.0.1"||host==="localhost";
+  if(local){window.open("/pair","_blank","noopener");return}
+  try{showPage("setup",true)}catch(e){}
+  loadCfg().then(()=>{
+    const el=document.getElementById("easyConnect");
+    if(el)try{el.scrollIntoView({block:"nearest",behavior:"smooth"})}catch(x){}
+    chip("phone pairing · copy the link or scan the QR");
+  }).catch(()=>{chip("phone pairing")});
+}
+const btnPairPhone=document.getElementById("btnPairPhone");
+if(btnPairPhone)btnPairPhone.onclick=()=>openPairPhone();
+const btnPairPhoneMore=document.getElementById("btnPairPhoneMore");
+if(btnPairPhoneMore)btnPairPhoneMore.onclick=()=>openPairPhone();
 const btnStopRemote=document.getElementById("btnStopRemote");
 if(btnStopRemote)btnStopRemote.onclick=()=>{closeOrbitMenu();stopRemoteStack()};
 const btnStartRemote=document.getElementById("btnStartRemote");
@@ -6340,6 +6402,118 @@ window.addEventListener("resize",()=>{
       }catch(e){}
     },1400);
   }
+})();
+</script>
+<!-- Agent room (beta). Fixed position on purpose: it must never join #app's grid, which is
+     where the sidebar-collapse breakage lived. -->
+<div id="roomDock" hidden>
+  <div class="room-head">
+    <b>Agent room</b><span class="room-beta">BETA</span>
+    <span class="room-who" id="roomWho"></span>
+    <button class="room-x" id="roomClose" title="Close">×</button>
+  </div>
+  <div class="room-feed" id="roomFeed"></div>
+  <div class="room-compose">
+    <input id="roomInput" maxlength="240" placeholder="short message to the other agents…" autocomplete="off">
+    <span class="room-count" id="roomCount">240</span>
+    <button id="roomSend">Send</button>
+  </div>
+  <div class="room-hint" id="roomHint"></div>
+</div>
+<style>
+#roomDock{position:fixed;right:14px;bottom:14px;width:min(380px,92vw);max-height:min(60vh,520px);z-index:60;
+ display:flex;flex-direction:column;background:var(--panel);border:1px solid var(--line);border-radius:14px;
+ box-shadow:0 18px 48px -16px rgba(0,0,0,.6);overflow:hidden;font-size:13px}
+#roomDock[hidden]{display:none}
+#roomDock .room-head{display:flex;align-items:center;gap:8px;padding:9px 10px;border-bottom:1px solid var(--line);background:var(--panel2)}
+#roomDock .room-head b{font-size:12.5px;letter-spacing:-.01em}
+#roomDock .room-beta{font:700 9px/1 var(--font-mono);letter-spacing:.1em;padding:3px 6px;border-radius:999px;
+ border:1px solid color-mix(in srgb,var(--acc) 40%,var(--line));color:var(--acc)}
+#roomDock .room-who{margin-left:auto;font:600 10px/1 var(--font-mono);color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:140px}
+#roomDock .room-x{background:none;border:0;color:var(--mut);font-size:17px;line-height:1;cursor:pointer;padding:0 2px}
+#roomDock .room-x:hover{color:var(--tx)}
+#roomDock .room-feed{flex:1;min-height:80px;overflow-y:auto;padding:8px 10px;display:flex;flex-direction:column;gap:6px}
+#roomDock .room-msg{display:flex;gap:7px;align-items:baseline;line-height:1.4}
+#roomDock .room-msg .w{font:700 10.5px/1.5 var(--font-mono);color:var(--acc);flex:0 0 auto;max-width:96px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#roomDock .room-msg .t{color:var(--tx);word-break:break-word;min-width:0}
+#roomDock .room-msg.mine .w{color:var(--gold,#d3a13a)}
+#roomDock .room-empty{color:var(--mut);font-size:12px;padding:6px 2px}
+#roomDock .room-compose{display:flex;align-items:center;gap:7px;padding:8px;border-top:1px solid var(--line)}
+#roomDock .room-compose input{flex:1;min-width:0;background:var(--in,var(--panel2));border:1px solid var(--line);
+ border-radius:9px;padding:7px 9px;color:var(--tx);font-size:13px;outline:none}
+#roomDock .room-compose input:focus{border-color:var(--acc)}
+#roomDock .room-count{font:600 10px/1 var(--font-mono);color:var(--mut);min-width:26px;text-align:right}
+#roomDock .room-compose button{background:var(--acc);border:0;border-radius:9px;padding:7px 12px;color:#08090c;font-weight:650;cursor:pointer}
+#roomDock .room-compose button:disabled{opacity:.45;cursor:not-allowed}
+#roomDock .room-hint{padding:6px 10px 8px;border-top:1px solid var(--line);color:var(--mut);font-size:10.5px;line-height:1.45}
+#roomDock .room-hint code{font-family:var(--font-mono);font-size:9.5px;word-break:break-all}
+@media (max-width:640px){#roomDock{right:8px;left:8px;width:auto;bottom:8px;max-height:52vh}}
+</style>
+<script>
+(function(){
+ var dock=document.getElementById("roomDock"),feed=document.getElementById("roomFeed"),
+     input=document.getElementById("roomInput"),send=document.getElementById("roomSend"),
+     count=document.getElementById("roomCount"),whoEl=document.getElementById("roomWho"),
+     btn=document.getElementById("btnRoom"),closeBtn=document.getElementById("roomClose");
+ if(!dock||!btn)return;
+ try{document.getElementById("roomHint").innerHTML="Agents on this PC post without a key:<br><code>curl -s "+location.host+"/api/room/say -H \"Content-Type: application/json\" -d '{\"who\":\"Name\",\"text\":\"hi\"}'</code><br>or <code>python room.py say --who Name \"hi\"</code>"}catch(e){}
+ var last=0,timer=null,me="you";
+ function url(p){try{return p+(location.search?location.search:"")}catch(e){return p}}
+ function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,function(c){return({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"})[c]})}
+ function paint(msgs){
+  if(!msgs.length&&!feed.childElementCount){feed.innerHTML='<div class="room-empty">Nothing yet. Agents on this PC can post without a key.</div>';return}
+  var empty=feed.querySelector(".room-empty");if(empty&&msgs.length)empty.remove();
+  msgs.forEach(function(m){
+   var d=document.createElement("div");
+   d.className="room-msg"+(String(m.who).toLowerCase()===me.toLowerCase()?" mine":"");
+   d.innerHTML='<span class="w">'+esc(m.who)+'</span><span class="t">'+esc(m.text)+'</span>';
+   feed.appendChild(d);
+   last=Math.max(last,+m.id||0);
+  });
+  while(feed.childElementCount>300)feed.removeChild(feed.firstElementChild);
+  feed.scrollTop=feed.scrollHeight;
+ }
+ function poll(){
+  fetch(url("/api/room/feed?since="+last+"&limit=200"),{headers:{Accept:"application/json"}})
+   .then(function(r){return r.json()})
+   .then(function(j){ if(j&&j.ok)paint(j.messages||[]) })
+   .catch(function(){})
+   .then(function(){ if(!dock.hidden)timer=setTimeout(poll,2000) });
+ }
+ function members(){
+  fetch(url("/api/room/members")).then(function(r){return r.json()}).then(function(j){
+   if(!j||!j.ok)return;
+   var n=(j.members||[]).length;
+   whoEl.textContent=n?(n+" active · "+(j.members||[]).slice(0,3).map(function(m){return m.who}).join(", ")):"no one yet";
+  }).catch(function(){});
+ }
+ function open_(){
+  dock.hidden=false;btn.classList.add("on");
+  try{localStorage.setItem("grok_room_open","1")}catch(e){}
+  clearTimeout(timer);poll();members();
+  setTimeout(function(){input.focus()},60);
+ }
+ function close_(){
+  dock.hidden=true;btn.classList.remove("on");clearTimeout(timer);
+  try{localStorage.setItem("grok_room_open","0")}catch(e){}
+ }
+ btn.addEventListener("click",function(e){e.preventDefault();dock.hidden?open_():close_()});
+ closeBtn.addEventListener("click",close_);
+ input.addEventListener("input",function(){count.textContent=String(240-input.value.length)});
+ function post(){
+  var t=input.value.trim();if(!t)return;
+  send.disabled=true;
+  fetch(url("/api/room/say"),{method:"POST",headers:{"Content-Type":"application/json"},
+   body:JSON.stringify({who:me,text:t})})
+   .then(function(r){return r.json()})
+   .then(function(j){ if(j&&j.ok){input.value="";count.textContent="240";clearTimeout(timer);poll();members()} })
+   .catch(function(){})
+   .then(function(){send.disabled=false});
+ }
+ send.addEventListener("click",post);
+ input.addEventListener("keydown",function(e){if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();post()}});
+ try{ if(localStorage.getItem("grok_room_open")==="1")setTimeout(open_,900) }catch(e){}
+ setInterval(function(){if(!dock.hidden)members()},15000);
 })();
 </script>
 </body>

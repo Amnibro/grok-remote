@@ -67,8 +67,17 @@ function Free-Port([int]$p, [string]$label) {
   }
   Start-Sleep -Seconds 1
 }
-Free-Port $Port "agent"
-Free-Port $UiPort "UI"
+$agentListening = $false
+try { $agentListening = [bool](netstat -ano | Select-String ":$Port\s+.*LISTENING") } catch {}
+$uiHealthy = $false
+try {
+  $h = Invoke-WebRequest -UseBasicParsing -TimeoutSec 2 -Uri "http://127.0.0.1:$UiPort/health"
+  if ($h.StatusCode -eq 200 -and $h.Content -match 'ok') { $uiHealthy = $true }
+} catch {}
+if ($agentListening) { Write-Host "Agent already on :$Port — leaving it (mirror grok-build)" -ForegroundColor Green }
+else { Free-Port $Port "agent" }
+if ($uiHealthy) { Write-Host "UI already healthy on :$UiPort — leaving it" -ForegroundColor Green }
+else { Free-Port $UiPort "UI" }
 Write-Host ""
 Write-Host "=== Grok Remote Control ===" -ForegroundColor Yellow
 Write-Host "Grok:     $Grok"
@@ -82,9 +91,9 @@ Write-Host "On Android: open  http://${lan}:${UiPort}/?key=$Secret&auto=1" -Fore
 Write-Host "Never: Stop-Process -Name grok  (kills desktop TUI)" -ForegroundColor DarkYellow
 Write-Host ""
 $agentLog = Join-Path $logDir "agent.log"
-# Note: --leader means "connect TO a shared leader", not "be a leader".
-# serve starts a standalone agent WS server. --no-leader avoids broken attach when no leader is running.
-$agentArgs = @("agent", "--always-approve", "--no-leader", "serve", "--bind", "127.0.0.1:$Port", "--secret", $Secret)
+$leaderFlag = "--no-leader"
+if ((-not $NoLeader) -and ($env:GROK_REMOTE_LEADER -match '^(1|true|yes|on)$')) { $leaderFlag = "--leader" }
+$agentArgs = @("agent", "--always-approve", $leaderFlag, "serve", "--bind", "127.0.0.1:$Port", "--secret", $Secret)
 $agentCmd = Join-Path $logDir "run-agent.cmd"
 @"
 @echo off
@@ -92,20 +101,25 @@ cd /d "$Cwd"
 set GROK_AGENT_SECRET=$Secret
 "$Grok" $($agentArgs -join ' ') >> "$agentLog" 2>&1
 "@ | Set-Content -Path $agentCmd -Encoding ASCII
-$agent = Start-Process -FilePath "cmd.exe" -ArgumentList @("/c", $agentCmd) -WorkingDirectory $Cwd -PassThru -WindowStyle Hidden
-$script:OurPids += $agent.Id
-$ok = $false
-for ($i = 0; $i -lt 25; $i++) {
-  Start-Sleep -Seconds 1
-  if (netstat -an | Select-String "127.0.0.1:$Port\s+.*LISTENING") { $ok = $true; break }
-  if ($agent.HasExited) { Write-Host "Agent launcher exited early code=$($agent.ExitCode)" -ForegroundColor Red; break }
+if ($agentListening) {
+  $ok = $true
+  Write-Host "Agent OK (existing) on 127.0.0.1:$Port $leaderFlag" -ForegroundColor Green
+} else {
+  $agent = Start-Process -FilePath "cmd.exe" -ArgumentList @("/c", $agentCmd) -WorkingDirectory $Cwd -PassThru -WindowStyle Hidden
+  $script:OurPids += $agent.Id
+  $ok = $false
+  for ($i = 0; $i -lt 25; $i++) {
+    Start-Sleep -Seconds 1
+    if (netstat -an | Select-String "127.0.0.1:$Port\s+.*LISTENING") { $ok = $true; break }
+    if ($agent.HasExited) { Write-Host "Agent launcher exited early code=$($agent.ExitCode)" -ForegroundColor Red; break }
+  }
+  if (-not $ok) {
+    Write-Host "Agent failed to listen on 127.0.0.1:$Port" -ForegroundColor Red
+    Get-Content (Join-Path $logDir "agent.log") -ErrorAction SilentlyContinue | Select-Object -Last 40
+    Stop-Ours; exit 1
+  }
+  Write-Host "Agent OK on 127.0.0.1:$Port $leaderFlag" -ForegroundColor Green
 }
-if (-not $ok) {
-  Write-Host "Agent failed to listen on 127.0.0.1:$Port" -ForegroundColor Red
-  Get-Content (Join-Path $logDir "agent.log") -ErrorAction SilentlyContinue | Select-Object -Last 40
-  Stop-Ours; exit 1
-}
-Write-Host "Agent OK on 127.0.0.1:$Port" -ForegroundColor Green
 if ($OpenFirewall) {
   $rule = "Grok Remote UI $UiPort"
   try { netsh advfirewall firewall delete rule name="$rule" | Out-Null } catch {}
@@ -117,7 +131,9 @@ if ($OpenFirewall) {
   }
 }
 $ui = $null
-if (-not $NoUi) {
+if ($uiHealthy) {
+  Write-Host "UI already up — skip spawn (no disconnect)" -ForegroundColor Green
+} elseif (-not $NoUi) {
   $py = (Get-Command python -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source)
   if (-not $py) { $py = (Get-Command py -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source) }
   if (-not $py) { throw "python required for UI/proxy" }

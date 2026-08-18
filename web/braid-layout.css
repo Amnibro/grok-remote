@@ -69,6 +69,9 @@ html[data-layout="braid"] .orbit-status{
 font-size:10.5px!important;font-weight:650!important;letter-spacing:.05em!important;
 border-radius:999px!important;padding:6px 11px 6px 9px!important
 }
+html[data-layout="braid"] .radio-chip,html[data-layout="braid"] .chat-meta{
+font-size:10.5px!important;border-radius:999px!important;letter-spacing:.02em
+}
 html[data-layout="braid"] .orbit-ring{animation:none!important}
 html[data-layout="braid"] .chat-title{
 border-radius:10px!important;font-weight:650!important;letter-spacing:-.02em!important
@@ -156,8 +159,15 @@ html[data-layout="braid"] .picker-head input:focus,#sessFilter:focus,html[data-l
 border-color:color-mix(in srgb,var(--acc) 45%,var(--line))!important;
 box-shadow:0 0 0 3px color-mix(in srgb,var(--acc) 12%,transparent)!important
 }
-html[data-layout="braid"] .sess-filter-pop .mode-row{margin:4px 0 0!important;gap:4px!important}
-html[data-layout="braid"] .sess-filter-pop .mode-chip{padding:5px 9px!important;font-size:11px!important}
+html[data-layout="braid"] .sess-scope-rail{
+display:flex!important;flex-wrap:nowrap!important;overflow-x:auto!important;overflow-y:hidden!important;
+gap:4px!important;padding:4px 0 6px!important;margin:0!important;align-items:center
+}
+html[data-layout="braid"] .sess-scope-rail .mode-chip{
+flex:none!important;white-space:nowrap!important;padding:4px 8px!important;font-size:11px!important
+}
+html[data-layout="braid"] .sess-filter-pop .mode-row{margin:4px 0 0!important;gap:4px!important;flex-wrap:nowrap!important;overflow-x:auto}
+html[data-layout="braid"] .sess-filter-pop .mode-chip{padding:5px 9px!important;font-size:11px!important;flex:none;white-space:nowrap}
 html[data-layout="braid"] .btn-rail{
 border:0!important;border-radius:10px!important;background:transparent!important;color:var(--mut)!important;
 font-family:var(--font)!important;font-weight:550!important;width:30px;height:30px;padding:0!important;
@@ -197,12 +207,9 @@ font-size:13px!important;font-weight:550!important;letter-spacing:-.01em;
 white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;max-width:100%
 }
 html[data-layout="braid"] .sess .m{
-font-size:11px!important;margin-top:1px!important;opacity:.7;
+font-size:11px!important;margin-top:2px!important;opacity:.72;
 white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
-max-height:0;opacity:0;margin:0;transition:max-height .15s,opacity .15s,margin .15s
-}
-html[data-layout="braid"] .sess .item:hover .m,html[data-layout="braid"] .sess .item.current .m{
-max-height:2.2em;opacity:.75;margin-top:2px
+max-height:2.2em
 }
 html[data-layout="braid"] .sess .item .acts{
 position:absolute!important;right:4px;top:50%;transform:translateY(-50%);
@@ -212,7 +219,7 @@ padding:2px;border-radius:8px;
 background:color-mix(in srgb,var(--panel) 92%,transparent);
 box-shadow:0 2px 10px -4px rgba(0,0,0,.35);z-index:2
 }
-html[data-layout="braid"] .sess .item:hover .acts,html[data-layout="braid"] .sess .item.current .acts{
+html[data-layout="braid"] .sess .item:hover .acts,html[data-layout="braid"] .sess .item:focus-within .acts{
 opacity:1;pointer-events:auto
 }
 html[data-layout="braid"] .sess .item .acts button{
@@ -337,8 +344,8 @@ html[data-layout="braid"] .livebar .lb-sep-cost,
 html[data-layout="braid"] .livebar .lb-sep-sess,
 html[data-layout="braid"] .livebar .lb-git,
 html[data-layout="braid"] .livebar .lb-cost,
-html[data-layout="braid"] .livebar .lb-sess,
-html[data-layout="braid"] .livebar .lb-extra{display:none!important}
+html[data-layout="braid"] .livebar .lb-sess{display:none!important}
+html[data-layout="braid"] .livebar .lb-extra{display:inline!important;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:min(42vw,280px)}
 html[data-layout="braid"] .livebar .lb-more{display:inline-flex!important;align-items:center;flex:none;margin-left:auto}
 html[data-layout="braid"] .livebar .lb-perm,
 html[data-layout="braid"] .livebar .lb-effort{
@@ -492,6 +499,14 @@ html[data-layout="braid"] body.electron.sidebar-collapsed #app{
 grid-template-columns:0 minmax(0,1fr)!important;
 grid-template-areas:"hdr hdr" "main main" "foot foot"!important
 }
+/* The braid picker rule below is display:flex!important at a higher specificity than the
+   generic collapsed rule in index.html, so the sidebar stayed laid out when collapsed. It kept
+   grid-area:side with no side area in the template, which spawned implicit columns - the dead
+   gap and the session list stranded bottom-right. Hide it for the whole desktop range. */
+html[data-layout="braid"] body.desktop.sidebar-collapsed #picker.panel.on,
+html[data-layout="braid"] body.electron.sidebar-collapsed #picker.panel.on{
+display:none!important;pointer-events:none!important
+}
 html[data-layout="braid"] body.desktop #picker.panel.on,
 html[data-layout="braid"] body.electron #picker.panel.on{
 grid-area:side!important;display:flex!important;flex-direction:column!important;
@@ -537,6 +552,15 @@ html[data-layout="braid"]{
 html[data-layout="braid"] body.desktop #app,
 html[data-layout="braid"] body.electron #app{
 grid-template-columns:minmax(var(--braid-sidebar),var(--braid-sidebar)) minmax(0,1fr)!important
+}
+/* This block re-states the expanded grid, so above 1200px it overrode the collapsed rule in
+   the 900px block (same specificity and importance, later wins). The sidebar kept its column
+   and #picker auto-placed into implicit tracks - a dead column plus the session list stranded
+   in the bottom-right. Restate the collapsed grid here too. */
+html[data-layout="braid"] body.desktop.sidebar-collapsed #app,
+html[data-layout="braid"] body.electron.sidebar-collapsed #app{
+grid-template-columns:0 minmax(0,1fr)!important;
+grid-template-areas:"hdr hdr" "main main" "foot foot"!important
 }
 html[data-layout="braid"] body.desktop #chatStage main#feed,
 html[data-layout="braid"] body.electron #chatStage main#feed{
