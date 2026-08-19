@@ -1,5 +1,23 @@
 # Grok Remote — architecture map
 
+**Updated:** 2026-08-18 · v1.9.5 auth cookie sliding refresh
+## Auth cookie lifecycle (v1.9.5)
+- `auth_mw` accepts `?key=` OR `grok_remote_key` cookie OR `X-Grok-Remote-Key` header; loopback
+  bypasses. The WS handshake auths by cookie alone (client ws url never carries the key).
+- **Every authenticated response now re-sets the 30-day cookie** (`supplied==token`), so the
+  window slides with use. Before v1.9.5 only `?key=` requests (or loopback) refreshed it — a
+  phone that paired once by QR hit a hard 30-day expiry: silent 401s on page + WS, nothing in
+  the hub log (rejected before "client join"), /health green. Desktop tabs were immune via the
+  loopback branch — "phone dead, PC fine" is the fingerprint of an expired cookie.
+- Re-pair without touching the phone: `adb shell am start -a android.intent.action.VIEW -d
+  "<keyed url from connect.url>"`.
+
+**Updated:** 2026-08-19 · v1.9.5 Braid markdown + Work dock
+## Chat format + Work (v1.9.5)
+- `web/md.js` (from Braid) paints agent/user bubbles; KaTeX still queued after HTML.
+- `web/work-dock.js` `#gwk` sheet: Work feed from `upsertTool`, Files via `/api/fs/*`.
+- Command deck **Work**. Live stream already re-renders the full bubble per chunk.
+
 **Updated:** 2026-08-18 · v1.9.3 pair phone + one-line session filters
 ## Pair + session rail (v1.9.3)
 - Orbit menu + command deck Help: **Pair phone**. Loopback → `/pair`; LAN → Setup QR card.

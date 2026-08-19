@@ -563,7 +563,7 @@ def make_auth_middleware(token:str):
     return web.Response(text=html,status=401,content_type="text/html")
    return web.json_response({"error":"unauthorized · open the paired link from connect.url, or add ?key=<secret>"},status=401)
   resp=await handler(request)
-  if request.path!="/ws" and (request.query.get("key")==token or (loop and token)):
+  if request.path!="/ws" and (supplied==token or (loop and token)):
    try:resp.set_cookie(UI_KEY_COOKIE,token,max_age=30*86400,httponly=True,samesite="Lax",path="/")
    except Exception:pass
   return resp

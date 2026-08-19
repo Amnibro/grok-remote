@@ -673,11 +673,7 @@ function injectChrome(){
       '<button type="button" id="btnAgents" role="menuitem"><span class="mm-ico" aria-hidden="true">⌘</span><span class="mm-lab">Project MD</span><span class="mm-k">ctx</span></button>'+
       '<button type="button" id="btnBudget" role="menuitem"><span class="mm-ico" aria-hidden="true">◎</span><span class="mm-lab">Limits</span><span class="mm-k">cost</span></button>';
     if(toolsHost.id==="moreToolsHost")toolsHost.appendChild(wrap);
-    else{
-      const sec=document.createElement("div");sec.className="mm-sec";sec.innerHTML='<span class="mm-sec-dot"></span>Tools';
-      toolsHost.insertBefore(wrap,toolsHost.firstChild);
-      toolsHost.insertBefore(sec,wrap);
-    }
+    else toolsHost.insertBefore(wrap,toolsHost.firstChild);
   }
   const floatHost=document.createElement("div");floatHost.id="cockpitFloats";
   floatHost.innerHTML=
@@ -694,11 +690,11 @@ function injectChrome(){
   const orphanStop=$("btnStop");
   if(orphanStop&&orphanStop.parentNode)orphanStop.parentNode.removeChild(orphanStop);
   if(!$("ctxMeter")){
-    const col=foot.querySelector(".composer-sendcol");
-    if(col){
+    const bar=$("livebar")||foot.querySelector(".composer-sendcol");
+    if(bar){
       const m=document.createElement("span");m.id="ctxMeter";m.className="ctx-meter ctx-send";m.title="Context estimate";
       m.innerHTML="<i></i><span>ctx</span>";
-      col.insertBefore(m,col.firstChild);
+      bar.insertBefore(m,bar.firstChild);
     }
   }
   const atSheet=document.createElement("div");atSheet.className="sheet";atSheet.id="atSheet";

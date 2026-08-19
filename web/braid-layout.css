@@ -24,12 +24,10 @@ html[data-layout="braid"] footer.pulse-frame,
 html[data-layout="braid"] #picker.pulse-frame,
 html[data-layout="braid"] main.pulse-frame,
 html[data-layout="braid"] .panel.pulse-frame{border:none!important;box-shadow:none!important;animation:none!important}
-html[data-layout="braid"] header{
-min-height:var(--braid-bar-h);padding:0 12px 0 14px!important;gap:8px!important;flex-wrap:nowrap!important;
-background:color-mix(in srgb,var(--panel) 90%,transparent)!important;
-backdrop-filter:saturate(180%) blur(16px)!important;-webkit-backdrop-filter:saturate(180%) blur(16px)!important;
-border-bottom:1px solid var(--braid-border)!important;box-shadow:none!important
-}
+html[data-layout="braid"] header{display:none!important}
+html[data-layout="braid"] .rail-foot{border-top:1px solid var(--braid-border)!important;padding:10px 12px!important}
+html[data-layout="braid"] .btn-settings{border:0!important;background:transparent!important;border-radius:10px!important}
+html[data-layout="braid"] .btn-settings:hover,html[data-layout="braid"] .btn-settings.on{background:var(--braid-hover)!important}
 html[data-layout="braid"] .logo{
 font-size:14.5px!important;font-weight:650!important;letter-spacing:-.02em!important
 }
@@ -346,6 +344,12 @@ html[data-layout="braid"] .livebar .lb-git,
 html[data-layout="braid"] .livebar .lb-cost,
 html[data-layout="braid"] .livebar .lb-sess{display:none!important}
 html[data-layout="braid"] .livebar .lb-extra{display:inline!important;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:min(42vw,280px)}
+@media (max-width:820px){
+html[data-layout="braid"] .livebar{flex-wrap:nowrap!important}
+html[data-layout="braid"] .livebar .lb-extra,html[data-layout="braid"] .livebar .lb-more,html[data-layout="braid"] #chatMeta{display:none!important}
+html[data-layout="braid"] .livebar .lb-perm,html[data-layout="braid"] .livebar .lb-effort{display:inline-flex!important}
+html[data-layout="braid"] footer#foot,html[data-layout="braid"] footer{padding:6px 12px calc(8px + env(safe-area-inset-bottom))!important}
+}
 html[data-layout="braid"] .livebar .lb-more{display:inline-flex!important;align-items:center;flex:none;margin-left:auto}
 html[data-layout="braid"] .livebar .lb-perm,
 html[data-layout="braid"] .livebar .lb-effort{
@@ -490,14 +494,14 @@ html[data-layout="braid"] body.desktop #app,
 html[data-layout="braid"] body.electron #app{
 display:grid!important;
 grid-template-columns:minmax(var(--braid-sidebar),var(--braid-sidebar)) minmax(0,1fr)!important;
-grid-template-rows:auto minmax(0,1fr) auto!important;
-grid-template-areas:"hdr hdr" "side main" "side foot"!important;
+grid-template-rows:minmax(0,1fr) auto!important;
+grid-template-areas:"side main" "side foot"!important;
 overflow:hidden!important;width:100%!important;max-width:none!important
 }
 html[data-layout="braid"] body.desktop.sidebar-collapsed #app,
 html[data-layout="braid"] body.electron.sidebar-collapsed #app{
 grid-template-columns:0 minmax(0,1fr)!important;
-grid-template-areas:"hdr hdr" "main main" "foot foot"!important
+grid-template-areas:"main main" "foot foot"!important
 }
 /* The braid picker rule below is display:flex!important at a higher specificity than the
    generic collapsed rule in index.html, so the sidebar stayed laid out when collapsed. It kept
@@ -528,7 +532,7 @@ grid-area:foot!important;min-width:0!important;max-width:100%!important;width:au
 overflow:hidden!important;z-index:2!important;position:relative!important
 }
 html[data-layout="braid"] body.desktop header,
-html[data-layout="braid"] body.electron header{grid-area:hdr!important;z-index:6!important}
+html[data-layout="braid"] body.electron header{display:none!important}
 html[data-layout="braid"] body.desktop #chatStage main#feed,
 html[data-layout="braid"] body.electron #chatStage main#feed{
 padding:16px var(--braid-chat-pad) 12px!important;max-width:none!important;margin:0!important;
@@ -560,7 +564,7 @@ grid-template-columns:minmax(var(--braid-sidebar),var(--braid-sidebar)) minmax(0
 html[data-layout="braid"] body.desktop.sidebar-collapsed #app,
 html[data-layout="braid"] body.electron.sidebar-collapsed #app{
 grid-template-columns:0 minmax(0,1fr)!important;
-grid-template-areas:"hdr hdr" "main main" "foot foot"!important
+grid-template-areas:"main main" "foot foot"!important
 }
 html[data-layout="braid"] body.desktop #chatStage main#feed,
 html[data-layout="braid"] body.electron #chatStage main#feed{

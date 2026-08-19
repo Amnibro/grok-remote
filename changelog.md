@@ -1,3 +1,29 @@
+## 2026-08-18 v1.9.5 - phone "down": 30-day auth cookie expired, never refreshed
+
+Phone went dark at ~22:24 while every keepalive stayed green. The auth middleware only re-set
+the 30-day cookie when the request carried `?key=` (or came from loopback). A phone that paired
+once by QR rides the cookie alone: page loads, fetches, and the WS handshake all auth by cookie,
+none refresh it, so day 30 = silent 401 on everything. Hub logs nothing (middleware rejects
+before "client join"), /health is exempt from auth, watchdog says healthy. Desktop tabs never
+die because the loopback branch refreshes them on every response.
+
+- `server.py` auth_mw: refresh condition `request.query.get("key")==token` -> `supplied==token`
+  (any authenticated request slides the 30-day window; expiry now means 30 days of NO use)
+- Verified A/B: cookie-only GET had no Set-Cookie on old server, has Max-Age=2592000 on new;
+  wrong cookie still 401; hub WS initialize + sessions/list + full turn OK
+- Phone re-paired via keyed URL; LAN client reconnected
+
+## 2026-08-19 v1.9.5 - Braid markdown + Work dock on Remote
+
+Anthony: bring the chat formatting and tools we recently added to Braid over to grok-remote.
+
+- `web/md.js` is Braid's line-based markdown engine (nested lists, task boxes, tables
+  without outer pipes, fence highlighting, math that does not eat `$10`). Feed bubbles
+  and live stream use it; closed fences still fold into the existing collapsible chrome.
+- `web/work-dock.js` is a Remote-sized Work sheet: live tool timeline from ACP
+  `tool_call` events, plus a Files tab on `/api/fs/list` + `/api/fs/read`. Command deck
+  **Work**. No Braid activity watcher or approval queue — those are Delve-only.
+
 ## 2026-08-18 v1.9.4 - pair QR was clipped on camera scan
 
 Segno emits an SVG with width/height and **no viewBox**. The pair page then set
