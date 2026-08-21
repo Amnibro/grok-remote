@@ -1,3 +1,15 @@
+## 2026-08-21 v1.9.6 - published: GitHub release + site downloads, wear app key un-baked
+
+- v1.9.6 pushed (watch cockpit polish, catchup tests, checklists). Release assets:
+  GrokRemote-windows-portable.exe / GrokRemote-windows-setup.exe (electron-builder) and
+  grok-remote-1.9.6-source.tar.gz (git archive - tracked files only, secrets stay home).
+- android-wear published with MainActivity reading assets/watch_url.txt (untracked;
+  .example committed) - the baked key/IP never reached GitHub.
+- start.sh: posix launcher (python3 + aiohttp bootstrap) for the linux/mac tarball.
+- amni-scient.com/grok-remote.html: Windows button -> GitHub release (Cloudflare Pages
+  caps files at 25MB and the 74MB portable exe broke a deploy), linux/mac -> site tarball,
+  legacy 9.8MB GrokDesktop.exe restored so old links keep working.
+
 ## 2026-08-20 — Wear OS companion: android-wear/ GrokRemoteWatch
 - Minimal Wear WebView app for the /watch companion page (the "needs a Wear browser" gotcha
   is dead — the app IS the browser): loads http://192.168.0.7:2421/watch with the key baked,
