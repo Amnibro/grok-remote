@@ -1,0 +1,31 @@
+import {chromium} from "playwright-core";
+import {existsSync} from "fs";
+import {resolve} from "path";
+import {pathToFileURL} from "url";
+const target=resolve(process.argv[2]||"web/index.html");
+const chromePath=()=>{
+  const c=[process.env.CHROME_PATH,"C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe","C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe",process.env.LOCALAPPDATA&&resolve(process.env.LOCALAPPDATA,"Google","Chrome","Application","chrome.exe")].filter(Boolean);
+  for(const p of c)if(existsSync(p))return p;
+  throw new Error("Chrome not found — set CHROME_PATH");
+};
+const browser=await chromium.launch({executablePath:chromePath(),headless:true});
+const page=await browser.newPage();
+page.on("pageerror",()=>{});
+await page.goto(pathToFileURL(target).href+"?demo=1&tour=0&auto=0",{waitUntil:"domcontentloaded",timeout:30000});
+await page.waitForFunction(()=>typeof paintDiskEvents==="function"&&document.getElementById("feed"),{timeout:15000});
+const r=await page.evaluate(async()=>{
+  const mk=(kind,text)=>({params:{sessionId:"test-catchup",update:{sessionUpdate:kind,content:{type:"text",text}}}});
+  clearSessionFeed();
+  sid="test-catchup";
+  await paintDiskEvents([mk("agent_thought_chunk","let me check ports")],"test-catchup",{replay:false});
+  await paintDiskEvents([mk("agent_thought_chunk"," and the viewer")],"test-catchup",{replay:false});
+  await paintDiskEvents([mk("agent_message_chunk","Lm")],"test-catchup",{replay:false});
+  await paintDiskEvents([mk("agent_message_chunk","ao — Amni-Connect is already on this box.")],"test-catchup",{replay:false});
+  const rows=[...feed.querySelectorAll(".row.msg")].filter(x=>x.querySelector(".nm")&&x.querySelector(".nm").textContent==="Grok");
+  const thoughts=feed.querySelectorAll(".row.thought-row").length;
+  return {agentRows:rows.length,thoughtRows:thoughts,text:rows.map(x=>x.querySelector(".bub").dataset.raw||"").join("|")};
+});
+await browser.close();
+const ok=r.agentRows===1&&r.thoughtRows===1&&r.text==="Lmao — Amni-Connect is already on this box.";
+console.log((ok?"PASS":"FAIL")+" · agentRows="+r.agentRows+" thoughtRows="+r.thoughtRows+" text="+JSON.stringify(r.text)+" · "+target);
+process.exit(ok?0:1);

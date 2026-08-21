@@ -1,0 +1,5 @@
+app/src/main/assets/watch_url.txt
+build/
+app/build/
+.gradle/
+local.properties
