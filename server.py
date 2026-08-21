@@ -112,6 +112,19 @@ def xai_api_key():
      if v:return v
  except Exception:pass
  return ""
+def react_store_path():
+ base=os.environ.get("GROK_PLUGIN_DATA") or str(Path.home()/".grok"/"plugin-data"/"grok-remote")
+ p=Path(base);p.mkdir(parents=True,exist_ok=True)
+ return p/"reactions.json"
+def load_reacts():
+ path=react_store_path()
+ if not path.is_file():return {}
+ try:
+  d=json.loads(path.read_text(encoding="utf-8",errors="replace"))
+  return d if isinstance(d,dict) else {}
+ except Exception:return {}
+def save_reacts(d):
+ react_store_path().write_text(json.dumps(d,indent=2),encoding="utf-8")
 def archive_store_path():
  base=os.environ.get("GROK_PLUGIN_DATA") or str(Path.home()/".grok"/"plugin-data"/"grok-remote")
  p=Path(base);p.mkdir(parents=True,exist_ok=True)
@@ -542,7 +555,7 @@ def make_auth_middleware(token:str):
  async def auth_mw(request,handler):
   if not token:return await handler(request)
   if request.query.get("demo")=="1":return await handler(request)
-  if request.path in ("/health","/health/deep"):return await handler(request)
+  if request.path in ("/health","/health/deep","/w"):return await handler(request)
   supplied=request.query.get("key") or request.cookies.get(UI_KEY_COOKIE) or request.headers.get("X-Grok-Remote-Key") or ""
   loop=_loopback(request)
   if not loop and supplied!=token:
@@ -1240,6 +1253,39 @@ async def main_async(a):
   p=WEB/"watch.html"
   if not p.is_file():raise web.HTTPNotFound()
   return web.FileResponse(p,headers={"Cache-Control":"no-store"})
+ watch_pins={}
+ watch_pin_tries={"n":0,"reset":0.0}
+ async def watch_pin_new(request):
+  pin="%06d"%(int.from_bytes(os.urandom(4),"big")%1000000)
+  watch_pins[pin]=time.time()+300
+  return web.json_response({"ok":True,"pin":pin,"ttl":300,"open":"http://%s:%d/w"%(lan_ip(),a.port)},headers={"Cache-Control":"no-store"})
+ async def watch_pin_page(request):
+  now=time.time()
+  for k in [k for k,v in list(watch_pins.items()) if v<now]:watch_pins.pop(k,None)
+  pin=re.sub(r"\D","",str(request.query.get("pin") or ""))[:6]
+  err=""
+  if pin:
+   tr=watch_pin_tries
+   if now>tr["reset"]:tr["n"]=0;tr["reset"]=now+300
+   tr["n"]+=1
+   if tr["n"]>10:
+    return web.Response(text="<!doctype html><meta charset=utf-8><body style=\"background:#0b0d10;color:#e8eaed;font-family:system-ui;text-align:center;padding:20px\">Too many tries. Wait 5 minutes.</body>",content_type="text/html",status=429)
+   if pin in watch_pins:
+    watch_pins.pop(pin,None)
+    resp=web.HTTPFound("/watch")
+    try:resp.set_cookie(UI_KEY_COOKIE,a.secret,max_age=30*86400,httponly=True,samesite="Lax",path="/")
+    except Exception:pass
+    return resp
+   err="<p style=\"color:#f87171;margin:6px 0\">Wrong or expired PIN</p>"
+  html=("<!doctype html><meta charset=utf-8><meta name=viewport content=\"width=device-width,initial-scale=1\">"
+   "<title>Pair watch</title>"
+   "<body style=\"background:#0b0d10;color:#e8eaed;font-family:system-ui;text-align:center;padding:14px\">"
+   "<form><p style=\"margin:8px 0;font-size:15px\">Watch PIN</p>"
+   "<input name=pin inputmode=numeric pattern=[0-9]* maxlength=6 autofocus autocomplete=off "
+   "style=\"font-size:28px;width:7ch;text-align:center;background:#14181d;color:#fff;border:1px solid #333;border-radius:10px;padding:8px\">"
+   "<p style=\"margin:12px 0\"><button style=\"font-size:18px;padding:10px 22px;border-radius:12px;border:0;background:#22c55e;color:#04110a\">Pair</button></p>"
+   +err+"</form></body>")
+  return web.Response(text=html,content_type="text/html",headers={"Cache-Control":"no-store"})
  async def config(_):
   cfg["cwd"]=state["cwd"];cfg["clients"]=len(hub.clients)
   return web.json_response(cfg,headers={"Cache-Control":"no-store"})
@@ -1385,6 +1431,29 @@ async def main_async(a):
   meta["resolvedDir"]=str(sdir)
   if info.get("cwd"):meta["resolvedCwd"]=info.get("cwd")
   return web.json_response({"ok":True,"sessionId":sid,"cwd":cwd,"title":title,"dir":str(sdir),"events":events,"meta":meta,"count":len(events)},headers={"Cache-Control":"no-store"})
+ _kind_cache={}
+ def session_kind(sdir):
+  key=str(sdir)
+  v=_kind_cache.get(key)
+  if v is not None:return v
+  kind="human";settled=False
+  try:
+   sp=sdir/"system_prompt.txt"
+   if sp.is_file():
+    settled=True
+    if "no human operator" in sp.read_text(encoding="utf-8",errors="replace")[:4000]:kind="auto"
+  except Exception:pass
+  if kind=="human":
+   try:
+    up=sdir/"updates.jsonl"
+    if up.is_file():
+     with up.open(encoding="utf-8",errors="replace") as f:
+      head=f.read(8192)
+     if "[AGENT SETUP" in head:kind="braid"
+     if head:settled=True
+   except Exception:pass
+  if settled:_kind_cache[key]=kind
+  return kind
  async def session_titles(request):
   body={}
   try:body=await request.json()
@@ -1410,7 +1479,7 @@ async def main_async(a):
       if sm.is_file():mtime=int(sm.stat().st_mtime*1000)
     except Exception:pass
     if info.get("title") or info.get("cwd") or mtime:
-     out[sid]={"title":info.get("title") or "","cwd":info.get("cwd") or "","dir":str(sdir),"mtime":mtime,"updatedAt":mtime}
+     out[sid]={"title":info.get("title") or "","cwd":info.get("cwd") or "","dir":str(sdir),"mtime":mtime,"updatedAt":mtime,"kind":session_kind(sdir)}
    return out
   out=await asyncio.get_event_loop().run_in_executor(None,_titles)
   return web.json_response({"ok":True,"titles":out,"count":len(out)},headers={"Cache-Control":"no-store"})
@@ -1486,6 +1555,24 @@ async def main_async(a):
   else:
    raise web.HTTPBadRequest(text="ids[] or id required")
   return web.json_response({"ok":True,"ids":ids,"count":len(ids)},headers={"Cache-Control":"no-store"})
+ async def session_react_get(request):
+  sid=str(request.query.get("id") or request.query.get("sessionId") or "").strip()
+  d=load_reacts()
+  return web.json_response({"ok":True,"reacts":d.get(sid) or {}},headers={"Cache-Control":"no-store"})
+ async def session_react_set(request):
+  try:body=await request.json()
+  except Exception:body={}
+  sid=str(body.get("sessionId") or body.get("id") or "").strip()
+  hid=str(body.get("hash") or "").strip()
+  em=str(body.get("emoji") or "").strip()[:8]
+  snippet=str(body.get("snippet") or "")[:240]
+  if not sid or not hid:raise web.HTTPBadRequest(text="sessionId and hash required")
+  d=load_reacts()
+  bag=d.get(sid) or {}
+  if em:bag[hid]={"emoji":em,"snippet":snippet,"ts":time.time(),"pending":True}
+  else:bag.pop(hid,None)
+  d[sid]=bag;save_reacts(d)
+  return web.json_response({"ok":True})
  async def session_rename(request):
   try:body=await request.json()
   except Exception:raise web.HTTPBadRequest(text="json required")
@@ -1691,6 +1778,8 @@ async def main_async(a):
  app.router.add_get("/index.html",index)
  app.router.add_get("/watch",watch_page)
  app.router.add_get("/watch.html",watch_page)
+ app.router.add_get("/w",watch_pin_page)
+ app.router.add_post("/api/watch/pin",watch_pin_new)
  app.router.add_get("/config.json",config)
  app.router.add_get("/config",config)
  app.router.add_get("/health",health)
@@ -1715,6 +1804,8 @@ async def main_async(a):
  app.router.add_get("/api/session/archived",session_archived_get)
  app.router.add_post("/api/session/archived",session_archived_set)
  app.router.add_post("/api/session/rename",session_rename)
+ app.router.add_get("/api/session/react",session_react_get)
+ app.router.add_post("/api/session/react",session_react_set)
  app.router.add_get("/api/voice/status",voice_status)
  app.router.add_post("/api/tts",tts_proxy)
  app.router.add_get("/api/git/status",git_status)

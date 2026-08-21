@@ -613,31 +613,8 @@ function bindSlashComplete(){
  document.addEventListener("click",e=>{if(!menu.contains(e.target)&&e.target!==box)hide()});
 }
 function enhanceBubbles(){
- const feed=$("feed");if(!feed||feed._copyObs)return;
- const addCopy=row=>{
- if(!row||row.querySelector(".row-acts"))return;
- if(!row.classList||!row.classList.contains("row"))return;
- const acts=document.createElement("div");acts.className="row-acts";
- const b=document.createElement("button");b.type="button";b.className="row-copy";b.textContent="Copy";
- b.onclick=async e=>{
- e.stopPropagation();
- const bub=row.querySelector(".bub");
- const t=bub?(bub.innerText||bub.textContent||""):row.innerText;
- try{await navigator.clipboard.writeText(t);chip("copied")}catch(err){chip("copy failed")}
- };
- acts.appendChild(b);row.appendChild(acts);
- };
- feed.querySelectorAll(".row").forEach(addCopy);
- const mo=new MutationObserver(muts=>{
- muts.forEach(m=>m.addedNodes.forEach(n=>{
- if(n.nodeType===1){
- if(n.classList&&n.classList.contains("row"))addCopy(n);
- n.querySelectorAll&&n.querySelectorAll(".row").forEach(addCopy);
- }
- }));
- });
- mo.observe(feed,{childList:true,subtree:true});
- feed._copyObs=mo;
+ const feed=$("feed");if(!feed)return;
+ feed.querySelectorAll(".row-acts,.rx").forEach(n=>n.remove());
 }
 function wireToolPathClicks(){
  const feed=$("feed");if(!feed||feed._locClick)return;

@@ -51,9 +51,12 @@ function saveSid(){try{localStorage.setItem("grok_remote_watch",JSON.stringify({
 async function bootLink(){
  loadCfg();
  try{
-  const r=await fetch("/config.json",{cache:"no-store"});
-  const j=await r.json();
-  const url=(j.ws_url||(location.protocol==="https:"?"wss://":"ws://")+location.host+"/ws");
+  /* The auth cookie is scoped to the host in the address bar. config.json's ws_url is
+     pinned to the LAN IP, so from loopback or meshnet the socket dialed a host the
+     cookie never rides to - 401 forever, page stuck OFFLINE. Always follow our own
+     host and carry the page key so the socket can auth even cookie-less. */
+  const qk=new URLSearchParams(location.search).get("key");
+  const url=(location.protocol==="https:"?"wss://":"ws://")+location.host+"/ws"+(qk?"?key="+encodeURIComponent(qk):"");
   connect(url);
  }catch(e){setPhase("offline","err");setLine("UI server offline")}
 }

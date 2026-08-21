@@ -268,24 +268,25 @@ html[data-layout="braid"] main#feed{
 padding:14px var(--braid-chat-pad) 10px!important;max-width:none!important;margin:0!important;
 width:100%!important;box-sizing:border-box;box-shadow:none!important;flex:1!important;min-height:0!important
 }
-html[data-layout="braid"] .row{margin:8px 0!important;gap:3px;width:100%;max-width:100%}
+html[data-layout="braid"] .row{margin:6px 0!important;gap:3px;width:100%;max-width:100%}
 html[data-layout="braid"] .row.me{align-items:flex-end}
+html[data-layout="braid"] .row.me+.row:not(.me),html[data-layout="braid"] .row:not(.me)+.row.me{margin-top:18px!important}
 html[data-layout="braid"] .nm{
-font-family:var(--font)!important;font-size:12px!important;font-weight:650!important;
-letter-spacing:-.01em!important;color:var(--mut)!important;padding:0 2px 2px
+font-family:var(--font)!important;font-size:11px!important;font-weight:650!important;
+letter-spacing:.04em!important;color:var(--mut)!important;padding:0 2px 2px;text-transform:uppercase
 }
-html[data-layout="braid"] .row.msg .nm{color:var(--tx)!important;opacity:.85}
+html[data-layout="braid"] .row.msg .nm{color:var(--mut)!important;opacity:1}
+html[data-layout="braid"] .row.me .nm{color:var(--you)!important;text-align:right}
 html[data-layout="braid"] .bub{
-max-width:min(100%,920px)!important;width:fit-content;border-radius:14px!important;
-border:1px solid var(--braid-border)!important;background:var(--panel)!important;box-shadow:none!important;
+max-width:min(100%,860px)!important;width:fit-content;border-radius:16px 16px 16px 5px!important;
+border:1px solid var(--braid-border)!important;background:var(--bg2)!important;box-shadow:none!important;
 padding:11px 15px!important;font-size:15px!important;line-height:1.55!important
 }
-html[data-layout="braid"] .row.msg .bub{max-width:min(100%,960px)!important}
-html[data-layout="braid"] .row.me .bub{max-width:min(100%,720px)!important}
-html[data-layout="braid"] .row.me .bub{
-background:color-mix(in srgb,var(--me-bg) 92%,var(--panel))!important;
-border-color:color-mix(in srgb,var(--me-line) 45%,var(--line))!important;box-shadow:none!important
-}
+html[data-layout="braid"] .row.msg .bub{max-width:min(100%,860px)!important}
+html[data-layout="braid"] .row.me .bub{max-width:min(88%,620px)!important;border-radius:16px 16px 5px 16px!important;
+background:var(--me-bg)!important;border-color:color-mix(in srgb,var(--me-line) 70%,var(--line))!important}
+html[data-layout="braid"] .rx{display:none!important}
+html[data-layout="braid"] #rxPop{border-radius:16px!important;border:1px solid var(--braid-border)!important}
 html[data-layout="braid"] .row.msg.latest .bub{
 animation:none!important;border-color:color-mix(in srgb,var(--acc) 35%,var(--line))!important;
 box-shadow:0 0 0 1px color-mix(in srgb,var(--acc) 10%,transparent)!important
@@ -364,11 +365,16 @@ html[data-layout="braid"] body.livebar-more .livebar .lb-sess,
 html[data-layout="braid"] body.livebar-more .livebar .lb-extra{display:inline!important}
 html[data-layout="braid"] body.livebar-more .livebar{flex-wrap:wrap!important}
 html[data-layout="braid"] body.livebar-more .livebar .lb-more{margin-left:0}
+html[data-layout="braid"]{--comp-h:48px}
 html[data-layout="braid"] textarea#box,html[data-layout="braid"] textarea{
-border-radius:18px!important;border:1px solid color-mix(in srgb,var(--line) 90%,transparent)!important;
+border-radius:14px!important;border:1px solid color-mix(in srgb,var(--line) 90%,transparent)!important;
 background:var(--panel)!important;box-shadow:var(--braid-shadow)!important;
 padding:12px 14px!important;font-size:15px!important;line-height:1.45!important;
+min-height:var(--comp-h)!important;height:var(--comp-h);box-sizing:border-box;
 transition:border-color .15s,box-shadow .15s
+}
+html[data-layout="braid"] .btn-plus,html[data-layout="braid"] .btn-voice-comp,html[data-layout="braid"] .btn-xr-comp,html[data-layout="braid"] .btn-msg-mode,html[data-layout="braid"] button.send,html[data-layout="braid"] button.cancel-turn{
+height:var(--comp-h)!important;min-height:var(--comp-h)!important;border-radius:14px!important
 }
 html[data-layout="braid"] textarea#box:focus,html[data-layout="braid"] textarea:focus{
 border-color:color-mix(in srgb,var(--acc) 45%,var(--line))!important;

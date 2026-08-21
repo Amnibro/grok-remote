@@ -1,3 +1,9 @@
+## 2026-08-20 — Wear OS companion: android-wear/ GrokRemoteWatch
+- Minimal Wear WebView app for the /watch companion page (the "needs a Wear browser" gotcha
+  is dead — the app IS the browser): loads http://192.168.0.7:2421/watch with the key baked,
+  keep-screen-on, standalone. 2.3MB debug APK, pushed to the phone at
+  /sdcard/Download/GrokRemoteWatch.apk.
+
 ## 2026-08-18 v1.9.5 - phone "down": 30-day auth cookie expired, never refreshed
 
 Phone went dark at ~22:24 while every keepalive stayed green. The auth middleware only re-set

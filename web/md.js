@@ -41,8 +41,8 @@ function inl(s){
  s=s.replace(/!\[([^\]]*)\]\(\s*([^)\s]+)[^)]*\)/g,(m,a,u)=>
   /^(https?:|data:image\/)/.test(u)?'<img src="'+u+'" alt="'+a+'" loading="lazy">':m);
  s=s.replace(/\[([^\]]*)\]\(\s*([^)\s]+)[^)]*\)/g,(m,a,u)=>
-  /^(https?:|mailto:|#|\/)/.test(u)?'<a href="'+u+'" target="_blank" rel="noopener">'+(a||u)+"</a>":m);
- s=s.replace(/(^|[\s(])((?:https?:\/\/|www\.)[^\s<)]*[^\s<).,;:!?'"])/g,(m,p,u)=>p+'<a href="'+(u.indexOf("www.")===0?"https://"+u:u)+'" target="_blank" rel="noopener">'+u+"</a>");
+  /^(https?:|mailto:|#|\/)/.test(u)?'<a class="md-a" href="'+u+'" target="_blank" rel="noopener">'+(a||u)+"</a>":m);
+ s=s.replace(/(^|[\s(])((?:https?:\/\/|www\.)[^\s<)]*[^\s<).,;:!?'"])/g,(m,p,u)=>p+'<a class="md-a" href="'+(u.indexOf("www.")===0?"https://"+u:u)+'" target="_blank" rel="noopener">'+u+"</a>");
  s=s.replace(/\*\*\*(?=\S)([\s\S]*?\S)\*\*\*/g,"<strong><em>$1</em></strong>");
  s=s.replace(/\*\*(?=\S)([\s\S]*?\S)\*\*/g,"<strong>$1</strong>");
  s=s.replace(/(^|[^\w_])__(?=\S)([\s\S]*?\S)__(?!\w)/g,"$1<strong>$2</strong>");
