@@ -1,3 +1,13 @@
+## 2026-08-21 QA round: two tarball bugs found by running the real artifact
+
+Automated QA (fresh Ubuntu-24.04, live URL, zero setup) caught what code review never
+would: (1) git archive on this box applies core.autocrlf - the shipped start.sh had a
+CRLF shebang and linux said "required file not found"; .gitattributes now pins *.sh to
+LF. (2) a fresh install exited with "--secret required"; start.sh now mints and
+persists .ui-secret exactly like start.ps1. Tarball reshipped to the site and the
+GitHub release; cold start from the live URL now answers /health 200 with a pairing
+key banner.
+
 ## 2026-08-21 v1.9.6 - published: GitHub release + site downloads, wear app key un-baked
 
 - v1.9.6 pushed (watch cockpit polish, catchup tests, checklists). Release assets:
