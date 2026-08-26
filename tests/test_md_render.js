@@ -25,7 +25,7 @@ t("text_after_list","- a\n- b\n\nnot a bullet",[["has","<ul>"],["has","<p>not a 
 t("no_ul_inside_p","intro\n\n- a\n- b\n\noutro",[["has","<p>intro</p>"],["has","<ul>"],["no","<p>intro</p><ul>".replace("</p>","")]]);
 t("nested_list","- top\n  - child\n- top2",[["has","<li>top<ul><li>child</li></ul></li>"]]);
 t("heading_levels","# H1\n## H2\n### H3",[["has","<h1>H1</h1>"],["has","<h2>H2</h2>"],["has","<h3>H3</h3>"]]);
-t("bare_url","see https://example.com for more",[["has",'<a href="https://example.com"']]);
+t("bare_url","see https://example.com for more",[["has",'href="https://example.com"']]);
 t("md_link","[docs](https://x.io/a)",[["has",'href="https://x.io/a"'],["has",">docs</a>"]]);
 t("no_js_url","[click](javascript:alert(1))",[["no",'href="javascript:']]);
 t("setext_stays_hr","Some heading\n---\ntext",[["has","<hr>"],["no","<table>"]]);

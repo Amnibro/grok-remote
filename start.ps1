@@ -74,9 +74,9 @@ try {
   $h = Invoke-WebRequest -UseBasicParsing -TimeoutSec 2 -Uri "http://127.0.0.1:$UiPort/health"
   if ($h.StatusCode -eq 200 -and $h.Content -match 'ok') { $uiHealthy = $true }
 } catch {}
-if ($agentListening) { Write-Host "Agent already on :$Port — leaving it (mirror grok-build)" -ForegroundColor Green }
+if ($agentListening) { Write-Host "Agent already on :$Port  - leaving it (mirror grok-build)" -ForegroundColor Green }
 else { Free-Port $Port "agent" }
-if ($uiHealthy) { Write-Host "UI already healthy on :$UiPort — leaving it" -ForegroundColor Green }
+if ($uiHealthy) { Write-Host "UI already healthy on :$UiPort  - leaving it" -ForegroundColor Green }
 else { Free-Port $UiPort "UI" }
 Write-Host ""
 Write-Host "=== Grok Remote Control ===" -ForegroundColor Yellow
@@ -132,7 +132,7 @@ if ($OpenFirewall) {
 }
 $ui = $null
 if ($uiHealthy) {
-  Write-Host "UI already up — skip spawn (no disconnect)" -ForegroundColor Green
+  Write-Host "UI already up  - skip spawn (no disconnect)" -ForegroundColor Green
 } elseif (-not $NoUi) {
   $py = (Get-Command python -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source)
   if (-not $py) { $py = (Get-Command py -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source) }

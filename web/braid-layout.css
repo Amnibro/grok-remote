@@ -109,11 +109,21 @@ html[data-layout="braid"] .more-menu .mm-sec-dot{box-shadow:none!important;width
 html[data-layout="braid"] #picker.panel,html[data-layout="braid"] #picker.panel.on{
 background:var(--panel)!important;border-right:1px solid var(--braid-border)!important;
 max-width:none!important;width:100%!important;margin:0!important;min-width:0!important;
-position:relative!important;z-index:8!important;overflow:visible!important;box-sizing:border-box!important
+position:relative!important;z-index:8!important;overflow:hidden!important;box-sizing:border-box!important
+}
+@media (max-width:899px){
+html[data-layout="braid"] #picker.panel.on{
+flex:1 1 auto!important;min-height:0!important;overflow:hidden!important;height:auto!important
+}
+html[data-layout="braid"] body.page-chat #picker.panel.on{display:none!important}
+html[data-layout="braid"] #btnCollapseRail{display:none!important}
+html[data-layout="braid"] body.desktop #app,html[data-layout="braid"] body.electron #app{
+display:flex!important;flex-direction:column!important;grid-template-columns:none!important;grid-template-areas:none!important
+}
 }
 html[data-layout="braid"] #picker.pulse-frame{margin:0!important;border-radius:0!important}
 html[data-layout="braid"] .picker-head{
-position:relative!important;z-index:30!important;overflow:visible!important;
+position:relative!important;z-index:var(--z-inline-popover)!important;overflow:visible!important;
 padding:10px 10px 8px!important;background:color-mix(in srgb,var(--panel) 92%,transparent)!important;
 border-bottom:1px solid var(--braid-border)!important;backdrop-filter:saturate(160%) blur(12px);
 flex:none!important
@@ -137,7 +147,7 @@ min-width:36px;padding:8px 0!important;font-size:14px!important
 }
 html[data-layout="braid"] .sess-filter-pop{
 display:none!important;position:fixed!important;left:12px;top:80px;right:auto;width:min(280px,calc(100vw - 24px));
-z-index:20060!important;padding:12px!important;margin:0!important;
+z-index:var(--z-popover)!important;padding:12px!important;margin:0!important;
 background:var(--panel)!important;border:1px solid var(--braid-border)!important;border-radius:14px!important;
 box-shadow:0 16px 48px -12px rgba(0,0,0,.45),var(--braid-shadow)!important;
 pointer-events:auto!important;isolation:isolate
@@ -324,7 +334,7 @@ background:color-mix(in srgb,var(--panel) 94%,transparent)!important;
 backdrop-filter:saturate(160%) blur(14px)!important;-webkit-backdrop-filter:saturate(160%) blur(14px)!important;
 padding:8px var(--braid-chat-pad) calc(10px + env(safe-area-inset-bottom))!important;box-shadow:none!important;
 width:auto!important;max-width:100%!important;min-width:0!important;box-sizing:border-box!important;
-position:relative!important;z-index:2!important;overflow:hidden!important
+position:relative!important;z-index:var(--z-footer)!important;overflow:hidden!important
 }
 html[data-layout="braid"] .composer{
 max-width:none!important;margin:0!important;width:100%!important;min-width:0!important;gap:8px;align-items:flex-end;
@@ -554,6 +564,24 @@ html[data-layout="braid"] body.desktop #foot .composer,
 html[data-layout="braid"] body.electron #foot .composer{
 max-width:none!important;margin:0!important;width:100%!important;min-width:0!important
 }
+html[data-layout="braid"] body.desktop:not(.ide-open) #idePanel,
+html[data-layout="braid"] body.electron:not(.ide-open) #idePanel{
+display:none!important
+}
+html[data-layout="braid"] body.desktop.ide-open #app,
+html[data-layout="braid"] body.electron.ide-open #app{
+grid-template-rows:minmax(0,1fr) auto minmax(160px,32vh)!important;
+grid-template-areas:"side main" "side foot" "ide ide"!important
+}
+html[data-layout="braid"] body.desktop.ide-open.sidebar-collapsed #app,
+html[data-layout="braid"] body.electron.ide-open.sidebar-collapsed #app{
+grid-template-columns:0 minmax(0,1fr)!important;
+grid-template-areas:"main main" "foot foot" "ide ide"!important
+}
+html[data-layout="braid"] body.desktop.ide-open #idePanel,
+html[data-layout="braid"] body.electron.ide-open #idePanel{
+grid-area:ide!important;display:flex!important;max-height:none!important;height:100%!important;min-height:0!important
+}
 }
 @media (min-width:1200px){
 html[data-layout="braid"]{
@@ -571,6 +599,16 @@ html[data-layout="braid"] body.desktop.sidebar-collapsed #app,
 html[data-layout="braid"] body.electron.sidebar-collapsed #app{
 grid-template-columns:0 minmax(0,1fr)!important;
 grid-template-areas:"main main" "foot foot"!important
+}
+html[data-layout="braid"] body.desktop.ide-open.sidebar-collapsed #app,
+html[data-layout="braid"] body.electron.ide-open.sidebar-collapsed #app{
+grid-template-columns:0 minmax(0,1fr)!important;
+grid-template-areas:"main main" "foot foot" "ide ide"!important
+}
+html[data-layout="braid"] body.desktop.ide-open #app,
+html[data-layout="braid"] body.electron.ide-open #app{
+grid-template-rows:minmax(0,1fr) auto minmax(160px,32vh)!important;
+grid-template-areas:"side main" "side foot" "ide ide"!important
 }
 html[data-layout="braid"] body.desktop #chatStage main#feed,
 html[data-layout="braid"] body.electron #chatStage main#feed{

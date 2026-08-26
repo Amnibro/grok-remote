@@ -19,3 +19,6 @@ _shot*.js
 .env.*
 Thumbs.db
 desktop/package-lock.json
+desktop-tauri/node_modules/
+desktop-tauri/src-tauri/target/
+desktop-tauri/dist/

@@ -1,6 +1,7 @@
 """Grok Remote: UI + multi-client WS hub (fan-out) + workspace FS API."""
 import os,sys,json,socket,argparse,asyncio,mimetypes,subprocess,shutil,re,time,uuid
 from pathlib import Path
+from work_board import WorkBoard,strip_ask
 from urllib.parse import quote,unquote
 ROOT=Path(__file__).resolve().parent
 try:
@@ -14,6 +15,11 @@ HISTORY_KEEP={"user_message_chunk","agent_message_chunk","agent_thought_chunk","
 SKIP_DIR={".git","node_modules","__pycache__",".venv","venv","dist","build",".next",".cache","desktop/node_modules"}
 MAX_READ=2_000_000
 MAX_WRITE=4_000_000
+HUB_MAX_CLIENTS=6
+HUB_MAX_LOADS=64
+LOAD_WAIT=10.0
+BROADCAST_SEND_TIMEOUT=5.0
+WORK_PUSH_MIN_GAP=0.4
 TEXT_EXT={".py",".js",".ts",".tsx",".jsx",".json",".md",".txt",".css",".html",".htm",".xml",".yml",".yaml",".toml",".ini",".cfg",".env",".sh",".ps1",".bat",".cmd",".rs",".go",".java",".c",".h",".cpp",".hpp",".cs",".rb",".php",".sql",".r",".swift",".kt",".vue",".svelte",".scss",".less",".svg",".gitignore",".dockerfile",".cmake",".gradle",".log",".diff",".patch",".csv"}
 def lan_ip():
  try:
@@ -24,6 +30,12 @@ def find_grok():
  for p in (Path.home()/".grok"/"bin"/"grok.exe",Path.home()/".grok"/"bin"/"grok",shutil.which("grok") or ""):
   if p and Path(p).is_file():return str(Path(p))
  return None
+def port_open(port:int,host="127.0.0.1",timeout=0.2):
+ try:
+  with socket.create_connection((host,int(port)),timeout=timeout):
+   return True
+ except Exception:
+  return False
 def listen_pids_port(port:int,exclude_self=True):
  pids=[];me=os.getpid()
  try:
@@ -112,6 +124,44 @@ def xai_api_key():
      if v:return v
  except Exception:pass
  return ""
+def actor_plugin_root():
+  env=os.environ.get("GROK_ACTOR_ROOT")
+  cands=[]
+  if env:cands.append(Path(env))
+  cands.append(Path.home()/".grok"/"plugins"/"grok-actor")
+  plug=Path.home()/".grok"/"installed-plugins"
+  if plug.is_dir():
+    try:
+      for p in plug.rglob("actor_cli.py"):
+        cands.append(p.parent.parent);break
+    except Exception:pass
+  for c in cands:
+    if c and (c/"scripts"/"actor_cli.py").is_file():return c
+  return None
+_actor_mod=None
+def load_actor_mod():
+  global _actor_mod
+  if _actor_mod is not None:return _actor_mod
+  import importlib.util
+  root=actor_plugin_root()
+  if not root:return None
+  path=root/"scripts"/"actor_cli.py"
+  spec=importlib.util.spec_from_file_location("grok_actor_cli",str(path))
+  if not spec or not spec.loader:return None
+  mod=importlib.util.module_from_spec(spec)
+  old=os.environ.get("GROK_PLUGIN_ROOT")
+  os.environ["GROK_PLUGIN_ROOT"]=str(root)
+  try:spec.loader.exec_module(mod)
+  finally:
+    if old is not None:os.environ["GROK_PLUGIN_ROOT"]=old
+    else:os.environ.pop("GROK_PLUGIN_ROOT",None)
+  _actor_mod=mod
+  return mod
+def actor_preset_public(p):
+  return {"id":p.get("id"),"name":p.get("name"),"description":p.get("description") or "","intensity":float(p.get("intensity_default") or p.get("intensity") or 0.8),"kind":p.get("scope") or "bundled"}
+def actor_state_public(st):
+  if not st:return None
+  return {"preset":st.get("preset"),"name":st.get("name"),"intensity":float(st.get("intensity") or 0),"scope":st.get("_layer") or st.get("scope") or "global","source":st.get("source") or "","session_id":st.get("session_id")}
 def react_store_path():
  base=os.environ.get("GROK_PLUGIN_DATA") or str(Path.home()/".grok"/"plugin-data"/"grok-remote")
  p=Path(base);p.mkdir(parents=True,exist_ok=True)
@@ -125,6 +175,26 @@ def load_reacts():
  except Exception:return {}
 def save_reacts(d):
  react_store_path().write_text(json.dumps(d,indent=2),encoding="utf-8")
+RX_TEMP_DEFAULT=0.65
+def rx_temp_store_path():
+ base=os.environ.get("GROK_PLUGIN_DATA") or str(Path.home()/".grok"/"plugin-data"/"grok-remote")
+ p=Path(base);p.mkdir(parents=True,exist_ok=True)
+ return p/"rx-temp.json"
+def load_rx_temps():
+ path=rx_temp_store_path()
+ if not path.is_file():return {}
+ try:
+  d=json.loads(path.read_text(encoding="utf-8",errors="replace"))
+  return d if isinstance(d,dict) else {}
+ except Exception:return {}
+def save_rx_temps(d):
+ rx_temp_store_path().write_text(json.dumps(d,indent=2),encoding="utf-8")
+def rx_temp_record(uid):
+ bag=load_rx_temps()
+ rec=bag.get(uid) if isinstance(bag.get(uid),dict) else None
+ if not rec:
+  rec={"mode":"adaptive","value":RX_TEMP_DEFAULT,"updated":0}
+ return rec
 def archive_store_path():
  base=os.environ.get("GROK_PLUGIN_DATA") or str(Path.home()/".grok"/"plugin-data"/"grok-remote")
  p=Path(base);p.mkdir(parents=True,exist_ok=True)
@@ -273,7 +343,9 @@ def _parse_update_line(line,live=False):
  if kind not in HISTORY_KEEP:return None
  content=update.get("content") if isinstance(update.get("content"),dict) else {}
  text=(content.get("text") if content else None) or ""
- if kind in ("user_message_chunk","agent_message_chunk","agent_thought_chunk") and not str(text).strip():
+ ctype=str((content or {}).get("type") or "")
+ has_media=ctype in ("image","resource","video") or bool((content or {}).get("data") or (content or {}).get("uri") or (content or {}).get("mimeType") or ((content or {}).get("resource") if isinstance((content or {}).get("resource"),dict) else None))
+ if kind in ("user_message_chunk","agent_message_chunk","agent_thought_chunk") and not str(text).strip() and not has_media:
   return None
  if kind=="tool_call_update" and not live:
   st=str(update.get("status") or "")
@@ -302,8 +374,34 @@ def _trim_chat_text(ev,cap=_CHAT_TEXT_CAP):
   c=u.get("content") if isinstance(u.get("content"),dict) else None
   if not c:return ev
   t=c.get("text")
+  changed=False
   if isinstance(t,str) and len(t)>cap:
-   c=dict(c);c["text"]=t[:cap]+"\n…[truncated for load speed]";u=dict(u);u["content"]=c
+   c=dict(c);c["text"]=t[:cap]+"\n…[truncated for load speed]";changed=True
+  data=c.get("data") if isinstance(c.get("data"),str) else ""
+  blob=""
+  res=c.get("resource") if isinstance(c.get("resource"),dict) else {}
+  if not data:blob=str(res.get("blob") or "")
+  raw=data or blob
+  if raw and len(raw)>400:
+   sid=str(((ev.get("params") or {}).get("sessionId") or ""))
+   mime=str(c.get("mimeType") or res.get("mimeType") or "image/png")
+   name=str(c.get("name") or Path(str(res.get("uri") or "image")).name)
+   rec=None
+   try:rec=WorkBoard().save_att(sid,name,mime,raw,str(t or "")[:80])
+   except Exception:rec=None
+   c=dict(c)
+   if rec:
+    c["uri"]=rec["url"];c["mimeType"]=rec.get("mime") or mime
+    c.pop("data",None)
+    if "resource" in c:
+     rc=dict(res);rc.pop("blob",None);rc["uri"]=rec["url"];c["resource"]=rc
+   else:
+    c.pop("data",None)
+    if "resource" in c:
+     rc=dict(res);rc.pop("blob",None);c["resource"]=rc
+   changed=True
+  if changed:
+   u=dict(u);u["content"]=c
    p=dict(ev.get("params") or {});p["update"]=u;ev=dict(ev);ev["params"]=p
  except Exception:pass
  return ev
@@ -318,13 +416,36 @@ def _coalesce_chat(events):
    out.append(ev);continue
   pu=(prev.get("params") or {}).get("update") or {}
   cu=(ev.get("params") or {}).get("update") or {}
-  pt=((pu.get("content") or {}).get("text") if isinstance(pu.get("content"),dict) else "") or ""
-  ct=((cu.get("content") or {}).get("text") if isinstance(cu.get("content"),dict) else "") or ""
+  pc=pu.get("content") if isinstance(pu.get("content"),dict) else {}
+  cc=cu.get("content") if isinstance(cu.get("content"),dict) else {}
+  ptyp=str(pc.get("type") or "text")
+  ctyp=str(cc.get("type") or "text")
+  if ptyp!="text" or ctyp!="text" or pc.get("data") or cc.get("data") or pc.get("uri") or cc.get("uri"):
+   out.append(ev);continue
+  pt=pc.get("text") or ""
+  ct=cc.get("text") or ""
   if not isinstance(pu.get("content"),dict):pu["content"]={"type":"text","text":""}
   pu["content"]["text"]=pt+ct
   if "params" not in prev:prev["params"]={}
   prev["params"]["update"]=pu
  return out
+def _message_first_tail(events,limit):
+ """Keep conversational messages before auxiliary thought/tool events.
+
+ History pages are a UI budget, not a raw JSONL budget. Tool-heavy turns can
+ contain hundreds of auxiliary records; slicing those records directly hides
+ the user prompt and final answer that explain them.
+ """
+ limit=max(1,int(limit or 1))
+ events=list(events or [])
+ if len(events)<=limit:return events
+ primary={"user_message_chunk","agent_message_chunk"}
+ msg_idx=[i for i,ev in enumerate(events) if ev.get("_kind") in primary]
+ aux_idx=[i for i,ev in enumerate(events) if ev.get("_kind") not in primary]
+ keep=set(msg_idx[-limit:])
+ room=limit-len(keep)
+ if room>0:keep.update(aux_idx[-room:])
+ return [ev for i,ev in enumerate(events) if i in keep]
 def read_session_updates(session_dir:Path,limit=1600,max_bytes=8_000_000,since_bytes=0,live=False,before_bytes=None,chat_only=False):
  path=session_dir/"updates.jsonl"
  if not path.is_file():return [],{"path":str(path),"missing":True,"size":0,"has_more":False}
@@ -344,7 +465,8 @@ def read_session_updates(session_dir:Path,limit=1600,max_bytes=8_000_000,since_b
    if live:
     if since>0:f.seek(since)
     else:
-     f.seek(max(0,size-min(max_bytes,512_000)));f.readline()
+     start=max(0,size-min(max_bytes,512_000));f.seek(start)
+     if start>0:f.readline()
     window_start=f.tell()
     raw=f.read()
     cut=raw.rfind(b"\n")+1
@@ -356,14 +478,16 @@ def read_session_updates(session_dir:Path,limit=1600,max_bytes=8_000_000,since_b
      except Exception:s=""
      ev=_parse_update_line(s,live=True)
      if ev:scored.append(ev)
-    if len(scored)>limit:scored=scored[-limit:]
+    scored=_message_first_tail(_coalesce_chat(scored),limit)
     return [_trim_chat_text(_strip_ev(ev)) for ev in scored],{"path":str(path),"size":size,"end":end_pos,"returned":len(scored),"scanned":len(scored),"since":since,"live":True,"has_more":False,"window_start":window_start}
    end_cap=size if before_bytes is None else min(max(0,int(before_bytes)),size)
    if end_cap<=0:return [],{"path":str(path),"size":size,"has_more":False,"window_start":0,"window_end":0,"returned":0,"live":False}
    if chat_only:
     want=max(1,int(limit))
-    max_scan=min(64_000_000,max(16_000_000,int(max_bytes or 0)*16,want*800_000))
-    scan=min(max_scan,max(1_200_000,want*80_000))
+    keep_kinds=msg_kinds|{"agent_thought_chunk","tool_call","tool_call_update","plan"}
+    msg_target=max(6,min(24,max(1,want//2)))
+    max_scan=min(4_000_000,max(800_000,int(max_bytes or 0)*4,want*80_000))
+    scan=min(max_scan,max(250_000,want*12_000))
     collected=[]
     first_off=end_cap
     scanned_lines=0
@@ -386,28 +510,26 @@ def read_session_updates(session_dir:Path,limit=1600,max_bytes=8_000_000,since_b
       off=window_start+len(blob)
       for raw_line in reversed(lines):
        off-=len(raw_line)
-       if _CHAT_MARK_A not in raw_line and _CHAT_MARK_B not in raw_line:continue
+       if _CHAT_MARK_A not in raw_line and _CHAT_MARK_B not in raw_line and b"agent_thought_chunk" not in raw_line and b"tool_call" not in raw_line:continue
        s=raw_line.decode("utf-8","replace").rstrip("\r\n")
        if not s.strip():continue
        ev=_parse_update_line(s,live=False)
-       if not ev or ev.get("_kind") not in msg_kinds:continue
+       if not ev or ev.get("_kind") not in keep_kinds:continue
        ev["_off"]=off
        acc.append(ev)
-       if len(acc)>=want*4:break
       read_to=window_start
      groups=0;lastk=None
      for ev in reversed(acc):
       k=ev.get("_kind") or ""
-      if k not in msg_kinds or lastk is None or lastk!=k:groups+=1
-      lastk=k
-     if groups>=want or start<=0 or scan>=max_scan or len(acc)>=want*4:break
+      if k in msg_kinds and (lastk is None or lastk!=k):groups+=1
+      if k in msg_kinds:lastk=k
+     if groups>=msg_target or start<=0 or scan>=max_scan:break
      scan=min(max_scan,max(scan*2,scan+4_000_000))
     coalesced=_coalesce_chat(list(reversed(acc)))
     first_off=coalesced[0].get("_off",window_start) if coalesced else window_start
-    collected=coalesced
-    if len(collected)>want:collected=collected[-want:]
+    collected=_message_first_tail(coalesced,want)
     first_off=collected[0].get("_off",first_off) if collected else first_off
-    has_more=bool(first_off>0 and (start>0 or len(collected)>=want))
+    has_more=bool(first_off>0 and (start>0 or len(coalesced)>len(collected) or window_start>0))
     return [_trim_chat_text(_strip_ev(ev)) for ev in collected],{"path":str(path),"size":size,"returned":len(collected),"scanned":scanned_lines,"live":False,"has_more":has_more,"window_start":int(first_off),"window_end":end_pos,"end":end_pos,"older_before":int(first_off),"chat_only":True}
    start=max(0,end_cap-max_bytes)
    f.seek(start)
@@ -650,6 +772,7 @@ class AgentHub:
  def __init__(self,agent_ws:str):
   self.agent_ws=agent_ws
   self.clients=set()
+  self._client_seq=[]
   self.pending={}
   self._nid=0
   self._agent=None
@@ -667,6 +790,55 @@ class AgentHub:
   self._hub_rev_ids=set()
   self._term_n=0
   self._watch_task=None
+  self._loads={}
+  self._by_cid={}
+  self.work=WorkBoard()
+  self._work_dirty=False
+  self._work_task=None
+ def _schedule_work_push(self):
+  """A session/load replays the ENTIRE transcript over this socket, and every replayed tool_call
+  used to fire its own _x.ai/work/changed. The client rebuilds the session rail on each one, so
+  opening a long tool-heavy chat repainted the rail hundreds of times - that is the flicker.
+  Coalesce to one push per WORK_PUSH_MIN_GAP with a trailing edge, so live turns still feel instant."""
+  self._work_dirty=True
+  if self._work_task is not None and not self._work_task.done():return
+  self._work_task=asyncio.create_task(self._work_pump())
+ async def _work_pump(self):
+  try:
+   while self._work_dirty:
+    self._work_dirty=False
+    await self._work_push()
+    await asyncio.sleep(WORK_PUSH_MIN_GAP)
+  except asyncio.CancelledError:return
+  except Exception as e:print("[hub] work pump:",e,flush=True)
+ def _load_begin(self,sid):
+  """session/load bookkeeping lives in ONE map. Every entry is {ev,res}: ev fires exactly
+  once when the load resolves, res holds the result while THIS upstream socket lives.
+  _close_unlocked fires every ev and drops the map, so an upstream drop can never leave a
+  session id waiting on an Event nobody will set, and can never answer a later load from a
+  cache the new agent process knows nothing about."""
+  ent=self._loads.get(sid)
+  if ent is None:
+   while len(self._loads)>=HUB_MAX_LOADS:self._loads.pop(next(iter(self._loads)),None)
+   ent={"ev":asyncio.Event(),"res":None}
+   self._loads[sid]=ent
+  ent["ev"]=asyncio.Event()
+  ent["res"]=None
+  return ent
+ def _load_finish(self,sid,res=None,keep=True):
+  ent=self._loads.get(sid)
+  if ent is None:return
+  if res is not None:ent["res"]=res
+  ent["ev"].set()
+  if not keep and ent["res"] is None:self._loads.pop(sid,None)
+ async def _load_wait(self,sid,timeout=LOAD_WAIT):
+  """Resolve inside the client's 12s session/load timeout, never outlive it."""
+  ent=self._loads.get(sid)
+  if ent is None:return None
+  if not ent["ev"].is_set():
+   try:await asyncio.wait_for(ent["ev"].wait(),timeout)
+   except Exception:pass
+  return (self._loads.get(sid) or {}).get("res")
  def _maybe_spawn_agent(self):
   port=getattr(self,"agent_port",2419)
   try:
@@ -704,6 +876,7 @@ class AgentHub:
     # "silent > 45s" check trips, and it closes the socket it was trying to protect. Inbound
     # frames are NOT throttled, so liveness has to come from this side. The client already
     # refreshes linkLastRx on every message and already handles this method.
+    await self._prune_clients(room=0)
     if self.clients and time.time()-hb>=15:
      hb=time.time()
      await self._notify_hub_state(bool(self._agent and not self._agent.closed))
@@ -715,6 +888,64 @@ class AgentHub:
    except asyncio.CancelledError:return
    except Exception as e:
     print("[hub] watch:",e,flush=True)
+ async def _claim_cid(self,client,cid):
+  cid=str(cid or "").strip()
+  if not cid or len(cid)<4:return
+  try:client._cid=cid
+  except Exception:pass
+  old=self._by_cid.get(cid)
+  self._by_cid[cid]=client
+  if old is None or old is client:return
+  try:idle=time.time()-float(getattr(old,"_last_rx",0) or 0)
+  except Exception:idle=1e9
+  if idle<20 and not getattr(old,"closed",False):
+   return
+  self.clients.discard(old)
+  try:self._client_seq.remove(old)
+  except ValueError:pass
+  self._detach_client_pending(old)
+  try:
+   if not getattr(old,"closed",True):await old.close()
+  except Exception:pass
+  print("[hub] replaced duplicate client %s · n=%d"%(cid[:16],len(self.clients)),flush=True)
+ def _ws_loopback(self,c):
+  try:
+   req=getattr(c,"_req",None)
+   peer=(getattr(req,"remote",None) or "") if req is not None else ""
+  except Exception:peer=""
+  return peer in ("127.0.0.1","::1","::ffff:127.0.0.1") or str(peer).startswith("127.")
+ async def _prune_clients(self,room=0):
+  dead=[c for c in list(self.clients) if getattr(c,"closed",False)]
+  for c in dead:
+   self.clients.discard(c)
+   self._detach_client_pending(c)
+  self._client_seq=[c for c in self._client_seq if c in self.clients]
+  now=time.time()
+  def _idle(c):
+   t=float(getattr(c,"_last_rx",0) or 0)
+   return now-t if t else 1e9
+  self._client_seq=sorted(self._client_seq,key=_idle,reverse=True)
+  cap=max(1,HUB_MAX_CLIENTS-max(0,int(room)))
+  while len(self.clients)>cap and self._client_seq:
+   held=[]
+   old=None
+   while self._client_seq:
+    c=self._client_seq.pop(0)
+    hot=any(v and v[0] is c for v in self.pending.values())
+    if hot and self._client_seq:
+     held.append(c);continue
+    if _idle(c)<90 and self._client_seq:
+     held.append(c);continue
+    old=c;break
+   self._client_seq=held+self._client_seq
+   if old is None:break
+   self.clients.discard(old)
+   self._detach_client_pending(old)
+   try:
+    if not getattr(old,"closed",True):await old.close()
+   except Exception:pass
+   print("[hub] pruned extra client · n=%d"%len(self.clients),flush=True)
+   print("[hub] dropped stale client · n=%d"%len(self.clients),flush=True)
  def _next_id(self):
   self._nid+=1
   return self._nid
@@ -798,6 +1029,10 @@ class AgentHub:
    except Exception:pass
   self._terms.clear()
   self._hub_rev_ids.clear()
+  for lsid,ent in list(self._loads.items()):
+   try:ent["ev"].set()
+   except Exception:pass
+  self._loads.clear()
   dead=list(self.pending.items())
   self.pending.clear()
   for nid,ent in dead:
@@ -851,7 +1086,7 @@ class AgentHub:
     if not path:raise ValueError("path required")
     p=Path(path)
     if not p.is_file():raise FileNotFoundError(path)
-    raw=p.read_text(encoding="utf-8",errors="replace")
+    raw=await asyncio.get_event_loop().run_in_executor(None,lambda:p.read_text(encoding="utf-8",errors="replace"))
     lines=raw.splitlines(keepends=True)
     line=params.get("line")
     limit=params.get("limit")
@@ -948,12 +1183,37 @@ class AgentHub:
    await self._reply_agent(rid,error={"code":-32000,"message":str(e)[:400]})
    return True
   return False
+ def _work_note(self,obj):
+  try:
+   method=obj.get("method")
+   params=obj.get("params") if isinstance(obj.get("params"),dict) else {}
+   sid=str(params.get("sessionId") or "")
+   if method=="session/update" or method in ("_x.ai/session/update","x.ai/session/update"):
+    upd=params.get("update") if isinstance(params.get("update"),dict) else params
+    self.work.note_update(sid,upd,params.get("_meta") or obj.get("_meta") or {})
+   elif method=="_x.ai/queue/changed":
+    self.work.note_queue(sid,params.get("entries") or [],params.get("runningPromptId"))
+  except Exception as e:
+   print("[hub] work note:",e,flush=True)
+ async def _work_push(self):
+  try:
+   jobs=self.work.snapshot()
+   await self._broadcast(json.dumps({"jsonrpc":"2.0","method":"_x.ai/work/changed","params":{"jobs":jobs}},separators=(",",":")))
+  except Exception:pass
  async def _from_agent(self,raw:str):
   try:obj=json.loads(raw)
   except Exception:
    await self._broadcast(raw);return
   rid=obj.get("id",None)
   method=obj.get("method")
+  if method:
+   self._work_note(obj)
+   k=""
+   if method=="session/update":
+    u=(obj.get("params") or {}).get("update") if isinstance(obj.get("params"),dict) else {}
+    k=str((u or {}).get("sessionUpdate") or "")
+   if method=="_x.ai/queue/changed" or k in ("tool_call","tool_call_update","turn_completed","task_completed","user_message_chunk"):
+    self._schedule_work_push()
   is_resp=rid is not None and method is None
   if is_resp:
    fut=self._rpc_futs.pop(rid,None)
@@ -977,6 +1237,11 @@ class AgentHub:
      self._init_error=None
      self._init_result=None
      self._init_done=False
+   if meta.get("method")=="session/load" and meta.get("sid"):
+    msid=str(meta.get("sid") or "")
+    ok="error" not in obj
+    self._load_finish(msid,(obj.get("result") or {}) if ok else None,keep=ok)
+    print("[hub] session/load done · sid=%s · ok=%s"%(msid[:8],ok),flush=True)
    obj["id"]=orig
    data=json.dumps(obj,separators=(",",":"))
    try:
@@ -991,15 +1256,27 @@ class AgentHub:
    self._agent_req_ids.add(rid)
   await self._broadcast(raw if isinstance(raw,str) else json.dumps(obj,separators=(",",":")))
  async def _broadcast(self,data:str):
-  dead=[]
-  for c in list(self.clients):
+  """Dropping a client here used to leave its socket OPEN. handle_client kept answering its
+  pings, so the phone read 'live' and received nothing for the rest of the run - a heavy
+  stream over a slow link tripped the old 0.8s send timeout every time. Anything we drop
+  gets closed, so the client sees the break and reconnects."""
+  async def _one(c):
    try:
-    if c.closed:dead.append(c);continue
-    await c.send_str(data)
-   except Exception:dead.append(c)
+    if c.closed:return c
+    await asyncio.wait_for(c.send_str(data),BROADCAST_SEND_TIMEOUT)
+    return None
+   except Exception:return c
+  if not self.clients:return
+  dead=[x for x in await asyncio.gather(*[_one(c) for c in list(self.clients)]) if x is not None]
   for c in dead:
    self.clients.discard(c)
+   try:self._client_seq.remove(c)
+   except ValueError:pass
    self._detach_client_pending(c)
+   try:
+    if not getattr(c,"closed",True):await c.close()
+   except Exception:pass
+  if dead:print("[hub] dropped %d unreachable client(s) · n=%d"%(len(dead),len(self.clients)),flush=True)
  def _detach_client_pending(self,client):
   for k,v in list(self.pending.items()):
    if not v or v[0] is not client:continue
@@ -1020,13 +1297,17 @@ class AgentHub:
   except Exception:pass
  async def handle_client(self,client):
   from aiohttp import WSMsgType
+  await self._prune_clients(room=1)
   self.clients.add(client)
+  self._client_seq.append(client)
+  try:client._last_rx=time.time()
+  except Exception:pass
   print("[hub] client join from remote · n=%d"%len(self.clients),flush=True)
   try:
    # A cold boot spawns the agent AFTER the web port is serving, so the first phone can
    # arrive up to ~18s before :2419 listens. Wait it out instead of failing the first
    # connection - the client is showing "connecting..." either way.
-   up=await self.ensure(retries=24,delay=0.5)
+   up=await self.ensure(retries=(2 if (self._agent is not None and not self._agent.closed) else 24),delay=0.5)
    if not up:
     try:await client.send_str(json.dumps({"jsonrpc":"2.0","method":"error","params":{"message":"agent hub unavailable · start agent serve on :2419 · "+(self._last_err or "")}}))
     except Exception:pass
@@ -1038,10 +1319,18 @@ class AgentHub:
      except Exception:raw=None
     elif msg.type in (WSMsgType.CLOSE,WSMsgType.ERROR,WSMsgType.CLOSED):break
     if raw is None:continue
+    try:client._last_rx=time.time()
+    except Exception:pass
     try:peek=json.loads(raw)
     except Exception:peek=None
-    if isinstance(peek,dict) and peek.get("method")=="_x.ai/remote/ping":
+    if isinstance(peek,dict) and peek.get("method") in ("_x.ai/remote/ping","_x.ai/remote/hello"):
      params=peek.get("params") if isinstance(peek.get("params"),dict) else {}
+     await self._claim_cid(client,params.get("cid") or params.get("clientId"))
+     if peek.get("method")=="_x.ai/remote/hello":
+      try:
+       await client.send_str(json.dumps({"jsonrpc":"2.0","method":"_x.ai/remote/pong","params":{"t":params.get("t"),"s":time.time(),"clients":len(self.clients),"hub_up":bool(self._agent and not self._agent.closed),"hello":True}},separators=(",",":")))
+      except Exception:pass
+      continue
      try:
       await client.send_str(json.dumps({"jsonrpc":"2.0","method":"_x.ai/remote/pong","params":{"t":params.get("t"),"s":time.time(),"clients":len(self.clients),"hub_up":bool(self._agent and not self._agent.closed)}},separators=(",",":")))
      except Exception:pass
@@ -1051,6 +1340,10 @@ class AgentHub:
    print("[hub] client error:",e,flush=True)
   finally:
    self.clients.discard(client)
+   try:self._client_seq.remove(client)
+   except ValueError:pass
+   cid=getattr(client,"_cid",None)
+   if cid and self._by_cid.get(cid) is client:self._by_cid.pop(cid,None)
    self._detach_client_pending(client)
    print("[hub] client leave · n=%d · in-flight turns stay on hub"%len(self.clients),flush=True)
  async def _to_agent(self,client,raw:str):
@@ -1087,15 +1380,54 @@ class AgentHub:
    await self._reply_err(client,orig,"agent offline · is serve on :2419? "+(self._last_err or ""),-32001)
    return
   if orig is not None and method:
-   self._nid+=1
-   nid=self._nid
-   meta={"init":method=="initialize"}
-   self.pending[nid]=(client,orig,meta)
-   obj["id"]=nid
-   try:await self._agent.send_str(json.dumps(obj,separators=(",",":")))
-   except Exception as e:
-    self.pending.pop(nid,None)
-    await self._reply_err(client,orig,str(e))
+   params=obj.get("params") if isinstance(obj.get("params"),dict) else {}
+   sid=str((params or {}).get("sessionId") or "")
+   lent=self._loads.get(sid) if sid else None
+   if method=="session/load" and lent is not None:
+    async def _join():
+     res=await self._load_wait(sid)
+     if res is not None:
+      try:await client.send_str(json.dumps({"jsonrpc":"2.0","id":orig,"result":res},separators=(",",":")))
+      except Exception:pass
+     else:await self._reply_err(client,orig,"session/load still in flight")
+    if lent["res"] is not None or not lent["ev"].is_set():
+     asyncio.create_task(_join())
+     return
+   wait_load=method=="session/prompt" and lent is not None and not lent["ev"].is_set()
+   if method=="session/load" and sid:
+    self._load_begin(sid)
+    print("[hub] session/load · sid=%s"%(sid[:8]),flush=True)
+   payload=dict(obj)
+   async def _go():
+    if wait_load:await self._load_wait(sid)
+    self._nid+=1
+    nid=self._nid
+    meta={"init":method=="initialize","method":method,"sid":sid}
+    self.pending[nid]=(client,orig,meta)
+    payload["id"]=nid
+    try:await asyncio.wait_for(self._agent.send_str(json.dumps(payload,separators=(",",":"))),8)
+    except Exception as e:
+     self.pending.pop(nid,None)
+     if method=="session/load" and sid:self._load_finish(sid,keep=False)
+     await self._reply_err(client,orig,str(e))
+   if method=="session/prompt":
+    print("[hub] prompt · sid=%s · wait_load=%s"%(sid[:8] if sid else "-",wait_load),flush=True)
+    try:
+     bits=[]
+     pr=(params or {}).get("prompt")
+     if isinstance(pr,list):
+      for b in pr:
+       if isinstance(b,dict) and b.get("text"):bits.append(str(b.get("text")))
+       elif isinstance(b,str):bits.append(b)
+      try:self.work.ingest_prompt(sid,pr)
+      except Exception as e:print("[hub] att ingest:",e,flush=True)
+     self.work.note_prompt(sid,"\n".join(bits),cwd=str((params or {}).get("cwd") or ""))
+    except Exception:pass
+   if method=="session/cancel" and sid:
+    try:self.work.mark_cancel(sid)
+    except Exception:pass
+   if method in ("session/load","session/prompt"):asyncio.create_task(_go())
+   else:await _go()
    return
   if orig is not None and not method:
    if orig in self._hub_rev_ids:return
@@ -1234,7 +1566,7 @@ async def main_async(a):
  hub.agent_port=a.agent_port
  loops=RemoteLoopManager(hub,LOOP_STORE)
  keyq=("?key=%s"%a.secret) if a.secret else ""
- cfg={"agent_host":agent_host,"agent_port":a.agent_port,"secret":"(held server-side)","cwd":state["cwd"],"ws_url":"ws://%s:%d/ws"%(lan,a.port),"ws_path":"/ws","ui":"http://%s:%d/%s"%(lan,a.port,keyq),"watch":"http://%s:%d/watch%s"%(lan,a.port,keyq),"lan_ip":lan,"proxy":True,"hub":True,"ide":True,"auth":bool(a.secret),"features":["fs","ide","review","multi-client-hub","skills-scan","git","project-context","stop-turn","todos","voice-tts","voice-go","xr-ar","watch-companion","msg-queue","remote-loop","effort"]}
+ cfg={"agent_host":agent_host,"agent_port":a.agent_port,"secret":"(held server-side)","cwd":state["cwd"],"ws_url":"ws://%s:%d/ws"%(lan,a.port),"ws_path":"/ws","ui":"http://%s:%d/%s"%(lan,a.port,keyq),"watch":"http://%s:%d/watch%s"%(lan,a.port,keyq),"lan_ip":lan,"proxy":True,"hub":True,"ide":True,"auth":bool(a.secret),"features":["fs","ide","review","multi-client-hub","skills-scan","git","project-context","stop-turn","todos","voice-tts","voice-go","xr-ar","watch-companion","msg-queue","remote-loop","effort","work-board","att-store"]}
  try:(ROOT/"runtime-config.json").write_text(json.dumps(cfg,indent=2),encoding="utf-8")
  except Exception:pass
  def root_path():
@@ -1253,6 +1585,58 @@ async def main_async(a):
   p=WEB/"watch.html"
   if not p.is_file():raise web.HTTPNotFound()
   return web.FileResponse(p,headers={"Cache-Control":"no-store"})
+ async def xr_page(_):
+  p=WEB/"xr.html"
+  if not p.is_file():raise web.HTTPNotFound()
+  return web.FileResponse(p,headers={"Cache-Control":"no-store"})
+ async def xr_tts(request):
+  try:body=await request.json()
+  except Exception:raise web.HTTPBadRequest(text="json required")
+  text=str(body.get("text") or "").strip()[:2000]
+  if not text:raise web.HTTPBadRequest(text="text required")
+  voice=str(body.get("voice") or "en-US-AvaNeural").strip()
+  try:
+   import edge_tts
+   buf=bytearray()
+   async for chunk in edge_tts.Communicate(text,voice,rate="+12%",pitch="+16Hz").stream():
+    if chunk["type"]=="audio":buf.extend(chunk["data"])
+   return web.Response(body=bytes(buf),content_type="audio/mpeg",headers={"Cache-Control":"no-store"})
+  except Exception as e:
+   return web.json_response({"ok":False,"error":str(e)[:200]},status=500)
+ async def xr_see(request):
+  try:body=await request.json()
+  except Exception:raise web.HTTPBadRequest(text="json required")
+  data=str(body.get("jpeg") or "")
+  if not data.startswith("data:image/jpeg;base64,"):raise web.HTTPBadRequest(text="jpeg dataurl required")
+  import base64
+  raw=base64.b64decode(data.split(",",1)[1])
+  if len(raw)>2_000_000:raise web.HTTPBadRequest(text="too large")
+  cwd=str(body.get("cwd") or state["cwd"] or ".")
+  p=os.path.join(cwd,"companion_view.jpg")
+  with open(p,"wb") as f:f.write(raw)
+  return web.json_response({"ok":True,"path":p},headers={"Cache-Control":"no-store"})
+ async def xr_models(request):
+  out=[]
+  try:
+   for p in sorted(WEB.glob("*.glb")):
+    n=p.name
+    if n.startswith("model_")or n in("Xbot.glb","Soldier.glb"):continue
+    out.append({"file":n,"size":p.stat().st_size})
+  except Exception:pass
+  return web.json_response({"ok":True,"models":out},headers={"Cache-Control":"no-store"})
+ async def xr_braid(request):
+  out={"ok":False}
+  try:
+   async with aiohttp.ClientSession() as s:
+    async with s.get("http://127.0.0.1:8788/api/state",timeout=aiohttp.ClientTimeout(total=4)) as r:
+     st=await r.json()
+    async with s.get("http://127.0.0.1:8788/api/sessions",timeout=aiohttp.ClientTimeout(total=4)) as r:
+     se=await r.json()
+   tr=st.get("transcript") or []
+   out={"ok":True,"transcript":[{"who":t.get("who",""),"text":str(t.get("text",""))[:220]} for t in tr[-10:]],"sessions":len(se.get("sessions") or []),"live":True}
+  except Exception as e:
+   out={"ok":True,"live":False,"error":str(e)[:120]}
+  return web.json_response(out,headers={"Cache-Control":"no-store"})
  watch_pins={}
  watch_pin_tries={"n":0,"reset":0.0}
  async def watch_pin_new(request):
@@ -1299,13 +1683,14 @@ async def main_async(a):
   if name.endswith(".webmanifest"):ctype="application/manifest+json"
   if name.endswith(".woff2"):ctype="font/woff2"
   elif name.endswith(".woff"):ctype="font/woff"
-  return web.FileResponse(p,headers={"Content-Type":ctype,"Cache-Control":"public, max-age=86400"})
+  cc="no-cache" if name.startswith("xr-") and name.endswith(".js") else "public, max-age=86400"
+  return web.FileResponse(p,headers={"Content-Type":ctype,"Cache-Control":cc})
  def _peer_loopback(request):
   try:peer=request.remote or ""
   except Exception:peer=""
   return peer in ("127.0.0.1","::1","::ffff:127.0.0.1") or str(peer).startswith("127.")
  async def health(_):
-  ag=listen_pids_port(a.agent_port,exclude_self=False)
+  ag=port_open(a.agent_port)
   hub_up=hub._agent is not None and not getattr(hub._agent,"closed",True)
   return web.json_response({"ok":True,"ui":True,"ready":bool(hub_up and ag),"agent_ws_local":"ws://%s:%d/ws"%(agent_host,a.agent_port),"detail":"","cwd":state["cwd"],"hub_clients":len(hub.clients),"hub_up":hub_up,"hub_err":getattr(hub,"_last_err","") or "","init_cached":bool(getattr(hub,"_init_done",False)),"agent_listening":bool(ag)},headers={"Cache-Control":"no-store"})
  async def health_deep(_):
@@ -1403,6 +1788,29 @@ async def main_async(a):
   cwd=request.rel_url.query.get("cwd") or state["cwd"]
   items=scan_skills(cwd)
   return web.json_response({"ok":True,"cwd":cwd,"count":len(items),"skills":items},headers={"Cache-Control":"no-store"})
+ async def session_list_http(request):
+  try:limit=min(200,max(20,int(request.rel_url.query.get("limit") or "80")))
+  except Exception:limit=80
+  def _go():
+   idx=_sid_index() or {}
+   rows=[]
+   for sid,dirs in idx.items():
+    if not sid or not dirs:continue
+    hits=[d for d in dirs if _session_dir_ok(d)]
+    if not hits:continue
+    hits.sort(key=lambda d:(d/"updates.jsonl").stat().st_mtime if (d/"updates.jsonl").is_file() else 0,reverse=True)
+    d=hits[0]
+    mtime=0
+    try:
+     up=d/"updates.jsonl"
+     if up.is_file():mtime=int(up.stat().st_mtime*1000)
+    except Exception:pass
+    info=read_session_info(d)
+    rows.append({"sessionId":sid,"title":info.get("title") or "","cwd":info.get("cwd") or "","lastChangeUnixMs":mtime,"resident":False,"activity":"disk"})
+   rows.sort(key=lambda x:int(x.get("lastChangeUnixMs") or 0),reverse=True)
+   return rows[:limit]
+  rows=await asyncio.get_event_loop().run_in_executor(None,_go)
+  return web.json_response({"ok":True,"sessions":rows,"count":len(rows)},headers={"Cache-Control":"no-store"})
  async def session_history(request):
   sid=(request.rel_url.query.get("sessionId") or request.rel_url.query.get("id") or "").strip()
   cwd=(request.rel_url.query.get("cwd") or state["cwd"] or "").strip()
@@ -1445,12 +1853,12 @@ async def main_async(a):
   except Exception:pass
   if kind=="human":
    try:
-    up=sdir/"updates.jsonl"
-    if up.is_file():
-     with up.open(encoding="utf-8",errors="replace") as f:
-      head=f.read(8192)
-     if "[AGENT SETUP" in head:kind="braid"
-     if head:settled=True
+    ch=sdir/"chat_history.jsonl"
+    if ch.is_file():
+     settled=True
+     with open(ch,encoding="utf-8",errors="replace") as f:
+      head=f.read(12000)
+     if "Your hologram body" in head:kind="auto"
    except Exception:pass
   if settled:_kind_cache[key]=kind
   return kind
@@ -1555,24 +1963,6 @@ async def main_async(a):
   else:
    raise web.HTTPBadRequest(text="ids[] or id required")
   return web.json_response({"ok":True,"ids":ids,"count":len(ids)},headers={"Cache-Control":"no-store"})
- async def session_react_get(request):
-  sid=str(request.query.get("id") or request.query.get("sessionId") or "").strip()
-  d=load_reacts()
-  return web.json_response({"ok":True,"reacts":d.get(sid) or {}},headers={"Cache-Control":"no-store"})
- async def session_react_set(request):
-  try:body=await request.json()
-  except Exception:body={}
-  sid=str(body.get("sessionId") or body.get("id") or "").strip()
-  hid=str(body.get("hash") or "").strip()
-  em=str(body.get("emoji") or "").strip()[:8]
-  snippet=str(body.get("snippet") or "")[:240]
-  if not sid or not hid:raise web.HTTPBadRequest(text="sessionId and hash required")
-  d=load_reacts()
-  bag=d.get(sid) or {}
-  if em:bag[hid]={"emoji":em,"snippet":snippet,"ts":time.time(),"pending":True}
-  else:bag.pop(hid,None)
-  d[sid]=bag;save_reacts(d)
-  return web.json_response({"ok":True})
  async def session_rename(request):
   try:body=await request.json()
   except Exception:raise web.HTTPBadRequest(text="json required")
@@ -1605,9 +1995,78 @@ async def main_async(a):
   except Exception as e:
    return web.json_response({"ok":False,"error":str(e),"sessionId":sid},status=500,headers={"Cache-Control":"no-store"})
   return web.json_response({"ok":True,"sessionId":sid,"title":title,"previous":prev,"dir":str(sdir)},headers={"Cache-Control":"no-store"})
+ async def session_prompt_http(request):
+  try:body=await request.json()
+  except Exception:raise web.HTTPBadRequest(text="json required")
+  sid=str(body.get("sessionId") or body.get("id") or "").strip()
+  if not sid:raise web.HTTPBadRequest(text="sessionId required")
+  prompt=body.get("prompt")
+  blocks=[]
+  if isinstance(prompt,list):
+   for b in prompt:
+    if isinstance(b,dict):
+     typ=str(b.get("type") or "")
+     if typ in ("image","resource","video") or b.get("data") or b.get("mimeType"):
+      blocks.append(b)
+     else:
+      tx=str(b.get("text") or "")
+      if tx:blocks.append({"type":"text","text":tx})
+    elif isinstance(b,str) and b.strip():
+     blocks.append({"type":"text","text":b.strip()})
+  t=str(body.get("text") or body.get("message") or "").strip()
+  if t and not any(isinstance(x,dict) and x.get("text") for x in blocks):blocks=[{"type":"text","text":t}]+blocks
+  if not blocks:raise web.HTTPBadRequest(text="prompt required")
+  if not await hub.ensure(retries=8,delay=0.35):
+   return web.json_response({"ok":False,"error":"agent offline"},status=503,headers={"Cache-Control":"no-store"})
+  try:await hub._load_wait(sid,8)
+  except Exception:pass
+  try:
+   hub.work.ingest_prompt(sid,blocks)
+   hub.work.note_prompt(sid,"\n".join(str(b.get("text") or "") for b in blocks if isinstance(b,dict)))
+  except Exception:pass
+  hub._nid+=1
+  nid=hub._nid
+  payload={"jsonrpc":"2.0","id":nid,"method":"session/prompt","params":{"sessionId":sid,"prompt":blocks}}
+  try:
+   await hub._agent.send_str(json.dumps(payload,separators=(",",":")))
+  except Exception as e:
+   return web.json_response({"ok":False,"error":str(e)},status=502,headers={"Cache-Control":"no-store"})
+  return web.json_response({"ok":True,"id":nid,"sessionId":sid},headers={"Cache-Control":"no-store"})
+ async def session_react_get(_):
+  return web.json_response({"ok":True,"data":load_reacts()},headers={"Cache-Control":"no-store"})
+ async def session_react_set(request):
+  try:body=await request.json()
+  except Exception:body={}
+  sid=str(body.get("sessionId") or body.get("id") or "").strip()
+  hid=str(body.get("hash") or "").strip()
+  if not sid or not hid:raise web.HTTPBadRequest(text="sessionId and hash required")
+  d=load_reacts()
+  bag=d.get(sid) if isinstance(d.get(sid),dict) else {}
+  em=str(body.get("emoji") or "").strip()
+  if (not em) or body.get("clear"):
+   bag.pop(hid,None)
+  else:
+   bag[hid]={"emoji":em,"snippet":str(body.get("snippet") or "")[:240],"note":str(body.get("note") or "")[:400],"onUser":bool(body.get("onUser")),"ts":int(body.get("ts") or 0)}
+  d[sid]=bag
+  try:save_reacts(d)
+  except Exception as e:
+   return web.json_response({"ok":False,"error":str(e)},status=500,headers={"Cache-Control":"no-store"})
+  return web.json_response({"ok":True,"sessionId":sid,"hash":hid},headers={"Cache-Control":"no-store"})
  async def voice_status(_):
   key=xai_api_key()
   return web.json_response({"ok":True,"tts":bool(key),"stt":"browser","provider":"xai" if key else "browser-fallback","voices":["eve","ara","leo","rex","sal","luna","orion","helix"],"hint":None if key else "Set XAI_API_KEY for real Grok voice (else browser speechSynthesis)"},headers={"Cache-Control":"no-store"})
+ async def companion_state(_):
+  """Quiet same-origin probe for the optional motion service on :2423."""
+  try:
+   timeout=ClientTimeout(total=.6,connect=.25,sock_connect=.25,sock_read=.35)
+   async with ClientSession(timeout=timeout) as sess:
+    async with sess.get("http://127.0.0.1:2423/motion/state") as resp:
+     if resp.status!=200:raise RuntimeError("HTTP "+str(resp.status))
+     data=await resp.json(content_type=None)
+     if not isinstance(data,dict):data={}
+     return web.json_response({"available":True,**data},headers={"Cache-Control":"no-store"})
+  except Exception:
+   return web.json_response({"available":False},headers={"Cache-Control":"no-store"})
  async def tts_proxy(request):
   key=xai_api_key()
   if not key:return web.json_response({"ok":False,"error":"XAI_API_KEY not set — browser fallback only"},status=503)
@@ -1773,13 +2232,18 @@ async def main_async(a):
   await client.prepare(request)
   await hub.handle_client(client)
   return client
- app=web.Application(client_max_size=8*1024*1024,middlewares=[make_auth_middleware(a.secret)])
+ app=web.Application(client_max_size=32*1024*1024,middlewares=[make_auth_middleware(a.secret)])
  app.router.add_get("/",index)
  app.router.add_get("/index.html",index)
  app.router.add_get("/watch",watch_page)
  app.router.add_get("/watch.html",watch_page)
  app.router.add_get("/w",watch_pin_page)
  app.router.add_post("/api/watch/pin",watch_pin_new)
+ app.router.add_get("/xr",xr_page)
+ app.router.add_post("/api/xr/tts",xr_tts)
+ app.router.add_post("/api/xr/see",xr_see)
+ app.router.add_get("/api/xr/models",xr_models)
+ app.router.add_get("/api/xr/braid",xr_braid)
  app.router.add_get("/config.json",config)
  app.router.add_get("/config",config)
  app.router.add_get("/health",health)
@@ -1794,6 +2258,7 @@ async def main_async(a):
  app.router.add_post("/api/fs/write",fs_write)
  app.router.add_post("/api/fs/mkdir",fs_mkdir)
  app.router.add_get("/api/skills/list",skills_list)
+ app.router.add_get("/api/sessions",session_list_http)
  app.router.add_get("/api/session/history",session_history)
  app.router.add_post("/api/session/titles",session_titles)
  app.router.add_get("/api/session/signals",session_signals)
@@ -1804,9 +2269,11 @@ async def main_async(a):
  app.router.add_get("/api/session/archived",session_archived_get)
  app.router.add_post("/api/session/archived",session_archived_set)
  app.router.add_post("/api/session/rename",session_rename)
+ app.router.add_post("/api/session/prompt",session_prompt_http)
  app.router.add_get("/api/session/react",session_react_get)
  app.router.add_post("/api/session/react",session_react_set)
  app.router.add_get("/api/voice/status",voice_status)
+ app.router.add_get("/api/companion/state",companion_state)
  app.router.add_post("/api/tts",tts_proxy)
  app.router.add_get("/api/git/status",git_status)
  app.router.add_get("/api/git/diff",git_diff)
@@ -1860,11 +2327,206 @@ async def main_async(a):
   if res and res.get("error"):
    return web.json_response({"ok":False,"error":res.get("error"),"raw":res},status=400)
   return web.json_response({"ok":True,"effort":effort,"modelId":model,"result":res.get("result") if res else None})
+ async def actor_list(_):
+  mod=load_actor_mod()
+  if not mod:return web.json_response({"ok":False,"error":"grok-actor plugin not found"},status=501)
+  try:
+   presets=[actor_preset_public(p) for p in mod.list_presets()]
+  except Exception as e:
+   return web.json_response({"ok":False,"error":str(e)},status=500)
+  return web.json_response({"ok":True,"presets":presets},headers={"Cache-Control":"no-store"})
+ def _actor_sid_ctx(sid):
+  had="GROK_SESSION_ID" in os.environ
+  old=os.environ.get("GROK_SESSION_ID")
+  if sid:os.environ["GROK_SESSION_ID"]=sid
+  def restore():
+   if not sid:return
+   if had:os.environ["GROK_SESSION_ID"]=old
+   else:os.environ.pop("GROK_SESSION_ID",None)
+  return restore
+ async def actor_show(request):
+  mod=load_actor_mod()
+  if not mod:return web.json_response({"ok":False,"error":"grok-actor plugin not found"},status=501)
+  sid=str(request.rel_url.query.get("sessionId") or "").strip()
+  restore=_actor_sid_ctx(sid)
+  try:
+   glob=actor_state_public(mod.load_global())
+   chat=actor_state_public(mod.load_chat())
+   sess=actor_state_public(mod.load_session(sid or mod.resolve_session_id()))
+   eff=actor_state_public(mod.load_active())
+  except Exception as e:
+   return web.json_response({"ok":False,"error":str(e)},status=500)
+  finally:restore()
+  return web.json_response({"ok":True,"effective":eff,"global":glob,"session":sess,"chat":chat},headers={"Cache-Control":"no-store"})
+ async def actor_set(request):
+  mod=load_actor_mod()
+  if not mod:return web.json_response({"ok":False,"error":"grok-actor plugin not found"},status=501)
+  try:body=await request.json()
+  except Exception:raise web.HTTPBadRequest(text="json required")
+  preset=str(body.get("preset") or body.get("id") or "").strip()
+  if not preset:raise web.HTTPBadRequest(text="preset required")
+  scope=str(body.get("scope") or "session").strip()
+  sid=str(body.get("sessionId") or "").strip() or None
+  intensity=body.get("intensity")
+  try:lvl=float(intensity) if intensity is not None and str(intensity)!="" else None
+  except Exception:lvl=None
+  try:
+   pr=mod.load_preset(preset)
+  except FileNotFoundError:
+   return web.json_response({"ok":False,"error":"unknown preset","preset":preset,"invent":True},status=404)
+  restore=_actor_sid_ctx(sid)
+  try:
+   st=mod.activate(pr,lvl,pr.get("path") or "remote",scope,sid)
+  except RuntimeError as e:
+   return web.json_response({"ok":False,"error":str(e)},status=400)
+  except Exception as e:
+   return web.json_response({"ok":False,"error":str(e)},status=500)
+  finally:restore()
+  return web.json_response({"ok":True,"set":actor_state_public({**st,"_layer":st.get("scope")})},headers={"Cache-Control":"no-store"})
+ async def actor_clear(request):
+  mod=load_actor_mod()
+  if not mod:return web.json_response({"ok":False,"error":"grok-actor plugin not found"},status=501)
+  try:body=await request.json()
+  except Exception:body={}
+  scope=str((body or {}).get("scope") or "chat").strip()
+  sid=str((body or {}).get("sessionId") or "").strip() or None
+  try:cleared=mod.clear_scope(scope,sid)
+  except Exception as e:
+   return web.json_response({"ok":False,"error":str(e)},status=500)
+  return web.json_response({"ok":True,"cleared":cleared},headers={"Cache-Control":"no-store"})
+ async def actor_get(request):
+  mod=load_actor_mod()
+  if not mod:return web.json_response({"ok":False,"error":"grok-actor plugin not found"},status=501)
+  pid=str(request.rel_url.query.get("id") or request.rel_url.query.get("preset") or "").strip()
+  if not pid:raise web.HTTPBadRequest(text="id required")
+  try:pr=mod.load_preset(pid)
+  except FileNotFoundError:
+   return web.json_response({"ok":False,"error":"unknown preset","preset":pid},status=404)
+  out=actor_preset_public(pr)
+  out["body"]=pr.get("body") or ""
+  return web.json_response({"ok":True,"preset":out},headers={"Cache-Control":"no-store"})
+ async def actor_invent(request):
+  mod=load_actor_mod()
+  if not mod:return web.json_response({"ok":False,"error":"grok-actor plugin not found"},status=501)
+  try:body=await request.json()
+  except Exception:raise web.HTTPBadRequest(text="json required")
+  name=str(body.get("name") or "").strip()
+  text=str(body.get("body") or body.get("text") or "").strip()
+  if not name or not text:raise web.HTTPBadRequest(text="name and body required")
+  pid=str(body.get("id") or "").strip() or mod.slugify(name)
+  desc=str(body.get("description") or ("Custom actor: "+name)).strip()
+  try:lvl=float(body.get("intensity") if body.get("intensity") is not None else 0.85)
+  except Exception:lvl=0.85
+  try:path=mod.write_custom_preset(pid,name,desc,text,lvl)
+  except Exception as e:
+   return web.json_response({"ok":False,"error":str(e)},status=400)
+  activate=bool(body.get("set") or body.get("activate") or True)
+  st=None
+  if activate:
+   sid=str(body.get("sessionId") or "").strip() or None
+   scope=str(body.get("scope") or "session").strip()
+   restore=_actor_sid_ctx(sid)
+   try:
+    pr=mod.parse_preset(path,"custom")
+    st=mod.activate(pr,lvl,str(path),scope,sid)
+   except Exception as e:
+    return web.json_response({"ok":False,"error":str(e),"saved":str(path)},status=400)
+   finally:restore()
+  return web.json_response({"ok":True,"id":pid,"path":str(path),"set":actor_state_public({**st,"_layer":st.get("scope")}) if st else None},headers={"Cache-Control":"no-store"})
+ async def rx_temp_get(request):
+  uid=str(request.rel_url.query.get("user") or request.rel_url.query.get("id") or "").strip() or "default"
+  rec=rx_temp_record(uid)
+  return web.json_response({"ok":True,"user":uid,"mode":rec.get("mode") or "adaptive","value":float(rec.get("value") if rec.get("value") is not None else RX_TEMP_DEFAULT),"default":RX_TEMP_DEFAULT},headers={"Cache-Control":"no-store"})
+ async def rx_temp_set(request):
+  try:body=await request.json()
+  except Exception:raise web.HTTPBadRequest(text="json required")
+  uid=str(body.get("user") or body.get("id") or "").strip() or "default"
+  from_agent=bool(body.get("fromAgent") or body.get("agent"))
+  bag=load_rx_temps()
+  rec=bag.get(uid) if isinstance(bag.get(uid),dict) else {"mode":"adaptive","value":RX_TEMP_DEFAULT}
+  mode=str(body.get("mode") or rec.get("mode") or "adaptive").strip().lower()
+  if mode not in ("adaptive","manual"):mode="adaptive"
+  if from_agent and (rec.get("mode")=="manual" or mode=="manual" and rec.get("mode")=="manual"):
+   return web.json_response({"ok":True,"ignored":True,"reason":"manual override","user":uid,"mode":"manual","value":float(rec.get("value") or RX_TEMP_DEFAULT)},headers={"Cache-Control":"no-store"})
+  if "value" in body and body.get("value") is not None:
+   try:val=max(0.0,min(1.0,float(body.get("value"))))
+   except Exception:val=float(rec.get("value") or RX_TEMP_DEFAULT)
+  else:
+   val=float(rec.get("value") if rec.get("value") is not None else RX_TEMP_DEFAULT)
+  rec={"mode":mode,"value":val,"updated":time.time(),"fromAgent":from_agent}
+  bag[uid]=rec
+  try:save_rx_temps(bag)
+  except Exception as e:
+   return web.json_response({"ok":False,"error":str(e)},status=500)
+  return web.json_response({"ok":True,"user":uid,"mode":mode,"value":val,"ignored":False},headers={"Cache-Control":"no-store"})
+ async def att_list(request):
+  sid=str(request.rel_url.query.get("sessionId") or request.rel_url.query.get("sid") or "").strip()
+  if not sid:raise web.HTTPBadRequest(text="sessionId required")
+  return web.json_response({"ok":True,"items":hub.work.list_atts(sid)},headers={"Cache-Control":"no-store"})
+ async def att_get(request):
+  aid=str(request.match_info.get("aid") or "").strip()
+  rec=hub.work.get_att(aid)
+  if not rec:raise web.HTTPNotFound(text="missing")
+  p=Path(rec.get("path") or "")
+  if not p.is_file():raise web.HTTPNotFound(text="gone")
+  return web.FileResponse(path=str(p),headers={"Content-Type":rec.get("mime") or "application/octet-stream","Cache-Control":"private, max-age=86400"})
+ async def att_post(request):
+  sid="";name="";mime="";raw=b"";text_key=""
+  ctype=str(request.content_type or "")
+  if "multipart" in ctype:
+   r=await request.post()
+   sid=str(r.get("sessionId") or r.get("sid") or "").strip()
+   text_key=str(r.get("text") or r.get("text_key") or "")
+   f=r.get("file")
+   if f is not None and hasattr(f,"file"):
+    name=str(getattr(f,"filename",None) or "file")
+    mime=str(getattr(f,"content_type",None) or "")
+    raw=f.file.read()
+  else:
+   try:body=await request.json()
+   except Exception:raise web.HTTPBadRequest(text="json or multipart")
+   sid=str(body.get("sessionId") or body.get("sid") or "").strip()
+   name=str(body.get("name") or "file")
+   mime=str(body.get("mime") or body.get("mimeType") or "")
+   text_key=str(body.get("text") or body.get("text_key") or "")
+   raw=body.get("data") or body.get("blob") or b""
+  if not sid:raise web.HTTPBadRequest(text="sessionId required")
+  rec=hub.work.save_att(sid,name,mime,raw,text_key)
+  if not rec:return web.json_response({"ok":False,"error":"rejected"},status=400)
+  return web.json_response({"ok":True,"item":rec},headers={"Cache-Control":"no-store"})
+ async def work_list(_):
+  return web.json_response({"ok":True,"jobs":hub.work.snapshot()},headers={"Cache-Control":"no-store"})
+ async def work_cancel(request):
+  try:body=await request.json()
+  except Exception:body={}
+  sid=str((body or {}).get("sessionId") or (body or {}).get("sid") or "").strip()
+  if not sid:raise web.HTTPBadRequest(text="sessionId required")
+  try:hub.work.mark_cancel(sid)
+  except Exception as e:return web.json_response({"ok":False,"error":str(e)},status=500)
+  try:
+   if hub._agent and not getattr(hub._agent,"closed",True):
+    await hub._agent.send_str(json.dumps({"jsonrpc":"2.0","method":"session/cancel","params":{"sessionId":sid}},separators=(",",":")))
+  except Exception as e:print("[hub] work cancel send:",e,flush=True)
+  await hub._work_push()
+  return web.json_response({"ok":True,"sessionId":sid},headers={"Cache-Control":"no-store"})
+ app.router.add_get("/api/work",work_list)
+ app.router.add_post("/api/work/cancel",work_cancel)
+ app.router.add_get("/api/att",att_list)
+ app.router.add_post("/api/att",att_post)
+ app.router.add_get("/api/att/{aid}",att_get)
  app.router.add_get("/api/loops",loops_list)
  app.router.add_post("/api/loops",loops_create)
  app.router.add_delete("/api/loops",loops_stop)
  app.router.add_post("/api/loops/stop",loops_stop)
  app.router.add_post("/api/effort",effort_set)
+ app.router.add_get("/api/actor/list",actor_list)
+ app.router.add_get("/api/actor/show",actor_show)
+ app.router.add_post("/api/actor/set",actor_set)
+ app.router.add_post("/api/actor/clear",actor_clear)
+ app.router.add_get("/api/actor/preset",actor_get)
+ app.router.add_post("/api/actor/invent",actor_invent)
+ app.router.add_get("/api/rx-temp",rx_temp_get)
+ app.router.add_post("/api/rx-temp",rx_temp_set)
  print("Grok Remote UI+hub   http://%s:%d/%s"%(lan,a.port,keyq),flush=True)
  print("Pair on this PC      http://127.0.0.1:%d/pair"%a.port,flush=True)
  print("Multi-client WS      ws://%s:%d/ws  -> shared agent %s:%d"%(lan,a.port,agent_host,a.agent_port),flush=True)

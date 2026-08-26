@@ -37,8 +37,8 @@ if (-not $NoBrowser) {
 }
 Write-Host $url
 if (-not $healthy) {
-  Write-Host ("Grok Remote not healthy within {0}s — run Desktop shortcut again or scripts\ensure-running.ps1 -Force" -f $TimeoutSec) -ForegroundColor Yellow
+  Write-Host ("Grok Remote not healthy within {0}s  - run Desktop shortcut again or scripts\ensure-running.ps1 -Force" -f $TimeoutSec) -ForegroundColor Yellow
 }
 if ($url -notmatch "[\?&]key=") {
-  Write-Host "Opened without pairing key — expect 401 until stack restarts with a secret." -ForegroundColor Yellow
+  Write-Host "Opened without pairing key  - expect 401 until stack restarts with a secret." -ForegroundColor Yellow
 }

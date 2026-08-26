@@ -40,6 +40,7 @@ const phase=document.getElementById("phase"),line=document.getElementById("line"
 let rec=null,listening=false,finalBuf="",ws=null,sid=null,secret="",nid=1,pendingText="";
 function setPhase(t,cls){phase.textContent=t;phase.className=cls||""}
 function setLine(t){line.textContent=t||""}
+function stripBody(t){return String(t||"").replace(/\[\[(?:motion|emote|gaze|compose|reach|rx|rx-temp)\s*:[^\]]*\]\]/gi," ").replace(/\[\[[a-z0-9_]{2,40}\]\]/g," ").replace(/[ \t]{2,}/g," ")}
 function loadCfg(){
  try{
   const c=JSON.parse(localStorage.getItem("grok_remote_watch")||"{}");
@@ -72,7 +73,8 @@ function connect(url){
    const u=d.params&&d.params.update;if(!u)return;
    const t=u.sessionUpdate;
    if(t==="agent_message_chunk"){
-    const tx=(u.content&&u.content.text)||"";
+
+    const tx=stripBody((u.content&&u.content.text)||"");
     if(tx)setLine(String(line.textContent||"").length>80?tx.slice(0,120):((line.dataset.raw||"")+tx).slice(-160));
     line.dataset.raw=(line.dataset.raw||"")+tx;
    }

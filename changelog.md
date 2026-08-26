@@ -1,3 +1,233 @@
+## 2026-08-26 v1.9.20 / desktop v1.4.4 — dual-layout Grok theme and desktop reliability
+- The archive's quiet zinc-on-black Grok appearance now covers both Braid and Legacy. Braid keeps
+  its wrapped two-row composer; Legacy keeps its flexible rail and single-row composer. Removed the
+  fixed five-column composer assumption that could stack Send and Cancel in the same cell.
+- Pair phone, Watch, phone setup, and Delve now use the Tauri opener when available, the Electron
+  bridge when present, and a browser/same-window fallback otherwise. The `/pair` destination remains
+  the same LAN QR setup page.
+- `chat_only` history now scans for conversational groups and spends its page budget on user/agent
+  messages before thoughts and tools. Live catch-up uses the same policy and no longer discards the
+  first JSONL line when reading from byte zero.
+- Project skills no longer double-encode the working directory. Skills remain available from the
+  sessions screen, the footer gear stays reachable after collapsing the desktop rail, and Health is
+  duplicated into the desktop command deck.
+- Menus are portaled and positioned synchronously before their animation frame, eliminating a
+  clipped or zero-size first frame. The archive Grok skin uses stable no-motion open states.
+- The optional XR motion probe now goes through `/api/companion/state`; an absent service on `:2423`
+  stays quiet instead of generating connection-refused errors every ten seconds.
+- Demo sessions skip disk history, context, and invalid workspace-root polling. Browser verification
+  completed with no console warnings/errors after the polling interval.
+- Added message-priority history regressions and expanded UI wiring/theme checks. Python, JavaScript,
+  browser-backed state, and Tauri Rust suites pass.
+
+## 2026-08-25 v1.9.19 hover flicker: the work box was shoving the whole session list
+- `#workBoard` sat in the rail directly above `#sessList` and measured **201px** on the live hub.
+  The moment a turn started it un-hid, pushed the entire conversation list down, and the row under
+  the cursor slid out from under it. Measured during a real streaming turn: hover lost on
+  **250 of 250 samples**. Moved into the chat column under `#feed`, above the work line, so nothing
+  above the session list can change height. Same probe after the move: **0 of 250 lost, 0 row shifts**.
+- `renderSessions()` wiped `sessList.innerHTML` and rebuilt every row on each call, and the work
+  board pushes every 0.4s during a turn, so the hovered node was destroyed ~2.5x a second. Both
+  `renderSessions` and `paintWorkBoard` now skip the rebuild when the rendered output is unchanged
+  (`sessListSig` / `workBoardSig`). Live hub: 2 wipes in 12s, from `openSession` and
+  `hydrateSessionTitles` only.
+- `tests/test_workboard_placement.mjs` — baseline shoves `#sessList` 147 -> 267 and row 3 by 121px
+  when a work box appears; passes on the fix.
+- `tests/test_rail_hover_thrash.mjs` — 10 identical renders removed 10 nodes on the baseline, 0 on
+  the fix.
+- Still counted but no longer user-visible: ~120 `removedNodes` records on `#sessList` during a turn
+  with only 7-9 `renderSessions` calls. Hover and row positions are stable through it, so it is
+  re-parenting rather than teardown. Not chased further.
+
+## 2026-08-25 v1.9.18 the rail flicker was trimFeedDom eating history in a loop
+- `startPoll` calls `trimFeedDom()` every 500-900ms and it drops rows from the TOP, which is exactly
+  what `loadOlderHistory` prepends. Scrolled up in a long chat the cycle was: prepend ~40 older rows,
+  poll trims them straight back off, content above the viewport shrinks, `scrollTop` falls under 120,
+  the scroll handler fires `loadOlderHistory` again. It walked backwards through the whole transcript
+  and repainted the rail every pass. That is the flicker and the "loading every message to the
+  beginning of history".
+- Desktop-only in practice because the bigger window puts more rows on screen, so the feed crosses
+  `FEED_DOM_CAP=72` immediately and the reader is far more likely to be scrolled up.
+- Fix: `trimFeedDom` returns unless `atBottom()`, and skips while `historyLoadingOlder` or inside the
+  `ignoreScrollUntil` window. Reading the live scroll position instead of the cached `stickBottom`
+  flag is deliberate — other code mutates that flag. Pinned to the bottom the cap still applies and
+  a trim re-pins.
+- `tests/test_trim_scroll_loop.mjs`: 2 of 4 fail on `backups/index.html.v1.9.18_pre_trimloop.bak`
+  (`120 -> 73 -> 72` rows under a reader who never touched the scrollbar), all 4 pass on the fix.
+- Second, bigger half of the flicker: opening a chat makes the agent replay the ENTIRE transcript
+  over the hub socket, and the hub fired `_x.ai/work/changed` once per replayed `tool_call`. The
+  client rebuilds the session rail on every one of those. Measured on the real hub switching
+  azno -> amni-browse -> amni-type: **renderSessions ran 298, 543, 545 times** per switch, ~33
+  repaints a second. Hub now coalesces to one push per `WORK_PUSH_MIN_GAP`=0.4s with a trailing
+  edge, so a live turn still pushes immediately. Same chain after: **5, 8, 11**.
+- amni-browse also went from 0 feed rows to 17 on switch; the empty feed was the same storm.
+- `tests/test_work_push_coalesce.py`: 250 replayed events produced 250 frames on
+  `backups/server.py.v1.9.18_pre_workpush.bak`, coalesced on the fix, and a live turn still pushes
+  inside 250ms.
+
+## 2026-08-25 v1.9.17 the agent was brain-dead and nothing could tell
+- `agent.spawn.log` ends 08-24T23:11:32 with `worker quit with fatal: Transport channel closed, when
+  Auth(AuthorizationRequired)` x5. The process stayed up, answered `initialize` in 0.01s, kept
+  `/health` green and `agent_listening: true`, and burned 0.00s CPU over 6s. `auth.json` refreshed at
+  05:44 and the process from 08-23 never picked it up. Prompts were accepted and dropped.
+- **New fingerprint: agent alive + WS responsive + /health green + ZERO CPU = workers died on auth.**
+  Restart the agent process; the token on disk was already valid.
+- `session/prompt` is sent raw into `pending`, bypassing `req()`, so it had NO timeout — the one RPC
+  that matters most. `startPromptWatch` now watches total silence (`lastLiveAt`), not elapsed time,
+  so a long streaming turn is never killed, and a dead one stops the spinner with a real message.
+- `work_board.heal()` skipped exactly this shape: `last_tool < last_ask` sent it to `continue`, so a
+  prompt answered with nothing stayed `running=1` forever. Now marks `phase='stalled'` after
+  STALL_SECS with no activity since the ask.
+- tests/test_prompt_stall.mjs (4 checks) and tests/test_work_stall.py, both failing on their backups.
+- Lost: the 08:27 amni-browse prompt. It has to be resent.
+
+## 2026-08-24 v1.9.16 queued messages piled up until restart, then flushed FIFO
+- `_x.ai/queue/changed` with no entries and nothing running is the agent saying it is idle. The
+  handler refused to clear `busy` while `msgQueue` had anything in it, and `drainMsgQueue` refused
+  to run while `busy`. A circular gate: nothing could clear it from inside. Cancel, hard refresh and
+  restart all clear `busy` by another path, which is why they appeared to fix it and the whole
+  backlog came out at once.
+- The drain was edge-triggered with no re-arm. Every early return (msgDrainBusy, no sid, socket
+  down, sessionSwitching, busy, the 400ms rate limit) dropped the wakeup and scheduled nothing, so
+  one blocked attempt parked the queue until some unrelated event called `scheduleMsgDrain`.
+- Fix: `!msgQueue.length` is out of the busy-clear condition, and `armMsgRetry()` keeps one 1.5s
+  ticker alive while anything is queued. Every early return arms it, so does the `finally`,
+  `scheduleMsgDrain` and `enqueueMsg`. Both `web/index.html` and root `index.html` patched.
+- `tests/test_queue_deadlock.mjs` drives the real page under playwright-core: 3 of 4 checks fail on
+  `backups/index.html.v1.9.16_pre_queue_deadlock.bak`, all 4 pass on the fix. Served md5 verified
+  against local.
+- Not touched: `tests/test_ui_chrome.py` is 12/19 stale, and two of its queue tests describe a
+  `queueDrainAllowed` / `markQueueSafe` / `startQueueWatch` design that exists in no copy or backup.
+
+## 2026-08-24 v1.9.15 chats that stop responding = a wedged session id, not the agent
+- An upstream drop while a `session/load` was in flight left that sid in `_sid_load` with an Event
+  that never fired. `_close_unlocked` cleared `pending`, `_rpc_futs` and `_terms` but never the load
+  bookkeeping. From then on every `session/load` for that chat waited 20s on a dead Event (client
+  gives up at 12s, all three retries) and every `session/prompt` stalled behind it. Per-session, and
+  permanent until the hub restarted — this is the "navigate away and it stops responding" bug.
+- `_load_ok` had the same lifetime problem in the other direction: after an agent respawn the hub
+  answered `session/load` from cache and never told the new agent process to load the session, so
+  prompts went to a session it did not have.
+- `_broadcast` dropped a client on a 0.8s send timeout but left its socket open. `handle_client` kept
+  answering its pings, so the phone read live and received nothing for the rest of the run. Heavy
+  streaming over a slow link hit this every time.
+- Fix: `_sid_load` + `_sid_load_ev` + `_load_ok` collapse into one `_loads[sid]={"ev","res"}` with
+  `_load_begin` / `_load_finish` / `_load_wait`. `_close_unlocked` fires every waiter and clears the
+  map. Waits are 10s so they resolve inside the client's 12s timeout. Send failure finishes the entry
+  so a retry re-sends. `_broadcast` closes anything it drops, timeout 5s. `_loads` capped at 64.
+- `tests/test_hub_session_wedge.py`: 4 of 5 fail on `backups/server.py.v1.9.15_pre_session_wedge.bak`,
+  all 5 pass on the fix. Live: initialize 0.02s, two concurrent `session/load` 0.02s, cached load 0.00s.
+- Pre-existing and untouched: 3 `test_history_scan` failures, identical on the backup.
+
+## 2026-08-24 refresh kept blob URLs; Azno-v2 stuck waiting
+- You-bubble images were `URL.createObjectURL(File)`. Refresh dropped them. Hub now stores bytes in SQLite+disk (`atts`) on `session/prompt` / POST `/api/att`. Open-chat hydrates `img.att-prev` from `/api/att/{id}`.
+- History dropped image-only `user_message_chunk` (empty text). Parser keeps media; huge base64 is swapped for `/api/att` so the JSON stays small.
+- WorkBoard `running=CASE WHEN ? THEN 1 ELSE running END` never cleared after a cancelled tool, so Azno-v2 sat on `waiting`. Terminal last tool / `heal()` now sets idle.
+
+## 2026-08-24 open chat = last 50, not the whole tape
+- `session/load` was replaying every ACP event into the feed after disk history. Attach now suppresses that replay (`attachReplay`). Disk paints the nearest 50 chat events; scroll-up loads older.
+
+## 2026-08-24 hub work board (sqlite, not json)
+- Switching chats was wiping client busy/queue state. The hub now keeps a **SQLite WAL** board (`~/.grok/plugin-data/grok-remote/work.sqlite`): asks, phase, live tools per session.
+- Rail **Work** list + Kill. Chat switch hydrates from the board. `session/cancel` on that sid only.
+- Client no longer rejects in-flight prompts when you leave a chat.
+
+## 2026-08-24 think expand + wait chip in the feed
+- History thoughts stored `dataset.raw`; expand actually paints instead of `collapsed · expand to load`.
+- Work spinner sits under the feed (response column), hidden when idle. Footer blinking phase-dot is gone.
+
+## 2026-08-24 work line + effort + pterm detach
+- Composer `workNow` line: spinning only while a turn/tool is live, text rotates through thinking / tool title / command / queue. Link-sync no longer keeps the dial spinning forever.
+- Effort cycle is low/medium/high/xhigh. `session/load` cannot pin xhigh over the saved pref.
+- `pterm_fit_v2.py` detaches `pterm_grid_gpu.py` to `logs/pterm_gpu.out.log` so a fit does not own the ACP turn.
+
+## 2026-08-24 idle while a command is still running
+- ACP emitted `turn_completed` ~12 min into `pterm_fit_v2.py` while powershell/python were still alive. UI went idle; no reply.
+- Track open `toolCallId`s. `turn_completed` with a live tool stays `tools · command running`. Cancel clears the set.
+
+## 2026-08-24 interject + clogged send pipe
+- Interject told the model `Drop the in-flight plan`, so a follow-up forgot the previous user ask. It now keeps prior messages and only stops the tool loop.
+- Every send prepended `[Reaction meter]`. Two queued asks matched as "persona setup" and auto-`session/cancel` (`cancelling the pile` / `dropped 1` in the Azno-v2 screenshot). That cancel is gone. Meter chrome is not prepended.
+- Send while a dispatch was in flight silently returned, so the next line sat in `msgQueue` with no You bubble, then flushed on the following send. In-flight send now enqueues and paints `Queued ·`.
+
+## 2026-08-24 keepalive awareness is listen, not leash time
+- Interval stayed 2 min. The miss was calling a process dead because HTTP was slow while it was still LISTENING.
+- Grok Remote: TCP :2421 first; never kill if the port accepts.
+- Mission Control: same on :9000. Old log line `port 9000 held by pid ... but not answering - killing it` is gone.
+- `ensure-running` orphan reap is grok-remote `server.py` only (it used to kill Mission Control's python too).
+- Em-dashes in `.ps1` log strings broke Windows PowerShell parse (`Unexpected token 'not'`), so the watchdog could not even run. ASCII hyphens now.
+
+## 2026-08-24 host freeze: keepalive murdered a busy hub
+- `/health` ran `netstat -ano` (up to 8s). Keepalive waited 2s, called it dead, **killed every server.py**. Desktop `-Force` did the same. The window on this PC went dark.
+- Health is a 200ms TCP probe. If :2421 accepts a connection, ensure-running / supervise **must not kill python**. Hub broadcasts time out at 0.8s so a stuck phone cannot freeze the host loop. File reads go to a thread.
+
+## 2026-08-24 empty rail + fake offline while hub was live
+- Boot chips: session list slow, last sid missing, offline — footer still 1ms hub. `_x.ai/sessions/list` waited on a busy agent; we showed [].
+- `GET /api/sessions` lists from disk. fetchSessions merges disk + 8s agent list. Last sid opens even if the agent list is empty. Offline chip only if /health is actually down.
+
+## 2026-08-24 session/load timed out on every chat
+- Agent serve serializes RPCs. A stuck prompt made every `session/load` sit for 90s. Hub now caches a successful load per sid, coalesces in-flight loads, and does not block the WS read loop on load/prompt send.
+- Client attach: 12s × 3 retries. Disk history still shows. Chip only after retries. `suppressLive` no longer covers the whole 90s.
+
+## 2026-08-24 flicker, old send, reaction meter in the bubble
+- Chat open left scrollTop near 0, so `loadOlderHistory` fought `forceScrollBottom` and never sat on the latest line.
+- `wrapForMode` prepended `[Reaction meter …]` on every prompt; that text is what ACP stores as the user message, so it painted in YOU bubbles and cloned in the agent queue. Cancel then resent the previous unacked prompt (old “open the UI…”).
+- Strip reaction chrome on paint. Don’t auto-load older while pinned to latest. Cancel marks lastDispatch acked; orphan resend only matches the last local echo, 12s window.
+
+## 2026-08-24 persona setup cloned itself into the agent queue
+- Reconnects + in-memory `personaApplied` meant every send prepended `[AGENT SETUP] CADENCE`. Those filled the agent queue; INTERJECT cancelled the real asks.
+- Applied sids persist in localStorage. Queue drain / resend skip setup. Two+ setup entries in the agent queue get one cancel so the pile dies.
+
+## 2026-08-24 host/Chrome/AmniBrowse were stabbing the same socket
+- Keepalive was fine (`/health` ok, hub_clients=0). Logs: join n=1 / leave n=0 on a loop. `connect()` tore down an OPEN websocket whenever anything called it again. Desktop Chrome and Tauri share `127.0.0.1` localStorage, so they used one `cid` and `_claim_cid` closed the other.
+- `connect()` no-ops if the socket is OPEN and heard from in 20s. `cid` is per-tab `sessionStorage`. Hub does not replace a cid that pinged in the last 20s.
+
+## 2026-08-24 three devices, not 24 sockets; host no longer dies on a closed port
+- Reconnects left zombie hub entries (`c.closed` still false). Cap of 24 hid that. Each browser now sends a stable `cid`; a second socket with the same id replaces the first. Cap back to 6.
+- Tauri no longer hard-fails “UI is not on :2421”. It always navigates, spawns `ensure-running.ps1`, and retries navigate for 40s.
+
+## 2026-08-24 mobile send/receive: suppressLive ate the reply
+- After opening a chat, `suppressLive` stayed true until `session/load` (up to 90s). Live `session/update` and disk catch-up were dropped for the *open* session, so the phone echoed the send and never painted the answer.
+- Send with a down WS now POSTs `/api/session/prompt` (hub → agent, no wait for the whole turn) and reconnects.
+- Queue drain no longer stalls because the item belongs to another sid. Hub cap 24; prune by idle time, not “drop the phone first”. Mobile stale-close 90s.
+
+## 2026-08-23 "wifi blip" on the host PC was the hub blocking itself
+- Holding `session/prompt` until `session/load` finished ran *inside* that client's WS read loop (up to 90s). Pings sat unread, the desktop hit the 45s stale-close, and the chip said wifi. Loopback no longer self-closes on stale. Prompt wait is a background task. Broadcasts fan out in parallel. Cap drops LAN sockets before 127.0.0.1.
+
+## 2026-08-23 desktop boot, titles, tools on switch, 1.4.1 icon
+- Tauri auto-boot showed Setup/Connect before WS was up. Desktop now opens Sessions and restores the last sid.
+- Conversation switch used chat_only of user/agent chunks only, so think/read/write/tool rows vanished. History scan keeps thoughts + tool_call in the same window.
+- Disk `remote_title` now wins over the agent list title (WebView2 localStorage was losing names).
+- Feed no longer `visibility:hidden` during load (that was the repaint stutter).
+- Window `set_icon` from 128px mark; version 1.4.1 so Windows cache can let go.
+
+## 2026-08-23 Tauri uses the Grok-Remote mark
+- Window/taskbar icon from `Downloads/grok-remote logo icon.jpg` via `npx tauri icon`. Wordmark lives on amni-scient `assets/grok-remote/logo.jpg`.
+
+## 2026-08-23 splitview: IDE ate the chat; queue Send now / double Enter
+- Tauri opened `?ide=1`. Braid desktop grid has no `ide` area (`!important`), so `#idePanel` landed in implicit tracks: composer at the top of a black column, feed height 0, file tree filling the window.
+- Dropped `ide=1` from the exe URL. Braid `ide-open` now has `side/main/foot` + `ide` rows; closed IDE is `display:none`.
+- Queue stays default. **Now** on a queued item (and double Enter) interjects: cancel current turn, send that message immediately. Empty box + double Enter flushes the first queued item.
+
+## 2026-08-23 v40 drop-prompt, faster chat open, Tauri desktop
+- Root cause for “typed it, nothing answered”: composer was live before `session/load` finished, so `session/prompt` hit an unloaded session. Hub waits on load Event; UI waits attach; overlapping sends go to the queue instead of the floor.
+- Chat open hid the feed until a 64MB jsonl walk finished. Scan cap 8MB, first page 16/180k, horizon off as soon as disk history returns.
+- Shipping desktop is Tauri (`desktop-tauri/`). Electron sources + old portable exe archived under `archive/electron-desktop/`.
+- Exe: `grok-remote/desktop-tauri/src-tauri/target/release/grok-remote-desktop.exe` (copied to `desktop-tauri/dist/GrokRemote.exe` when the build finishes).
+
+## 2026-08-21 Mixamo clips baked for /xr
+- `tools/bake_mixamo_clips.py` imported every Mixamo FBX onto the scaled Rikku armature, sampled 30fps quaternion tracks to `clips/*.json` (50 names including aliases idle/walk/run/wave_hello/salute/…), re-exported `web/rikku_mixamo.glb` (8.5MB) with NLA strips.
+- Pose/static Mixamo takes are 1-frame (idle, lay_down). Long takes: sitting_talking 44s, talking_on_phone 39s, angry 19s.
+- `motion_service.py` BASE loops + EMOTES mapped onto the new slugs. Restart `:2423` to pick up EMOTES; JSON files are scanned per request.
+
+## 2026-08-21 Mixamo clip dump in web/
+- Copied every Mixamo `.fbx` from Downloads into `grok-remote/web` (44 files including `rikku.fbx`). Duplicates with `(1)` kept as Mixamo dumped them. Not converted to clip JSON yet.
+
+## 2026-08-21 Mixamo Rikku into /xr
+- Installed Blender 4.5.10 LTS (was missing). Converted `C:\Users\antho\Downloads\rikku.fbx` (Mixamo T-pose, FBX Binary) via `tools/mixamo_fbx_to_glb.py`.
+- Import was 1.93cm tall (FBX unit scale); applied ×88.08 so height is 1.70m. 65 Mixamo bones, one clip `Armature|mixamo.com|Layer0`.
+- Female companion URL order: `rikku_mixamo.glb` → `model.glb` → `Soldier.glb`. Hard-refresh `/xr` (`?t=` already busts the day-long static cache).
+
 ## 2026-08-21 QA round: two tarball bugs found by running the real artifact
 
 Automated QA (fresh Ubuntu-24.04, live URL, zero setup) caught what code review never

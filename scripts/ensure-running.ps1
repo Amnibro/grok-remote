@@ -23,12 +23,25 @@ if (-not $IgnoreConfig -and -not $Force) {
 }
 $uiPort = 2421
 try { if ($cfg.ui_port) { $uiPort = [int]$cfg.ui_port } } catch {}
-try {
-  $h = Invoke-RestMethod ("http://127.0.0.1:{0}/health" -f $uiPort) -TimeoutSec 2
-  if ($h.ok) { Log ("ok ({0}): already healthy on {1}" -f $Reason, $uiPort); exit 0 }
-  Log ("health not ok ({0}): restarting" -f $Reason)
-} catch {
-  Log ("not running ({0}): {1}" -f $Reason, $_.Exception.Message)
+function PortOpen([int]$p) {
+  try {
+    $c = New-Object System.Net.Sockets.TcpClient
+    $iar = $c.BeginConnect("127.0.0.1", $p, $null, $null)
+    $ok = $iar.AsyncWaitHandle.WaitOne(400, $false) -and $c.Connected
+    try { $c.Close() } catch {}
+    return [bool]$ok
+  } catch { return $false }
+}
+if (PortOpen $uiPort) {
+  try {
+    $h = Invoke-RestMethod ("http://127.0.0.1:{0}/health" -f $uiPort) -TimeoutSec 6
+    if ($h.ok) { Log ("ok ({0}): already healthy on {1}" -f $Reason, $uiPort); exit 0 }
+    Log ("listener up, health sluggish ({0})  - not killing" -f $Reason)
+    exit 0
+  } catch {
+    Log ("listener up, health timed out ({0})  - not killing" -f $Reason)
+    exit 0
+  }
 }
 $cwdFromHook = $null
 if ($Reason -eq "session") {
@@ -85,12 +98,13 @@ if ($cmdAlive.Count -gt 1) {
   Log ("retired {0} duplicate supervisor(s), kept {1}" -f ($cmdAlive.Count - 1), $keep)
   $cmdAlive = @($cmdAlive | Where-Object { $_.ProcessId -eq $keep })
 }
-$owner = @(Get-NetTCPConnection -LocalPort $uiPort -State Listen -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess -Unique)
-if (-not $owner) {
-  $orphans = @(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object { $_.Name -match "^python" -and $_.CommandLine -and $_.CommandLine -match "server\.py" })
+if (PortOpen $uiPort) {
+  Log ("port {0} is open  - skip orphan kill" -f $uiPort)
+} else {
+  $orphans = @(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object { $_.Name -match "^python" -and $_.CommandLine -and $_.CommandLine -match "server\.py" -and ($_.CommandLine -like ("*" + $pluginRoot + "*") -or $_.CommandLine -like "*\grok-remote\*") })
   if ($orphans.Count) {
     foreach ($o in $orphans) { Stop-Process -Id $o.ProcessId -Force -ErrorAction SilentlyContinue }
-    Log ("cleared {0} server.py process(es) that were not listening on {1}" -f $orphans.Count, $uiPort)
+    Log ("cleared {0} server.py process(es) with port {1} down" -f $orphans.Count, $uiPort)
     Start-Sleep -Milliseconds 600
   }
 }

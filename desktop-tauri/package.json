@@ -1,0 +1,12 @@
+{
+  "name": "grok-remote-desktop",
+  "version": "1.4.4",
+  "private": true,
+  "scripts": {
+    "tauri": "tauri",
+    "build": "tauri build"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2"
+  }
+}

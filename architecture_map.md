@@ -1,5 +1,159 @@
 # Grok Remote — architecture map
 
+**Updated:** 2026-08-24 · att store + stuck work
+- Hub SQLite `atts` + files under `plugin-data/grok-remote/att/{sid}/`. POST `/api/att`, GET `/api/att?sessionId=`, GET `/api/att/{id}`.
+- `session/prompt` ingest saves image/resource blobs so refresh paints `/api/att/{id}` instead of dead blob URLs.
+- History `_parse_update_line` keeps image-only chunks; huge base64 is rewritten to `/api/att`.
+- WorkBoard: cancelled/completed last tool sets `running=0`. `heal()` on snapshot. UI `applyWorkJob` does not treat cancelled-only as live.
+
+**Updated:** 2026-08-24 · hub work board
+- SQLite WAL `work.sqlite`: jobs / tools / asks. GET `/api/work`, POST `/api/work/cancel`. WS `_x.ai/work/changed`.
+- UI `#workBoard` in the rail. Chat is a read of hub state; switch does not kill the turn.
+
+**Updated:** 2026-08-24 · work line
+- `#workLine` under the composer: spin + rotating `workNow` from phase, last tool title, pending command count. Hidden spin when idle.
+- Effort: saved pref wins over agent `xhigh` on load.
+
+**Updated:** 2026-08-24 · idle vs live tools
+- `pendingTools` from tool_call status. `finishTurnOrKeep` refuses idle while a command is still open.
+
+**Updated:** 2026-08-24 · interject + send queue
+- Interject wrap: keep prior user messages; stop tools only. No `[Reaction meter]` on every prompt.
+- No auto-cancel of the agent queue. Send while `sendInFlight` enqueues and paints a You bubble.
+
+**Updated:** 2026-08-24 · keepalive liveness is listen, not HTTP
+- Grok Remote `ensure-running` / `supervise-ui`: TCP :2421 open => leave python, even if `/health` is slow.
+- Mission Control `ensure-launcher.ps1`: TCP :9000 open => leave python. HTTP timeout is not a kill.
+- Orphan kill matches `pluginRoot` / `grok-remote` `server.py` only.
+- Keepalive `.ps1` log strings are ASCII (em-dash broke PS 5.1 parse).
+
+**Updated:** 2026-08-24 · do not kill a listening hub
+- `/health` = socket to :2419, no netstat. Keepalive/ensure-running: TCP open ⇒ leave the process. Broadcast `wait_for` 0.8s.
+
+**Updated:** 2026-08-24 · disk session list
+- `GET /api/sessions` from `_sid_index`. Client merges with `_x.ai/sessions/list` (8s). Last `grok_remote_last` opens as a stub if missing from the agent list.
+
+**Updated:** 2026-08-24 · session/load
+- Hub `_load_ok[sid]` cache; duplicate loads wait on the in-flight Event. `session/load` send is a task (does not stall client pings). Client 12s × 3.
+
+**Updated:** 2026-08-25 · NOTHING above #sessList may change height (v1.9.19)
+- `#workBoard` lives in the CHAT column (under `#feed`, above `.work-line`). It used to be in the
+  rail above `#sessList` at 201px; un-hiding it on turn start pushed the list down and killed hover
+  on the row under the cursor - 250/250 samples lost during a live turn, 0/250 after the move.
+- `renderSessions` / `paintWorkBoard` are signature-guarded (`sessListSig` / `workBoardSig`): wiping
+  innerHTML destroys the hovered node, and the board pushes every 0.4s during a turn.
+- Rule for this rail: any element above the session list must have stable height, or it belongs in
+  the chat column.
+- Regressions: `tests/test_workboard_placement.mjs`, `tests/test_rail_hover_thrash.mjs`.
+
+**Updated:** 2026-08-25 · the work board is COALESCED, one push per 0.4s (v1.9.18)
+- `session/load` replays the whole transcript over the hub socket. The hub used to fire
+  `_x.ai/work/changed` per replayed `tool_call`, and the client calls `renderSessions()` on each -
+  298/543/545 rail repaints per chat switch on real sessions. `_schedule_work_push` + `_work_pump`
+  coalesce to `WORK_PUSH_MIN_GAP`=0.4s trailing; live turns still push on the first event. Now 5/8/11.
+- Anything driven per-agent-event MUST be coalesced: a replay is thousands of events, not a few.
+- Regression `tests/test_work_push_coalesce.py` (250 events -> 250 frames on the .bak).
+
+**Updated:** 2026-08-25 · trimFeedDom must never fight the reader (v1.9.18)
+- `trimFeedDom` drops from the TOP and runs off the 500-900ms poll; `loadOlderHistory` prepends to
+  the TOP. Scrolled up, they fought: trim -> scrollTop collapses -> scroll handler loads older ->
+  trim. Runaway walk to the start of the transcript, rail repainted every pass = the desktop flicker.
+- Guard: return unless `atBottom()`, and skip while `historyLoadingOlder` or within `ignoreScrollUntil`.
+  Read the live scroll position, NOT the cached `stickBottom` flag (many code paths write that flag).
+- The DOM cap only ever mattered while pinned at the bottom during live streaming. It still applies there.
+- Regression `tests/test_trim_scroll_loop.mjs`, 2/4 fail on `backups/index.html.v1.9.18_pre_trimloop.bak`.
+
+**Updated:** 2026-08-25 · a prompt with no timeout + an agent that lies (v1.9.17)
+- `session/prompt` bypasses `req()` and registers directly in `pending`, so it had no timeout.
+  `startPromptWatch(id)` rejects it after `PROMPT_STALL_MS` of TOTAL SILENCE (`lastLiveAt`) — silence,
+  not elapsed time, so a long streaming turn keeps itself alive. `window.__promptStallMs` overrides.
+- `work_board.heal()`: `phase='stalled'`, `running=0` when a prompt is older than `STALL_SECS`=240
+  with `updated <= last_user_at + 5`. The old code hit `last_tool<last_ask -> continue` and never healed.
+- Triage: agent process alive + `initialize` fast + `/health` green + **0 CPU** = its workers died
+  (check `agent.spawn.log` for `Auth(AuthorizationRequired)`). Restart grok.exe; the hub respawns it.
+- `window.pending` is exposed alongside `window.msgQueue`.
+
+**Updated:** 2026-08-24 · the outbound message queue drains on a ticker (v1.9.16)
+- `busy` is cleared by `_x.ai/queue/changed` (entries empty + no runningPromptId) regardless of what
+  is sitting in `msgQueue`. The old `&&!msgQueue.length` made it circular against `drainMsgQueue`'s
+  own `if(busy&&!replaying)return` — the deadlock that piled messages up until cancel/refresh/restart.
+- `armMsgRetry()` keeps ONE 1.5s ticker alive while `msgQueue.length`. Every early return in
+  `drainMsgQueue` arms it, plus the `finally`, `scheduleMsgDrain` and `enqueueMsg`. No wakeup is ever
+  dropped, whichever gate is the one that blocks.
+- Regression `tests/test_queue_deadlock.mjs` (playwright-core, real page, drives handleMsg/setBusy/
+  msgQueue). 3/4 fail on `backups/index.html.v1.9.16_pre_queue_deadlock.bak`.
+- Patch BOTH `web/index.html` and root `index.html`.
+
+**Updated:** 2026-08-24 · session/load state is ONE map, and it dies with the upstream (v1.9.15)
+- `_sid_load` / `_sid_load_ev` / `_load_ok` are gone. One `_loads[sid] = {"ev","res"}`, three helpers:
+  `_load_begin` / `_load_finish` / `_load_wait`. Bounded at `HUB_MAX_LOADS=64`.
+- `_close_unlocked` fires every `ev` and clears `_loads`. This is the load-bearing line: the old maps
+  outlived the agent socket, so a load in flight when upstream dropped left that sid waiting on an
+  Event nobody would ever set — every later `session/load` for it took the dup branch and every
+  `session/prompt` stalled behind it, permanently, until the hub restarted. Cached results were
+  likewise replayed to clients the *new* agent process had never loaded.
+- Waits are `LOAD_WAIT=10s`, chosen to land inside the client's 12s `session/load` timeout.
+- `_broadcast` closes any client it drops (`BROADCAST_SEND_TIMEOUT=5.0`). Dropping without closing
+  left the socket alive answering pings with no data — link green, chat dead, which is what a heavy
+  stream to a phone on a slow link produced against the old 0.8s cap.
+- Regression: `tests/test_hub_session_wedge.py`, 4/5 fail on `backups/server.py.v1.9.15_pre_session_wedge.bak`.
+
+**Updated:** 2026-08-24 · feed pin + strip reaction chrome
+- Auto `loadOlderHistory` only if `!stickBottom` and near top. Open chat pins bottom for 2.5s.
+- `stripPromptChrome` removes `[Reaction meter]` / rx stamp instructions. Cancel acks `lastDispatch`.
+
+**Updated:** 2026-08-24 · persona setup once per session
+- `withAgentSetup` persists applied sids. `fromQueue` / `skipSetup` never prepend. Agent queue with ≥2 `[AGENT SETUP]` entries: one `session/cancel`.
+
+**Updated:** 2026-08-24 · do not reconnect a live socket
+- `connect()` returns if `readyState===1` and `linkLastRx` < 20s. `cid` is `sessionStorage` (one per tab; Tauri vs Chrome vs phone no longer share). Hub `_claim_cid` skips replace when the old socket pinged <20s ago.
+
+**Updated:** 2026-08-24 · one socket per device
+- Hub `_by_cid`: hello/ping carry `cid` from `localStorage grok_remote_cid`; duplicate cid closes the old WS. Expected live sockets = phone tabs + PC, not reconnect debris. Cap 6 is a backstop.
+- Desktop exe always loads `http://127.0.0.1:2421`; `ensure-running.ps1 -Force` if TCP is down; 40s retry navigate.
+
+**Updated:** 2026-08-24 · mobile send/receive
+- `suppressLive` must not drop updates for the open `sid` (only bleed from a previous chat). Catch-up same.
+- `POST /api/session/prompt` is the HTTP send path when the phone WS is not OPEN.
+- Client cap 24; prune oldest idle (>90s, not in-flight). Never prefer LAN over loopback.
+
+**Updated:** 2026-08-23 · hub hitch not wifi
+- Client WS read loop must not `await` load-gated prompts. Stale-close is skipped on 127.0.0.1 / localhost. `_broadcast` uses gather. Prune prefers dropping remote clients.
+
+**Updated:** 2026-08-26 · desktop v1.4.4 + history/message reliability
+- Desktop `?auto=1` opens Sessions (last sid from `grok_remote_last`), not Setup.
+- `chat_only` scans for recent user/agent groups, coalesces their chunks, then spends the response
+  budget on conversational messages before thoughts/tools/plan. Live catch-up uses the same
+  message-first selection.
+- Pair/Watch/Delve use `window.__TAURI__.opener`, Electron's bridge, browser popup, then same-window
+  fallback. The optional motion service is probed through same-origin `/api/companion/state`.
+- `/api/session/titles` always overwrites list titles unless `titleOverrides`.
+- Horizon no longer hides `#feed`.
+
+**Updated:** 2026-08-23 · IDE split + queue Now
+## Desktop grid vs IDE
+- Default Braid desktop `#app` is `side|main` / `side|foot` only. Opening `#idePanel` without an `ide` area created implicit tracks (composer on top, feed gone). `body.ide-open` now adds a third row `ide ide`. Tauri URL no longer includes `?ide=1`.
+- Queue: `sendQueuedNow(i)` cancel+interject. Double Enter within 450ms is interject; empty box flushes queue head.
+
+## Desktop shell (v40)
+- **Tauri** `desktop-tauri/` is the shipping window. It navigates WebView2 to `http://127.0.0.1:2421` (same UI as phone). If :2421 is down it runs `start.ps1`. Secret from `.ui-secret` or `logs/run-agent.cmd`.
+- Electron cockpit (`desktop/main.js`) lives in `archive/electron-desktop/`. Launch: `scripts/launch-desktop.cmd` → `desktop-tauri/src-tauri/target/release/grok-remote-desktop.exe` or `desktop-tauri/dist/GrokRemote.exe`.
+
+## Dropped user prompt (v40)
+- UI used to look ready after **disk** history while `session/load` (up to 90s) was still in flight. A send in that window hit an unloaded ACP session and vanished.
+- Hub now parks `session/prompt` until that sid's `session/load` Event fires (90s cap). Client `waitAgentAttach` before send; `sendInFlight` **queues** instead of silent return; failed dispatch re-queues.
+
+## Chat open speed (v40)
+- `chat_only` jsonl scan is capped at **4MB** for its first message-priority page
+  (`HISTORY_PAGE=50`, 280k initial request). Horizon drops as soon as disk events return; rich
+  markdown upgrades after the feed is visible.
+
+**Updated:** 2026-08-21 · Mixamo Rikku female body
+## XR companion body (2026-08-21)
+- Female `/xr` loads `/static/rikku_mixamo.glb` first (Mixamo FBX → Blender 4.5 `tools/mixamo_fbx_to_glb.py` then `tools/bake_mixamo_clips.py`). 1.7m, 65 `mixamorig:*` bones, NLA clips in the GLB, quaternion JSON in `clips/` for `:2423`. Fallback `model.glb` then `Soldier.glb`.
+- Male still `Soldier.glb`. Query `?body=` overrides actor-id regex.
+- Proof shots: `web/rikku_mixamo_rest.png`, `web/rikku_mixamo_armtest.png`. Source FBX: Downloads `rikku.fbx` copied to `web/rikku.fbx`.
+
 **Updated:** 2026-08-18 · v1.9.5 auth cookie sliding refresh
 ## Auth cookie lifecycle (v1.9.5)
 - `auth_mw` accepts `?key=` OR `grok_remote_key` cookie OR `X-Grok-Remote-Key` header; loopback
@@ -72,9 +226,9 @@
 |-------|----------|
 | Session index | `_rebuild_sid_index` maps sid→dirs (~2980 sessions, 130ms); 60s TTL; per-lookup cache 90s. A miss forces a rebuild **at most once per 5s** — unthrottled it cost 250 rebuilds per titles batch (19s stall) |
 | Titles batch | `session_titles` resolves up to 250 sessions **in the executor**. On the event loop it froze every other handler while it worked |
-| chat_only scan | Byte prefilter (`user_message_chunk` / `agent_message_chunk`); grow window up to **64MB**, reading only the newly exposed older prefix each round; coalesce **once at the end** (`_coalesce_chat` mutates its inputs, so per-round coalescing double-appends text) |
+| chat_only scan | Byte prefilter (`user_message_chunk` / `agent_message_chunk`); grow window up to **8MB**; coalesce once at the end |
 | Payload | `_trim_chat_text` caps event text at 120k |
-| First paint | `HISTORY_PAGE=24`, `HISTORY_MAX_BYTES=450k`, chat-only only (no full-history fallback) |
+| First paint | `HISTORY_PAGE=16`, `HISTORY_MAX_BYTES=180k`, chat-only only |
 | Client paint | Fast plain/code stubs while `historyPainting`; `upgradeRichBubbles` rAF after open |
 | Older | Scroll-up loads chat_only pages (`max_bytes` 1.2M) |
 | DOM | `FEED_DOM_CAP=72` |
@@ -141,8 +295,8 @@
 
 | Piece | Behavior |
 |-------|----------|
-| Default | **Braid** — clean shell; chat column uses full center width (`--braid-chat-pad`); bubbles up to ~920–1120px |
-| Legacy | Previous mission-control chrome (pulse frames, orbit glow, denser cards, full filter stack) |
+| Default | **Braid** — clean shell; archive-style flat 720px transcript and wrapped two-row composer under the Grok variant |
+| Legacy | Flexible rail, inline filter stack, and single-row composer; the Grok variant shares the same archive-style surfaces and flat transcript |
 | Storage | `localStorage.grok_remote_layout` = `braid` \| `legacy` |
 | URL | `?skin=braid` or `?skin=legacy` (not `?layout=` — that forces desktop/mobile width) |
 | CSS | `web/braid-layout.css` gated by `html[data-layout="braid"]` |
@@ -193,6 +347,7 @@ Does **not** delete disk sessions under `~/.grok/sessions/` — only hides them 
 grok-remote/
   web/index.html          # Phone + browser + Electron UI (default theme: grok; default layout: braid)
   web/braid-layout.css    # BRAID shell overrides (data-layout=braid)
+  web/grok-archive-skin.css # Shared Grok appearance for Braid + Legacy; geometry remains layout-specific
   web/voice-mode.js       # STT / conversational Go / XR HUD / Grok TTS playback
   web/ide.js              # Built-in IDE + Grok Review
   server.py               # static + /ws proxy + /api/fs/* + /api/tts

@@ -6,12 +6,49 @@
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="mobile-web-app-capable" content="yes"/>
 <meta name="theme-color" content="#0a0b0e" id="themeColor"/>
+<meta name="grok-remote-ui-build" content="2026-08-26-dual-layout"/>
 <title>Grok Remote · GROK BUILD</title>
 <meta http-equiv="Cache-Control" content="no-store"/>
-<script>(function(){try{var q=new URLSearchParams(location.search).get("skin");var s=localStorage.getItem("grok_remote_layout");var L=(q==="legacy"||q==="braid")?q:(s==="legacy"?"legacy":"braid");document.documentElement.setAttribute("data-layout",L)}catch(e){document.documentElement.setAttribute("data-layout","braid")}})();</script>
-<link rel="stylesheet" href="/static/braid-layout.css?v=1.8.16"/>
+<script>(function(){
+  var root=document.documentElement;
+  try{
+    var p=new URLSearchParams(location.search);
+    var q=p.get("skin"),s=localStorage.getItem("grok_remote_layout");
+    var layout=(q==="legacy"||q==="braid")?q:(s==="legacy"?"legacy":"braid");
+    var raw=p.get("theme")||localStorage.getItem("grok_remote_theme")||"";
+    var variant=p.get("variant")||localStorage.getItem("grok_remote_variant")||"";
+    var mode=p.get("mode")||localStorage.getItem("grok_remote_mode")||"";
+    if(!variant&&raw)variant=raw==="light"?"grok":raw.split("-")[0];
+    if(!mode&&raw)mode=raw==="light"||/-light$/.test(raw)?"light":"dark";
+    if(!variant||variant==="prayer")variant="grok";
+    if(mode!=="light")mode="dark";
+    root.setAttribute("data-layout",layout);
+    root.setAttribute("data-variant",variant);
+    root.setAttribute("data-mode",mode);
+    var meta=document.getElementById("themeColor");
+    if(meta)meta.setAttribute("content",variant==="grok"?(mode==="light"?"#fafafa":"#000000"):(mode==="light"?"#f7f7f8":"#0b0d12"));
+  }catch(e){
+    root.setAttribute("data-layout","braid");
+    root.setAttribute("data-variant","grok");
+    root.setAttribute("data-mode","dark");
+  }
+})();</script>
+<link rel="stylesheet" href="/static/braid-layout.css?v=1.8.20"/>
 <style>
-:root{--comp-h:48px}
+:root{
+  --comp-h:48px;
+  --z-content:1;
+  --z-footer:20;
+  --z-inline-popover:30;
+  --z-edge-chrome:40;
+  --z-app-chrome:100;
+  --z-modal:1000;
+  --z-voice:1100;
+  --z-tour:1200;
+  --z-menu:1300;
+  --z-popover:1310;
+  --z-debug:9999
+}
 /* Surfaces: dark / light. Accents: product variant (Amni-Scient + grey Grok). */
 html[data-mode="dark"]{
   --bg:#0b0d12;--bg2:#10131a;--panel:#161a22;--panel2:#1c212b;--line:#2a3140;--line2:#3a4254;
@@ -205,8 +242,8 @@ header{display:none!important}
 .livebar .radio-chip,.livebar .ctx-meter,.livebar .chat-meta{flex:none}
 .livebar .ctx-meter{min-width:52px;padding:2px 7px}
 .livebar .chat-meta{font:600 11px/1.2 var(--font-mono);color:var(--mut);max-width:28vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-header.was-chrome{padding:clamp(8px,1.2vw,14px) clamp(10px,1.5vw,18px);border-bottom:1px solid var(--line);background:color-mix(in srgb,var(--panel) 92%,transparent);backdrop-filter:blur(10px);display:flex;gap:clamp(4px,.8vw,10px);align-items:center;position:sticky;top:0;z-index:5000;flex-wrap:wrap;flex:none;isolation:isolate}
-.logo{font-weight:800;font-size:clamp(12px,.4vw + 11px,16px);flex:none;letter-spacing:.3px}.logo .brand{color:var(--mut);font-weight:600;font-size:clamp(9px,.25vw + 8px,11px);letter-spacing:1.2px;display:block;line-height:1}
+header.was-chrome{padding:clamp(8px,1.2vw,14px) clamp(10px,1.5vw,18px);border-bottom:1px solid var(--line);background:color-mix(in srgb,var(--panel) 92%,transparent);backdrop-filter:blur(10px);display:flex;gap:clamp(4px,.8vw,10px);align-items:center;position:sticky;top:0;z-index:var(--z-app-chrome);flex-wrap:wrap;flex:none;isolation:isolate}
+.logo{font-weight:800;font-size:clamp(12px,.4vw + 11px,16px);flex:none;letter-spacing:.3px;display:flex;align-items:center;gap:8px}.logo .mark{height:32px;width:auto;border-radius:6px;background:#000;display:block;flex:none}.logo .word{display:flex;flex-direction:column;min-width:0}.logo .brand{color:var(--mut);font-weight:600;font-size:clamp(9px,.25vw + 8px,11px);letter-spacing:1.2px;display:block;line-height:1}
 .logo b{color:var(--acc)}
 .orbit-menu-wrap{position:relative;flex:none;margin-left:auto;display:flex;align-items:center;gap:10px}
 .orbit-wrap{width:40px;height:40px;flex:none;position:relative;display:grid;place-items:center;margin-left:0;border:none;background:transparent;padding:0;cursor:pointer;border-radius:999px;color:var(--acc)}
@@ -228,7 +265,7 @@ header.was-chrome{padding:clamp(8px,1.2vw,14px) clamp(10px,1.5vw,18px);border-bo
 .orbit-status[data-state="error"]{color:var(--bad);border-color:color-mix(in srgb,var(--bad) 40%,var(--line));background:color-mix(in srgb,var(--bad) 10%,var(--panel2))}
 .orbit-status[data-state="error"] .orbit-dot{background:var(--bad);box-shadow:0 0 8px color-mix(in srgb,var(--bad) 50%,transparent)}
 @keyframes orbit-dot-pulse{0%,100%{opacity:.55;transform:scale(.9)}50%{opacity:1;transform:scale(1.15)}}
-.orbit-menu{display:none;position:fixed;z-index:20050;min-width:220px;padding:6px;border-radius:12px;background:color-mix(in srgb,var(--panel) 98%,transparent);border:1px solid color-mix(in srgb,var(--acc) 28%,var(--line));box-shadow:var(--elev-3,0 14px 40px rgba(0,0,0,.5));backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+.orbit-menu{display:none;position:fixed;z-index:var(--z-menu);min-width:220px;padding:6px;border-radius:12px;background:color-mix(in srgb,var(--panel) 98%,transparent);border:1px solid color-mix(in srgb,var(--acc) 28%,var(--line));box-shadow:var(--elev-3,0 14px 40px rgba(0,0,0,.5));backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
 .orbit-menu.on{display:flex;flex-direction:column;gap:4px}
 .orbit-menu button{display:block;width:100%;text-align:left;border:1px solid transparent;background:transparent;color:var(--tx);border-radius:8px;padding:9px 11px;font:inherit;font-size:12px;font-weight:700;cursor:pointer}
 .orbit-menu button:hover{background:var(--acc-dim);border-color:color-mix(in srgb,var(--acc) 35%,var(--line));color:var(--acc)}
@@ -386,7 +423,7 @@ main{flex:1;overflow-x:hidden;overflow-y:auto;padding:clamp(10px,1.2vw,20px);pad
 .btn-attach{flex:none;height:clamp(42px,5vh,52px);min-width:44px;border:1px solid var(--line);background:var(--panel2);color:var(--tx);border-radius:12px;font-weight:700;cursor:pointer;font-size:16px}
 .btn-attach:hover{border-color:var(--acc);color:var(--acc)}
 .composer-tools .btn-attach{height:auto;min-width:0;padding:5px 10px;font-size:11px;border-radius:8px}
-.jump{position:fixed;right:clamp(12px,2vw,24px);bottom:calc(var(--stack-h,120px) + 12px + env(safe-area-inset-bottom));z-index:40;display:none;border:2px solid color-mix(in srgb,var(--acc) 60%,#05070a);border-radius:999px;padding:12px 18px;font-weight:800;font-size:13px;background:var(--acc);color:#05070a;box-shadow:0 10px 28px -6px var(--acc-glow),0 0 0 1px color-mix(in srgb,var(--acc) 40%,transparent);cursor:pointer;opacity:0;pointer-events:none;-webkit-tap-highlight-color:transparent;transition:bottom .18s ease,opacity .18s,transform .15s,background .15s;transform:translateY(8px)}
+.jump{position:fixed;right:clamp(12px,2vw,24px);bottom:calc(var(--stack-h,120px) + 12px + env(safe-area-inset-bottom));z-index:var(--z-edge-chrome);display:none;border:2px solid color-mix(in srgb,var(--acc) 60%,#05070a);border-radius:999px;padding:12px 18px;font-weight:800;font-size:13px;background:var(--acc);color:#05070a;box-shadow:0 10px 28px -6px var(--acc-glow),0 0 0 1px color-mix(in srgb,var(--acc) 40%,transparent);cursor:pointer;opacity:0;pointer-events:none;-webkit-tap-highlight-color:transparent;transition:bottom .18s ease,opacity .18s,transform .15s,background .15s;transform:translateY(8px)}
 body.kb-open .jump{bottom:calc(var(--stack-h,120px) + 12px)}
 .jump.on{display:inline-flex;align-items:center;gap:6px;opacity:.98;pointer-events:auto;transform:translateY(0)}
 .jump:hover{filter:brightness(1.06)}
@@ -411,7 +448,7 @@ body.page-chat #chatTop{display:flex}
 #btnMore.on .mm-trig i:nth-child(8),#btnMore[aria-expanded="true"] .mm-trig i:nth-child(8){animation-delay:.28s}
 #btnMore.on .mm-trig i:nth-child(9),#btnMore[aria-expanded="true"] .mm-trig i:nth-child(9){animation-delay:.4s}
 @keyframes mm-dot{0%,100%{opacity:.35;transform:scale(.85)}50%{opacity:1;transform:scale(1.15)}}
-.more-menu{display:none;position:fixed;z-index:20050;width:min(320px,94vw);max-height:min(78dvh,640px);overflow:auto;padding:0;border-radius:16px;background:linear-gradient(165deg,color-mix(in srgb,var(--panel) 92%,var(--acc) 6%),color-mix(in srgb,var(--panel) 98%,transparent) 40%,var(--panel));border:1px solid color-mix(in srgb,var(--acc) 32%,var(--line));box-shadow:var(--elev-3),0 0 0 1px color-mix(in srgb,#fff 4%,transparent),0 0 48px -12px var(--acc-glow),inset 0 1px 0 color-mix(in srgb,#fff 8%,transparent);backdrop-filter:blur(20px) saturate(1.25);-webkit-backdrop-filter:blur(20px) saturate(1.25);font-family:var(--font);font-size:inherit;line-height:inherit;transform-origin:top right}
+.more-menu{display:none;position:fixed;z-index:var(--z-menu);width:min(320px,94vw);max-height:min(78dvh,640px);overflow:auto;padding:0;border-radius:16px;background:linear-gradient(165deg,color-mix(in srgb,var(--panel) 92%,var(--acc) 6%),color-mix(in srgb,var(--panel) 98%,transparent) 40%,var(--panel));border:1px solid color-mix(in srgb,var(--acc) 32%,var(--line));box-shadow:var(--elev-3),0 0 0 1px color-mix(in srgb,#fff 4%,transparent),0 0 48px -12px var(--acc-glow),inset 0 1px 0 color-mix(in srgb,#fff 8%,transparent);backdrop-filter:blur(20px) saturate(1.25);-webkit-backdrop-filter:blur(20px) saturate(1.25);font-family:var(--font);font-size:inherit;line-height:inherit;transform-origin:top right}
 .more-menu.on{display:flex;flex-direction:column;animation:mm-pop .22s var(--ease-out,cubic-bezier(.16,1,.3,1)) both}
 @keyframes mm-pop{from{opacity:0;transform:translateY(-8px) scale(.96)}to{opacity:1;transform:translateY(0) scale(1)}}
 .more-menu .mm-head{padding:12px 14px 10px;border-bottom:1px solid color-mix(in srgb,var(--line) 80%,transparent);background:radial-gradient(120% 80% at 100% 0%,color-mix(in srgb,var(--acc) 14%,transparent),transparent 55%)}
@@ -506,7 +543,7 @@ body.busy-turn .msg-mode-row,body.msg-mode-force .msg-mode-row{display:none!impo
 .font-chips .mode-chip{cursor:pointer}
 #chatStage{min-height:0;flex:1;display:flex;flex-direction:column;overflow:hidden}
 #chatStage main#feed{padding-bottom:var(--feed-pad-bottom,88px);flex:1;min-height:0}
-footer#foot{flex:none;flex-shrink:0;position:relative;z-index:20}
+footer#foot{flex:none;flex-shrink:0;position:relative;z-index:var(--z-footer)}
 body.kb-open footer#foot{padding-bottom:max(6px,env(safe-area-inset-bottom,0px));flex-shrink:0;position:relative;bottom:0;transform:translateZ(0);box-shadow:0 -8px 24px -16px rgba(0,0,0,.45)}
 body.kb-open #chatStage{min-height:0;flex:1 1 auto;overflow:hidden}
 body.clean .bub,body.clean .tool,body.clean .sess .item,body.clean .cmd,body.clean .collapsible,body.clean .recap,body.clean .chip span,body.clean .perm,body.clean .att-chip{border-color:transparent;box-shadow:none}
@@ -560,6 +597,7 @@ button.cancel-turn:hover{background:var(--bad);transform:translateY(-1px)}
 .queue .q-item.mode-fyi .q-badge{border-color:var(--gold);color:var(--gold)}
 .queue .q-item .q-body{flex:1;min-width:0;font-size:12px;line-height:1.35;word-break:break-word}
 .queue .q-item button{flex:none;border:1px solid var(--line);background:transparent;color:var(--mut);border-radius:6px;padding:2px 8px;font-size:11px;cursor:pointer}
+.queue .q-item button[data-qn]{border-color:color-mix(in srgb,var(--bad) 45%,var(--line));color:var(--bad);font-weight:700}
 #btnStop{display:none!important;height:0!important;margin:0!important;padding:0!important;border:0!important;overflow:hidden!important;pointer-events:none!important}
 .hdrbtn.stop-remote{border-color:color-mix(in srgb,var(--bad) 45%,var(--line))!important;color:var(--bad)!important}
 .hdrbtn.stop-remote:hover{background:color-mix(in srgb,var(--bad) 16%,var(--panel2))!important;color:var(--bad)!important}
@@ -573,7 +611,7 @@ button.cancel-turn:hover{background:var(--bad);transform:translateY(-1px)}
 .ctx-meter span{position:relative;z-index:1}
 .ctx-meter.warn{border-color:var(--gold);color:var(--gold)}
 .ctx-meter.hot{border-color:var(--bad);color:var(--bad)}
-.slash-menu{display:none;position:absolute;left:0;right:60px;bottom:calc(100% + 6px);z-index:30;max-height:220px;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:12px;box-shadow:var(--elev-2);padding:4px}
+.slash-menu{display:none;position:fixed;left:8px;top:8px;width:min(720px,calc(100vw - 16px));z-index:var(--z-menu);max-height:220px;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:12px;box-shadow:var(--elev-2);padding:4px}
 .slash-menu.on{display:block}
 .slash-item{padding:8px 10px;cursor:pointer;display:flex;flex-direction:column;gap:2px;border-radius:8px}
 .slash-item:hover{background:var(--acc-dim)}
@@ -588,19 +626,22 @@ button.cancel-turn:hover{background:var(--bad);transform:translateY(-1px)}
 .row-copy:hover{border-color:var(--acc);color:var(--acc)}
 @media (pointer:coarse){.row-acts{display:none!important}}
 .rx-got{display:inline-flex;margin-top:2px;font-size:15px;opacity:.85}
-#rxPop{position:fixed;z-index:20060;display:none;align-items:center;gap:4px;padding:6px 8px;border-radius:14px;background:var(--panel);border:1px solid var(--line);box-shadow:var(--elev-3,0 12px 40px rgba(0,0,0,.45));flex-wrap:nowrap}
-#rxPop.on{display:flex}
+#rxPop{position:fixed;z-index:var(--z-popover);display:none!important;align-items:center;gap:4px;padding:6px 8px;border-radius:14px;background:var(--panel);border:1px solid var(--line);box-shadow:var(--elev-3,0 12px 40px rgba(0,0,0,.45));flex-wrap:nowrap}
+#rxPop.on{display:flex!important}
+#rxPop[hidden]{display:none!important}
 #rxPop button{border:1px solid var(--line);background:var(--panel2);color:var(--tx);border-radius:10px;padding:6px 9px;font-size:13px;font-weight:700;cursor:pointer}
 #rxPop .rx-q{border:0;background:transparent;font-size:18px;padding:4px 6px;border-radius:999px}
 #rxPop .rx-q.on{background:var(--acc-dim)}
-#rxEmojiIn{width:36px;height:36px;border:1px solid var(--line);border-radius:10px;background:var(--panel2);color:var(--tx);font-size:18px;text-align:center;padding:0;caret-color:transparent}
+#rxPop #rxClose{min-width:32px;padding:4px 8px;font-size:16px;line-height:1;color:var(--mut)}
+#rxEmojiIn{position:absolute;width:1px;height:1px;opacity:0;border:0;padding:0;font-size:16px}
 .bub{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
 .loc{cursor:pointer}
 .loc:hover{border-color:var(--acc);color:var(--acc)}
 .panel{padding:clamp(14px,2vw,28px);display:none;flex:1;overflow:auto;min-height:0;max-width:100%}
 .panel.on{display:block}
 .panel label{display:block;color:var(--mut);margin:10px 0 4px;font-family:var(--font-mono);letter-spacing:.4px;text-transform:uppercase;font-size:clamp(10px,.2vw + 9px,12px)}
-.panel input, .panel textarea.field{width:100%;background:var(--in);color:var(--tx);border:1px solid var(--line);border-radius:10px;padding:clamp(10px,.8vw,14px);font:inherit}
+.panel input, .panel textarea.field, .panel select.field-select{width:100%;background:var(--in);color:var(--tx);border:1px solid var(--line);border-radius:10px;padding:clamp(10px,.8vw,14px);font:inherit}
+.panel select.field-select{margin:6px 0 10px;appearance:auto}
 #picker.panel{display:none;flex-direction:column;overflow:hidden;padding:0;min-height:0}
 #picker.panel.on{display:flex}
 .picker-head{flex:none;padding:clamp(12px,1.5vw,18px) clamp(12px,1.5vw,18px) 8px;border-bottom:1px solid var(--line);background:var(--bg2);position:relative}
@@ -653,7 +694,7 @@ body.privacy.privacy-reveal .spoiler,body.privacy.privacy-reveal .spoiler-path,b
 body.privacy #status{filter:blur(6px);user-select:none}
 body.privacy.privacy-reveal #status{filter:none}
 .hdrbtn.privacy-on{border-color:var(--acc);color:var(--acc);background:var(--acc-dim)}
-body.privacy::after{content:"SPOILER ON · private screen";position:fixed;left:50%;bottom:calc(10px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:45;font:700 10px/1 var(--font-mono);letter-spacing:.6px;color:var(--acc);background:color-mix(in srgb,var(--panel) 85%,transparent);border:1px solid color-mix(in srgb,var(--acc) 40%,var(--line));border-radius:999px;padding:6px 12px;pointer-events:none;backdrop-filter:blur(8px)}
+body.privacy::after{content:"SPOILER ON · private screen";position:fixed;left:50%;bottom:calc(10px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:var(--z-edge-chrome);font:700 10px/1 var(--font-mono);letter-spacing:.6px;color:var(--acc);background:color-mix(in srgb,var(--panel) 85%,transparent);border:1px solid color-mix(in srgb,var(--acc) 40%,var(--line));border-radius:999px;padding:6px 12px;pointer-events:none;backdrop-filter:blur(8px)}
 body.privacy.can-hover:not(.touch-ui)::after{content:"SPOILER ON · hold Alt to peek"}
 body.privacy.touch-ui::after{content:"SPOILER ON · private screen"}
 #log{font-size:11px;color:var(--mut);max-height:min(80px,12vh);overflow:auto;white-space:pre-wrap;background:var(--in);border:1px solid var(--line);border-radius:8px;padding:8px;margin-top:8px;font-family:var(--font-mono)}
@@ -661,7 +702,7 @@ body.privacy.touch-ui::after{content:"SPOILER ON · private screen"}
 .perm button{margin:6px 6px 0 0;padding:8px 12px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);color:var(--tx);cursor:pointer}
 .perm button.ok{background:color-mix(in srgb,var(--ok) 35%,var(--panel));border-color:var(--ok)}
 .loading{text-align:center;color:var(--mut);padding:18px;font-size:13px}
-.sheet{display:none;position:fixed;inset:0;z-index:60;background:rgba(0,0,0,.28);backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px);justify-content:flex-start;align-items:flex-start;padding:calc(8px + env(safe-area-inset-top)) 10px 12px;pointer-events:none}
+.sheet{display:none;position:fixed;inset:0;z-index:var(--z-modal);background:rgba(0,0,0,.28);backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px);justify-content:flex-start;align-items:flex-start;padding:calc(8px + env(safe-area-inset-top)) 10px 12px;pointer-events:none}
 .sheet.on{display:flex;pointer-events:auto}
 .sheet .card{
   margin-left:auto;margin-right:0;margin-top:0;
@@ -685,7 +726,7 @@ body.privacy.touch-ui::after{content:"SPOILER ON · private screen"}
 .cmd:hover{border-color:var(--acc)}
 .cmd .n{font-weight:700;color:var(--acc);font-family:var(--font-mono)}
 .cmd .d{font-size:11px;color:var(--mut);margin-top:3px}
-.rail-tab{display:none;position:fixed;left:0;top:50%;transform:translateY(-50%);z-index:35;border:1px solid var(--line);border-left:none;border-radius:0 10px 10px 0;background:color-mix(in srgb,var(--panel) 80%,transparent);backdrop-filter:blur(12px);color:var(--acc);font-weight:800;font-size:12px;padding:14px 8px;cursor:pointer;writing-mode:vertical-rl;text-orientation:mixed;letter-spacing:.6px;box-shadow:4px 0 18px -10px var(--acc-glow)}
+.rail-tab{display:none;position:fixed;left:0;top:50%;transform:translateY(-50%);z-index:var(--z-edge-chrome);border:1px solid var(--line);border-left:none;border-radius:0 10px 10px 0;background:color-mix(in srgb,var(--panel) 80%,transparent);backdrop-filter:blur(12px);color:var(--acc);font-weight:800;font-size:12px;padding:14px 8px;cursor:pointer;writing-mode:vertical-rl;text-orientation:mixed;letter-spacing:.6px;box-shadow:4px 0 18px -10px var(--acc-glow)}
 body.sidebar-collapsed.desktop .rail-tab,body.sidebar-collapsed.electron .rail-tab{display:inline-flex;align-items:center}
 .picker-head .rail-tools{display:flex;gap:6px;align-items:center;justify-content:space-between;margin-bottom:6px}
 .picker-head .rail-tools p{margin:0;flex:1;min-width:0}
@@ -695,7 +736,21 @@ body.sidebar-collapsed.desktop .rail-tab,body.sidebar-collapsed.electron .rail-t
 .livebar{font-size:clamp(10px,.2vw + 9px,12px);color:var(--mut);padding:2px 2px 0;font-family:var(--font-mono);display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;line-height:1.35}
 .livebar b{color:var(--ok);text-shadow:0 0 10px color-mix(in srgb,var(--ok) 40%,transparent)}
 .livebar .lb-sep{opacity:.45;flex:none}
-.livebar .lb-phase{display:inline-flex;align-items:center;gap:5px;font-weight:700;letter-spacing:.02em}
+.work-line{display:none;align-items:center;gap:8px;min-height:22px;padding:6px 14px 8px;font:700 12px/1.25 var(--font-mono);color:var(--mut);flex:none;border-top:1px solid color-mix(in srgb,var(--line) 70%,transparent);background:color-mix(in srgb,var(--panel) 88%,transparent)}
+.work-line[data-on="1"]{display:flex;color:var(--acc)}
+/* Lives in the CHAT column, under the feed and above the work line. It used to sit in the rail
+   directly above #sessList: 201px tall, so the moment a turn started it shoved the whole
+   conversation list down and the row under your cursor slid out from under it - hover died and
+   never came back. Nothing above the session list may change height. */
+.work-board{padding:6px 8px 8px;border-top:1px solid var(--line);max-height:22vh;overflow:auto;flex:none}
+.work-board .wj{display:flex;gap:8px;align-items:flex-start;padding:6px 8px;margin:0 0 4px;border:1px solid var(--line);border-radius:8px;background:var(--panel2);font-size:11px;cursor:pointer}
+.work-board .wj.on{border-color:var(--acc)}
+.work-board .wj .wj-body{flex:1;min-width:0}
+.work-board .wj b{display:block;color:var(--acc);font-size:11px}
+.work-board .wj .d{color:var(--mut);word-break:break-word;line-height:1.3}
+.work-board .wj button{flex:none;border:1px solid var(--bad,#e55);background:transparent;color:var(--bad,#e55);border-radius:6px;padding:3px 8px;font-size:10px;cursor:pointer}
+.work-line #workNow{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:min(72vw,640px)}
+.livebar .lb-phase,.livebar .lb-dot,.livebar .lb-phase-t,.livebar .lb-extra{display:none!important}
 .livebar .lb-dot{width:7px;height:7px;border-radius:50%;background:var(--mut);flex:none;box-shadow:0 0 0 0 transparent}
 .livebar .lb-sess{flex:1 1 120px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin:0;padding:0;font-size:inherit;color:var(--mut)}
 .livebar[data-phase="idle"] .lb-dot{background:var(--mut)}
@@ -705,6 +760,18 @@ body.sidebar-collapsed.desktop .rail-tab,body.sidebar-collapsed.electron .rail-t
 .livebar[data-phase="tools"] .lb-dot{background:#5b9fd4;animation:lb-pulse .9s ease-in-out infinite}
 .livebar[data-phase="error"] .lb-dot{background:#e55}
 .livebar[data-phase="waiting"] .lb-phase-t,.livebar[data-phase="thinking"] .lb-phase-t,.livebar[data-phase="responding"] .lb-phase-t,.livebar[data-phase="tools"] .lb-phase-t,.livebar[data-phase="sync"] .lb-phase-t{color:var(--tx)}
+@media (max-width:899px){
+  body.desktop #app,body.electron #app,body.phone-like #app{
+    display:flex!important;flex-direction:column!important;
+    grid-template-columns:none!important;grid-template-areas:none!important
+  }
+  body.desktop header,body.electron header{display:none}
+  body.page-chat #picker.panel.on{display:none!important}
+  #picker.panel.on{position:relative;inset:auto;width:100%!important;flex:1 1 auto;min-height:0;overflow:hidden!important;height:auto;max-height:none}
+  #btnCollapseRail{display:none!important}
+  body.desktop #chatStage,body.electron #chatStage{flex:1 1 auto;min-height:0;max-height:none}
+  body.desktop footer,body.electron footer{grid-area:auto}
+}
 @media (max-width:820px){
 #chatMeta,.livebar .lb-link,.livebar .lb-sep,.livebar .lb-phase,.livebar .lb-extra,.livebar .lb-more,.livebar .lb-sess,.livebar .lb-git,.livebar .lb-cost,.livebar .lb-sep-git,.livebar .lb-sep-cost,.livebar .lb-sep-sess{display:none!important}
 .livebar .lb-perm,.livebar .lb-effort{display:inline-flex!important}
@@ -742,12 +809,16 @@ html[data-variant="scient"][data-mode="light"] button.send{color:#fff}
   body.desktop #btnRail,body.electron #btnRail{display:inline-block!important}
   body.desktop.sidebar-collapsed #app,body.electron.sidebar-collapsed #app{grid-template-columns:0 minmax(0,1fr);grid-template-areas:"main main" "foot foot"}
   body.desktop.sidebar-collapsed #picker.panel.on,body.electron.sidebar-collapsed #picker.panel.on{display:none!important;pointer-events:none}
+  body.desktop.sidebar-collapsed .btn-settings.foot-settings,body.electron.sidebar-collapsed .btn-settings.foot-settings{display:inline-grid!important}
 }
 @media (min-width:1200px){
   body.desktop #app,body.electron #app{grid-template-columns:minmax(300px,min(30vw,400px)) minmax(0,1fr)}
   body.desktop.sidebar-collapsed #app,body.electron.sidebar-collapsed #app{grid-template-columns:0 minmax(0,1fr)}
   body.desktop .bub,body.electron .bub{max-width:min(80%,900px)}
   body.desktop #chatStage main#feed,body.electron #chatStage main#feed{padding:20px 28px}
+  /* Wide window: keep a readable measure and CENTER it - left-anchored rows leave a dead
+     right third that reads as broken layout in the exe. */
+  body.desktop #chatStage main#feed>*,body.electron #chatStage main#feed>*{max-width:1040px;margin-left:auto;margin-right:auto}
 }
 body.electron header{-webkit-app-region:drag}
 body.electron .hdrbtn,body.electron button,body.electron input,body.electron textarea,body.electron .orbit-menu-wrap,body.electron .orbit-wrap,body.electron .orbit-menu,body.electron .more-wrap,body.electron .more-menu,body.electron .hdr-right{-webkit-app-region:no-drag}
@@ -805,7 +876,7 @@ body.privacy #ideStatus,body.privacy .ide-tree-head span{filter:blur(5px)}
 .budget-bar.hot{color:var(--bad)}
 .term-pane,.side-pane{display:none;border:1px solid var(--line);border-radius:10px;background:var(--in);overflow:hidden}
 .term-pane.on,.side-pane.on{display:block}
-.cockpit-float{position:fixed!important;left:clamp(8px,2vw,18px);right:clamp(8px,2vw,18px);bottom:calc(var(--stack-h,140px) + 8px);z-index:42;max-height:min(32vh,280px);box-shadow:0 12px 40px -12px rgba(0,0,0,.55);background:var(--panel)!important;border:1px solid color-mix(in srgb,var(--acc) 25%,var(--line))!important}
+.cockpit-float{position:fixed!important;left:clamp(8px,2vw,18px);right:clamp(8px,2vw,18px);bottom:calc(var(--stack-h,140px) + 8px);z-index:var(--z-edge-chrome);max-height:min(32vh,280px);box-shadow:0 12px 40px -12px rgba(0,0,0,.55);background:var(--panel)!important;border:1px solid color-mix(in srgb,var(--acc) 25%,var(--line))!important}
 @media (min-width:900px){
   body.desktop .cockpit-float,body.electron .cockpit-float{left:auto;width:min(480px,42vw);right:clamp(12px,2vw,24px)}
 }
@@ -850,10 +921,10 @@ html,body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;t
 body{background-color:var(--bg);background-image:radial-gradient(ellipse 90% 50% at 50% -20%,var(--acc-dim),transparent 55%),radial-gradient(ellipse 40% 30% at 100% 100%,color-mix(in srgb,var(--acc) 5%,transparent),transparent 50%);transition:background-color var(--dur-slow) var(--ease),color var(--dur) var(--ease)}
 #app{position:relative}
 #app::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;background-image:radial-gradient(circle at 1px 1px,color-mix(in srgb,var(--tx) 4%,transparent) 1px,transparent 0);background-size:28px 28px;opacity:.35;mask-image:radial-gradient(ellipse 80% 70% at 50% 30%,#000 20%,transparent 75%)}
-main,footer,.panel,#idePanel,.cockpit-bar{position:relative;z-index:1}
-header{position:sticky!important;z-index:5000!important;border-bottom:1px solid var(--hairline)!important;background:var(--glass)!important;backdrop-filter:blur(20px) saturate(1.35)!important;-webkit-backdrop-filter:blur(20px) saturate(1.35)!important;box-shadow:0 1px 0 var(--hairline),var(--elev-1)}
-#chatStage,.chat-top,#picker,main#feed{z-index:1!important;position:relative}
-.hdr-right,.more-wrap,.orbit-menu-wrap{position:relative;z-index:5010}
+main,footer,.panel,#idePanel,.cockpit-bar{position:relative;z-index:var(--z-content)}
+header{position:sticky!important;z-index:var(--z-app-chrome)!important;border-bottom:1px solid var(--hairline)!important;background:var(--glass)!important;backdrop-filter:blur(20px) saturate(1.35)!important;-webkit-backdrop-filter:blur(20px) saturate(1.35)!important;box-shadow:0 1px 0 var(--hairline),var(--elev-1)}
+#chatStage,.chat-top,#picker,main#feed{z-index:var(--z-content)!important;position:relative}
+.hdr-right,.more-wrap,.orbit-menu-wrap{position:relative;z-index:calc(var(--z-app-chrome) + 1)}
 footer{border-top:1px solid var(--hairline)!important;background:var(--glass)!important;backdrop-filter:blur(20px) saturate(1.35)!important;-webkit-backdrop-filter:blur(20px) saturate(1.35)!important}
 .logo{letter-spacing:-.02em;font-weight:700}
 .logo .brand{letter-spacing:.14em;opacity:.75;font-weight:500;font-size:clamp(8px,.2vw + 7px,10px)!important}
@@ -998,10 +1069,10 @@ header::-webkit-scrollbar{display:none}
 @keyframes horizon-spin{to{transform:rotate(360deg)}}
 @keyframes horizon-pulse{0%,100%{transform:scale(1);box-shadow:0 0 0 2px color-mix(in srgb,var(--acc) 35%,transparent),0 0 24px 2px var(--acc-glow),inset 0 0 20px #000}50%{transform:scale(1.04);box-shadow:0 0 0 3px color-mix(in srgb,var(--acc) 50%,transparent),0 0 36px 6px var(--acc-glow),inset 0 0 24px #000}}
 @keyframes horizon-breathe{0%,100%{transform:scale(1);opacity:.45}50%{transform:scale(1.06);opacity:.9}}
-#chatStage.loading-history main#feed{opacity:0!important;pointer-events:none;visibility:hidden}
+#chatStage.loading-history main#feed{pointer-events:none}
 #chatStage.loading-history main#feed .row{animation:none!important}
 body.loading-chat #jumpBottom{display:none!important}
-#linkBanner{display:none;position:sticky;top:0;z-index:30;padding:10px 14px;background:color-mix(in srgb,var(--bad) 18%,var(--panel));border-bottom:1px solid color-mix(in srgb,var(--bad) 40%,var(--line));color:var(--tx);font-size:13px;font-weight:600;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+#linkBanner{display:none;position:sticky;top:0;z-index:var(--z-inline-popover);padding:10px 14px;background:color-mix(in srgb,var(--bad) 18%,var(--panel));border-bottom:1px solid color-mix(in srgb,var(--bad) 40%,var(--line));color:var(--tx);font-size:13px;font-weight:600;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
 #linkBanner.on{display:flex}
 #linkBanner .lb-msg{flex:1;min-width:140px}
 #linkBanner button{border-radius:10px;padding:8px 12px;font-weight:700;border:1px solid var(--line);background:var(--panel2);color:var(--tx);cursor:pointer}
@@ -1022,7 +1093,7 @@ html[data-variant="win95"] .hdrbtn,html[data-variant="dos"] .hdrbtn,html[data-va
 html[data-variant="win95"] .bub,html[data-variant="win95"] .sess .item,html[data-variant="win95"] .tool{box-shadow:none!important}
 html[data-variant="win95"] #app::before,html[data-variant="dos"] #app::before,html[data-variant="commodore"] #app::before,html[data-variant="matrix"] #app::before{display:none}
 html[data-variant="matrix"] .logo b,html[data-variant="commodore"] .logo b{background:none;-webkit-background-clip:unset;background-clip:unset;color:var(--acc)}
-#tourOverlay{display:none;position:fixed;inset:0;z-index:10050;pointer-events:none;isolation:isolate}
+#tourOverlay{display:none;position:fixed;inset:0;z-index:var(--z-tour);pointer-events:none;isolation:isolate}
 #tourOverlay.on{display:block;pointer-events:auto}
 #tourDim{position:absolute;inset:0;z-index:0;background:rgba(0,0,0,.62);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);pointer-events:auto}
 #tourSpot{position:absolute;border:2px solid var(--acc);border-radius:12px;box-shadow:0 0 0 9999px rgba(0,0,0,.55),0 0 28px var(--acc-glow);pointer-events:none;transition:top .28s var(--ease,ease),left .28s ease,width .28s ease,height .28s ease;z-index:1}
@@ -1034,9 +1105,9 @@ html[data-variant="matrix"] .logo b,html[data-variant="commodore"] .logo b{backg
 #tourCard .rowbtns button{flex:1;min-width:72px;pointer-events:auto;cursor:pointer;position:relative;z-index:1}
 #tourCard button.pri{background:var(--acc);color:var(--on-acc,#0a0a0a);border-color:var(--acc);font-weight:800}
 body.touring [data-tour-hi]{outline:2px solid var(--acc);outline-offset:2px;box-shadow:0 0 0 4px color-mix(in srgb,var(--acc) 25%,transparent),0 0 18px var(--acc-glow);border-radius:8px;pointer-events:none!important}
-body.touring .sheet,body.touring .sheet.on,body.touring .cockpit-float,body.touring .jump,body.touring .rail-tab,body.touring .slash-menu{z-index:1!important;pointer-events:none!important}
+body.touring .sheet,body.touring .sheet.on,body.touring .cockpit-float,body.touring .jump,body.touring .rail-tab,body.touring .slash-menu,body.touring .more-menu,body.touring .orbit-menu,body.touring #sessFilterPop,body.touring #rxPop,body.touring #voiceHud{z-index:1!important;pointer-events:none!important}
 body.touring header,body.touring footer,body.touring main,body.touring .panel,body.touring #idePanel,body.touring .cockpit-bar{z-index:1!important}
-#voiceHud{display:none;position:fixed;left:50%;bottom:calc(var(--stack-h,120px) + 12px);transform:translateX(-50%);z-index:9000;width:min(520px,94vw);pointer-events:none}
+#voiceHud{display:none;position:fixed;left:50%;bottom:calc(var(--stack-h,120px) + 12px);transform:translateX(-50%);z-index:var(--z-voice);width:min(520px,94vw);pointer-events:none}
 #voiceHud.on{display:block}
 #voiceHud .vh-card{pointer-events:auto;background:color-mix(in srgb,var(--panel) 94%,transparent);border:1px solid color-mix(in srgb,var(--acc) 40%,var(--line));border-radius:16px;padding:12px 14px;box-shadow:var(--elev-3,0 16px 40px rgba(0,0,0,.45)),0 0 28px -10px var(--acc-glow);backdrop-filter:blur(16px)}
 #voiceHud.xr .vh-card{width:min(640px,96vw);padding:18px 20px;border-width:2px;font-size:1.15em}
@@ -1064,13 +1135,14 @@ body.voice-go #voiceHud,body.voice-xr #voiceHud{bottom:calc(var(--stack-h,120px)
 #voiceHud.xr .vh-line{font-size:18px}
 }
 </style>
+<link rel="stylesheet" href="/static/grok-archive-skin.css?v=4"/>
 <link rel="stylesheet" href="/static/vendor/katex/katex.min.css"/>
 <script defer src="/static/vendor/katex/katex.min.js"></script>
 <script src="/static/md.js?v=2"></script>
 <script src="/static/presets.js"></script>
 <script src="/static/work-dock.js" defer></script>
 <script src="/static/voice-mode.js" defer></script>
-<script src="/static/cockpit-features.js?v=rx2" defer></script>
+<script src="/static/cockpit-features.js?v=rx5" defer></script>
 <script src="/static/ide.js" defer></script>
 </head>
 <body>
@@ -1079,8 +1151,9 @@ body.voice-go #voiceHud,body.voice-xr #voiceHud{bottom:calc(var(--stack-h,120px)
   <button class="hdrbtn" id="btnBack" style="display:none" title="Sessions">‹</button>
   <button class="hdrbtn" id="btnRail" style="display:none" title="Toggle sessions sidebar">☰</button>
   <button class="hdrbtn" id="btnRoom" title="Agent room (beta) — short messages between agents">◇</button>
-  <div class="logo" id="logo"><span class="brand">GROK BUILD</span>Grok <b>Remote</b></div>
+  <div class="logo" id="logo"><img class="mark" src="/static/img/rikku-bench.jpg" width="56" height="32" alt="Rikku at the bench"><span class="word"><span class="brand">GROK BUILD</span>Grok <b>Remote</b></span></div>
   <div class="sub" id="status" hidden aria-hidden="true">offline</div>
+
   <div class="hdr-right">
     <div class="more-wrap">
       <button type="button" class="hdrbtn" id="btnMore" title="Command deck" aria-haspopup="menu" aria-expanded="false" aria-controls="moreMenu"><span class="mm-trig" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span></button>
@@ -1099,20 +1172,21 @@ body.voice-go #voiceHud,body.voice-xr #voiceHud{bottom:calc(var(--stack-h,120px)
         <button type="button" id="btnMsgModeMenu" role="menuitem"><span class="mm-ico" aria-hidden="true">⇉</span><span class="mm-lab">Delivery</span><span class="mm-k">queue</span></button>
         <button type="button" class="mm-tog" id="btnPermCycle" role="menuitem" title="Tap to cycle Always → Ask → Plan"><span class="mm-ico" aria-hidden="true">◈</span><span class="mm-lab">Permission</span><span class="mm-k">always</span></button>
         <button type="button" class="mm-tog" id="btnEffortCycle" role="menuitem" title="Tap to cycle reasoning effort"><span class="mm-ico" aria-hidden="true">⚡</span><span class="mm-lab">Effort</span><span class="mm-k">low</span></button>
+        <button type="button" id="btnActor" role="menuitem" title="Grok Actor · local /actor, no agent turn"><span class="mm-ico" aria-hidden="true">🎭</span><span class="mm-lab">Actor</span><span class="mm-k">voice</span></button>
         <div id="moreToolsHost"></div>
-        <div class="mm-sec"><span class="mm-sec-dot"></span>Hide in feed</div>
+        <div class="mm-sec"><span class="mm-sec-dot"></span>Show in feed</div>
         <div class="mm-grid" id="viewHideGrid">
-          <button type="button" class="mm-tog" id="togHideThink" role="menuitem" data-ux="hideThink"><span class="mm-ico" aria-hidden="true">·</span><span class="mm-lab">Think</span><span class="mm-k">show</span></button>
-          <button type="button" class="mm-tog" id="togHideTools" role="menuitem" data-ux="hideTools"><span class="mm-ico" aria-hidden="true">·</span><span class="mm-lab">Tools</span><span class="mm-k">show</span></button>
-          <button type="button" class="mm-tog" id="togHideEdit" role="menuitem" data-ux="hideEdit"><span class="mm-ico" aria-hidden="true">·</span><span class="mm-lab">Edits</span><span class="mm-k">show</span></button>
-          <button type="button" class="mm-tog" id="togHideRead" role="menuitem" data-ux="hideRead"><span class="mm-ico" aria-hidden="true">·</span><span class="mm-lab">Reads</span><span class="mm-k">show</span></button>
-          <button type="button" class="mm-tog" id="togHideCode" role="menuitem" data-ux="hideCode"><span class="mm-ico" aria-hidden="true">·</span><span class="mm-lab">Code</span><span class="mm-k">show</span></button>
+          <button type="button" class="mm-tog" id="togHideThink" role="menuitem" data-ux="hideThink"><span class="mm-ico" aria-hidden="true">·</span><span class="mm-lab">Think</span><span class="mm-k">✓</span></button>
+          <button type="button" class="mm-tog" id="togHideTools" role="menuitem" data-ux="hideTools"><span class="mm-ico" aria-hidden="true">·</span><span class="mm-lab">Tools</span><span class="mm-k">✓</span></button>
+          <button type="button" class="mm-tog" id="togHideEdit" role="menuitem" data-ux="hideEdit"><span class="mm-ico" aria-hidden="true">·</span><span class="mm-lab">Edits</span><span class="mm-k">✓</span></button>
+          <button type="button" class="mm-tog" id="togHideRead" role="menuitem" data-ux="hideRead"><span class="mm-ico" aria-hidden="true">·</span><span class="mm-lab">Reads</span><span class="mm-k">✓</span></button>
+          <button type="button" class="mm-tog" id="togHideCode" role="menuitem" data-ux="hideCode"><span class="mm-ico" aria-hidden="true">·</span><span class="mm-lab">Code</span><span class="mm-k">✓</span></button>
         </div>
-        <div class="mm-sec"><span class="mm-sec-dot"></span>Collapse</div>
+        <div class="mm-sec"><span class="mm-sec-dot"></span>Collapse by default</div>
         <div class="mm-grid" id="viewCollapseGrid">
-          <button type="button" class="mm-tog" id="togCollapseThink" role="menuitem" data-ux="collapseThink"><span class="mm-ico" aria-hidden="true">▾</span><span class="mm-lab">Think</span><span class="mm-k">off</span></button>
-          <button type="button" class="mm-tog" id="togCollapseTools" role="menuitem" data-ux="collapseTools"><span class="mm-ico" aria-hidden="true">▾</span><span class="mm-lab">Tools</span><span class="mm-k">off</span></button>
-          <button type="button" class="mm-tog" id="togCollapseCode" role="menuitem" data-ux="collapseCode"><span class="mm-ico" aria-hidden="true">▾</span><span class="mm-lab">Code</span><span class="mm-k">off</span></button>
+          <button type="button" class="mm-tog" id="togCollapseThink" role="menuitem" data-ux="collapseThink"><span class="mm-ico" aria-hidden="true">▾</span><span class="mm-lab">Think</span><span class="mm-k">–</span></button>
+          <button type="button" class="mm-tog" id="togCollapseTools" role="menuitem" data-ux="collapseTools"><span class="mm-ico" aria-hidden="true">▾</span><span class="mm-lab">Tools</span><span class="mm-k">–</span></button>
+          <button type="button" class="mm-tog" id="togCollapseCode" role="menuitem" data-ux="collapseCode"><span class="mm-ico" aria-hidden="true">▾</span><span class="mm-lab">Code</span><span class="mm-k">–</span></button>
         </div>
         <div class="mm-sec"><span class="mm-sec-dot"></span>Apps</div>
         <button type="button" id="btnWork" role="menuitem"><span class="mm-ico" aria-hidden="true">☰</span><span class="mm-lab">Work</span><span class="mm-k">tools</span></button>
@@ -1126,6 +1200,7 @@ body.voice-go #voiceHud,body.voice-xr #voiceHud{bottom:calc(var(--stack-h,120px)
         <button type="button" id="btnPrivacy" role="menuitem"><span class="mm-ico" aria-hidden="true">◌</span><span class="mm-lab">Spoiler</span><span class="mm-k">off</span></button>
         <div class="mm-sec"><span class="mm-sec-dot"></span>Help</div>
         <button type="button" id="btnPairPhoneMore" role="menuitem" title="Pair a phone — QR on this PC"><span class="mm-ico" aria-hidden="true">▦</span><span class="mm-lab">Pair phone</span><span class="mm-k">QR</span></button>
+        <button type="button" id="btnHealthMore" role="menuitem" title="Check the UI hub and agent connection"><span class="mm-ico" aria-hidden="true">◇</span><span class="mm-lab">Health check</span><span class="mm-k">status</span></button>
         <button type="button" id="btnStartRemoteMore" role="menuitem" title="Start / restart agent serve"><span class="mm-ico" aria-hidden="true">►</span><span class="mm-lab">Start server</span><span class="mm-k">2419</span></button>
         <button type="button" id="btnStopRemoteMore" role="menuitem" title="Stop remote UI + agent serve"><span class="mm-ico" aria-hidden="true">■</span><span class="mm-lab">Stop remote</span><span class="mm-k">stack</span></button>
         <button type="button" id="btnTour" role="menuitem"><span class="mm-ico" aria-hidden="true">?</span><span class="mm-lab">Feature tour</span><span class="mm-k">guide</span></button>
@@ -1249,10 +1324,13 @@ body.voice-go #voiceHud,body.voice-xr #voiceHud{bottom:calc(var(--stack-h,120px)
 <div id="chatStage">
 <div class="chat-top" id="chatTop">
   <button class="hdrbtn" id="btnChatBack" style="display:none" title="Sessions">‹</button>
+  <button class="hdrbtn" id="btnChatSess" style="display:none" title="Show conversations">☰</button>
   <button type="button" class="chat-title" id="chatTitle" title="Rename chat">Chat</button>
   <input type="search" id="chatTopSearch" placeholder="Search this chat…" autocomplete="off" enterkeyhint="search"/>
 </div>
 <main id="feed" class="pulse-frame"></main>
+<div id="workBoard" class="work-board" hidden></div>
+<div class="work-line" id="workLine" data-on="0" aria-live="polite"><span id="sendSpin" class="send-spin" hidden aria-hidden="true"></span><span id="workNow">idle</span></div>
 <div id="horizonLoad" aria-live="polite" aria-busy="false">
   <div class="horizon-stage" aria-hidden="true">
     <div class="horizon-disk"></div>
@@ -1279,14 +1357,10 @@ body.voice-go #voiceHud,body.voice-xr #voiceHud{bottom:calc(var(--stack-h,120px)
   <div class="foot-status" id="footStatus">
     <div class="livebar" id="livebar" data-phase="idle" aria-live="polite">
       <button type="button" class="btn-settings foot-settings" id="btnSettingsFoot" title="Settings" aria-haspopup="menu" aria-expanded="false" aria-controls="moreMenu">⚙</button>
-      <span id="sendSpin" class="send-spin" hidden aria-hidden="true"></span>
       <span class="radio-chip" id="radioChip" title="Link quality">—</span>
       <span id="ctxMeter" class="ctx-meter ctx-send" title="Context estimate — click for details"><i></i><span>ctx</span></span>
       <span class="chat-meta" id="chatMeta" hidden></span>
       <span class="lb-link">link: <b id="lbLink">standby</b></span>
-      <span class="lb-sep">·</span>
-      <span class="lb-phase" id="lbPhaseWrap"><span class="lb-dot" aria-hidden="true"></span><span class="lb-phase-t" id="lbPhase">idle</span></span>
-      <span class="lb-extra" id="lbExtra"></span>
       <span class="lb-sep">·</span>
       <button type="button" class="lb-perm" id="lbPerm" title="Permission level for this chat — tap to cycle">perm: always</button>
       <button type="button" class="lb-perm lb-effort" id="lbEffort" title="Reasoning effort — tap to cycle low/medium/high">effort: low</button>
@@ -1305,6 +1379,7 @@ body.voice-go #voiceHud,body.voice-xr #voiceHud{bottom:calc(var(--stack-h,120px)
   <span id="rxQuick"></span>
   <button type="button" id="rxMore" title="More emoji">☺</button>
   <input id="rxEmojiIn" inputmode="text" autocomplete="off" aria-label="Emoji"/>
+  <button type="button" id="rxClose" title="Close">×</button>
 </div>
 <div id="idePanel">
   <div class="ide-wrap">
@@ -1386,6 +1461,40 @@ body.voice-go #voiceHud,body.voice-xr #voiceHud{bottom:calc(var(--stack-h,120px)
   </div>
 </div>
 
+<div class="sheet" id="actorSheet">
+  <div class="card">
+    <h3>Actor <button type="button" class="sheet-x" id="closeActor" aria-label="Close">×</button></h3>
+    <p class="hint">Voice for this chat — local, no extra turn. Pick a preset or write your own and save it.</p>
+    <p class="hint" id="actorNow">active: …</p>
+    <label>Voice</label>
+    <select id="actorSelect" class="field-select"></select>
+    <div id="actorCustomWrap" hidden>
+      <label>Name</label>
+      <input id="actorCustomName" placeholder="e.g. Tired sysadmin"/>
+      <label>How they talk</label>
+      <textarea class="field" id="actorCustomBody" rows="6" placeholder="Cadence, vocabulary, what they never say…"></textarea>
+      <div class="rowbtns">
+        <button class="pri" type="button" id="actorCustomSave">Save &amp; use</button>
+      </div>
+    </div>
+    <label>Scope</label>
+    <select id="actorScopeSelect" class="field-select">
+      <option value="session">This session</option>
+      <option value="chat">This chat</option>
+      <option value="global">All sessions</option>
+    </select>
+    <label>Reaction temperature</label>
+    <div class="mode-row" id="rxModeChips">
+      <button type="button" class="persona-chip on" data-rx-mode="adaptive"><b>Adaptive</b><span>Grok nudges the meter</span></button>
+      <button type="button" class="persona-chip" data-rx-mode="manual"><b>Manual</b><span>You lock the number</span></button>
+    </div>
+    <input type="range" id="rxTempRange" min="0" max="100" value="65" style="width:100%"/>
+    <p class="hint" id="rxTempHint">Starts at 0.65 per person. Adaptive = Grok may move it. Manual = frozen until you change it.</p>
+    <div class="rowbtns">
+      <button type="button" id="actorClear">Clear this layer</button>
+    </div>
+  </div>
+</div>
 <div class="sheet" id="personaSheet">
   <div class="card">
     <h3>Persona &amp; directions <button type="button" class="sheet-x" id="closePersona" aria-label="Close">×</button></h3>
@@ -1435,16 +1544,16 @@ let ws=null,sid=null,selectedSid=null,sidCwd=".",nid=0,pending=new Map(),busy=fa
 let replaying=false,showThoughts=true,stickBottom=true,autoScroll=true,page="setup";
 let curUser=null,curAgent=null,curThought=null,toolMap={},curThoughtRow=null;
 let seenEvents=new Set(),seenUserTexts=new Set(),promptCount=0,commands=[];
-let pollTimer=null,catchupBusy=false,lastLiveAt=0,localEchoUntil=0,sendInFlight=false,lastLocalUserPlain="",ignoreScrollUntil=0,scrollSettleTimer=0;
+let pollTimer=null,catchupBusy=false,lastLiveAt=0,localEchoUntil=0,sendInFlight=false,lastLocalUserPlain="",ignoreScrollUntil=0,scrollSettleTimer=0,lastDispatch=null;
 let composerBoundSid=null,composerDrafts={};
 let historyFileSize=0,diskCatchupBusy=false;
-const HISTORY_PAGE=24;
-const HISTORY_MAX_BYTES=450000;
+const HISTORY_PAGE=50;
+const HISTORY_MAX_BYTES=280000;
 const FEED_DOM_CAP=72;
 const HISTORY_RICH_CAP=48000;
 const SEEN_EVENTS_CAP=1500;
 let historyHasMore=false,historyOlderBefore=0,historyLoadingOlder=false;
-let sessionGen=0,sessionSwitching=false,loadExpectSid=null,sessionFresh=false,historyPainting=false,suppressLive=false;
+let sessionGen=0,sessionSwitching=false,loadExpectSid=null,sessionFresh=false,historyPainting=false,suppressLive=false,attachReplay=false,agentAttachReady=true,agentAttachSid="",agentAttachWaiters=[];
 let turnToken=0,activeTurnToken=0,cancelInFlight=false,suppressStreamBusyUntil=0;
 let linkState="standby",agentPhase="idle",phaseDetail="",wantReconnect=false,reconnectTimer=null,connectAttempt=0;
 let connecting=false,intentionalClose=false,reconnectArmed=false,maxReconnect=80,startInFlight=false,softDetach=false;
@@ -1456,16 +1565,17 @@ Object.defineProperty(window,"sessionSwitching",{get:()=>sessionSwitching,set:v=
 let variant="grok",mode="dark";
 let ux={borders:true,collapseThink:true,collapseCode:true,collapseTools:false,autoScroll:true,privacy:false,hideThink:false,hideTools:false,hideCode:false,hideEdit:false,hideRead:false};
 let archived=new Set(),sessScope="active";
-let msgMode="queue",msgQueue=[],msgDrainBusy=false,lastMsgDrain=0,agentQueueNote="";
+let sessListSig="",workBoardSig="";
+let msgMode="queue",msgQueue=[],msgDrainBusy=false,lastMsgDrain=0,msgRetryTimer=0,agentQueueNote="",lastEnterAt=0,pendingTools=new Set(),workTick=0,workTimer=0,lastWorkTitle="",workJobs=[];
 let permLevel="always",permBySession={};
 const PERM_ORDER=["always","ask","plan"];
 const PERM_LABEL={always:"always approve",ask:"ask each tool",plan:"plan gate"};
-let personaId="default",directionId="none",personaApplied=new Set();
+let personaId="default",directionId="none",personaApplied=new Set(),lastSetupQueueCancel=0;
 let currentModelId="grok-4.5",reasoningEffort="low",effortLevels=["low","medium","high"];
 const personaSheet=document.getElementById("personaSheet"),btnPersona=document.getElementById("btnPersona");
 const VARIANTS=[
   {id:"scient",label:"Scient",sw:"#00ff9d",swLight:"#00875a",brand:"AMNI-SCIENT"},
-  {id:"grok",label:"Grok",sw:"#e4e4e7",swLight:"#18181b",brand:"GROK BUILD"},
+  {id:"grok",label:"Grok",sw:"#e4e4e7",swLight:"#18181b",brand:"GROK BUILD",metaDark:"#000000",metaLight:"#fafafa"},
   {id:"ai",label:"AI",sw:"#ffb74d",swLight:"#e65100",brand:"AMNI-AI"},
   {id:"explore",label:"Explore",sw:"#00b4ff",swLight:"#0277bd",brand:"AMNI-EXPLORE"},
   {id:"calc",label:"Calc",sw:"#ff6b35",swLight:"#d84315",brand:"AMNI-CALC"},
@@ -1504,7 +1614,7 @@ function applyTheme(v,m,persist){
     const c=mode==="light"?(vv.metaLight||"#f5f6f7"):(vv.metaDark||"#0a0b0e");
     meta.setAttribute("content",c);
   }
-  if(logoEl)logoEl.innerHTML='<span class="brand">'+esc(vv.brand)+"</span>Grok <b>Remote</b>";
+  if(logoEl)logoEl.innerHTML='<img class="mark" src="/static/img/rikku-bench.jpg" width="56" height="32" alt="Rikku at the bench"><span class="word"><span class="brand">'+esc(vv.brand)+"</span>Grok <b>Remote</b></span>";
   try{document.title="Grok Remote · "+(vv.brand||"GROK BUILD")}catch(e){}
   if(persist!==false){
     try{
@@ -1732,22 +1842,28 @@ function toggleComposerTools(){
   if(pick)pick.click();
 }
 function paintViewToggles(){
+  /* One encoding only: bright + check = the section header applies to this row.
+     "Show in feed" lit Think = thinking is visible; "Collapse by default" lit Code =
+     code starts folded. The old paint lit rows for HIDDEN content and captioned them
+     with state words ("hidden"/"show") - three contradicting layers. The stored ux
+     keys keep their hide* polarity; only the display inverts. */
   const map=[
-    ["hideThink","Think","hidden","show","·"],
-    ["hideTools","Tools","hidden","show","·"],
-    ["hideEdit","Edits","hidden","show","·"],
-    ["hideRead","Reads","hidden","show","·"],
-    ["hideCode","Code","hidden","show","·"],
-    ["collapseThink","Think","on","off","▾"],
-    ["collapseTools","Tools","on","off","▾"],
-    ["collapseCode","Code","on","off","▾"]
+    ["hideThink","Think","·",true],
+    ["hideTools","Tools","·",true],
+    ["hideEdit","Edits","·",true],
+    ["hideRead","Reads","·",true],
+    ["hideCode","Code","·",true],
+    ["collapseThink","Think","▾",false],
+    ["collapseTools","Tools","▾",false],
+    ["collapseCode","Code","▾",false]
   ];
-  map.forEach(([k,lab,onLab,offLab,ico])=>{
+  map.forEach(([k,lab,ico,inv])=>{
     const el=document.querySelector('.mm-tog[data-ux="'+k+'"]');
     if(!el)return;
-    const on=!!ux[k];
+    const on=inv?!ux[k]:!!ux[k];
     el.classList.toggle("on",on);
-    el.innerHTML='<span class="mm-ico" aria-hidden="true">'+(ico||"·")+'</span><span class="mm-lab">'+lab+'</span><span class="mm-k">'+(on?onLab:offLab)+"</span>";
+    el.title=(inv?"Tap to show or hide "+lab.toLowerCase()+" in the feed":"Tap to start "+lab.toLowerCase()+" expanded or collapsed");
+    el.innerHTML='<span class="mm-ico" aria-hidden="true">'+(ico||"·")+'</span><span class="mm-lab">'+lab+'</span><span class="mm-k">'+(on?"✓":"–")+"</span>";
   });
 }
 function wireViewToggles(){
@@ -1796,7 +1912,10 @@ function paintUxChips(){
   paint(document.getElementById("uxChipsSheet"));
 }
 function applyCollapseDefaults(){
-  document.querySelectorAll(".thought-row").forEach(r=>{r.classList.toggle("collapsed",!!ux.collapseThink)});
+  document.querySelectorAll(".thought-row").forEach(r=>{
+    r.classList.toggle("collapsed",!!ux.collapseThink);
+    if(!ux.collapseThink)fillThoughtBub(r.querySelector(".bub"));
+  });
   document.querySelectorAll(".tool").forEach(r=>{r.classList.toggle("collapsed",!!ux.collapseTools)});
   document.querySelectorAll(".collapsible.code").forEach(r=>{r.classList.toggle("collapsed",!!ux.collapseCode)});
 }
@@ -1959,6 +2078,12 @@ function placeSessFilterPop(){
   const pop=document.getElementById("sessFilterPop");
   const btn=document.getElementById("btnSessFilter");
   if(!pop||!btn||!isBraidLayout()||!sessFilterOpen)return;
+  if(pop.parentElement!==document.body){
+    const marker=document.createComment("sessFilterPop-home");
+    pop.parentNode.insertBefore(marker,pop);
+    pop._portalMarker=marker;
+    document.body.appendChild(pop);
+  }
   const r=btn.getBoundingClientRect();
   const w=Math.min(300,Math.max(220,window.innerWidth-24));
   let left=Math.round(r.left);
@@ -1974,12 +2099,17 @@ function placeSessFilterPop(){
   pop.style.width=w+"px";
   pop.style.maxHeight=maxH+"px";
   pop.style.overflow="auto";
-  pop.style.zIndex="20060";
+  pop.style.zIndex="var(--z-popover)";
 }
 function clearSessFilterPopPlace(){
   const pop=document.getElementById("sessFilterPop");
   if(!pop||isBraidLayout()&&sessFilterOpen)return;
   if(!isBraidLayout()){
+    if(pop._portalMarker&&pop._portalMarker.parentNode){
+      pop._portalMarker.parentNode.insertBefore(pop,pop._portalMarker.nextSibling);
+      pop._portalMarker.remove();
+      pop._portalMarker=null;
+    }
     pop.style.position="";pop.style.left="";pop.style.top="";pop.style.right="";
     pop.style.width="";pop.style.maxHeight="";pop.style.overflow="";pop.style.zIndex="";
   }
@@ -2249,6 +2379,14 @@ function scroll(){
 }
 function trimFeedDom(){
   if(!feed||historyPainting||replaying||sessionSwitching)return;
+  /* This runs off the 500-900ms poll and drops rows from the TOP - which is exactly what
+     loadOlderHistory just prepended. Scrolled up, the loop was: prepend ~40 older rows, poll trims
+     them back off, content above the viewport shrinks, scrollTop falls under 120, the scroll
+     handler fires loadOlderHistory again. It walked backwards through the whole transcript and
+     repainted the rail every pass, which is the flicker. Only trim when pinned to the bottom,
+     where dropping the oldest rows is invisible and is all the cap was ever for. */
+  if(historyLoadingOlder||Date.now()<ignoreScrollUntil)return;
+  if(!atBottom())return;
   const kids=feed.children;
   const n=kids.length;
   if(n<=FEED_DOM_CAP)return;
@@ -2261,16 +2399,17 @@ function trimFeedDom(){
   }
   if(removed){
     historyHasMore=true;
+    forceScrollBottom({pin:true});
     paintHistoryMoreChip();
     if(seenEvents.size>SEEN_EVENTS_CAP){const a=[...seenEvents];seenEvents=new Set(a.slice(-Math.floor(SEEN_EVENTS_CAP/2)))}
   }
 }
 feed.addEventListener("scroll",()=>{
-  if(replaying||sessionSwitching||feed.classList.contains("loading-history")||historyLoadingOlder){updateJump();return}
+  if(replaying||sessionSwitching||attachReplay||feed.classList.contains("loading-history")||historyLoadingOlder){updateJump();return}
   if(Date.now()<ignoreScrollUntil){updateJump();return}
   stickBottom=atBottom();
   updateJump();
-  if(feed.scrollTop<180)loadOlderHistory().catch(()=>{});
+  if(!stickBottom&&feed.scrollTop<120&&feed.scrollHeight>feed.clientHeight+240)loadOlderHistory().catch(()=>{});
 },{passive:true});
 async function snapChatToBottom(){
   stickBottom=true;
@@ -2363,7 +2502,7 @@ function paintPermChip(){
     const on=b.getAttribute("data-perm")===level;
     b.classList.toggle("on",on);
     const k=b.querySelector(".mm-k");
-    if(k)k.textContent=on?"on":"off";
+    if(k)k.textContent=on?"✓":"–";
   });
 }
 function paintEffortChip(){
@@ -2425,8 +2564,8 @@ async function setEffort(level,opts){
   }catch(e){chip("effort failed: "+e);return false}
 }
 function cycleEffort(){
-  const order=effortLevels.length?effortLevels:["low","medium","high"];
-  const i=order.indexOf(reasoningEffort);
+  const order=["low","medium","high","xhigh"];
+  const i=Math.max(0,order.indexOf(reasoningEffort));
   setEffort(order[(i+1)%order.length]);
 }
 async function remoteLoopApi(path,body,method){
@@ -2437,6 +2576,241 @@ async function remoteLoopApi(path,body,method){
   if(!r.ok||!j||j.ok===false)throw new Error((j&&(j.error||j.message))||text||("HTTP "+r.status));
   return j;
 }
+function rxUserId(){
+  try{
+    let id=localStorage.getItem("grok_remote_rx_user");
+    if(!id){
+      id=(crypto.randomUUID&&crypto.randomUUID())||("u-"+Math.random().toString(36).slice(2)+Date.now().toString(36));
+      localStorage.setItem("grok_remote_rx_user",id);
+    }
+    return id;
+  }catch(e){return "default"}
+}
+function rxTempMode(){
+  try{return localStorage.getItem("grok_remote_rx_mode")==="manual"?"manual":"adaptive"}catch(e){return "adaptive"}
+}
+function rxTempGet(){
+  try{
+    if(!localStorage.getItem("grok_remote_rx_v")){
+      localStorage.setItem("grok_remote_rx_v","2");
+      localStorage.setItem("grok_remote_rx_mode",localStorage.getItem("grok_remote_rx_mode")||"adaptive");
+      localStorage.setItem("grok_remote_rx_temp","0.65");
+    }
+    const v=parseFloat(localStorage.getItem("grok_remote_rx_temp"));
+    if(Number.isFinite(v))return Math.max(0,Math.min(1,v));
+  }catch(e){}
+  return 0.65;
+}
+function paintRxTempUi(){
+  const n=rxTempGet();
+  const mode=rxTempMode();
+  const r=document.getElementById("rxTempRange");
+  if(r){r.value=String(Math.round(n*100));r.disabled=false}
+  const h=document.getElementById("rxTempHint");
+  if(h)h.textContent=(mode==="manual"?"Manual lock ":"Adaptive ")+n.toFixed(2)+" · starts 0.65 · 0 stoic · 1 hair-trigger";
+  document.querySelectorAll("[data-rx-mode]").forEach(b=>b.classList.toggle("on",b.getAttribute("data-rx-mode")===mode));
+}
+function rxTempSet(v,opts){
+  opts=opts||{};
+  const n=Math.max(0,Math.min(1,Number(v)));
+  const mode=opts.mode||rxTempMode();
+  if(opts.fromAgent&&mode==="manual")return n;
+  try{
+    localStorage.setItem("grok_remote_rx_temp",String(n));
+    if(opts.mode)localStorage.setItem("grok_remote_rx_mode",opts.mode);
+  }catch(e){}
+  paintRxTempUi();
+  if(!opts.quiet){
+    actorApi("/api/rx-temp",{method:"POST",body:{user:rxUserId(),value:n,mode:mode,fromAgent:!!opts.fromAgent}}).catch(()=>{});
+  }
+  return n;
+}
+function rxTempBlock(){
+  const t=rxTempGet();
+  const mode=rxTempMode();
+  return "REACTIONS (a meter, not a schedule). Temperature="+t.toFixed(2)+" mode="+mode+" (0=almost never, 1=almost every turn). Fill the meter with surprise, delight, failure, stakes, or the user's emoji on your last line. When a reasonable person would react, emit exactly one mark on your reply: [[rx:EMOJI]] using 👍 👎 😂 😮 ❤ or one fitting emoji. Routine thanks, status, and ordinary work do not trip it. If the prompt includes [User reactions], those are the user's emoji on YOUR prior lines — do not write a reply about them unless the reaction is important to the work or genuinely hilarious. You may stamp [[rx:…]] back if their reaction itself is worth a beat. Never thank them for reacting."+(mode==="adaptive"?" If the meter should move for this user, emit [[rx-temp:0.xx]] (0–1). Do not emit rx-temp when the user locked Manual.":" User locked Manual — do not emit [[rx-temp:]].");
+}
+async function syncRxTemp(){
+  try{
+    const j=await actorApi("/api/rx-temp?user="+encodeURIComponent(rxUserId()));
+    if(j&&j.ok){
+      if(j.mode)try{localStorage.setItem("grok_remote_rx_mode",j.mode)}catch(e){}
+      if(typeof j.value==="number")try{localStorage.setItem("grok_remote_rx_temp",String(j.value))}catch(e){}
+    }
+  }catch(e){}
+  paintRxTempUi();
+}
+let actorScopePref="session";
+let actorCache=null;
+let actorEffective=null;
+function paintActorChip(){
+  const lab=(actorEffective&&(actorEffective.preset||actorEffective.name))||"off";
+  const sc=actorEffective&&actorEffective.scope?(" · "+actorEffective.scope):"";
+  const ba=document.getElementById("btnActor");
+  if(ba){
+    const k=ba.querySelector(".mm-k");
+    if(k)k.textContent=lab;
+    ba.title="Actor: "+lab+sc+" — local /actor, no agent turn";
+  }
+  const now=document.getElementById("actorNow");
+  if(now)now.textContent=actorEffective?("active: "+(actorEffective.name||actorEffective.preset)+" · i="+(Number(actorEffective.intensity)||0).toFixed(2)+" · "+(actorEffective.scope||"")):("active: none (global/session/chat layers empty)");
+}
+async function actorApi(path,opts){
+  const o=opts||{};
+  const r=await fetch(path,{method:o.method||"GET",headers:o.body?{"Content-Type":"application/json"}:undefined,body:o.body?JSON.stringify(o.body):undefined,cache:"no-store"});
+  const text=await r.text();
+  let j=null;try{j=JSON.parse(String(text).replace(/^\uFEFF/,"").trim())}catch(e){j=null}
+  if(!r.ok||!j||j.ok===false)throw new Error((j&&(j.error||j.message))||text||("HTTP "+r.status));
+  return j;
+}
+async function refreshActorShow(){
+  const j=await actorApi("/api/actor/show?sessionId="+encodeURIComponent(sid||""));
+  actorEffective=j.effective||null;
+  paintActorChip();
+  return j;
+}
+async function setActor(preset,scope,intensity){
+  const sc=scope||actorScopePref||"session";
+  const j=await actorApi("/api/actor/set",{method:"POST",body:{preset:preset,scope:sc,sessionId:sid||"",intensity:intensity}});
+  actorEffective=j.set||null;
+  paintActorChip();
+  chip("actor · "+((j.set&&j.set.preset)||preset)+" · "+((j.set&&j.set.scope)||sc));
+  return j;
+}
+function parseActorSlash(raw){
+  const parts=String(raw||"").trim().split(/\s+/);
+  parts.shift();
+  const scopes=new Set(["global","session","chat","all","this-session","this-chat","this_session","this_chat"]);
+  let cmd="",preset="",scope="",intensity=null;
+  const rest=[];
+  parts.forEach(p=>{
+    const l=p.toLowerCase();
+    if(/^(--)?scope=/.test(l)){scope=l.split("=")[1];return}
+    if(l==="--scope"||l==="-s"){rest.push("__SCOPE__");return}
+    if(rest.length&&rest[rest.length-1]==="__SCOPE__"){scope=l;rest.pop();return}
+    if(/^(--)?intensity=/.test(l)){intensity=parseFloat(l.split("=")[1]);return}
+    rest.push(p);
+  });
+  const cleaned=rest.filter(x=>x&&x!=="__SCOPE__");
+  if(!cleaned.length)return {cmd:"",preset:"",scope,intensity};
+  const a0=cleaned[0].toLowerCase();
+  if(a0==="show"||a0==="list"||a0==="clear"||a0==="pick"||a0==="help"){
+    cmd=a0;
+    cleaned.slice(1).forEach(p=>{
+      const l=p.toLowerCase();
+      if(scopes.has(l))scope=l;
+      else if(!preset&&cmd==="clear")scope=l;
+      else if(!preset)preset=p;
+    });
+    return {cmd,preset,scope,intensity};
+  }
+  preset=cleaned[0];
+  cleaned.slice(1).forEach(p=>{
+    const l=p.toLowerCase();
+    if(scopes.has(l))scope=l;
+    else if(/^\d+(\.\d+)?$/.test(l))intensity=parseFloat(l);
+  });
+  return {cmd:"set",preset,scope,intensity};
+}
+async function openActorSheet(){
+  const sheet=document.getElementById("actorSheet");
+  if(!sheet){chip("actor sheet missing");return}
+  closeMoreMenu();
+  openSheet(sheet,document.getElementById("btnActor"));
+  await paintActorSheet();
+}
+function actorScopeFromUi(){
+  const s=document.getElementById("actorScopeSelect");
+  return (s&&s.value)||actorScopePref||"session";
+}
+function showActorCustom(on){
+  const w=document.getElementById("actorCustomWrap");
+  if(w)w.hidden=!on;
+}
+async function paintActorSheet(){
+  const sel=document.getElementById("actorSelect");
+  const sc=document.getElementById("actorScopeSelect");
+  if(sc)sc.value=actorScopePref||"session";
+  try{
+    if(!actorCache){
+      const j=await actorApi("/api/actor/list");
+      actorCache=j.presets||[];
+    }
+    await refreshActorShow();
+    await syncRxTemp();
+  }catch(e){chip("actor: "+e);return}
+  if(!sel)return;
+  const cur=(actorEffective&&actorEffective.preset)||"";
+  const keepCustom=sel.value==="__custom__";
+  sel.innerHTML="";
+  const opt0=document.createElement("option");opt0.value="__custom__";opt0.textContent="Custom…";sel.appendChild(opt0);
+  actorCache.forEach(p=>{
+    const o=document.createElement("option");
+    o.value=p.id;
+    o.textContent=(p.kind==="custom"?"★ ":"")+(p.name||p.id);
+    sel.appendChild(o);
+  });
+  if(keepCustom)sel.value="__custom__";
+  else if(cur&&actorCache.some(p=>p.id===cur))sel.value=cur;
+  else sel.selectedIndex=1;
+  showActorCustom(sel.value==="__custom__");
+  paintRxTempUi();
+}
+async function onActorSelectChange(){
+  const sel=document.getElementById("actorSelect");
+  if(!sel)return;
+  if(sel.value==="__custom__"){showActorCustom(true);return}
+  showActorCustom(false);
+  try{await setActor(sel.value,actorScopeFromUi())}
+  catch(e){chip("actor: "+e)}
+}
+async function saveCustomActor(){
+  const name=(document.getElementById("actorCustomName")||{}).value||"";
+  const body=(document.getElementById("actorCustomBody")||{}).value||"";
+  if(!name.trim()||!body.trim()){chip("custom needs a name and how they talk");return}
+  try{
+    const j=await actorApi("/api/actor/invent",{method:"POST",body:{name:name.trim(),body:body.trim(),scope:actorScopeFromUi(),sessionId:sid||""}});
+    actorCache=null;
+    actorEffective=j.set||null;
+    paintActorChip();
+    chip("actor saved · "+((j.set&&j.set.preset)||j.id));
+    await paintActorSheet();
+  }catch(e){chip("actor: "+e)}
+}
+async function handleActorSlash(raw){
+  const p=parseActorSlash(raw);
+  if(!p.cmd&&!p.preset){await openActorSheet();return true}
+  if(p.cmd==="help"){chip("usage · /actor · /actor list · /actor show · /actor washington chat · /actor clear chat");return true}
+  if(p.cmd==="pick"||p.cmd==="list"){await openActorSheet();return true}
+  if(p.cmd==="show"){
+    try{
+      const j=await refreshActorShow();
+      const e=j.effective;
+      chip(e?("actor · "+e.preset+" · "+e.scope+" · i="+Number(e.intensity).toFixed(2)):("actor · none"));
+    }catch(e){chip("actor: "+e)}
+    return true;
+  }
+  if(p.cmd==="clear"){
+    try{
+      const sc=p.scope||"chat";
+      await actorApi("/api/actor/clear",{method:"POST",body:{scope:sc,sessionId:sid||""}});
+      await refreshActorShow();
+      chip("actor cleared · "+sc);
+    }catch(e){chip("actor: "+e)}
+    return true;
+  }
+  if(p.preset){
+    try{await setActor(p.preset,p.scope||actorScopePref||"session",p.intensity)}
+    catch(e){
+      const msg=String(e.message||e);
+      if(/unknown preset|invent/i.test(msg))chip("actor · unknown "+p.preset+" · invent still needs a TUI turn");
+      else chip("actor: "+e);
+    }
+    return true;
+  }
+  await openActorSheet();
+  return true;
+}
 async function handleRemoteSlash(raw){
   const t=String(raw||"").trim();
   if(!t.startsWith("/"))return false;
@@ -2445,6 +2819,10 @@ async function handleRemoteSlash(raw){
     const arg=t.slice(7).trim().toLowerCase();
     if(!arg){chip("usage · /effort low|medium|high|xhigh · now "+reasoningEffort);return true}
     await setEffort(arg);
+    return true;
+  }
+  if(low==="/actor"||low.startsWith("/actor ")){
+    await handleActorSlash(t);
     return true;
   }
   if(low==="/loop"||low.startsWith("/loop ")||low==="/loops"||low==="/unloop"||low.startsWith("/unloop")){
@@ -2501,10 +2879,13 @@ function applyModelState(modelsObj){
     const models=modelsObj.availableModels||[];
     const cur=models.find(m=>m&&m.modelId===currentModelId)||models[0];
     const mm=(cur&&cur._meta)||{};
-    if(mm.reasoningEffort)reasoningEffort=String(mm.reasoningEffort);
-    if(Array.isArray(mm.reasoningEfforts)&&mm.reasoningEfforts.length){
-      effortLevels=mm.reasoningEfforts.map(x=>x.value||x.id).filter(Boolean);
-      if(!effortLevels.length)effortLevels=["low","medium","high"];
+    let pref="";
+    try{pref=String(localStorage.getItem("grok_remote_effort")||"").toLowerCase()}catch(e){}
+    effortLevels=["low","medium","high","xhigh"];
+    if(pref&&effortLevels.includes(pref))reasoningEffort=pref;
+    else if(mm.reasoningEffort){
+      const ag=String(mm.reasoningEffort).toLowerCase();
+      reasoningEffort=ag==="xhigh"||ag==="max"?"high":ag;
     }
     paintEffortChip();
   }catch(e){}
@@ -2512,7 +2893,7 @@ function applyModelState(modelsObj){
 function paintOrbitStatus(){
   const el=document.getElementById("orbitStatus");
   const on=linkState==="uplink"||linkState==="sync";
-  const busyNow=!!busy&&!replaying||linkState==="sync"||(agentPhase!=="idle"&&agentPhase!=="error");
+  const busyNow=workIsOn();
   let lab="offline",state="offline";
   if(linkState==="connecting"){lab="connecting";state="connecting"}
   else if(!on){lab="offline";state="offline"}
@@ -2526,8 +2907,7 @@ function paintOrbitStatus(){
     const t=el.querySelector(".orbit-status-t");
     if(t)t.textContent=lab;else el.textContent=lab;
   }
-  const spin=document.getElementById("sendSpin");
-  if(spin){spin.hidden=!busyNow;spin.setAttribute("aria-hidden",busyNow?"false":"true")}
+  paintWorkNow();
   paintRadioChip();
   if(statusEl){statusEl.textContent=lab;statusEl.hidden=true;statusEl.setAttribute("aria-hidden","true")}
   if(orbit){
@@ -2562,11 +2942,115 @@ function msgPhaseDetail(){
   const active=agentPhase!=="idle"&&agentPhase!=="error";
   return active?" · "+(PHASE_LABEL[agentPhase]||agentPhase):"";
 }
+function workIsOn(){
+  return (!!busy&&!replaying)||pendingTools.size>0||!!(handleMsg&&handleMsg._waitPrompt!=null);
+}
+function currentWorkBits(){
+  const bits=[];
+  if(agentPhase==="thinking")bits.push(phaseDetail?("thinking · "+String(phaseDetail).slice(0,56)):"thinking");
+  else if(agentPhase==="responding")bits.push("writing reply");
+  else if(agentPhase==="waiting")bits.push("waiting on model");
+  else if(agentPhase==="tools")bits.push(phaseDetail?("tool · "+String(phaseDetail).slice(0,64)):"running a tool");
+  else if(agentPhase==="sync")bits.push("syncing");
+  if(lastWorkTitle)bits.push(String(lastWorkTitle).slice(0,72));
+  if(pendingTools.size)bits.push(pendingTools.size+" live command"+(pendingTools.size===1?"":"s"));
+  if(agentQueueNote)bits.push(String(agentQueueNote).replace(/^working…\s*/i,"").slice(0,72));
+  const seen=new Set();
+  return bits.map(s=>String(s||"").trim()).filter(s=>{if(!s||seen.has(s))return false;seen.add(s);return true});
+}
+function paintWorkNow(){
+  const on=workIsOn();
+  const bits=on?currentWorkBits():[];
+  const line=document.getElementById("workLine");
+  const el=document.getElementById("workNow");
+  const spin=document.getElementById("sendSpin");
+  const txt=on?(bits[workTick%Math.max(bits.length,1)]||PHASE_LABEL[agentPhase]||"working"):"idle";
+  if(line)line.dataset.on=on?"1":"0";
+  if(el){el.textContent=txt;el.title=bits.join(" · ")||txt}
+  if(spin){spin.hidden=!on;spin.setAttribute("aria-hidden",on?"false":"true")}
+  if(on&&!workTimer)workTimer=setInterval(()=>{workTick++;paintWorkNow()},1400);
+  if(!on&&workTimer){clearInterval(workTimer);workTimer=0;workTick=0}
+}
+function applyWorkJob(job){
+  if(!job){
+    pendingTools=new Set();
+    lastWorkTitle="";
+    agentQueueNote="";
+    setBusy(false);
+    setPhase("idle");
+    paintWorkBoard();
+    return;
+  }
+  const open=(job.tools||[]).filter(t=>!/completed|failed|cancelled|canceled|error/i.test(String(t.status||"")));
+  pendingTools=new Set(open.map(t=>String(t.id||t.tool_id||"")));
+  lastWorkTitle=(open[0]&&((open[0].title||"")+(open[0].cmd?" · "+open[0].cmd:"")))||job.detail||job.last_user||"";
+  agentQueueNote=job.queue||"";
+  const live=open.length>0||(!!job.running&&!(job.tools||[]).length)||(!!job.running&&/thinking|responding/.test(String(job.phase||"")));
+  if(live){setBusy(true,job.sid);setPhase(job.phase||"tools",job.detail||lastWorkTitle)}
+  else{setBusy(false,job.sid);setPhase("idle")}
+  paintWorkNow();
+  paintWorkBoard();
+  try{paintMsgQueue()}catch(e){}
+}
+function paintWorkBoard(){
+  const el=document.getElementById("workBoard");
+  if(!el)return;
+  const live=workJobs.filter(j=>j&&(j.running||(j.asks||[]).some(a=>!a.acked)||(j.tools||[]).some(t=>!/completed|failed|cancelled|canceled|error/i.test(String(t.status||"")))));
+  if(!live.length){el.hidden=true;el.innerHTML="";workBoardSig="";return}
+  el.hidden=false;
+  const html=live.map(j=>{
+    const ask=(j.last_user||(j.asks&&j.asks[0]&&j.asks[0].text)||"").slice(0,90);
+    const st=j.running?(j.phase||"work"):"idle";
+    const title=(j.title||j.sid||"").slice(0,28);
+    return '<div class="wj'+(sessionIdsMatch(j.sid,sid)?" on":"")+'" data-wsid="'+esc(j.sid)+'"><div class="wj-body"><b>'+esc(st)+" · "+esc(title)+'</b><div class="d">'+esc(ask||j.detail||j.queue||"working")+'</div></div><button type="button" data-wkill="'+esc(j.sid)+'">Kill</button></div>';
+  }).join("");
+  /* Same reason as renderSessions: replacing innerHTML drops the hovered node. */
+  if(html===workBoardSig&&el.children.length)return;
+  workBoardSig=html;
+  el.innerHTML=html;
+  el.querySelectorAll(".wj").forEach(row=>{
+    row.onclick=e=>{
+      if(e.target.closest("button"))return;
+      const id=row.getAttribute("data-wsid");
+      const s=(sessions||[]).find(x=>sessionIdsMatch(x.sessionId,id));
+      if(s)openSession(s);
+    };
+  });
+  el.querySelectorAll("button[data-wkill]").forEach(btn=>{
+    btn.onclick=e=>{
+      e.preventDefault();e.stopPropagation();
+      killWork(btn.getAttribute("data-wkill"));
+    };
+  });
+}
+async function hydrateWork(forSid){
+  try{
+    const r=await fetch("/api/work",{cache:"no-store"});
+    const j=await r.json();
+    workJobs=Array.isArray(j.jobs)?j.jobs:[];
+  }catch(e){}
+  paintWorkBoard();
+  const want=String(forSid||sid||"");
+  applyWorkJob(workJobs.find(x=>sessionIdsMatch(x.sid,want))||null);
+}
+async function killWork(sessionId){
+  const id=String(sessionId||"");
+  if(!id)return;
+  try{
+    await fetch("/api/work/cancel",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({sessionId:id})});
+  }catch(e){chip("kill: "+e)}
+  if(ws&&ws.readyState===1){
+    try{ws.send(JSON.stringify({jsonrpc:"2.0",method:"session/cancel",params:{sessionId:id}}))}catch(e){}
+  }
+  chip("kill · "+id.slice(0,8));
+  hydrateWork(sid);
+}
 function setPhase(phase,detail){
   agentPhase=phase||"idle";
   if(detail!==undefined)phaseDetail=detail||"";
   paintOrbitStatus();
   paintLivebar();
+  paintWorkNow();
 }
 function setConn(on,msg,isBusy){
   if(on)linkState=isBusy?"sync":"uplink";
@@ -2620,7 +3104,7 @@ function setBusy(b,forSid){
 }
 function liveBelongsHere(sessionId){
   if(!sid)return false;
-  if(sessionSwitching||suppressLive)return false;
+  if(sessionSwitching)return false;
   const want=String(sid),got=String(sessionId||"").trim();
   if(!got)return false;
   return got===want||(got.length>=12&&want.startsWith(got))||(want.length>=12&&got.startsWith(want));
@@ -2682,11 +3166,15 @@ function paintMoreMenuChrome(){
   paintPermChip();paintMsgModeChips();paintViewToggles();
 }
 function wrapForMode(text,mode,ctx){
-  const t=drainRxNote()+String(text||"");
   ctx=ctx||{};
+  let t=String(text||"");
+  if(!ctx.fromQueue&&!ctx.skipSetup){
+    const rx=drainRxNote();
+    if(rx)t=rx+t;
+  }
   if(mode==="fyi")return "[FYI / chitchat — additional context only. Do NOT stop, cancel, or reprioritize the current task. Keep implementing the active plan; fold this in when natural. Do not treat this note as a new top-level mission.]\n\n"+t;
   if(mode==="queue"&&(ctx.fromQueue||ctx.wasBusy))return "[Queued guidance — you reached a natural pause. Apply this user direction as the next focus. Acknowledge briefly, then proceed.]\n\n"+t;
-  if(mode==="interject"&&(ctx.interjected||ctx.wasBusy))return "[INTERJECT — prior steps were cancelled. Drop the in-flight plan and address this user message immediately.]\n\n"+t;
+  if(mode==="interject"&&ctx.wasBusy)return "[INTERJECT — stop the current tool loop only. Keep every prior user message and goal. Address this now, then continue those goals unless this message replaces them.]\n\n"+t;
   return t;
 }
 function paintMsgQueue(){
@@ -2698,7 +3186,7 @@ function paintMsgQueue(){
   if(msgQueue.length){
     bits.push('<div class="q-head">Remote queue · '+msgQueue.length+"</div>");
     msgQueue.forEach((q,i)=>{
-      bits.push('<div class="q-item mode-'+esc(q.mode)+'"><span class="q-badge">'+esc(q.mode)+'</span><div class="q-body">'+esc((q.tRaw||"").slice(0,160))+(q.files&&q.files.length?" · "+q.files.length+" file(s)":"")+'</div><button type="button" data-qi="'+i+'" title="Remove">×</button></div>');
+      bits.push('<div class="q-item mode-'+esc(q.mode)+'"><span class="q-badge">'+esc(q.mode)+'</span><div class="q-body">'+esc((q.tRaw||"").slice(0,160))+(q.files&&q.files.length?" · "+q.files.length+" file(s)":"")+'</div><button type="button" data-qn="'+i+'" title="Send now — cancel current turn and send this">Now</button><button type="button" data-qi="'+i+'" title="Remove">×</button></div>');
     });
   }
   queueEl.innerHTML=bits.join("");
@@ -2709,13 +3197,98 @@ function paintMsgQueue(){
       if(i>=0&&i<msgQueue.length){msgQueue.splice(i,1);paintMsgQueue();chip("removed from queue")}
     };
   });
+  queueEl.querySelectorAll("button[data-qn]").forEach(btn=>{
+    btn.onclick=e=>{
+      e.preventDefault();
+      sendQueuedNow(+btn.getAttribute("data-qn")).catch(err=>chip(String(err)));
+    };
+  });
+}
+async function sendQueuedNow(i){
+  if(!(i>=0)||i>=msgQueue.length)return;
+  const item=msgQueue.splice(i,1)[0];
+  paintMsgQueue();
+  const target=String(item.sessionId||sid||"");
+  chip("send now · interject");
+  try{
+    await cancelTurn(target,{waitMs:360,force:true});
+    await sleep(80);
+    if(String(sid)===target&&(item.tRaw||(item.files&&item.files.length)))paintLocalUserTurn("Interject · "+(item.tRaw||""),item.files||[]);
+    const ok=await dispatchPromptPayload(item.tRaw,item.files||[],"interject",{fromQueue:true,wasBusy:true,interjected:true,sessionId:target,sessionGen:sessionGen,allowCrossSession:true});
+    if(!ok){msgQueue.unshift(item);paintMsgQueue()}
+  }catch(e){msgQueue.unshift(item);paintMsgQueue();chip("send now: "+e)}
 }
 function enqueueMsg(item){
-  msgQueue.push(Object.assign({id:"mq-"+Date.now()+"-"+Math.random().toString(36).slice(2,7)},item));
+  const it=Object.assign({id:"mq-"+Date.now()+"-"+Math.random().toString(36).slice(2,7),echoed:false},item);
+  msgQueue.push(it);
+  const viewing=String(sid||"")===String(it.sessionId||sid||"");
+  if(viewing&&(it.tRaw||(it.files&&it.files.length))){
+    paintLocalUserTurn((it.mode==="fyi"?"FYI · ":"Queued · ")+(it.tRaw||""),it.files||[]);
+    it.echoed=true;
+  }
   paintMsgQueue();
-  chip((item.mode||"queue")+" · waiting ("+msgQueue.length+")");
+  armMsgRetry();
+  chip((it.mode||"queue")+" · waiting ("+msgQueue.length+")");
+}
+function markAgentAttach(sid,ready){
+  agentAttachSid=String(sid||"");
+  agentAttachReady=!!ready;
+  if(ready){
+    const w=agentAttachWaiters.slice();
+    agentAttachWaiters=[];
+    w.forEach(fn=>{try{fn()}catch(e){}});
+  }
+}
+function waitAgentAttach(sid,ms){
+  const want=String(sid||"");
+  if(agentAttachReady&&(!want||agentAttachSid===want||!agentAttachSid))return Promise.resolve(true);
+  return new Promise(resolve=>{
+    let done=false;
+    const fin=ok=>{if(done)return;done=true;resolve(!!ok)};
+    agentAttachWaiters.push(()=>fin(true));
+    setTimeout(()=>fin(agentAttachReady&&(!want||agentAttachSid===want||!agentAttachSid)),ms||60000);
+  });
 }
 function isActiveTurn(token){return token!=null&&token===activeTurnToken}
+function toolCallIdOf(u){return String((u&& (u.toolCallId||u.tool_call_id||u.id))||"").trim()}
+function toolStatusOf(u,meta){
+  const up=meta&&meta.updateParams;
+  return String((up&&up.status)||(u&&u.status)||"").toLowerCase();
+}
+function noteToolLife(u,meta){
+  const id=toolCallIdOf(u);
+  if(!id)return;
+  const st=toolStatusOf(u,meta);
+  if(!st||/pending|in_progress|inprogress|running/.test(st))pendingTools.add(id);
+  if(/completed|failed|error|cancelled|canceled|timed.?out/.test(st))pendingTools.delete(id);
+}
+function finishTurnOrKeep(want){
+  if(pendingTools.size){
+    setBusy(true,want||sid);
+    setPhase("tools","command running");
+    chip("command still running · "+pendingTools.size);
+    return false;
+  }
+  setBusy(false,want||sid);
+  if(agentPhase!=="error")setPhase("idle");
+  return true;
+}
+function eventsHaveOpenTool(events){
+  const open=new Set();
+  (events||[]).forEach(o=>{
+    const params=(o&&o.params)||{};
+    const u=params.update||{};
+    const k=u.sessionUpdate||"";
+    if(k!=="tool_call"&&k!=="tool_call_update")return;
+    noteToolLife(u,params._meta||{});
+    const id=toolCallIdOf(u);
+    const st=toolStatusOf(u,params._meta||{});
+    if(!id)return;
+    if(!st||/pending|in_progress|inprogress|running/.test(st))open.add(id);
+    if(/completed|failed|error|cancelled|canceled|timed.?out/.test(st))open.delete(id);
+  });
+  return open.size>0;
+}
 function dropPendingPrompts(sessionId,reason){
   const target=String(sessionId||"");
   const dropped=[];
@@ -2724,9 +3297,11 @@ function dropPendingPrompts(sessionId,reason){
     if(target&&p.sessionId&&String(p.sessionId)!==target)continue;
     pending.delete(id);
     dropped.push(id);
+    if(lastDispatch&&lastDispatch.id===id)lastDispatch.acked=true;
     try{if(typeof p.onDrop==="function")p.onDrop(reason||"cancelled")}catch(e){}
   }
   if(handleMsg._waitPrompt!=null&&dropped.includes(handleMsg._waitPrompt))handleMsg._waitPrompt=null;
+  if(dropped.length&&lastDispatch&&(!target||String(lastDispatch.sid||"")===target))lastDispatch.acked=true;
   return dropped.length;
 }
 function finishTurnIfActive(token,sidWant,ok,errMsg){
@@ -2736,10 +3311,8 @@ function finishTurnIfActive(token,sidWant,ok,errMsg){
     const p=pending.get(handleMsg._waitPrompt);
     if(p&&p.turnToken!=null&&p.turnToken!==token)return false;
   }
-  setBusy(false);
-  if(ok===false)setPhase("error",String(errMsg||"error").slice(0,40));
-  else if(agentPhase!=="error")setPhase("idle");
-  return true;
+  if(ok===false){setBusy(false);setPhase("error",String(errMsg||"error").slice(0,40));return true}
+  return finishTurnOrKeep(sidWant||sid);
 }
 async function cancelTurn(forSid,opts){
   opts=opts||{};
@@ -2756,6 +3329,7 @@ async function cancelTurn(forSid,opts){
     try{closeOpen()}catch(e){}
     if(String(sid)===target){
       handleMsg._waitPrompt=null;
+      pendingTools.clear();
       setBusy(false);
       setPhase("idle");
       userWireBuf="";
@@ -2795,13 +3369,14 @@ async function dispatchPromptPayload(tRaw,files,mode,opts){
   if(!targetSid){chip("no session");return false}
   if(sessionSwitching&&!opts.allowCrossSession){chip("wait · switching chat");return false}
   const wrapped=wrapForMode(tRaw,mode,{fromQueue:!!opts.fromQueue,wasBusy:!!opts.wasBusy,interjected:!!opts.interjected});
-  const t=withAgentSetup(wrapped,targetSid);
+  const t=(opts.fromQueue||opts.skipSetup)?wrapped:withAgentSetup(wrapped,targetSid);
   const viewing=()=>String(sid)===targetSid;
   turnToken++;
   const myToken=turnToken;
   activeTurnToken=myToken;
   suppressStreamBusyUntil=0;
   if(viewing()){setBusy(true);setPhase("waiting")}
+  try{await stashFiles(targetSid,files||[],tRaw)}catch(e){}
   let blocks;
   try{blocks=await buildPromptBlocks(t,files||[])}
   catch(e){
@@ -2812,17 +3387,35 @@ async function dispatchPromptPayload(tRaw,files,mode,opts){
     if(viewing()&&isActiveTurn(myToken)){setBusy(false);setPhase("idle")}
     return false
   }
-  if(!ws||ws.readyState!==1){chip("not connected");return false}
+  const wsUp=ws&&ws.readyState===1;
+  if(!wsUp){
+    try{
+      const r=await fetch("/api/session/prompt",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({sessionId:targetSid,prompt:blocks})});
+      const text=await r.text();
+      let j=null;try{j=JSON.parse(String(text).replace(/^\uFEFF/,"").trim())}catch(e){j=null}
+      if(!r.ok||!j||!j.ok)throw new Error((j&&(j.error||j.message))||text.slice(0,80)||("HTTP "+r.status));
+      lastDispatch={id:"http-"+Date.now(),sid:targetSid,tRaw,files:files||[],mode:mode||"queue",at:Date.now(),acked:true,retried:false};
+      if(viewing()&&isActiveTurn(myToken))setPhase("waiting","via http");
+      reconnectArmed=true;wantReconnect=true;scheduleReconnect(200,"sent via http");
+      return true;
+    }catch(e){
+      if(viewing()&&isActiveTurn(myToken)){setBusy(false);setPhase("error","not connected")}
+      chip("not connected · "+String(e).slice(0,80));
+      return false;
+    }
+  }
   if(!isActiveTurn(myToken)){chip("superseded · not sent");return false}
   const id=nextId();
   if(viewing())handleMsg._waitPrompt=id;
   const stillHere=()=>String(sid)===targetSid;
   const onDone=ok=>{
+    stopPromptWatch();
+    if(lastDispatch&&lastDispatch.id===id)lastDispatch.acked=true;
     if(!isActiveTurn(myToken))return;
     if(handleMsg._waitPrompt===id)handleMsg._waitPrompt=null;
     if(stillHere()){
-      setBusy(false);
-      if(ok)setPhase("idle");
+      if(ok)finishTurnOrKeep(targetSid);
+      else {setBusy(false);setPhase("error")}
     }
     if(ok){
       promoteSessionAfterMessage(targetSid).catch(()=>{});
@@ -2873,35 +3466,64 @@ async function dispatchPromptPayload(tRaw,files,mode,opts){
     },
     onDrop:()=>{}
   });
+  lastDispatch={id,sid:targetSid,tRaw,files:files||[],mode:mode||"queue",at:Date.now(),acked:false,retried:false};
   ws.send(JSON.stringify({jsonrpc:"2.0",id,method:"session/prompt",params:{sessionId:targetSid,prompt:blocks}}));
+  startPromptWatch(id);
   promptCount++;
   if(window.grokCockpit&&window.grokCockpit.noteUsage)window.grokCockpit.noteUsage(t||tRaw||"");
   if(promptCount%5===0&&window.grokCockpit&&window.grokCockpit.checkpointNow)try{window.grokCockpit.checkpointNow()}catch(e){}
   return true;
 }
-function scheduleMsgDrain(ms){setTimeout(()=>drainMsgQueue().catch(()=>{}),ms||300)}
+const PROMPT_STALL_MS=120000;
+function promptStallMs(){const v=+((window.__promptStallMs)||0);return v>0?v:PROMPT_STALL_MS}
+let promptWatchTimer=0;
+function stopPromptWatch(){if(promptWatchTimer){clearInterval(promptWatchTimer);promptWatchTimer=0}}
+function startPromptWatch(id){
+  /* session/prompt is sent raw and registered straight into `pending`, so it never got req()'s
+     timeout — the one RPC that matters most had none. A brain-dead agent (process alive, WS
+     answering, workers gone) accepts the prompt and returns nothing, and the spinner ran forever.
+     Watch total SILENCE, not elapsed time: a real long turn streams thoughts constantly and keeps
+     lastLiveAt fresh, so it is never killed. */
+  stopPromptWatch();
+  const t0=Date.now();
+  promptWatchTimer=setInterval(()=>{
+    const p=pending.get(id);
+    if(!p){stopPromptWatch();return}
+    const quiet=Date.now()-Math.max(lastLiveAt||0,t0);
+    if(quiet<promptStallMs())return;
+    stopPromptWatch();
+    pending.delete(id);
+    try{p.reject(new Error("no reply from the agent for "+Math.round(quiet/1000)+"s · it may need a restart"))}catch(e){}
+  },Math.max(250,Math.min(5000,Math.floor(promptStallMs()/4))));
+}
+function armMsgRetry(){
+  if(msgRetryTimer||!msgQueue.length)return;
+  msgRetryTimer=setTimeout(()=>{msgRetryTimer=0;drainMsgQueue().catch(()=>{})},1500);
+}
+function scheduleMsgDrain(ms){setTimeout(()=>drainMsgQueue().catch(()=>{}),ms||300);armMsgRetry()}
 async function drainMsgQueue(){
-  if(msgDrainBusy||!msgQueue.length||!sid||!ws||ws.readyState!==1||sessionSwitching)return;
-  if(busy&&!replaying)return;
+  if(!msgQueue.length)return;
+  /* Every gate below used to drop the wakeup on the floor: the drain was edge-triggered and
+     nothing re-armed it, so one blocked attempt parked the queue until the next unrelated
+     event. armMsgRetry keeps a single 1.5s ticker alive while anything is queued. */
+  if(msgDrainBusy||!sid||!ws||ws.readyState!==1||sessionSwitching){armMsgRetry();return}
+  if(busy&&!replaying){armMsgRetry();return}
   const now=Date.now();
-  if(now-lastMsgDrain<400)return;
+  if(now-lastMsgDrain<400){armMsgRetry();return}
   msgDrainBusy=true;lastMsgDrain=now;
   const item=msgQueue.shift();
   paintMsgQueue();
   const itemSid=String(item.sessionId||sid||"");
-  if(itemSid&&itemSid!==String(sid)){
-    msgQueue.unshift(item);paintMsgQueue();msgDrainBusy=false;return
-  }
   try{
     const qDisp=(item.mode==="fyi"?"FYI · ":"")+(item.mode==="queue"?"Queued · ":"")+(item.mode==="interject"?"Interject · ":"")+(item.tRaw||"");
-    if(item.tRaw||(item.files&&item.files.length))paintLocalUserTurn(qDisp,item.files||[]);
+    if(!item.echoed&&(item.tRaw||(item.files&&item.files.length)))paintLocalUserTurn(qDisp,item.files||[]);
     localEchoUntil=Date.now()+5000;
     promoteSessionAfterMessage(itemSid).catch(()=>{});
     try{if(window.grokVoice)window.grokVoice.onTaskSent(item.tRaw)}catch(e){}
-    const ok=await dispatchPromptPayload(item.tRaw,item.files||[],item.mode||"queue",{fromQueue:true,wasBusy:item.mode!=="fyi",sessionId:itemSid,sessionGen:sessionGen});
+    const ok=await dispatchPromptPayload(item.tRaw,item.files||[],item.mode||"queue",{fromQueue:true,wasBusy:item.mode!=="fyi",sessionId:itemSid,sessionGen:sessionGen,allowCrossSession:true});
     if(!ok){msgQueue.unshift(item);paintMsgQueue()}
   }catch(e){chip("queue drain: "+e);msgQueue.unshift(item);paintMsgQueue()}
-  finally{msgDrainBusy=false}
+  finally{msgDrainBusy=false;armMsgRetry()}
 }
 function nextId(){return ++nid}
 function req(method,params,timeoutMs){
@@ -2920,20 +3542,33 @@ function pushPage(name){
   try{history.pushState({page:name,sid:sid||null},"", name==="chat"?"#chat":name==="sessions"?"#sessions":"#setup")}catch(e){}
   updateChrome();
 }
+function layoutWidth(){
+  const vv=window.visualViewport;
+  const nums=[window.innerWidth,document.documentElement.clientWidth,vv&&vv.width].filter(n=>n>0);
+  return nums.length?Math.min.apply(null,nums):window.innerWidth||0;
+}
 function isWideLayout(){return document.body.classList.contains("desktop")||document.body.classList.contains("electron")}
 function updateLayoutClass(){
   const q=new URLSearchParams(location.search);
   const force=q.get("layout");
   const elec=!!(window.grokRemote&&window.grokRemote.isElectron)||/Electron/i.test(navigator.userAgent)||q.get("electron")==="1";
-  const wideMq=window.matchMedia("(min-width:900px)").matches;
-  const tallEnough=window.matchMedia("(min-height:520px)").matches;
+  const w=layoutWidth();
+  const h=window.innerHeight||document.documentElement.clientHeight||0;
+  const coarse=window.matchMedia("(pointer:coarse)").matches;
+  const noHover=window.matchMedia("(hover:none)").matches;
+  const landscape=w>h;
+  const tabletSplit=w>=1024&&landscape;
+  const phoneLike=(coarse||noHover)&&!tabletSplit;
+  const wideMq=w>=900&&window.matchMedia("(min-width:900px)").matches;
+  const tallEnough=h>=520&&window.matchMedia("(min-height:520px)").matches;
   const finePointer=window.matchMedia("(hover:hover) and (pointer:fine)").matches;
   const phoneLandscape=wideMq&&!tallEnough&&!finePointer;
   const autoWide=wideMq&&(tallEnough||finePointer)&&!phoneLandscape;
-  const wide=force==="desktop"||force==="wide"||elec||(force!=="mobile"&&autoWide);
-  document.body.classList.toggle("electron",elec);
-  document.body.classList.toggle("desktop",!!(wide&&force!=="mobile"));
+  const wide=!phoneLike&&force!=="mobile"&&(force==="desktop"||force==="wide"||elec||autoWide)&&wideMq;
+  document.body.classList.toggle("electron",elec&&!phoneLike);
+  document.body.classList.toggle("desktop",!!wide);
   if(force==="mobile")document.body.classList.remove("desktop");
+  document.body.classList.toggle("phone-like",!!phoneLike);
   document.body.classList.toggle("phone-landscape",!!phoneLandscape&&!elec&&force!=="desktop"&&force!=="wide");
 }
 let sidebarCollapsed=false;
@@ -2985,9 +3620,11 @@ function toggleMoreMenu(e){
   const open=!m.classList.contains("on");
   closeOrbitMenu();
   if(open){
+    closeAllSheets();
     m.hidden=false;m.classList.add("on");
     settingsAnchors().forEach(b=>{b.classList.add("on");b.setAttribute("aria-expanded","true")});
     try{paintMoreMenuChrome()}catch(err){}
+    placeFixedMenu(m,anchor);
     requestAnimationFrame(()=>{placeFixedMenu(m,anchor);try{paintMoreMenuChrome()}catch(err){}});
   }else closeMoreMenu();
 }
@@ -3012,8 +3649,10 @@ function updateChrome(){
   btnBack.style.display="none";
   const chatBack=document.getElementById("btnChatBack");
   if(chatBack)chatBack.style.display=(!wide&&chat)?"inline-block":"none";
+  const chatSess=document.getElementById("btnChatSess");
+  if(chatSess)chatSess.style.display=(wide&&on&&chat)?"inline-block":"none";
   if(btnSess)btnSess.style.display=(on&&chat&&!wide)?"":"none";
-  if(btnSkills)btnSkills.style.display=on&&chat?"":"none";
+  if(btnSkills)btnSkills.style.display=on?"":"none";
   if(btnNewTask)btnNewTask.style.display=on?"":"none";
   if(btnThoughts)btnThoughts.style.display=chat?"":"none";
   const br=document.getElementById("btnRail");
@@ -3031,8 +3670,9 @@ function showPage(name,fromPop){
   setup.classList.toggle("on",name==="setup");
   document.body.classList.toggle("page-chat",name==="chat");
   const showRail=name==="sessions"||(wide&&on&&name==="chat"&&!sidebarCollapsed);
-  picker.classList.toggle("on",showRail||(name==="sessions"));
+  picker.classList.toggle("on",!!showRail);
   if(name==="sessions"){sidebarCollapsed=false;applySidebar();picker.classList.add("on")}
+  if(!wide&&name==="chat")picker.classList.remove("on");
   if(chatStage)chatStage.classList.toggle("on",name==="chat");
   feed.style.display=name==="chat"?"block":"none";
   foot.style.display=name==="chat"?"block":"none";
@@ -3109,13 +3749,14 @@ function paintRxChip(row){
 }
 function hideRxPop(){
   const p=document.getElementById("rxPop");
-  if(p){p.classList.remove("on");p.hidden=true}
-  rxPopRow=null;rxHeld=false;
+  if(p){p.classList.remove("on");p.setAttribute("hidden","");p.hidden=true;p.style.display="none"}
+  rxPopRow=null;rxHeld=false;rxIgnoreClick=0;
 }
 function showRxPop(row){
   try{
   const p=document.getElementById("rxPop");const bub=row.querySelector(".bub");if(!p||!bub)return;
-  rxPopRow=row;rxHeld=true;rxIgnoreClick=Date.now()+2500;
+  if(p.parentElement!==document.body)document.body.appendChild(p);
+  rxPopRow=row;rxHeld=false;rxIgnoreClick=Date.now()+400;
   const q=document.getElementById("rxQuick");
   if(q&&!q.dataset.ready){
     q.dataset.ready="1";
@@ -3187,10 +3828,14 @@ function wireRx(row){bindMsgPress(row)}
       applyRx(rxPopRow,em);inn.value="";hideRxPop();
     });
   }
+  const closer=document.getElementById("rxClose");
+  if(closer)closer.onclick=e=>{e.preventDefault();e.stopPropagation();hideRxPop()};
   p.addEventListener("click",e=>e.stopPropagation());
   p.addEventListener("touchstart",e=>e.stopPropagation(),{passive:true});
-  document.addEventListener("click",()=>{if(Date.now()<rxIgnoreClick||rxHeld)return;hideRxPop()});
-  document.addEventListener("touchend",()=>{rxHeld=false;rxIgnoreClick=Date.now()+800},{passive:true});
+  const maybeHide=()=>{if(Date.now()<rxIgnoreClick)return;hideRxPop()};
+  document.addEventListener("click",maybeHide);
+  document.addEventListener("touchstart",maybeHide,{passive:true});
+  document.addEventListener("keydown",e=>{if(e.key==="Escape")hideRxPop()});
 })();
 function drainRxNote(){
   const k=rxKey();const all=rxStore();const bag=all[k]||{};
@@ -3199,7 +3844,7 @@ function drainRxNote(){
   pending.forEach(x=>x.pending=false);
   rxSave(all);
   const lines=pending.map(x=>x.emoji+" "+(x.snippet||"").slice(0,48));
-  return "[User reactions] "+lines.join(" · ")+"\n\n";
+  return "[User reactions] "+lines.join(" · ")+"\nThese are emoji on your prior replies. Silent signal only. Do not narrate them. Speak only if the reaction is material to the work or genuinely hilarious. Optional [[rx:…]] if a return stamp is warranted.\n\n";
 }
 const LANG_KW={
   js:["const","let","var","function","return","if","else","for","while","do","class","async","await","import","export","from","new","this","try","catch","finally","throw","typeof","instanceof","true","false","null","undefined","of","in","switch","case","break","continue","default","yield","extends","super","static","get","set","void","delete","debugger"],
@@ -3326,7 +3971,7 @@ function placeFixedMenu(menu,anchor){
   if(!menu||!anchor)return;
   if(menu.parentElement!==document.body)document.body.appendChild(menu);
   menu.style.position="fixed";
-  menu.style.zIndex="20050";
+  menu.style.zIndex="var(--z-menu)";
   const r=anchor.getBoundingClientRect();
   const mw=menu.offsetWidth||280,mh=menu.offsetHeight||320;
   let top=r.bottom+8,left=r.right-mw;
@@ -3608,6 +4253,9 @@ function stripPromptChrome(text){
     t=t.replace(/\[SCHEDULED[^\]]*\]/gi," ");
     t=t.replace(/\[User reactions[^\]]*\][\s\S]*?(?=\n\S|$)/gi," ");
     t=t.replace(/\[User reactions[\s\S]*?\]\s*/gi," ");
+    t=t.replace(/\[Reaction meter[^\]]*\][\s\S]*?(?:\n{2,}|$)/gi,"");
+    t=t.replace(/Stamp \s*\[\[rx:emoji\]\][^\n]*(?:\nYou may emit[^\n]*)?\n*/gi,"");
+    t=t.replace(/^REACTIONS \(a meter[\s\S]*?Never thank them for reacting\.[^\n]*\n*/i,"");
     t=t.replace(/^\s*Acknowledge this agent setup[\s\S]*?(?:\n\s*)+/i,"");
     t=t.replace(/(?:^|\n)\s*---+\s*(?=\n|$)/g,"\n");
     t=t.replace(/^\s*(?:Interject|FYI|Queued)\s*·\s*/i,"");
@@ -3643,21 +4291,25 @@ function isLocalUserEcho(text){
   }catch(e){}
   return false;
 }
-function paintHistoryUser(text){
+function paintHistoryUser(text,content){
   userWireBuf="";
   curAgent=null;curThought=null;curThoughtRow=null;curUser=null;
   const display=stripPromptChrome(text||"");
-  if(!display.trim())return false;
-  if(!replaying&&isLocalUserEcho(display)){noteSeenUser(display);return false}
+  const media=contentMedia(content);
+  if(!display.trim()&&!media)return false;
+  if(!replaying&&display&&isLocalUserEcho(display)&&!media){noteSeenUser(display);return false}
   const bub=addRow("You");
   bub.classList.add("md");
   bub.dataset.raw=display;
   bub.innerHTML="";
-  if(historyPainting||replaying){
-    const d=document.createElement("div");d.className="md-p";
-    d.innerHTML=esc(display.length>HISTORY_RICH_CAP?display.slice(0,HISTORY_RICH_CAP)+"\n…":display).replace(/\n/g,"<br>");
-    bub.appendChild(d);
-  }else bub.appendChild(renderMdBlock(display));
+  if(display){
+    if(historyPainting||replaying){
+      const d=document.createElement("div");d.className="md-p";
+      d.innerHTML=esc(display.length>HISTORY_RICH_CAP?display.slice(0,HISTORY_RICH_CAP)+"\n…":display).replace(/\n/g,"<br>");
+      bub.appendChild(d);
+    }else bub.appendChild(renderMdBlock(display));
+  }
+  if(media){const n=attNode(media);if(n)bub.appendChild(n)}
   curUser=null;
   return true;
 }
@@ -3670,12 +4322,52 @@ function stampUserRx(em){
   if(!g){g=document.createElement("div");g.className="rx-got";row.appendChild(g)}
   g.textContent=em;
 }
+let compTimer=null;
+async function compPoll(){
+  const badge=compMount();
+  if(!badge)return;
+  try{
+    const r=await fetch("/api/companion/state",{cache:"no-store"});
+    if(!r.ok)throw new Error(r.status);
+    const d=await r.json();
+    if(!d.available){badge.style.display="none";return}
+    const key=new URLSearchParams(location.search).get("key");
+    badge.href="/xr"+(key?"?key="+encodeURIComponent(key):"");
+    badge.style.display="inline-flex";
+    document.getElementById("compDot").style.background=d.clients?"#7fe0a8":"#c8a24a";
+    document.getElementById("compTxt").textContent=(d.clients?d.clients+" live · ":"idle · ")+String(d.base||"?").replace(/_loop$|_idle$/,"")+(d.gesture?" · "+d.gesture:"");
+    badge.title=d.clients?"Companion running — "+d.clients+" renderer(s), base "+d.base:"Companion service up, no renderer attached — click to open /xr";
+  }catch(e){badge.style.display="none"}
+}
+function compMount(){
+  let b=document.getElementById("compBadge");
+  if(b)return b;
+  b=document.createElement("a");
+  b.id="compBadge";
+  b.href="/xr";
+  b.title="Open the XR companion";
+  b.style.cssText="position:fixed;left:10px;bottom:10px;z-index:9999;display:none;align-items:center;gap:6px;padding:4px 10px;border:1px solid #24405e;border-radius:999px;background:#0b1420e6;color:#8fb8e0;font:11px/1.4 ui-monospace,monospace;text-decoration:none;white-space:nowrap;box-shadow:0 2px 10px #0008";
+  b.innerHTML='<span id="compDot" style="width:7px;height:7px;border-radius:50%;background:#7fe0a8;display:inline-block"></span><span id="compTxt">companion</span>';
+  document.body.appendChild(b);
+  return b;
+}
+function compStart(){if(!compTimer){compPoll();compTimer=setInterval(compPoll,10000)}}
+addEventListener("DOMContentLoaded",compStart);
+if(document.readyState!=="loading")compStart();
 function takeAgentRx(text){
   let t=String(text||"");
   const found=[];
+  t=t.replace(/\[\[rx-temp:\s*([0-9.]+)\]\]/gi,(_,n)=>{
+    const v=parseFloat(n);
+    if(Number.isFinite(v))rxTempSet(v,{fromAgent:true,quiet:false});
+    return "";
+  });
   t=t.replace(/\[\[rx:([^\]]+)\]\]/gi,(_,em)=>{found.push(String(em||"").trim());return ""});
   t=t.replace(/(?:^|\n)\s*RX:(\S+)\s*/g,(_,em)=>{found.push(String(em||"").trim());return "\n"});
   if(found.length)stampUserRx(found[found.length-1]);
+  t=t.replace(/\[\[(?:motion|emote|gaze|compose|reach)\s*:[^\]]*\]\]/gi," ");
+  t=t.replace(/\[\[[a-z0-9_]{2,40}\]\]/g," ");
+  t=t.replace(/[ \t]{2,}/g," ");
   return t.replace(/[ \t]+\n/g,"\n").replace(/\n{3,}/g,"\n\n");
 }
 function paintHistoryAgent(text){
@@ -3758,6 +4450,19 @@ function appendAgent(text,opts){
   curAgent.dataset.raw=(curAgent.dataset.raw||"")+chunk;
   renderAgentBubble(curAgent,curAgent.dataset.raw);scroll();
 }
+function fillThoughtBub(el){
+  if(!el||el.dataset.stub!=="1")return;
+  const raw=el.dataset.raw||"";
+  delete el.dataset.stub;
+  el.innerHTML="";
+  formatAgentHtml(raw).forEach(p=>{
+    if(p.type==="code"){
+      if(/^(math|latex|tex)$/i.test(p.lang||""))el.appendChild(makeMathBlock(p.v));
+      else el.appendChild(makeCollapsibleCode(p.lang||"code",p.v,{lang:p.lang||"text",forceOpen:false}));
+    }else el.appendChild(renderMdBlock(p.v));
+  });
+  queueMathTypeset(el);
+}
 function appendThought(text){
   if(!showThoughts||ux.hideThink)return;
   if(!curThought){
@@ -3765,7 +4470,10 @@ function appendThought(text){
     row.className="row thought-row"+(ux.collapseThink||historyPainting||replaying?" collapsed":"");
     row.innerHTML='<div class="nm tog"><span class="chev">▾</span><span>Thinking</span></div><div class="bub thought md"></div>';
     const head=row.querySelector(".nm");
-    head.onclick=()=>row.classList.toggle("collapsed");
+    head.onclick=()=>{
+      row.classList.toggle("collapsed");
+      if(!row.classList.contains("collapsed"))fillThoughtBub(row.querySelector(".bub"));
+    };
     feed.appendChild(row);curThought=row.querySelector(".bub");curThought.dataset.raw="";curThoughtRow=row;
   }
   curThought.dataset.raw=(curThought.dataset.raw||"")+(text||"");
@@ -3775,7 +4483,7 @@ function appendThought(text){
       const lab=curThoughtRow.querySelector(".nm span:last-child");
       if(lab)lab.textContent="Thinking · "+Math.min(9999,raw.length)+"c";
     }
-    if(curThought&&!curThought.dataset.stub){curThought.dataset.stub="1";curThought.innerHTML="<span class='mut'>collapsed · expand to load</span>"}
+    if(curThought&&curThought.dataset.stub!=="1"){curThought.dataset.stub="1";curThought.innerHTML="<span class='mut'>collapsed · expand to load</span>"}
     return;
   }
   const parts=formatAgentHtml(raw);
@@ -4068,7 +4776,7 @@ function appendRecap(u){
 }
 function handleUpdate(u,sessionId,meta){
   if(!u)return;
-  if(suppressLive&&!historyPainting)return;
+  if(attachReplay||suppressLive)return;
   if(sessionSwitching&&!historyPainting)return;
   if(!sid)return;
   const want=String(sid);
@@ -4087,12 +4795,18 @@ function handleUpdate(u,sessionId,meta){
   if(meta&&window.grokCockpit&&window.grokCockpit.noteContextFromMeta)try{window.grokCockpit.noteContextFromMeta(meta)}catch(e){}
   const t=u.sessionUpdate;
   if(t==="user_message_chunk"){
-    const txt=(u.content&&u.content.text)||"";
-    if(!replaying&&isLocalUserEcho(txt)){userWireBuf="";return}
-    if(replaying||historyPainting){paintHistoryUser(txt);return}
+    const c=u.content||{};
+    const txt=c.text||"";
+    if(!replaying&&txt&&isLocalUserEcho(txt)&&!contentMedia(c)){userWireBuf="";return}
+    if(replaying||historyPainting){paintHistoryUser(txt,c);return}
     curAgent=null;curThought=null;
     if(!userWireBuf)curUser=null;
-    appendUser(txt,{fromWire:true});
+    if(txt)appendUser(txt,{fromWire:true});
+    const media=contentMedia(c);
+    if(media){
+      if(!curUser){curUser=addRow("You");curUser.classList.add("md");curUser.dataset.raw=curUser.dataset.raw||""}
+      const n=attNode(media);if(n)curUser.appendChild(n);
+    }
   }
   else if(t==="agent_message_chunk"){
     const txt=(u.content&&u.content.text)||"";
@@ -4110,8 +4824,15 @@ function handleUpdate(u,sessionId,meta){
   else if(t==="tool_call"||t==="tool_call_update"){
     if(replaying||historyPainting){userWireBuf="";curUser=null;curAgent=null;curThought=null;curThoughtRow=null}
     else{curAgent=null;curThought=null;curThoughtRow=null}
+    if(meta&&meta.updateParams&&meta.updateParams.status&&!u.status)u.status=meta.updateParams.status;
     upsertTool(u);
-    if(!replaying&&!cancelInFlight&&(Date.now()>=suppressStreamBusyUntil||handleMsg._waitPrompt)){setBusy(true,want);setPhase("tools",u.title||u.kind||u.toolName||"")}
+    if(!replaying&&!historyPainting){
+      noteToolLife(u,meta);
+      const tit=u.title||u.kind||u.toolName||"";
+      const cmd=(u.rawInput&&(u.rawInput.command||u.rawInput.path||u.rawInput.query))||"";
+      lastWorkTitle=(tit+(cmd?(" · "+String(cmd).replace(/\s+/g," ").slice(0,56)):"")).slice(0,80);
+    }
+    if(!replaying&&!cancelInFlight&&(Date.now()>=suppressStreamBusyUntil||handleMsg._waitPrompt||pendingTools.size)){setBusy(true,want);setPhase("tools",u.title||u.kind||u.toolName||"")}
   }
   else if(t==="plan"){
     const level=getPermLevel(sid);
@@ -4130,9 +4851,8 @@ function handleUpdate(u,sessionId,meta){
     if(!waitingNewer)try{closeOpen()}catch(e){}
     if(!replaying){
       if(waitingNewer||cancelInFlight){
-        /* stale completion from cancelled/prior turn — keep current busy/wait intact */
+      }else if(!finishTurnOrKeep(want)){
       }else{
-        setBusy(false,want);setPhase("idle");
         chip(t==="task_completed"?"task done":"turn done");
         if(t==="task_completed"&&window.grokCockpit)window.grokCockpit.trackBg({id:u.taskId||u.id||("task-"+Date.now()),title:u.title||"task",status:"completed"});
         try{if(window.grokVoice)window.grokVoice.onTurnDone()}catch(e){}
@@ -4203,15 +4923,23 @@ function handleMsg(data){
   if(method==="_x.ai/session/update"||method==="x.ai/session/update"){
     handleUpdate(params.update||params,params.sessionId,params._meta);return;
   }
+  if(method==="_x.ai/work/changed"){
+    workJobs=Array.isArray(params.jobs)?params.jobs:workJobs;
+    paintWorkBoard();
+    const mine=workJobs.find(x=>sessionIdsMatch(x.sid,sid));
+    if(mine&&!sessionSwitching)applyWorkJob(mine);
+    try{renderSessions()}catch(e){}
+    return;
+  }
   if(method==="_x.ai/queue/changed"){
     if(sessionSwitching||!sid||(params.sessionId&&!liveBelongsHere(params.sessionId)))return;
     const entries=params.entries||[];const run=params.runningPromptId;
-    agentQueueNote=(run?"working… ":"")+(entries.length?("agent queue: "+entries.map(e=>(e.text||"").slice(0,48)).join(" · ")):"");
+    agentQueueNote=(run?"working… ":"")+(entries.length?("agent queue: "+entries.map(e=>{let s=String(e&&e.text||"");s=s.replace(/\[AGENT SETUP[\s\S]*?\[END AGENT SETUP\]\s*/i,"").replace(/\[Reaction meter[^\]]*\][^\n]*\n*/i,"").replace(/\[INTERJECT[^\]]*\]\s*/i,"").trim();return (s||"persona setup").slice(0,48)}).join(" · ")):"");
     if(!agentQueueNote.trim())agentQueueNote="";
     paintMsgQueue();
     if(cancelInFlight){touchLive();return}
     if(run){setBusy(true);setPhase("waiting","queued")}
-    else if(!entries.length&&!replaying&&!msgQueue.length&&!handleMsg._waitPrompt){setBusy(false);setPhase("idle");scheduleMsgDrain(200)}
+    else if(!entries.length&&!replaying&&!handleMsg._waitPrompt){setBusy(false);setPhase("idle");scheduleMsgDrain(200)}
     touchLive();return;
   }
   if(method==="_x.ai/session_notification"){
@@ -4357,6 +5085,7 @@ async function paintDiskHistory(sessionId,cwd,opts){
   opts=opts||{};
   const expectSid=String(sessionId||"");
   const expectGen=opts.gen!=null?opts.gen:sessionGen;
+  if(isDemoMode()&&expectSid.startsWith("demo-"))return {count:0,meta:{has_more:false},title:"",events:[],demo:true};
   const limit=opts.limit!=null?opts.limit:HISTORY_PAGE;
   const q=new URLSearchParams({sessionId:expectSid,cwd:String(cwd||sidCwd||""),limit:String(limit)});
   if(opts.before!=null)q.set("before",String(opts.before));
@@ -4379,6 +5108,8 @@ async function paintDiskHistory(sessionId,cwd,opts){
   return {count:n,meta:j.meta||{},title:j.title||"",events:events,dir:j.dir||""};
 }
 async function loadOlderHistory(){
+  if(stickBottom)return;
+  if(attachReplay||suppressLive)return;
   if(!sid||!historyHasMore||historyLoadingOlder||replaying||sessionSwitching)return;
   if(!(historyOlderBefore>0)){historyHasMore=false;paintHistoryMoreChip();return}
   historyLoadingOlder=true;
@@ -4414,7 +5145,8 @@ async function loadOlderHistory(){
   }
 }
 async function diskLiveCatchup(){
-  if(!sid||replaying||sessionSwitching||diskCatchupBusy||suppressLive)return 0;
+  if(!sid||replaying||sessionSwitching||diskCatchupBusy)return 0;
+  if(isDemoMode()&&String(sid).startsWith("demo-"))return 0;
   const expect=String(sid),gen=sessionGen,expectCwd=String(sidCwd||"");
   diskCatchupBusy=true;
   try{
@@ -4428,7 +5160,7 @@ async function diskLiveCatchup(){
     const r=await fetch("/api/session/history?"+q.toString(),{cache:"no-store"});
     const text=await r.text();
     let j=null;try{j=JSON.parse(String(text).replace(/^\uFEFF/,"").trim())}catch(e){j=null}
-    if(String(sid)!==expect||gen!==sessionGen||sessionSwitching||replaying||suppressLive)return 0;
+    if(String(sid)!==expect||gen!==sessionGen||sessionSwitching||replaying)return 0;
     if(!r.ok||!j||!j.ok)return 0;
     if(j.sessionId&&String(j.sessionId)!==expect)return 0;
     const meta=j.meta||{};
@@ -4446,7 +5178,10 @@ async function diskLiveCatchup(){
         if(kind==="agent_thought_chunk")setPhase("thinking");
         else if(kind==="agent_message_chunk")setPhase("responding");
         else if(kind==="tool_call"||kind==="tool_call_update")setPhase("tools");
-        else if(kind==="turn_completed"||kind==="task_completed"){setBusy(false,expect);setPhase("idle")}
+        else if(kind==="turn_completed"||kind==="task_completed"){
+          if(eventsHaveOpenTool(events)){setBusy(true,expect);setPhase("tools","command running")}
+          else{setBusy(false,expect);setPhase("idle")}
+        }
       }
     }
     if(String(sid)!==expect||gen!==sessionGen)return 0;
@@ -4532,9 +5267,7 @@ async function hydrateSessionTitles(list){
       }
       if(titleOverrides[id])continue;
       if(t){
-        const cur=String(s.title||s.generated_title||s.remote_title||"").trim();
-        if(!cur||/^untitled$/i.test(cur)||s._fromArchive){s.title=t;s.generated_title=t;s.remote_title=t;n++}
-        else if(!s.generated_title)s.generated_title=t;
+        s.title=t;s.generated_title=t;s.remote_title=t;n++;
       }
       if(row.cwd&&!s.cwd)s.cwd=row.cwd;
       if(row.kind!=null)s.kind=row.kind;
@@ -4814,6 +5547,30 @@ function paintDemoChat(){
   try{const h=document.getElementById("hint");if(h)h.textContent="demo session · sample UI"}catch(e){}
   stickBottom=true;scroll();
 }
+async function fetchSessionsDisk(){
+  const r=await fetch("/api/sessions?limit=120",{cache:"no-store"});
+  const text=await r.text();
+  let j=null;try{j=JSON.parse(String(text).replace(/^\uFEFF/,"").trim())}catch(e){j=null}
+  if(!r.ok||!j||!j.ok)throw new Error((j&&(j.error||j.message))||text.slice(0,80)||("HTTP "+r.status));
+  return normalizeSessions({sessions:j.sessions||[]});
+}
+function mergeSessionLists(disk,live){
+  const by=new Map();
+  (disk||[]).forEach(s=>{if(s&&s.sessionId)by.set(String(s.sessionId),s)});
+  (live||[]).forEach(s=>{
+    if(!s||!s.sessionId)return;
+    const id=String(s.sessionId);
+    const prev=by.get(id)||{};
+    by.set(id,Object.assign({},prev,s,{title:s.title||prev.title||"",cwd:s.cwd||prev.cwd||"",resident:!!s.resident}));
+  });
+  try{
+    const last=JSON.parse(localStorage.getItem("grok_remote_last")||"{}");
+    if(last&&last.sid&&!by.has(String(last.sid))){
+      by.set(String(last.sid),{sessionId:String(last.sid),cwd:last.cwd||defaultCwd||"",title:titleOverrides[last.sid]||"",resident:false,activity:"recent",lastChangeUnixMs:last.at||Date.now()});
+    }
+  }catch(e){}
+  return [...by.values()];
+}
 async function fetchSessions(){
   try{await loadArchive()}catch(e){}
   if(isDemoMode()){
@@ -4822,8 +5579,11 @@ async function fetchSessions(){
     paintSessScopeChips();
     return sessions;
   }
-  const r=await req("_x.ai/sessions/list",{},30000);
-  sessions=normalizeSessions(r);
+  let disk=[];
+  try{disk=await fetchSessionsDisk()}catch(e){}
+  let live=[];
+  try{live=normalizeSessions(await req("_x.ai/sessions/list",{},8000))}catch(e){}
+  sessions=mergeSessionLists(disk,live);
   mergeArchivedStubs();
   renderSessions();
   paintSessScopeChips();
@@ -4914,6 +5674,17 @@ function renderSessions(){
     const rr=(b.resident?1:0)-(a.resident?1:0);if(rr)return rr;
     return sessionStamp(b)-sessionStamp(a);
   });
+  /* This wipes and rebuilds every row, which destroys the node under the cursor and kills :hover.
+     A live turn pushes the work board every 0.4s and each push calls this, so hovering the rail
+     during a turn flickered ~2.5x a second. Skip the rebuild when the rendered output would be
+     identical - the underlying list almost never changes between pushes. */
+  const sig=JSON.stringify([sessScope,q,String(want||""),sessListExpanded,items.map(s=>{
+    const id=String(s.sessionId||"");
+    return [id,sessionTitle(s),!!s.resident,isArchived(id),String(s.activity||""),String(s.cwd||""),
+            relTime(sessionStamp(s)),workJobs.some(j=>sessionIdsMatch(j.sid,id)&&j.running)];
+  })]);
+  if(sig===sessListSig&&sessList.children.length){syncSessFilterChrome();return}
+  sessListSig=sig;
   sessList.innerHTML="";
   if(!items.length){
     const empty=document.createElement("div");empty.className="sess-empty";
@@ -4924,7 +5695,7 @@ function renderSessions(){
   }
   const PREVIEW=sessScope==="archived"?50:3;
   const braid=isBraidLayout();
-  const useCollapse=braid&&!q&&items.length>PREVIEW;
+  const useCollapse=braid&&!q&&items.length>PREVIEW&&!isWideLayout();
   let head=items;
   let rest=[];
   if(useCollapse){
@@ -4946,10 +5717,11 @@ function renderSessions(){
     const body=document.createElement("div");body.className="body";
     const when=sessionStamp(s);const ago=relTime(when);
     const path=shortPath(s.cwd||"");
-    const actBadge=s.resident?"live":(s.activity&&!/dormant|idle|archived/i.test(String(s.activity))?s.activity:"");
+    const working=workJobs.some(j=>sessionIdsMatch(j.sid,id)&&j.running);
+    const actBadge=working?"work":(s.resident?"live":(s.activity&&!/dormant|idle|archived/i.test(String(s.activity))?s.activity:""));
     const title=sessionTitle(s);
     const titleShow=title&&title!=="Untitled"?title:("Chat · "+id.slice(0,8));
-    body.innerHTML='<div class="t spoiler">'+(cur?'<span class="badge live open-mark">open</span>':'')+(s.resident?'<span class="badge live">live</span>':'')+(arch?'<span class="badge">archived</span>':'')+(actBadge&&!s.resident?'<span class="badge idle">'+esc(actBadge)+'</span>':'')+'<span class="spoiler">'+esc(titleShow)+'</span></div><div class="m spoiler">'+(path?'<span class="spoiler-path">'+esc(path)+"</span>":(arch?esc(id.slice(0,13)+"…"):""))+(ago?(path||arch?" · ":"")+esc(ago):"")+"</div>";
+    body.innerHTML='<div class="t spoiler">'+(cur?'<span class="badge live open-mark">open</span>':'')+(working?'<span class="badge live">work</span>':'')+(s.resident&&!working?'<span class="badge live">live</span>':'')+(arch?'<span class="badge">archived</span>':'')+(actBadge&&!s.resident&&!working?'<span class="badge idle">'+esc(actBadge)+'</span>':'')+'<span class="spoiler">'+esc(titleShow)+'</span></div><div class="m spoiler">'+(path?'<span class="spoiler-path">'+esc(path)+"</span>":(arch?esc(id.slice(0,13)+"…"):""))+(ago?(path||arch?" · ":"")+esc(ago):"")+"</div>";
     const acts=document.createElement("div");acts.className="acts";
     const rb=document.createElement("button");rb.type="button";rb.textContent="Rename";rb.title="Rename chat";
     rb.onclick=e=>{e.stopPropagation();renameSession(id).catch(err=>chip(String(err)))};
@@ -5012,8 +5784,8 @@ function showHorizon(title){
   const el=document.getElementById("horizonLoad"),msg=document.getElementById("horizonMsg"),stage=document.getElementById("chatStage");
   if(!el)return;
   document.body.classList.add("loading-chat");
-  if(stage){stage.classList.add("on","loading-history")}
-  if(feed){feed.classList.add("loading-history");feed.style.display="block"}
+  if(stage){stage.classList.add("on")}
+  if(feed){feed.style.display="block"}
   if(foot)foot.style.display="block";
   el.classList.add("on");
   el.setAttribute("aria-busy","true");
@@ -5061,7 +5833,7 @@ function abortSessionSwitch(){
   stopPoll();
   if(catchupTimer){clearTimeout(catchupTimer);catchupTimer=null}
   catchupBusy=false;loadExpectSid=null;sendInFlight=false;handleMsg._waitPrompt=null;
-  try{pending.forEach((p,id)=>{try{p.reject(new Error("session switched"))}catch(e){} pending.delete(id)})}catch(e){}
+  try{pending.forEach((p,id)=>{if(p&&(p.kind==="prompt"||p.kind==="cancel"))return;try{p.reject(new Error("session switched"))}catch(e){} pending.delete(id)})}catch(e){}
 }
 
 function rememberSessionSid(id,cwd){
@@ -5107,6 +5879,7 @@ async function openSession(s){
   sessionFresh=false;
   suppressLive=true;
   historyPainting=false;
+  markAgentAttach(String(s.sessionId),false);
   const gen=++sessionGen;
   const openId=String(s.sessionId);
   setSelectedSession(openId,{render:true});
@@ -5131,13 +5904,10 @@ async function openSession(s){
       if(gen!==sessionGen||String(sid)!==openId)return;
       if(hist&&hist.stale)return;
       painted=hist.count||0;
-      if(!(painted>0)&&sidCwd){
-        hist=await paintDiskHistory(openId,"",{limit:HISTORY_PAGE,max_bytes:HISTORY_MAX_BYTES,chat_only:true,gen:gen});
-        if(gen!==sessionGen||String(sid)!==openId)return;
-        if(hist&&!hist.stale)painted=hist.count||0;
-      }
       if(hist&&hist.dir)try{feed.dataset.histDir=String(hist.dir)}catch(e){}
       if(hist&&hist.title)adoptDiskTitle(openId,hist.title,sidCwd);
+      try{await hydrateAtts(openId)}catch(e){}
+      try{hideHorizon()}catch(e){}
       try{if(painted>0)upgradeRichBubbles(feed)}catch(e){}
     }catch(e){
       if(gen===sessionGen&&String(sid)===openId){
@@ -5158,19 +5928,24 @@ async function openSession(s){
     chip("load failed: "+e);alert(e);
   }finally{
     if(gen===sessionGen&&String(sid)===openId){
-      loadExpectSid=null;sessionSwitching=false;replaying=false;setBusy(false);closeOpen();
+      loadExpectSid=null;sessionSwitching=false;replaying=false;closeOpen();
       selectedSid=openId;window.sid=sid;
+      hydrateWork(openId).catch(()=>{});
+      hydrateAtts(openId).catch(()=>{});
       try{if(feed)feed.dataset.sid=openId}catch(e){}
       paintSessionCurrent();
       try{renderSessions()}catch(e){}
       stickBottom=true;
+      ignoreScrollUntil=Date.now()+2500;
       clearLoadingChrome();
       try{trimFeedDom()}catch(e){}
-      requestAnimationFrame(()=>{
+      const pinBottom=()=>{
         if(gen!==sessionGen||String(sid)!==openId)return;
-        forceScrollBottom({pin:true,settle:true,settleMs:40});
-        try{if(feed)feed.classList.add("smooth-scroll")}catch(e){}
-      });
+        stickBottom=true;
+        forceScrollBottom({pin:true,settle:true,settleMs:180});
+      };
+      requestAnimationFrame(()=>{pinBottom();requestAnimationFrame(pinBottom)});
+      setTimeout(pinBottom,280);
       startPoll();
       updateJump();
     }else{
@@ -5180,17 +5955,36 @@ async function openSession(s){
   }
   if(gen!==sessionGen||String(sid)!==openId)return;
   suppressLive=true;
+  attachReplay=true;
   (async()=>{
     const attachId=openId,attachGen=gen,attachCwd=sidCwd;
+    let ok=false,lastErr="";
     try{
-      const loaded=await req("session/load",{sessionId:attachId,cwd:attachCwd,mcpServers:[]},90000);
-      try{applyModelState(loaded&&loaded.models)}catch(e){}
-    }catch(e){if(attachGen===sessionGen&&String(sid)===attachId)try{chip("agent attach: "+String(e).slice(0,80))}catch(x){}}
-    finally{if(attachGen===sessionGen&&String(sid)===attachId)suppressLive=false}
-    if(attachGen!==sessionGen||String(sid)!==attachId)return;
-    try{await loadCommands()}catch(e){}
-    try{if(window.grokCockpit&&window.grokCockpit.refreshSessionContext)window.grokCockpit.refreshSessionContext()}catch(e){}
-    try{if(attachCwd)fetch("/api/fs/root",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({path:attachCwd})}).catch(()=>{})}catch(e){}
+      for(let i=0;i<3;i++){
+        if(attachGen!==sessionGen||String(sid)!==attachId)return;
+        if(!ws||ws.readyState!==1){await sleep(400);continue}
+        try{
+          const loaded=await req("session/load",{sessionId:attachId,cwd:attachCwd,mcpServers:[]},12000);
+          try{applyModelState(loaded&&loaded.models)}catch(e){}
+          try{const pref=(localStorage.getItem("grok_remote_effort")||"").toLowerCase();if(pref&&pref!=="xhigh"&&pref!==reasoningEffort)await setEffort(pref,{quiet:true})}catch(e){}
+          ok=true;break;
+        }catch(e){lastErr=String(e&&e.message||e);await sleep(500+i*400)}
+      }
+      if(attachGen===sessionGen&&String(sid)===attachId){
+        markAgentAttach(attachId,true);
+        scheduleMsgDrain(80);
+        if(!ok&&lastErr)try{chip("agent attach: "+lastErr.slice(0,80)+" · disk history is up, retrying quiet")}catch(x){}
+      }
+      if(attachGen!==sessionGen||String(sid)!==attachId)return;
+      try{await loadCommands()}catch(e){}
+      try{if(window.grokCockpit&&window.grokCockpit.refreshSessionContext)window.grokCockpit.refreshSessionContext()}catch(e){}
+      try{if(attachCwd&&!isDemoMode())fetch("/api/fs/root",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({path:attachCwd})}).catch(()=>{})}catch(e){}
+    }finally{
+      if(attachGen===sessionGen&&String(sid)===attachId){
+        attachReplay=false;suppressLive=false;
+        try{scheduleCatchup(200)}catch(e){}
+      }
+    }
   })();
 }
 
@@ -5199,6 +5993,7 @@ async function newSession(cwd,firstMsg){
   stopPoll();
   sessionSwitching=true;
   sessionFresh=true;
+  markAgentAttach("",false);
   const gen=++sessionGen;
   sid=null;window.sid=null;selectedSid=null;loadExpectSid=null;
   paintSessionCurrent();
@@ -5209,7 +6004,7 @@ async function newSession(cwd,firstMsg){
   showPage("chat");
   replaying=true;setBusy(true);stickBottom=true;
   showHorizon("opening channel");
-  if(typeof personaApplied!=="undefined"&&personaApplied.clear)personaApplied.clear();
+
   try{
     const r=await req("session/new",{cwd:c,mcpServers:[]},60000);
     if(gen!==sessionGen)return;
@@ -5239,6 +6034,7 @@ async function newSession(cwd,firstMsg){
   }
   if(gen!==sessionGen)return;
   loadExpectSid=null;sessionSwitching=false;replaying=false;setBusy(false);
+  markAgentAttach(sid,true);
   stickBottom=true;forceScrollBottom({pin:true,settle:true,settleMs:100});hideHorizon();
   clearSessionFeed();
   sessionFresh=true;
@@ -5262,8 +6058,8 @@ function normalizeAgentCmd(c){
 }
 async function loadDiskSkills(){
   try{
-    const cwd=encodeURIComponent(sidCwd||document.getElementById("cwd").value||defaultCwd||".");
-    const r=await fetch("/api/skills/list?cwd="+encodeURIComponent(cwd||"."),{cache:"no-store"});
+    const cwd=sidCwd||document.getElementById("cwd").value||defaultCwd||".";
+    const r=await fetch("/api/skills/list?cwd="+encodeURIComponent(cwd),{cache:"no-store"});
     const text=await r.text();
     let j=null;try{j=JSON.parse(String(text).replace(/^\uFEFF/,"").trim())}catch(e){j=null}
     if(!r.ok||!j){diskSkills=[];return}
@@ -5345,14 +6141,16 @@ function startLinkKeepalive(){
   linkKeepaliveTimer=setInterval(()=>{
     if(!ws||ws.readyState!==1)return;
     const silent=Date.now()-linkLastRx;
-    try{ws.send(JSON.stringify({jsonrpc:"2.0",method:"_x.ai/remote/ping",params:{t:Date.now()}}))}catch(e){}
+    try{ws.send(JSON.stringify({jsonrpc:"2.0",method:"_x.ai/remote/ping",params:{t:Date.now(),cid:clientId()}}))}catch(e){}
     /* NEVER tear down the link from a hidden tab. This timer is throttled to roughly once a
        minute while hidden, so `silent` is past 45s on the first fire no matter how healthy the
        socket is - the stale-link guard was closing the one connection it exists to protect, and
        scheduleReconnect then parked because the tab was still hidden. The hub heartbeat keeps
        linkLastRx fresh from the other side; judge staleness only when the tab can be seen. */
     if(document.visibilityState==="hidden")return;
-    if(silent>45000&&!(pending&&pending.size)){
+    const loopback=/^127\.0\.0\.1$|^localhost$|^\[::1\]$/i.test(location.hostname);
+    if(loopback)return;
+    if(silent>90000&&!(pending&&pending.size)){
       try{chip("link stale · forcing reconnect")}catch(e){}
       try{ws.close()}catch(e){}
       reconnectArmed=true;wantReconnect=true;
@@ -5411,13 +6209,24 @@ function detachPendingOnSoftClose(){
 function resumeAfterSoftReconnect(){
   softDetach=false;
   try{
-    const dropWait=handleMsg._waitPrompt!=null&&pending.has(handleMsg._waitPrompt)&&pending.get(handleMsg._waitPrompt)&&pending.get(handleMsg._waitPrompt).detached;
     pending.forEach((p,id)=>{
-      if(p&&p.detached){try{pending.delete(id)}catch(e){}}
+      if(p&&p.detached&&p.kind!=="prompt"){try{pending.delete(id)}catch(e){}}
     });
-    if(dropWait)handleMsg._waitPrompt=null;
   }catch(e){}
-  try{if(sid){startPoll();scheduleCatchup(200);softCatchup().catch(()=>{})}}catch(e){}
+  try{if(sid){startPoll();scheduleCatchup(200);softCatchup().then(()=>maybeResendOrphan()).catch(()=>maybeResendOrphan())}}catch(e){}
+}
+async function maybeResendOrphan(){
+  const d=lastDispatch;
+  if(!d||d.acked||d.retried)return;
+  if(!sid||String(sid)!==String(d.sid))return;
+  if(Date.now()-d.at>12000)return;
+  if(lastLocalUserPlain&&normUserEcho(d.tRaw)!==normUserEcho(lastLocalUserPlain))return;
+  if(!ws||ws.readyState!==1)return;
+  d.retried=true;
+  chip("link dropped mid-send · sending again");
+  try{
+    await dispatchPromptPayload(d.tRaw,d.files||[],d.mode||"queue",{wasBusy:!!busy,sessionId:d.sid,sessionGen:sessionGen,allowCrossSession:true,skipSetup:true});
+  }catch(e){chip("resend: "+e);d.retried=false}
 }
 function onPageBecameVisible(){
   if(intentionalClose)return;
@@ -5502,7 +6311,50 @@ async function startRemoteStack(opts){
   return false;
   }finally{startInFlight=false}
 }
+function clientId(){
+  try{
+    let id=sessionStorage.getItem("grok_remote_cid");
+    if(id&&id.length>=8)return id;
+    id="c-"+Math.random().toString(36).slice(2)+Date.now().toString(36);
+    sessionStorage.setItem("grok_remote_cid",id);
+    return id;
+  }catch(e){return "c-"+Math.random().toString(36).slice(2)+Date.now().toString(36)}
+}
 function initParams(){return {protocolVersion:1,clientInfo:{name:"grok-remote",version:"3.8"},clientCapabilities:{fs:{readTextFile:true,writeTextFile:true},terminal:true}}}
+async function reattachSessionAfterHubRestart(){
+  const attachId=String(sid||"");
+  if(!attachId)return true;
+  const attachGen=sessionGen,attachCwd=sidCwd;
+  markAgentAttach(attachId,false);
+  suppressLive=true;
+  attachReplay=true;
+  try{
+    let loaded=null,lastErr="";
+    for(let i=0;i<3;i++){
+      if(attachGen!==sessionGen||String(sid)!==attachId)return false;
+      try{
+        loaded=await req("session/load",{sessionId:attachId,cwd:attachCwd,mcpServers:[]},12000);
+        lastErr="";
+        break;
+      }catch(e){
+        lastErr=String(e&&e.message||e);
+        await sleep(500+i*400);
+      }
+    }
+    if(lastErr)throw new Error(lastErr);
+    if(attachGen!==sessionGen||String(sid)!==attachId)return false;
+    try{applyModelState(loaded&&loaded.models)}catch(e){}
+    markAgentAttach(attachId,true);
+    scheduleMsgDrain(80);
+    try{scheduleCatchup(200)}catch(e){}
+    return true;
+  }finally{
+    if(attachGen===sessionGen&&String(sid)===attachId){
+      attachReplay=false;
+      suppressLive=false;
+    }
+  }
+}
 function onHubState(up){
   /* the ws to the hub stays healthy while the AGENT behind it dies, so pings kept the link
      looking alive while every real request failed. The hub now says which side is down -
@@ -5512,14 +6364,19 @@ function onHubState(up){
   up=!!up;
   if(up===hubUp)return;
   hubUp=up;
-  if(!up){try{setConn(true,"agent restarting…");setPhase("sync","agent")}catch(e){}return}
+  if(!up){
+    if(sid)markAgentAttach(String(sid),false);
+    try{setConn(true,"agent restarting…");setPhase("sync","agent")}catch(e){}
+    return
+  }
   if(hubReinitBusy)return;
   hubReinitBusy=true;
   (async()=>{try{
     await req("initialize",initParams(),15000);
+    await reattachSessionAfterHubRestart();
     try{setConn(true,"connected")}catch(e){}
     try{await fetchSessions()}catch(e){}
-    try{chip("agent back · sessions refreshed")}catch(e){}
+    try{chip("agent back · session reattached")}catch(e){}
   }catch(e){
     try{scheduleReconnect(1200,"reinit failed")}catch(x){}
   }finally{hubReinitBusy=false}})();
@@ -5528,6 +6385,7 @@ function onHubState(up){
 async function connect(opts){
   opts=opts||{};
   if(connecting)return;
+  if(!opts.force&&ws&&ws.readyState===1&&Date.now()-linkLastRx<20000)return;
   connecting=true;
   const myGen=++connectGen;
   let url=document.getElementById("wsurl").value.trim()||defaultWs();
@@ -5559,6 +6417,7 @@ async function connect(opts){
     if(myGen!==connectGen||ws!==sock){try{sock.close()}catch(e){}return}
     log("open");
     linkLastRx=Date.now();
+    try{ws.send(JSON.stringify({jsonrpc:"2.0",method:"_x.ai/remote/hello",params:{t:Date.now(),cid:clientId()}}))}catch(e){}
     try{
       const keepSid=String(sid||window.__wantSession||"");
       const wasDetach=!!softDetach||!!opts.fromReconnect;
@@ -5597,6 +6456,7 @@ async function connect(opts){
           },Math.min(30000,6000*(n+1)));
         })(0);
       }
+      try{await hydrateWork(sid)}catch(e){}
       if(myGen!==connectGen||ws!==sock)return;
       updateLayoutClass();
       if(isWideLayout()){
@@ -5609,11 +6469,15 @@ async function connect(opts){
       }
       if(window.__wantSession){
         const want=String(window.__wantSession);
-        const s=sessions.find(x=>String(x.sessionId).startsWith(want)||String(x.sessionId)===want);
-        if(s){
-          if(String(sid)===String(s.sessionId)){window.__wantSession=null;resumeAfterSoftReconnect()}
-          else await openSession(s);
-        }else chip("session not in list · "+want);
+        let s=sessions.find(x=>String(x.sessionId).startsWith(want)||String(x.sessionId)===want);
+        if(!s){
+          let cwd=defaultCwd||"";
+          try{const last=JSON.parse(localStorage.getItem("grok_remote_last")||"{}");if(last&&last.cwd)cwd=last.cwd}catch(e){}
+          s={sessionId:want,cwd:cwd,resident:false,title:titleOverrides[want]||""};
+        }
+        if(String(sid)===String(s.sessionId)){window.__wantSession=null;resumeAfterSoftReconnect()}
+        else await openSession(s);
+        window.__wantSession=null;
       }else if(window.__wantTask){
         await newSession(document.getElementById("cwd").value,window.__wantTask);
       }else if(keepSid&&String(sid)===keepSid){
@@ -5678,7 +6542,11 @@ async function connect(opts){
     softDetach=true;
     if(keepSid){window.__wantSession=String(keepSid);try{if(!sid){sid=String(keepSid);window.sid=sid}}catch(e){}}
     try{if(sid)startPoll()}catch(e){}
-    if(nDet||busy){setPhase("sync","bg on PC");try{chip("wifi blip · catch-up on HTTP · PC keeps working")}catch(e){}}
+    if(nDet||busy){
+      setPhase("sync","bg on PC");
+      const loopback=/^127\.0\.0\.1$|^localhost$|^\[::1\]$/i.test(location.hostname);
+      try{chip(loopback?"hub hitch · socket dropped on this PC · catch-up on HTTP":"link drop · catch-up on HTTP · PC keeps working")}catch(e){}
+    }
     else setPhase("sync","reconnecting");
     if(reconnectArmed||wantReconnect||softDetach){
       reconnectArmed=true;wantReconnect=true;
@@ -5719,6 +6587,71 @@ function isTextish(file){
   return/\.(md|txt|py|js|ts|tsx|jsx|json|html|css|scss|xml|yml|yaml|toml|ini|cfg|csv|rs|go|java|c|h|cpp|hpp|cs|rb|php|sh|ps1|bat|sql|r|swift|kt|dart|vue|svelte|env|log|diff|patch|gitignore|dockerfile|makefile|cmake|gradle)$/i.test(n)||n==="dockerfile"||n==="makefile";
 }
 function isImage(file){return(file.type||"").startsWith("image/")||/\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(file.name||"")}
+function contentMedia(c){
+  if(!c||typeof c!=="object")return null;
+  const mime=String(c.mimeType||(c.resource&&c.resource.mimeType)||"");
+  const uri=String(c.uri||c.url||(c.resource&&c.resource.uri)||"");
+  let data=c.data||(c.resource&&c.resource.blob)||"";
+  if(typeof data!=="string")data="";
+  const isVid=/^video\//.test(mime)||c.type==="video"||/\.(mp4|webm|mov|m4v)$/i.test(uri);
+  const isImg=c.type==="image"||/^image\//.test(mime)||/\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(uri)||(!isVid&&(!!data||/^\/api\/att\//.test(uri)));
+  if(!isImg&&!isVid)return null;
+  let src="";
+  if(/^\/api\/att\//.test(uri))src=uri;
+  else if(data)src="data:"+(mime||(isVid?"video/mp4":"image/png"))+";base64,"+data.replace(/^data:[^;]+;base64,/,"");
+  else if(uri&&!/^file:/i.test(uri))src=uri;
+  if(!src)return null;
+  const m=/\/api\/att\/([^/?#]+)/.exec(src);
+  return {kind:isVid?"video":"image",src,id:m?m[1]:"",name:c.name||""};
+}
+function attNode(m){
+  if(!m)return null;
+  const el=m.kind==="video"?document.createElement("video"):document.createElement("img");
+  el.className="att-prev";el.src=m.src;
+  if(m.kind==="video"){el.controls=true;el.playsInline=true}else el.alt=m.name||"image";
+  if(m.id)el.dataset.att=m.id;
+  return el;
+}
+async function stashFiles(sid,files,text){
+  const list=files||[];
+  if(!sid||!list.length)return [];
+  const out=[];
+  for(const f of list){
+    if(f&&f._att&&f._att.url){out.push(f._att);continue}
+    try{
+      const fd=new FormData();
+      fd.append("sessionId",sid);
+      if(text)fd.append("text",text);
+      fd.append("file",f,f.name||"file");
+      const r=await fetch("/api/att",{method:"POST",body:fd});
+      const j=await r.json();
+      if(j&&j.ok&&j.item){f._att=j.item;out.push(j.item)}
+    }catch(e){}
+  }
+  return out;
+}
+async function hydrateAtts(sessionId){
+  const want=String(sessionId||sid||"");
+  if(!want||!feed)return;
+  try{
+    const r=await fetch("/api/att?sessionId="+encodeURIComponent(want),{cache:"no-store"});
+    const j=await r.json();
+    const items=Array.isArray(j.items)?j.items:[];
+    if(!items.length)return;
+    const bubs=[...feed.querySelectorAll(".row.me .bub")];
+    items.forEach(att=>{
+      if(!att||!att.id)return;
+      if(feed.querySelector('[data-att="'+att.id+'"]'))return;
+      const key=normUserEcho(att.text_key||"");
+      let bub=null;
+      if(key)bub=bubs.find(b=>{const raw=normUserEcho(b.dataset.raw||"");return raw&&(raw===key||raw.includes(key)||key.includes(raw))});
+      if(!bub)bub=bubs[bubs.length-1];
+      if(!bub)return;
+      const n=attNode({kind:/^video\//.test(att.mime||"")?"video":"image",src:att.url,id:att.id,name:att.name||""});
+      if(n)bub.appendChild(n);
+    });
+  }catch(e){}
+}
 function isVideo(file){return(file.type||"").startsWith("video/")||/\.(mp4|webm|mov|m4v|mkv)$/i.test(file.name||"")}
 function fileToB64(file){
   return new Promise((resolve,reject)=>{
@@ -5817,13 +6750,15 @@ function paintLocalUserTurn(text,files){
   }
   list.forEach(f=>{
     if(!curUser){curUser=addRow("You");curUser.classList.add("md");curUser.dataset.raw=""}
+    const att=f&&f._att;
+    const url=(att&&att.url)||"";
     if(isVideo(f)){
-      const url=URL.createObjectURL(f);
-      const v=document.createElement("video");v.className="att-prev";v.src=url;v.controls=true;v.playsInline=true;
+      const v=document.createElement("video");v.className="att-prev";v.src=url||URL.createObjectURL(f);v.controls=true;v.playsInline=true;
+      if(att&&att.id)v.dataset.att=att.id;
       curUser.appendChild(v);
     }else if(isImage(f)){
-      const url=URL.createObjectURL(f);
-      const img=document.createElement("img");img.className="att-prev";img.src=url;img.alt=f.name||"image";
+      const img=document.createElement("img");img.className="att-prev";img.src=url||URL.createObjectURL(f);img.alt=f.name||"image";
+      if(att&&att.id)img.dataset.att=att.id;
       curUser.appendChild(img);
     }else{
       const chip=document.createElement("div");chip.className="file-chip";
@@ -5886,35 +6821,53 @@ function agentSetupText(){
   if(!window.grokPresets)return"";
   return window.grokPresets.buildPreamble(personaId,directionId);
 }
+function loadPersonaApplied(){
+  try{
+    const a=JSON.parse(localStorage.getItem("grok_remote_persona_applied")||"[]");
+    if(Array.isArray(a))a.forEach(k=>{if(k)personaApplied.add(String(k))});
+  }catch(e){}
+}
+function savePersonaApplied(){
+  try{localStorage.setItem("grok_remote_persona_applied",JSON.stringify([...personaApplied].slice(-80)))}catch(e){}
+}
 function withAgentSetup(userText,sessionKey){
   const t=String(userText||"");
   const pre=agentSetupText();
   if(!pre)return t;
-  const key=sessionKey||sid||"pending";
+  if(/\[AGENT SETUP/i.test(t))return t;
+  const key=String(sessionKey||sid||"").trim();
+  if(!key)return t;
   if(personaApplied.has(key))return t;
   personaApplied.add(key);
-  if(personaApplied.size>40){const a=[...personaApplied];personaApplied=new Set(a.slice(-20))}
+  savePersonaApplied();
   return pre+"\n\n---\n"+t;
 }
 async function injectPersonaNow(){
   if(!sid||!ws||ws.readyState!==1){alert("Connect / open a session first");return}
   const pre=agentSetupText();
   if(!pre){chip("default persona · nothing to inject");return}
-  personaApplied.delete(sid);
+  personaApplied.delete(sid);savePersonaApplied();
   box.value="Acknowledge this agent setup and confirm persona + direction in one short line.\n\n"+pre;
   closeAllSheets();
   await sendPrompt();
 }
 
 async function sendPrompt(forcedMode){
-  if(sendInFlight)return;
   if(sessionSwitching){chip("wait · switching chat");return}
   const tRaw=box.value.trim();
   if((!tRaw&&!pendingFiles.length))return;
-  if(!ws||ws.readyState!==1){chip("not connected");return}
+  if(!ws||ws.readyState!==1){reconnectArmed=true;wantReconnect=true;try{scheduleReconnect(80,"send while down")}catch(e){}}
   if(tRaw&&sid&&!composerBoundSid)stampComposerBind(sid);
   const sendSid=resolveSendSid();
   if(!sendSid){chip("pick a chat first");return}
+  if(sendInFlight){
+    enqueueMsg({mode:msgMode==="fyi"?"fyi":"queue",tRaw,files:pendingFiles.slice(),at:Date.now(),sessionId:sendSid});
+    box.value="";box.style.height="auto";
+    if(sendSid)composerDrafts[sendSid]="";
+    pendingFiles=[];paintAttachBar();
+    chip("queued · previous send still in flight");
+    return;
+  }
   sendInFlight=true;
   try{
     if(tRaw.startsWith("/")&&!pendingFiles.length){
@@ -5931,9 +6884,11 @@ async function sendPrompt(forcedMode){
     if(sendSid)composerDrafts[sendSid]="";
     const files=pendingFiles.slice();
     pendingFiles=[];paintAttachBar();
+    try{await stashFiles(sendSid,files,tRaw)}catch(e){}
     closeOpen();
     const viewing=String(sid||"")===sendSid;
-    const isBusy=viewing?!!busy&&!replaying:false;
+    const agentWorking=/working/i.test(String(agentQueueNote||""));
+    const isBusy=viewing?((!!busy&&!replaying)||agentWorking):agentWorking;
     if(viewing&&isBusy&&mode==="queue"){
       enqueueMsg({mode:"queue",tRaw,files,at:Date.now(),sessionId:sendSid});
       try{if(window.grokVoice)window.grokVoice.onTaskSent(tRaw,{delivery:"queue",agentBusy:true})}catch(e){}
@@ -5966,9 +6921,14 @@ async function sendPrompt(forcedMode){
       stickBottom=true;
       forceScrollBottom({pin:true,settle:true,settleMs:80});
     }
+    if(!agentAttachReady&&String(agentAttachSid||sendSid)===sendSid){
+      chip("waiting for agent to attach…");
+      await waitAgentAttach(sendSid,60000);
+    }
     promoteSessionAfterMessage(sendSid).catch(()=>{});
     try{if(window.grokVoice)window.grokVoice.onTaskSent(tRaw,{delivery:mode,agentBusy:isBusy,interjected:interjected})}catch(e){}
-    await dispatchPromptPayload(tRaw,files,mode,{wasBusy:isBusy||interjected,interjected:interjected||mode==="interject",sessionId:sendSid,sessionGen:sessionGen,allowCrossSession:true});
+    const ok=await dispatchPromptPayload(tRaw,files,mode,{wasBusy:isBusy,interjected:!!(interjected&&isBusy),sessionId:sendSid,sessionGen:sessionGen,allowCrossSession:true});
+    if(!ok&&(tRaw||(files&&files.length)))enqueueMsg({mode:mode==="fyi"?"fyi":"queue",tRaw,files,at:Date.now(),sessionId:sendSid});
     if(viewing&&stickBottom)forceScrollBottom({pin:false,settle:true,settleMs:60});
     else if(viewing)updateJump();
   }finally{
@@ -5998,6 +6958,7 @@ async function promoteSessionAfterMessage(sessionId){
 window.sendPrompt=sendPrompt;
 window.promoteSessionAfterMessage=promoteSessionAfterMessage;
 window.msgQueue=msgQueue;
+window.pending=pending;
 window.getMsgMode=()=>msgMode;
 window.setMsgMode=m=>{if(["interject","queue","fyi"].includes(m)){msgMode=m;saveMsgMode();paintMsgModeChips()}};
 document.getElementById("connect").onclick=connect;
@@ -6079,6 +7040,8 @@ const btnRail=document.getElementById("btnRail"),btnCollapseRail=document.getEle
 if(btnRail)btnRail.onclick=()=>toggleSidebar();
 if(btnCollapseRail)btnCollapseRail.onclick=()=>setSidebarCollapsed(true);
 if(railTab)railTab.onclick=()=>setSidebarCollapsed(false);
+const btnChatSess=document.getElementById("btnChatSess");
+if(btnChatSess)btnChatSess.onclick=e=>{if(e){e.preventDefault();e.stopPropagation()}toggleSidebar()};
 document.addEventListener("keydown",e=>{
   if(e.key==="Escape"){
     if(typeof tourOpen!=="undefined"&&tourOpen){e.preventDefault();endTour(true);return}
@@ -6160,8 +7123,10 @@ window.grokIdeNewSession=async function(cwd,msg){
 })();
 send.onclick=e=>{
   if(e){e.preventDefault();e.stopPropagation()}
-  if(sendInFlight)return;
-  sendPrompt().catch(err=>chip(String(err)));
+  const now=Date.now();
+  const dbl=now-lastEnterAt<450;
+  lastEnterAt=now;
+  sendPrompt(dbl?"interject":undefined).catch(err=>chip(String(err)));
 };
 const btnCancelTurn=document.getElementById("btnCancelTurn");
 if(btnCancelTurn)btnCancelTurn.onclick=e=>{
@@ -6186,8 +7151,14 @@ box.addEventListener("keydown",e=>{
   if(e.key==="Enter"&&!e.shiftKey&&!e.isComposing&&e.keyCode!==229){
     e.preventDefault();
     e.stopPropagation();
-    if(sendInFlight)return;
-    sendPrompt().catch(err=>chip(String(err)));
+    const now=Date.now();
+    const dbl=now-lastEnterAt<450;
+    lastEnterAt=now;
+    if(dbl&&!box.value.trim()&&!pendingFiles.length&&msgQueue.length){
+      sendQueuedNow(0).catch(err=>chip(String(err)));
+      return;
+    }
+    sendPrompt(dbl?"interject":undefined).catch(err=>chip(String(err)));
   }
 });
 box.addEventListener("input",()=>{
@@ -6223,6 +7194,35 @@ box.addEventListener("blur",()=>{
   if(pc)pc.onclick=e=>{e.preventDefault();e.stopPropagation();cyclePermLevel()};
   const ec=document.getElementById("btnEffortCycle");
   if(ec)ec.onclick=e=>{e.preventDefault();e.stopPropagation();cycleEffort()};
+  const ba=document.getElementById("btnActor");
+  if(ba)ba.onclick=e=>{e.preventDefault();e.stopPropagation();openActorSheet().catch(err=>chip("actor: "+err))};
+  const ca=document.getElementById("closeActor");
+  if(ca)ca.onclick=()=>closeAllSheets();
+  const as=document.getElementById("actorSheet");
+  if(as)as.addEventListener("click",e=>{if(e.target===as)closeAllSheets()});
+  const asel=document.getElementById("actorSelect");
+  if(asel)asel.onchange=()=>onActorSelectChange();
+  const scs=document.getElementById("actorScopeSelect");
+  if(scs)scs.onchange=()=>{actorScopePref=scs.value};
+  const sav=document.getElementById("actorCustomSave");
+  if(sav)sav.onclick=()=>saveCustomActor();
+  const ac=document.getElementById("actorClear");
+  if(ac)ac.onclick=()=>handleActorSlash("/actor clear "+actorScopeFromUi());
+  document.querySelectorAll("[data-rx-mode]").forEach(b=>{
+    b.onclick=()=>{
+      const mode=b.getAttribute("data-rx-mode")||"adaptive";
+      rxTempSet(rxTempGet(),{mode:mode});
+    };
+  });
+  const rr=document.getElementById("rxTempRange");
+  if(rr){
+    rr.oninput=()=>{
+      const mode=rxTempMode()==="manual"?"manual":"manual";
+      rxTempSet((+rr.value)/100,{mode:mode});
+    };
+  }
+  syncRxTemp().catch(()=>{});
+  refreshActorShow().catch(()=>{});
   document.querySelectorAll("[data-perm]").forEach(b=>{
     b.onclick=e=>{
       e.preventDefault();e.stopPropagation();
@@ -6321,6 +7321,26 @@ function paintPhoneConnect(cfg){
   }
   return url;
 }
+async function openAppUrl(url,opts){
+  opts=opts||{};
+  const abs=new URL(String(url||""),location.origin).href;
+  try{
+    const opener=window.__TAURI__&&window.__TAURI__.opener;
+    if(opener&&typeof opener.openUrl==="function"){await opener.openUrl(abs);return true}
+  }catch(e){}
+  try{
+    if(window.grokRemote&&typeof window.grokRemote.openExternal==="function"){
+      await window.grokRemote.openExternal(abs);return true
+    }
+  }catch(e){}
+  try{
+    const opened=window.open(abs,"_blank");
+    if(opened){try{opened.opener=null}catch(e){}return true}
+  }catch(e){}
+  if(opts.sameWindowFallback!==false){location.assign(abs);return true}
+  return false;
+}
+window.openAppUrl=openAppUrl;
 async function loadCfg(){
   try{
     const r=await fetch("/config.json",{cache:"no-store"});
@@ -6344,7 +7364,7 @@ async function loadCfg(){
       try{const el=document.getElementById("phoneUrl");el&&el.select();document.execCommand("copy");chip("phone link copied")}catch(x){alert(v)}
     }
   };
-  if(openPc)openPc.onclick=()=>{const v=(document.getElementById("phoneUrl")||{}).value||location.href;window.open(v,"_blank")};
+  if(openPc)openPc.onclick=()=>{const v=(document.getElementById("phoneUrl")||{}).value||location.href;openAppUrl(v,{sameWindowFallback:true}).catch(()=>{})};
   if(refresh)refresh.onclick=()=>loadCfg().then(()=>chip("link refreshed")).catch(()=>{});
 })();
 document.getElementById("reloadCfg").onclick=loadCfg;
@@ -6359,7 +7379,7 @@ document.getElementById("pingHealth").onclick=async()=>{
 };
 if(btnPersona)btnPersona.onclick=()=>{closeMoreMenu();loadPersonas();openSheet(personaSheet,btnPersona)};
 const btnWatch=document.getElementById("btnWatch");
-if(btnWatch)btnWatch.onclick=()=>{closeMoreMenu();window.open("/watch","_blank")};
+if(btnWatch)btnWatch.onclick=()=>{closeMoreMenu();openAppUrl("/watch",{sameWindowFallback:true}).catch(()=>{})};
 const btnWatchPin=document.getElementById("btnWatchPin");
 if(btnWatchPin)btnWatchPin.onclick=async()=>{
   try{
@@ -6380,7 +7400,7 @@ const closePersona=document.getElementById("closePersona");
 if(closePersona)closePersona.onclick=()=>closeAllSheets();
 if(personaSheet)personaSheet.addEventListener("click",e=>{if(e.target===personaSheet)closeAllSheets()});
 const personaApplyChat=document.getElementById("personaApplyChat");
-if(personaApplyChat)personaApplyChat.onclick=()=>{window.grokPresets&&window.grokPresets.savePresetState(personaId,directionId);if(sid)personaApplied.delete(sid);closeAllSheets();chip("persona ready · "+personaId+" · "+directionId)};
+if(personaApplyChat)personaApplyChat.onclick=()=>{window.grokPresets&&window.grokPresets.savePresetState(personaId,directionId);if(sid){personaApplied.delete(sid);savePersonaApplied()}closeAllSheets();chip("persona ready · "+personaId+" · "+directionId)};
 const personaInject=document.getElementById("personaInject");
 if(personaInject)personaInject.onclick=()=>injectPersonaNow().catch(e=>alert(e));
 if(btnTheme)btnTheme.onclick=()=>{closeMoreMenu();openSheet(themeSheet,btnTheme)};
@@ -6425,9 +7445,11 @@ function toggleOrbitMenu(e){
   const open=!m.classList.contains("on");
   closeMoreMenu();
   if(open){
+    closeAllSheets();
     m.hidden=false;m.classList.add("on");
     if(orbit){orbit.setAttribute("aria-expanded","true");orbit.classList.add("menu-open")}
     paintLivebar();
+    placeFixedMenu(m,orbit);
     requestAnimationFrame(()=>placeFixedMenu(m,orbit));
   }else closeOrbitMenu();
 }
@@ -6449,7 +7471,7 @@ function openPairPhone(){
   closeOrbitMenu();closeMoreMenu();
   const host=(location.hostname||"").toLowerCase();
   const local=host==="127.0.0.1"||host==="localhost";
-  if(local){window.open("/pair","_blank","noopener");return}
+  if(local){openAppUrl("/pair",{sameWindowFallback:true}).catch(()=>chip("phone pairing could not open"));return}
   try{showPage("setup",true)}catch(e){}
   loadCfg().then(()=>{
     const el=document.getElementById("easyConnect");
@@ -6469,6 +7491,8 @@ const btnStartRemoteMore=document.getElementById("btnStartRemoteMore");
 if(btnStartRemoteMore)btnStartRemoteMore.onclick=()=>{closeMoreMenu();startRemoteStack({force:true})};
 const btnStopRemoteMore=document.getElementById("btnStopRemoteMore");
 if(btnStopRemoteMore)btnStopRemoteMore.onclick=()=>{closeMoreMenu();stopRemoteStack()};
+const btnHealthMore=document.getElementById("btnHealthMore");
+if(btnHealthMore)btnHealthMore.onclick=()=>{closeMoreMenu();const b=document.getElementById("pingHealth");if(b)b.click()};
 const btnOrbitHealth=document.getElementById("btnOrbitHealth");
 if(btnOrbitHealth)btnOrbitHealth.onclick=async()=>{
   closeOrbitMenu();
@@ -6498,7 +7522,7 @@ const TOUR_STEPS=[
   {title:"2 · Sessions",body:"After connect, the left rail (or Sessions on phone) lists chats. New chat starts clean. Search filters titles. Archive only hides on this device.",sel:"#picker,#newSess",prep:()=>{try{if(isLinked())showPage("sessions",true);else showPage("setup",true)}catch(e){}}},
   {title:"3 · Chat",body:"The feed is live history + streaming replies. Tool cards show edits and terminal output. Use Search this chat to jump around.",sel:"#chatStage,#feed",prep:()=>{try{if(isLinked()&&sid)showPage("chat",true);else if(isLinked())showPage("sessions",true)}catch(e){}}},
   {title:"4 · Composer",body:"+ attaches files. Mic sits next to the box for Go voice. When busy: Interject / Queue / FYI. Cancel is its own button next to Send.",sel:"#foot .composer,#box,#send,#btnPlus,#btnComposerVoice,#msgModeRow,#btnCancelTurn",prep:()=>{try{if(isLinked())showPage("chat",true)}catch(e){}}},
-  {title:"5 · Settings",body:"Settings lives bottom-left on the sessions rail (and in the status row on phone). Skills, delivery, permission, apps, theme, start/stop. Composer still has Mic / XR.",sel:"#btnSettings,#btnSettingsFoot",prep:()=>{try{closeAllSheets();const m=document.getElementById("moreMenu");if(m){m.hidden=false;m.classList.add("on")}}catch(e){}}},
+  {title:"5 · Settings",body:"Settings lives bottom-left on the sessions rail (and in the status row on phone). Skills, delivery, permission, apps, theme, start/stop. Composer still has Mic / XR.",sel:"#btnSettings,#btnSettingsFoot",prep:()=>{try{closeAllSheets();const m=document.getElementById("moreMenu"),b=document.getElementById("btnSettings")||document.getElementById("btnSettingsFoot");if(m){m.hidden=false;m.classList.add("on");placeFixedMenu(m,b)}}catch(e){}}},
   {title:"6 · Watch & XR",body:"Mic / XR sit next to the composer. Watch companion is under ☰ → Apps → Watch (/watch for Galaxy Watch).",sel:"#btnComposerXr,#btnComposerVoice,#btnMore",prep:()=>{try{closeAllSheets()}catch(e){}}},
   {title:"7 · Link + status",body:"RTT and hub sit on the bottom status row (ms · hub). Start / Stop live in Settings. Stop remote only kills the remote UI + agent serve — not your desktop Grok chat.",sel:"#livebar,#radioChip",prep:()=>{try{closeAllSheets();closeMoreMenu&&closeMoreMenu()}catch(e){}}},
   {title:"You’re ready",body:"From any Grok Build window: /remote · /remote stop · /remote-autostart. Re-open this tour from ☰ anytime. Have fun.",sel:null,prep:()=>{try{closeAllSheets()}catch(e){}}}
@@ -6609,6 +7633,7 @@ window.addEventListener("resize",()=>{
   updateLayoutClass();applySidebar();
   measureBottomStack();updateJump();
   if(page==="chat"&&isWideLayout()&&ws&&ws.readyState===1&&!sidebarCollapsed)picker.classList.add("on");
+  else if(page==="chat"&&!isWideLayout())picker.classList.remove("on");
 });
 (async()=>{
   try{
@@ -6621,6 +7646,7 @@ window.addEventListener("resize",()=>{
   loadLayout();
   loadUx();
   loadTitleOverrides();
+  loadPersonaApplied();
   (function waitKatex(n){
     if(window.katex){flushMathQueue();return}
     if(n>80)return;
@@ -6697,7 +7723,14 @@ window.addEventListener("resize",()=>{
   const doAuto=!isDemoMode()&&(q.get("auto")==="1"||q.get("auto")!=="0"&&(window.grokRemote&&window.grokRemote.autoConnect!==false||!window.grokRemote&&location.protocol!=="file:"));
   if(doAuto){
     reconnectArmed=true;wantReconnect=true;connectAttempt=0;
-    showPage("setup",true);
+    const desk=q.get("desktop")==="1"||q.get("layout")==="desktop"||isWideLayout();
+    if(desk){
+      try{
+        const last=JSON.parse(localStorage.getItem("grok_remote_last")||"{}");
+        if(last&&last.sid&&!window.__wantSession)window.__wantSession=String(last.sid);
+      }catch(e){}
+      showPage("sessions",true);
+    }else showPage("setup",true);
     try{
       const h=await fetch("/health",{cache:"no-store"}).then(r=>r.json()).catch(()=>null);
       if(h&&h.ok===false){
@@ -6713,9 +7746,12 @@ window.addEventListener("resize",()=>{
       try{await connect()}catch(x){}
     }
     if(!(ws&&ws.readyState===1)){
-      showPage("setup",true);
+      if(!(q.get("desktop")==="1"||q.get("layout")==="desktop"||isWideLayout()))showPage("setup",true);
       paintLinkBanner("Still offline · check Wi‑Fi + Start Server, or copy phone link below");
-      chip("offline · use Copy link / Start Server");
+      try{
+        const h2=await fetch("/health",{cache:"no-store"}).then(r=>r.json()).catch(()=>null);
+        if(!(h2&&h2.ok))chip("offline · use Copy link / Start Server");
+      }catch(e){chip("offline · use Copy link / Start Server")}
     }
   }else{
     showPage("setup",true);
@@ -6752,7 +7788,7 @@ window.addEventListener("resize",()=>{
   <div class="room-hint" id="roomHint"></div>
 </div>
 <style>
-#roomDock{position:fixed;right:14px;bottom:14px;width:min(380px,92vw);max-height:min(60vh,520px);z-index:60;
+#roomDock{position:fixed;right:14px;bottom:14px;width:min(380px,92vw);max-height:min(60vh,520px);z-index:var(--z-modal);
  display:flex;flex-direction:column;background:var(--panel);border:1px solid var(--line);border-radius:14px;
  box-shadow:0 18px 48px -16px rgba(0,0,0,.6);overflow:hidden;font-size:13px}
 #roomDock[hidden]{display:none}

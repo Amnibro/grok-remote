@@ -1,6 +1,6 @@
 {
     "name":  "grok-remote",
-    "version":  "1.9.5",
+    "version":  "1.9.20",
     "description":  "Live phone controller for Grok Build. LAN UI+ACP proxy, multi-session, live stream, Skills, New Task. Optional auto-start on Grok SessionStart and/or Windows logon. Commands: /remote /remote-stop /remote-autostart",
     "author":  {
                    "name":  "Anthony"

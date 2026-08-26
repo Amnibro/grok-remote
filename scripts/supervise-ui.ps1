@@ -30,11 +30,21 @@ $env:GROK_AGENT_SECRET = $Secret
 $supLog = Join-Path $logDir "supervisor.log"
 function Log([string]$m) { Add-Content -Path $supLog -Value ("[{0}] {1}" -f (Get-Date -Format "yyyy-MM-dd HH:mm:ss"), $m) -ErrorAction SilentlyContinue }
 Log "supervise-ui start port=$UiPort"
+function PortOpen([int]$p) {
+  try {
+    $c = New-Object System.Net.Sockets.TcpClient
+    $iar = $c.BeginConnect("127.0.0.1", $p, $null, $null)
+    $ok = $iar.AsyncWaitHandle.WaitOne(400, $false) -and $c.Connected
+    try { $c.Close() } catch {}
+    return [bool]$ok
+  } catch { return $false }
+}
 while ($true) {
   try {
-    $h = Invoke-RestMethod ("http://127.0.0.1:{0}/health" -f $UiPort) -TimeoutSec 2
+    $h = Invoke-RestMethod ("http://127.0.0.1:{0}/health" -f $UiPort) -TimeoutSec 6
     if ($h.ok) { Start-Sleep -Seconds 8; continue }
   } catch {}
+  if (PortOpen $UiPort) { Log "port $UiPort open, health slow  - not killing"; Start-Sleep -Seconds 8; continue }
   $lines = netstat -ano | Select-String (":{0}\s+.*LISTENING" -f $UiPort)
   foreach ($ln in $lines) {
     $procId = ($ln.ToString().Trim() -split "\s+")[-1]
@@ -61,7 +71,7 @@ while ($true) {
     Start-Sleep -Seconds 2
     if ($p.HasExited) { Log ("ui launcher exited code={0}" -f $p.ExitCode); break }
     try {
-      $h = Invoke-RestMethod ("http://127.0.0.1:{0}/health" -f $UiPort) -TimeoutSec 2
+      $h = Invoke-RestMethod ("http://127.0.0.1:{0}/health" -f $UiPort) -TimeoutSec 6
       if ($h.ok) { $up = $true; break }
     } catch {}
   }
@@ -69,9 +79,10 @@ while ($true) {
   while ($true) {
     Start-Sleep -Seconds 8
     try {
-      $h = Invoke-RestMethod ("http://127.0.0.1:{0}/health" -f $UiPort) -TimeoutSec 2
-      if (-not $h.ok) { Log "health not ok · restart"; break }
+      $h = Invoke-RestMethod ("http://127.0.0.1:{0}/health" -f $UiPort) -TimeoutSec 6
+      if (-not $h.ok) { Log "health not ok · wait"; Start-Sleep -Seconds 8; continue }
     } catch {
+      if (PortOpen $UiPort) { Log "health fail but port open  - not restarting"; continue }
       Log "health fail · restart"
       break
     }
