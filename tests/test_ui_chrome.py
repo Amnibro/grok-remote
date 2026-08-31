@@ -299,8 +299,8 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "guitar_playing" in idles
     assert "point_ahead" in life
     assert "hand_on_heart" in life
-    assert "standing_clap" in life
-    assert "wave_hello" in life
+    assert "standing_clap" not in life
+    assert "wave_hello" not in life
     assert "interact" in life
     assert "female_walk" not in life
     assert "kneel" in extra
@@ -448,6 +448,12 @@ def test_idle_chain_uses_seamless_mixamo():
     extra=srv[srv.find("def extra_life"):srv.find("def fade_pad")]
     assert "surprised" in extra
     assert "sad_pose" in extra
+    extra=srv[srv.find("def extra_life"):srv.find("def fade_pad")]
+    assert "wave_hello" in extra
+    assert "standing_clap" in extra
+    em=srv[srv.find("EMOTES"):srv.find("state =")]
+    assert '"clap": "standing_clap"' in em
+    assert '"wave": "wave_hello"' in em
 if __name__=="__main__":
     test_pair_in_upper_right_menus()
     test_sess_filters_core_only_single_line()
