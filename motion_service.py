@@ -173,27 +173,45 @@ async def alive_loop(app):
         if since < nxt:
             continue
         since = 0.0
-        nxt = random.uniform(22, 42)
         if time.time() < state.get("gesture_until", 0):
+            nxt = min(nxt, max(2.0, state.get("gesture_until", 0) - time.time() + 0.4))
+            continue
+        if state.get("follow_base") and time.time() >= state.get("follow_at", 0):
+            nb = state.pop("follow_base", None)
+            state.pop("follow_at", None)
+            if nb:
+                await fire(nb, "base", 1.1, "idle chain")
+            nxt = random.uniform(14, 26)
             continue
         if state.get("base") not in IDLES:
+            nxt = random.uniform(22, 42)
             continue
         quiet = time.time() - state.get("gesture_at", 0)
         pool = LIFE if state.get("base") == HOME else LIFE_SOFT
+        did = False
         if quiet > 8 and random.random() < 0.48:
             fresh = [c for c in pool if time.time() - recent.get(c, 0) > REPEAT_WINDOW]
             w = [LIFE_W[LIFE.index(c)] if c in LIFE else 1 for c in fresh]
             if fresh:
                 await fire(weighted(fresh, w), "gesture", 0.55, "life beat")
-                continue
-        if state.get("base") != HOME and random.random() < 0.7:
-            await fire(HOME, "base", 1.1, "idle home")
-            continue
-        alts = [c for c in IDLES if c != state.get("base")]
-        if not alts:
-            continue
-        pick = weighted(alts, [IDLE_W.get(c, 1) for c in alts])
-        await fire(pick, "base", 1.1, "idle chain")
+                await bcast({"type": "gaze", "target": "user", "seq": state["seq"]})
+                did = True
+                if random.random() < 0.4:
+                    alts = [c for c in IDLES if c != state.get("base")]
+                    if alts:
+                        state["follow_base"] = weighted(alts, [IDLE_W.get(c, 1) for c in alts])
+                        state["follow_at"] = state.get("gesture_until", time.time())
+        if not did:
+            if state.get("base") != HOME and random.random() < 0.7:
+                await fire(HOME, "base", 1.1, "idle home")
+                did = True
+            else:
+                alts = [c for c in IDLES if c != state.get("base")]
+                if alts:
+                    pick = weighted(alts, [IDLE_W.get(c, 1) for c in alts])
+                    await fire(pick, "base", 1.1, "idle chain")
+                    did = True
+        nxt = random.uniform(14, 26) if did else random.uniform(22, 42)
 async def start_bg(app):
     app["alive"] = asyncio.create_task(alive_loop(app))
     app["drain"] = asyncio.create_task(drain_loop(app))
