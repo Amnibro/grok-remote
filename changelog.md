@@ -1,3 +1,6 @@
+## 2026-08-31 mixer finished restores idle; kneel skip; dwell 24s
+- mixer finished calls endGesture so a throttled timer cannot freeze the last Mixamo frame. Kneel/pray/squat skip. Briefcase dwell 24s.
+
 ## 2026-08-31 rephase briefcase, lerp gaze, keep dwell
 - Stay-home ticks fire idle rephase (timeScale jitter). fire() keeps base_at when the clip is already the base.
 - Additive gaze lerps (dt*3.2) instead of snapping the neck.
