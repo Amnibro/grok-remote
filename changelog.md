@@ -1,3 +1,7 @@
+## 2026-08-31 idle chain slept 12-28s past follow_at
+- alive_loop always slept 12-28s, then since < nxt skipped a due follow_base. Sleep now shortens to follow_at / gesture_until, and follow_base runs before gaze.
+- Gesture holdMs divides by timeScale. Life beats start 0-0.15s in.
+
 ## 2026-08-31 stay-home idle, no HOME slam over pose state
 - pick_chain from briefcase stays home 58% so guitar/phone are not a 32s metronome. Same-base pick is a no-op. Life beats 62% on HOME, 40% on props.
 - warm(HOME) only plays if no idle is up. Dying idle unpauses before crossFadeTo.

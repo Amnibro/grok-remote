@@ -181,34 +181,39 @@ async def alive_loop(app):
     nxt = random.uniform(22, 42)
     since = 0.0
     while True:
+        now = time.time()
         nap = random.uniform(12, 28)
+        if state.get("follow_base"):
+            nap = min(nap, max(0.35, state.get("follow_at", now) - now))
+        gu = state.get("gesture_until", 0)
+        if now < gu:
+            nap = min(nap, max(0.35, gu - now + 0.12))
+        t0 = time.time()
         await asyncio.sleep(nap)
         if not clients:
             since = 0.0
             continue
-        since += nap
-        busy = time.time() < state.get("gesture_until", 0)
-        if since < nxt:
-            if not busy:
-                g = random.choices(["user", "user", "user", "left", "right", "down", "up", "away"], k=1)[0]
-                await bcast({"type": "gaze", "target": g, "seq": state["seq"]})
-            continue
-        since = 0.0
-        if busy:
-            nxt = min(nxt, max(2.0, state.get("gesture_until", 0) - time.time() + 0.4))
-            continue
+        since += time.time() - t0
+        now = time.time()
+        busy = now < state.get("gesture_until", 0)
         if state.get("follow_base"):
-            if pending or time.time() < state.get("gesture_until", 0):
-                wait = 0.8 if pending else max(1.2, state.get("gesture_until", 0) - time.time() + 0.4)
-                nxt = min(nxt, wait)
+            if pending or busy:
                 continue
-            if time.time() >= state.get("follow_at", 0):
+            if now >= state.get("follow_at", 0):
                 nb = state.pop("follow_base", None)
                 state.pop("follow_at", None)
                 if nb:
                     await fire(nb, "base", 1.1, "idle chain")
                 nxt = random.uniform(14, 26)
+                since = 0.0
                 continue
+        if busy:
+            continue
+        if since < nxt:
+            g = random.choices(["user", "user", "user", "left", "right", "down", "up", "away"], k=1)[0]
+            await bcast({"type": "gaze", "target": g, "seq": state["seq"]})
+            continue
+        since = 0.0
         if state.get("base") not in IDLES:
             if time.time() - state.get("base_at", 0) > 8:
                 await fire(HOME, "base", 1.1, "idle recover")
