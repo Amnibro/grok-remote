@@ -51,7 +51,9 @@ recent = {}
 pending = []
 async def fire(clip, layer, fade, note=""):
     state["seq"] += 1
-    if layer == "base":state.update(base=clip, base_at=time.time())
+    if layer == "base":
+        if state.get("base") != clip:state.update(base=clip, base_at=time.time())
+        else:state["base"] = clip
     else:
         state.update(gesture=clip, gesture_at=time.time())
         state["gesture_until"] = time.time() + clip_dur(clip)
@@ -259,10 +261,15 @@ async def alive_loop(app):
                 continue
             pick = pick_chain(cur)
             if pick == cur:
-                nxt = random.uniform(8, 16)
-                continue
-            await fire(pick, "base", 1.1, "idle home" if pick == HOME else "idle chain")
-            did = True
+                if cur == HOME:
+                    await fire(HOME, "base", 1.15, "idle rephase")
+                    did = True
+                else:
+                    nxt = random.uniform(8, 16)
+                    continue
+            else:
+                await fire(pick, "base", 1.1, "idle home" if pick == HOME else "idle chain")
+                did = True
         nxt = random.uniform(14, 26) if did else random.uniform(22, 42)
 async def start_bg(app):
     app["alive"] = asyncio.create_task(alive_loop(app))
