@@ -266,7 +266,7 @@ async def alive_loop(app):
             if fresh:
                 clip = weighted(fresh, w)
                 await fire(clip, "gesture", 0.55, "life beat")
-                if not str(clip).startswith("look"):
+                if fade_pad() > 0 and not str(clip).startswith("look"):
                     await bcast({"type": "gaze", "target": "user", "seq": state["seq"]})
                 did = True
                 if random.random() < 0.48:

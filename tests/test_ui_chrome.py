@@ -402,7 +402,7 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "const HOME=" in js[:js.find("curBase")]
     assert "curBase=HOME" in js.replace(" ","")
     assert "if(d.layer===\"base\")curBase=d.clip" in js.replace(" ","")
-    assert "if(d.type===\"state\"&&d.base){curBase=d.base" in js.replace(" ","")
+    assert "if(d.type===\"state\"&&d.base)" in js.replace(" ","")
     assert '"beckon"' in srv[srv.find("if clip in TRAVEL"):srv.find("if clip in TRAVEL")+520]
     assert "life_head" in js
     assert "life_soft" in js
@@ -423,6 +423,9 @@ def test_idle_chain_uses_seamless_mixamo():
     assert '"angry": "dismissing_gesture"' in em
     assert '"punch": "dismissing_gesture"' in em
     assert '"punch"' in srv[srv.find("if clip in TRAVEL"):srv.find("if clip in TRAVEL")+560]
+    assert "fade_pad() > 0" in alive or "fade_pad()>0" in alive.replace(" ","")
+    assert "getClip().name" in js.replace(" ","")
+    assert "nm!==String(d.base)" in js.replace(" ","")
 if __name__=="__main__":
     test_pair_in_upper_right_menus()
     test_sess_filters_core_only_single_line()
