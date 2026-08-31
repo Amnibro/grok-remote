@@ -169,6 +169,8 @@ def pick_chain(cur):
     if cur != HOME:
         state["last_prop"] = cur
         return HOME
+    if random.random() < 0.58:
+        return HOME
     alts = [c for c in IDLES if c != HOME and c != state.get("last_prop")]
     if not alts:
         alts = [c for c in IDLES if c != HOME]
@@ -217,7 +219,7 @@ async def alive_loop(app):
         quiet = time.time() - state.get("gesture_at", 0)
         pool = LIFE_HEAD if state.get("base") == "guitar_playing" else (LIFE_SOFT if state.get("base") != HOME else LIFE)
         did = False
-        if quiet > 8 and random.random() < 0.48:
+        if quiet > 8 and random.random() < (0.62 if state.get("base") == HOME else 0.4):
             lasts = sorted(recent, key=recent.get, reverse=True)[:2]
             last_fam = FAM.get(state.get("gesture") or "")
             def ok(c, fam=True, rec=True):
@@ -240,7 +242,7 @@ async def alive_loop(app):
                     nxtb = pick_chain(state.get("base"))
                     dwell0 = time.time() - state.get("base_at", 0)
                     need0 = IDLE_DWELL.get(state.get("base"), 20)
-                    if nxtb == HOME or dwell0 >= need0:
+                    if nxtb != state.get("base") and (nxtb == HOME or dwell0 >= need0):
                         state["follow_base"] = nxtb
                         state["follow_at"] = state.get("gesture_until", time.time())
         if not did:
@@ -251,6 +253,9 @@ async def alive_loop(app):
                 nxt = random.uniform(8, 16)
                 continue
             pick = pick_chain(cur)
+            if pick == cur:
+                nxt = random.uniform(8, 16)
+                continue
             await fire(pick, "base", 1.1, "idle home" if pick == HOME else "idle chain")
             did = True
         nxt = random.uniform(14, 26) if did else random.uniform(22, 42)
