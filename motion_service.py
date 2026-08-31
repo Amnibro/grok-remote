@@ -178,6 +178,8 @@ def prop_ok(clip):
         return clip in LIFE_HEAD
     if b == "talking_on_phone":
         return clip in LIFE_SOFT
+    if b == HOME and clip in ARM_LEFT:
+        return False
     return True
 def weighted(names, weights):
     use = [(n, weights[i] if i < len(weights) else 1) for i, n in enumerate(names)]

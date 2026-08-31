@@ -4,10 +4,11 @@ export function initMotion(ctx){
   const gestureOut=new Map(),fetchedClips=new Set(),warming=new Map();
   const HOME="standing_w_briefcase_idle";
   let mws=null,pendingPlays=[],actGesture=null,pendingBase=null,clipIx={},mixerHooked=false,pbTimer=null,curBase=HOME,baseHold=0;
-  const HEAD=new Set(["module_check","machinamachina_spark"]),SOFT=new Set(["module_check","machinamachina_spark","chin_think"]);
+  const HEAD=new Set(["module_check","machinamachina_spark"]),SOFT=new Set(["module_check","machinamachina_spark","chin_think"]),LEFT=new Set(["waist_side_stretch","sun_salute","chin_think","interact"]);
   function clientPropOk(clip){
     if(curBase==="guitar_playing")return HEAD.has(clip);
     if(curBase==="talking_on_phone")return SOFT.has(clip);
+    if(curBase===HOME)return !LEFT.has(clip);
     return true;
   }
   function keepIdle(clip){return HEAD.has(clip)||(clip==="chin_think"&&curBase==="talking_on_phone")}

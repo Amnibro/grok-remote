@@ -1,3 +1,6 @@
+## 2026-08-31 play() and the XR client refuse left-arm takes on briefcase
+- prop_ok False for ARM_LEFT on HOME. Client LEFT set matches. Phone chin_think still allowed.
+
 ## 2026-08-31 briefcase idle skips left-arm Mixamo
 - HOME pool is LIFE minus ARM_LEFT (waist_side_stretch, sun_salute, chin_think, interact). Phone still LIFE_SOFT.
 
