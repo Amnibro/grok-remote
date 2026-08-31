@@ -1,3 +1,6 @@
+## 2026-08-31 gaze eases out; client skips leftover travel Mixamo
+- Additive gaze lerps to 0 instead of snapping. travelSkip on non-base plays.
+
 ## 2026-08-31 guitar idle starts in the first 12%; surprised is rarer
 - Looping bases >4s start in the first 12% (cap 2.5s). surprised LIFE_W is 1.
 

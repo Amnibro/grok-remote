@@ -398,7 +398,7 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "function clientPropOk(" in js
     assert "const HEAD=new Set" in js
     assert "SOFT=new Set" in js
-    assert "layer!==\"base\"&&!clientPropOk" in js.replace(" ","")
+    assert "layer!==\"base\"&&(travelSkip(name)||!clientPropOk" in js.replace(" ","")
     assert "const HOME=" in js[:js.find("curBase")]
     assert "curBase=HOME" in js.replace(" ","")
     assert "if(d.layer===\"base\")curBase=d.clip" in js.replace(" ","")
@@ -438,6 +438,10 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "c.duration>4" in js.replace(" ","")
     assert "c.duration*0.12" in js.replace(" ","")
     assert "LIFE_W = [2, 2, 2, 1," in srv
+    assert "function travelSkip(" in js
+    assert "travelSkip(name)||!clientPropOk" in js.replace(" ","")
+    assert "want=!holding&&motionState.gazeTarget" in html.replace(" ","")
+    assert "want?yaw:0" in html.replace(" ","")
 if __name__=="__main__":
     test_pair_in_upper_right_menus()
     test_sess_filters_core_only_single_line()
