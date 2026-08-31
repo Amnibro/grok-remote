@@ -380,6 +380,10 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "headBone" in html
     em=srv[srv.find("EMOTES"):srv.find("state =")]
     assert '"come": "interact"' in em
+    assert "if(pendingBase)queueBase" in js.replace(" ","")
+    assert "if(pendingBase){queueBase" not in js.replace(" ","")
+    assert "gazeWP" in html
+    assert "xrP" in html
 if __name__=="__main__":
     test_pair_in_upper_right_menus()
     test_sess_filters_core_only_single_line()

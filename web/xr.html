@@ -1245,6 +1245,7 @@ function perform(t,dt,lvl,overlay){
 /* ---------- loop ---------- */
 const clock=new THREE.Clock();
 const gazeQ=new THREE.Quaternion(),gazeE=new THREE.Euler();
+const gazeWP=new THREE.Vector3(),xrP=new THREE.Vector3();
 let headBone=null,hipsBone=null,neckBone=null;
 renderer.setAnimationLoop(()=>{
   const dt=Math.min(0.05,clock.getDelta());
@@ -1281,8 +1282,8 @@ renderer.setAnimationLoop(()=>{
           let yaw=GZ[g];
           if(g==="user"){
             const cam=renderer.xr.isPresenting?renderer.xr.getCamera():camera;
-            const wp=new THREE.Vector3();cam.getWorldPosition(wp);
-            const lp=rig.worldToLocal(wp);
+            cam.getWorldPosition(gazeWP);
+            const lp=rig.worldToLocal(gazeWP);
             yaw=Math.max(-0.4,Math.min(0.4,Math.atan2(lp.x,Math.max(0.2,lp.z))));
           }
           const pit=g==="up"?0.18:g==="down"?-0.14:0;
@@ -1305,8 +1306,8 @@ renderer.setAnimationLoop(()=>{
   if(prevOn)applyOrbit();
   if(renderer.xr.isPresenting&&performance.now()>=(motionState.gestureHold||0)){
     const cam=renderer.xr.getCamera();
-    const p=new THREE.Vector3();cam.getWorldPosition(p);
-    const a=Math.atan2(p.x-rig.position.x,p.z-rig.position.z);
+    cam.getWorldPosition(xrP);
+    const a=Math.atan2(xrP.x-rig.position.x,xrP.z-rig.position.z);
     rig.rotation.y+=(a-rig.rotation.y)*Math.min(1,dt*0.7);
   }
   renderer.render(scene,camera);

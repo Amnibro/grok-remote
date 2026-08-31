@@ -1,3 +1,6 @@
+## 2026-08-31 idle fade-in during pending guitar; reuse gaze vectors
+- endGesture always fadeIn idle even when pendingBase is set. Gaze/XR yaw reuse Vector3.
+
 ## 2026-08-31 cancel stale pbTimer; cache mixamo bones; come is interact
 - Successful base play clears pbTimer. Head/Hips/Neck cached. come maps to interact.
 
