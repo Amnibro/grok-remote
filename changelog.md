@@ -1,3 +1,6 @@
+## 2026-08-31 head nods do not park the idle chain
+- fade_pad is 0 on LIFE_HEAD. Client baseHold only when idle was frozen. agree out of LIFE_SOFT (full skeleton).
+
 ## 2026-08-31 head Mixamo overlays the idle; chain leaves home more
 - keepIdle leaves guitar/phone/briefcase running under Head/Neck takes. FAM splits check vs spark. pick_chain stay-home 0.45. Prop life 0.55. Follow-after-beat 0.48.
 

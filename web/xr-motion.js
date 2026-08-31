@@ -3,8 +3,8 @@ export function initMotion(ctx){
   const state=ctx.state||{gestureHold:0,gazeTarget:null,gazeUntil:0};
   const gestureOut=new Map(),fetchedClips=new Set(),warming=new Map();
   const HOME="standing_w_briefcase_idle";
-  let mws=null,pendingPlays=[],actGesture=null,pendingBase=null,clipIx={},mixerHooked=false,pbTimer=null,curBase=HOME;
-  const HEAD=new Set(["module_check","machinamachina_spark"]),SOFT=new Set(["agree","module_check","machinamachina_spark","chin_think"]);
+  let mws=null,pendingPlays=[],actGesture=null,pendingBase=null,clipIx={},mixerHooked=false,pbTimer=null,curBase=HOME,baseHold=0;
+  const HEAD=new Set(["module_check","machinamachina_spark"]),SOFT=new Set(["module_check","machinamachina_spark","chin_think"]);
   function clientPropOk(clip){
     if(curBase==="guitar_playing")return HEAD.has(clip);
     if(curBase==="talking_on_phone")return SOFT.has(clip);
@@ -53,7 +53,7 @@ export function initMotion(ctx){
   }
   function queueBase(name,fade){
     pendingBase=[name,fade];
-    const wait=Math.max(40,(state.gestureHold||0)-performance.now()+40);
+    const wait=Math.max(40,baseHold-performance.now()+40);
     if(pbTimer)clearTimeout(pbTimer);
     pbTimer=setTimeout(flushBase,wait);
   }
@@ -61,6 +61,7 @@ export function initMotion(ctx){
     if(actGesture!==a)return;
     if(gestureOut.has(a)){clearTimeout(gestureOut.get(a));gestureOut.delete(a)}
     state.gestureHold=performance.now()+480;
+    if(!keepIdle(state.lastGesture||""))baseHold=performance.now()+480;
     try{a.fadeOut(0.45)}catch(e){}
     setTimeout(()=>{try{a.stop();a.enabled=false}catch(e){}},480);
     if(actGesture===a)actGesture=null;
@@ -84,7 +85,7 @@ export function initMotion(ctx){
     hookMixer();
     if(layer==="base"&&!canLoop(name))name=HOME;
     if(layer!=="base"&&!clientPropOk(name))return;
-    if(layer==="base"&&performance.now()<state.gestureHold){queueBase(name,fade);return}
+    if(layer==="base"&&performance.now()<baseHold){queueBase(name,fade);return}
     const c=findClip(name);
     if(!c){warm(name).then(ok=>{if(ok)motionPlay(name,layer,fade)});return}
     stripRoot(c);
@@ -134,6 +135,7 @@ export function initMotion(ctx){
       }
       actGesture=a;
       state.gestureHold=performance.now()+holdMs;
+      if(!keepIdle(name))baseHold=performance.now()+holdMs;
       state.lastGesture=name;
       document.title=document.title.replace(/ \| .*$/,"")+" | "+name;
       if(gestureOut.has(a))clearTimeout(gestureOut.get(a));

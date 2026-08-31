@@ -315,6 +315,7 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "look_over_shoulder" not in soft
     assert "module_check" in head
     assert "chin_think" in soft
+    assert "agree" not in soft
     assert "look_over_shoulder" in life
     assert "def prop_ok(" in srv
     assert "prop idle keeps the arms" in srv
@@ -383,7 +384,8 @@ def test_idle_chain_uses_seamless_mixamo():
     em=srv[srv.find("EMOTES"):srv.find("state =")]
     assert '"greet": "wave_hello"' in em
     assert '"sneaky": "look_over_shoulder"' in em
-    assert "busy = now < state.get(\"gesture_until\", 0) + FADE_PAD" in srv or "busy=now<state.get(\"gesture_until\",0)+FADE_PAD" in srv.replace(" ","")
+    assert "busy = now < state.get(\"gesture_until\", 0) + fade_pad()" in srv or "busy=now<state.get(\"gesture_until\",0)+fade_pad()" in srv.replace(" ","")
+    assert "def fade_pad(" in srv
     assert "jab_cross" in srv[srv.find("if clip in TRAVEL"):srv.find("if clip in TRAVEL")+500]
     assert "if(pbTimer){clearTimeout(pbTimer)" in js.replace(" ","")
     assert "headBone" in html
@@ -410,6 +412,10 @@ def test_idle_chain_uses_seamless_mixamo():
     assert '"machinamachina_spark": "spark"' in srv
     assert "random.random() < 0.48" in srv
     assert "0.62 if state.get(\"base\") == HOME else 0.55" in srv or "0.62 if state.get('base')==HOME else 0.55" in srv.replace(" ","")
+    assert "baseHold" in js
+    assert "baseHold-performance.now()" in js.replace(" ","")
+    assert "if(layer===\"base\"&&performance.now()<baseHold)" in js.replace(" ","")
+    assert "return 0.0 if state.get(\"gesture\") in LIFE_HEAD else FADE_PAD" in srv or "return 0.0 if state.get('gesture')in LIFE_HEAD else FADE_PAD" in srv.replace(" ","")
 if __name__=="__main__":
     test_pair_in_upper_right_menus()
     test_sess_filters_core_only_single_line()
