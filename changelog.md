@@ -1,3 +1,6 @@
+## 2026-08-31 guitar/phone life is head-only, not look_over_shoulder
+- look_over_shoulder is RightArm. LIFE_HEAD is module_check + machinamachina_spark. LIFE_SOFT is agree, those two, chin_think.
+
 ## 2026-08-31 freeze idle with timeScale 0 so fadeOut still runs
 - paused=true skipped three.js weight fading, so briefcase stayed at weight 1 under Mixamo. Gesture start uses timeScale=0; restore puts 0.94-1.08 back.
 
