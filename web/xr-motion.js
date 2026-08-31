@@ -19,11 +19,9 @@ export function initMotion(ctx){
     if(!m)return true;
     return m.loops!==false&&!(m.seam>40);
   }
-  function stopGestures(mixer,keep){
-    const acts=mixer._actions||[];
-    for(const x of acts){
-      if(x===keep||x===getActIdle())continue;
-      try{x.fadeOut(0.25)}catch(e){}
+  function stopGestures(keep){
+    if(actGesture&&actGesture!==keep){
+      try{actGesture.fadeOut(0.25)}catch(e){}
     }
   }
   function motionPlay(name,layer,fade){
@@ -42,7 +40,7 @@ export function initMotion(ctx){
       if(prev&&prev!==a)prev.crossFadeTo(a,Math.max(fade,0.7),true);
       setActIdle(a);
     }else{
-      stopGestures(mixer,a);
+      stopGestures(a);
       a.enabled=true;
       a.reset().setLoop(THREE.LoopOnce,1);
       a.clampWhenFinished=true;
