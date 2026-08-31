@@ -91,5 +91,6 @@ export function initMotion(ctx){
     mws.onerror=()=>{try{mws.close()}catch(e){}};
   }
   function flushPending(){if(pendingMotion){const p=pendingMotion;pendingMotion=null;motionPlay(...p)}}
+  fetchClip(HOME,"base",0.35);
   return {motionPlay,sendMotion,connect,flushPending,findClip,linked,state};
 }
