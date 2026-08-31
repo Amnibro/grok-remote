@@ -1275,25 +1275,31 @@ renderer.setAnimationLoop(()=>{
       const head=headBone,hips=hipsBone;
       if(hips){hips.position.x=0;hips.position.z=0}
       const holding=performance.now()<(motionState.gestureHold||0);
-      if(head&&!holding&&motionState.gazeTarget&&(!motionState.gazeUntil||performance.now()<motionState.gazeUntil)){
+      const want=!holding&&motionState.gazeTarget&&(!motionState.gazeUntil||performance.now()<motionState.gazeUntil);
+      let yaw=0,pit=0;
+      if(want){
         const GZ={user:0,left:0.38,right:-0.38,up:0,down:0,away:0.42};
         const g=String(motionState.gazeTarget).toLowerCase();
         if(Object.prototype.hasOwnProperty.call(GZ,g)){
-          let yaw=GZ[g];
+          yaw=GZ[g];
           if(g==="user"){
             const cam=renderer.xr.isPresenting?renderer.xr.getCamera():camera;
             cam.getWorldPosition(gazeWP);
             const lp=rig.worldToLocal(gazeWP);
             yaw=Math.max(-0.4,Math.min(0.4,Math.atan2(lp.x,Math.max(0.2,lp.z))));
           }
-          const pit=g==="up"?0.18:g==="down"?-0.14:0;
-          const k=Math.min(1,dt*3.2);
-          motionState.gz=(motionState.gz||0)+(yaw-(motionState.gz||0))*k;
-          motionState.gp=(motionState.gp||0)+(pit-(motionState.gp||0))*k;
+          pit=g==="up"?0.18:g==="down"?-0.14:0;
+        }
+      }else if(motionState.gazeUntil&&performance.now()>=motionState.gazeUntil){motionState.gazeTarget=null;motionState.gazeUntil=0}
+      if(head){
+        const k=Math.min(1,dt*3.2);
+        motionState.gz=(motionState.gz||0)+((want?yaw:0)-(motionState.gz||0))*k;
+        motionState.gp=(motionState.gp||0)+((want?pit:0)-(motionState.gp||0))*k;
+        if(Math.abs(motionState.gz)>0.001||Math.abs(motionState.gp)>0.001){
           head.quaternion.multiply(gazeQ.setFromEuler(gazeE.set(motionState.gp,motionState.gz,0)));
           if(neckBone)neckBone.quaternion.multiply(gazeQ.setFromEuler(gazeE.set(motionState.gp*0.4,motionState.gz*0.45,0)));
         }
-      }else if(motionState.gazeUntil&&performance.now()>=motionState.gazeUntil){motionState.gazeTarget=null;motionState.gazeUntil=0;motionState.gz=0;motionState.gp=0}
+      }
     }
     if(skelRoot)skelRoot.updateMatrixWorld(true);
     if(modelRoot)modelRoot.updateMatrixWorld(true);

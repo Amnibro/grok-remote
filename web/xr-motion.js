@@ -11,6 +11,7 @@ export function initMotion(ctx){
     return true;
   }
   function keepIdle(clip){return HEAD.has(clip)||(clip==="chin_think"&&curBase==="talking_on_phone")}
+  function travelSkip(n){return /(sit|lay|crouch|plank|walk|run|jog|sprint|dance|twerk|shuffle|kneel|pray|squat|angry|jump|jab_cross|beckon|punch)/i.test(n||"")}
   fetch("/static/clip_index.json",{cache:"no-store"}).then(r=>r.json()).then(j=>{clipIx=j.clips||{}}).catch(()=>{});
   function warmPool(){
     fetch(httpBase()+"/motion/alive",{cache:"no-store"}).then(r=>r.json()).then(j=>{
@@ -87,7 +88,7 @@ export function initMotion(ctx){
     if(!mixer){pendingPlays.push([name,layer,fade]);return}
     hookMixer();
     if(layer==="base"&&!canLoop(name))name=HOME;
-    if(layer!=="base"&&!clientPropOk(name))return;
+    if(layer!=="base"&&(travelSkip(name)||!clientPropOk(name)))return;
     if(layer==="base"&&performance.now()<baseHold){queueBase(name,fade);return}
     const c=findClip(name);
     if(!c){warm(name).then(ok=>{if(ok)motionPlay(name,layer,fade)});return}
