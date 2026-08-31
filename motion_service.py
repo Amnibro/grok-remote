@@ -128,6 +128,7 @@ LIFE = ["look_over_shoulder", "agree", "waist_side_stretch", "surprised", "dismi
 LIFE_W = [2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 2, 2, 1, 2, 1, 1]
 LIFE_SOFT = ["look_over_shoulder", "agree", "module_check", "machinamachina_spark", "surprised"]
 LIFE_HEAD = ["look_over_shoulder", "module_check", "machinamachina_spark"]
+FAM = {"look_over_shoulder": "look", "agree": "nod", "chin_think": "nod", "salute": "arm_up", "sun_salute": "arm_up", "standing_clap": "arm_up", "wave_hello": "arm_up", "waist_side_stretch": "stretch", "point_ahead": "point", "dismissing_gesture": "point", "module_check": "soft", "machinamachina_spark": "soft", "surprised": "soft", "hand_on_heart": "heart", "bow_apology": "heart", "blow_kiss": "heart", "excited_bounce": "bounce"}
 def extra_life():
     p = os.path.join(os.path.dirname(os.path.abspath(__file__)), "web", "clip_index.json")
     if not os.path.isfile(p):
@@ -162,8 +163,11 @@ def weighted(names, weights):
     return use[-1][0]
 def pick_chain(cur):
     if cur != HOME:
+        state["last_prop"] = cur
         return HOME
-    alts = [c for c in IDLES if c != HOME]
+    alts = [c for c in IDLES if c != HOME and c != state.get("last_prop")]
+    if not alts:
+        alts = [c for c in IDLES if c != HOME]
     return weighted(alts, [IDLE_W.get(c, 1) for c in alts]) if alts else HOME
 async def get_alive(req):
     return cors(web.json_response({"home": HOME, "idles": IDLES, "life": LIFE, "life_soft": LIFE_SOFT, "life_head": LIFE_HEAD, "idle_w": IDLE_W}))
@@ -210,7 +214,16 @@ async def alive_loop(app):
         did = False
         if quiet > 8 and random.random() < 0.48:
             lasts = sorted(recent, key=recent.get, reverse=True)[:2]
-            fresh = [c for c in pool if c not in lasts and c != state.get("gesture") and time.time() - recent.get(c, 0) > REPEAT_WINDOW]
+            last_fam = FAM.get(state.get("gesture") or "")
+            def ok(c, fam=True, rec=True):
+                if c == state.get("gesture") or (rec and c in lasts) or (rec and time.time() - recent.get(c, 0) <= REPEAT_WINDOW):
+                    return False
+                return not (fam and last_fam and FAM.get(c) == last_fam)
+            fresh = [c for c in pool if ok(c)]
+            if not fresh:
+                fresh = [c for c in pool if ok(c, rec=False)]
+            if not fresh:
+                fresh = [c for c in pool if ok(c, fam=False, rec=False)]
             w = [LIFE_W[LIFE.index(c)] if c in LIFE else 1 for c in fresh]
             if fresh:
                 clip = weighted(fresh, w)

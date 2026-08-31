@@ -325,6 +325,10 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "if pending or time.time()" in alive
     assert '"walk"' in srv[srv.find("if clip in TRAVEL"):srv.find("if clip in TRAVEL")+280]
     assert '"up"' in alive[alive.find("random.choices"):alive.find("random.choices")+180]
+    assert "last_prop" in srv
+    assert "FAM =" in srv or "FAM=" in srv.replace(" ","")
+    assert "fadeS*1000+120" in js.replace(" ","")
+    assert "getActIdle()===a" in js.replace(" ","")
     assert "startswith(\"look\")" in alive or "startswith('look')" in alive
     html=(ROOT/"web"/"xr.html").read_text(encoding="utf-8")
     assert "!holding&&motionState.gazeTarget" in html.replace(" ","")
