@@ -426,6 +426,7 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "fade_pad() > 0" in alive or "fade_pad()>0" in alive.replace(" ","")
     assert "getClip().name" in js.replace(" ","")
     assert "nm!==String(d.base)" in js.replace(" ","")
+    assert "if(!keepIdle(state.lastGesture||\"\"))idl.fadeIn(0.45)" in js.replace(" ","")
 if __name__=="__main__":
     test_pair_in_upper_right_menus()
     test_sess_filters_core_only_single_line()

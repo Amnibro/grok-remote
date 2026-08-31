@@ -67,7 +67,10 @@ export function initMotion(ctx){
     if(actGesture===a)actGesture=null;
     if(pendingBase)queueBase(pendingBase[0],pendingBase[1]);
     const idl=getActIdle();
-    if(idl){idl.paused=false;if(idl.timeScale===0)idl.timeScale=0.94+Math.random()*0.14;idl.enabled=true;idl.setEffectiveWeight(1);idl.fadeIn(0.45)}
+    if(idl){
+      idl.paused=false;if(idl.timeScale===0)idl.timeScale=0.94+Math.random()*0.14;idl.enabled=true;idl.setEffectiveWeight(1);
+      if(!keepIdle(state.lastGesture||""))idl.fadeIn(0.45)
+    }
   }
   function stopGestures(keep){
     for(const [act,tid] of [...gestureOut]){

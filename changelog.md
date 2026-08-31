@@ -1,3 +1,6 @@
+## 2026-08-31 overlay end does not fadeIn the idle from weight 0
+- three.js fadeIn is 0→1. endGesture only fadeIn when the idle was frozen.
+
 ## 2026-08-31 reconnect does not rephase a live idle; overlay skips gaze:user
 - WS state skips motionPlay when the running idle already matches. Overlay life beats do not broadcast gaze:user.
 
