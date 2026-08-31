@@ -1,3 +1,7 @@
+## 2026-08-31 rephase briefcase, lerp gaze, keep dwell
+- Stay-home ticks fire idle rephase (timeScale jitter). fire() keeps base_at when the clip is already the base.
+- Additive gaze lerps (dt*3.2) instead of snapping the neck.
+
 ## 2026-08-31 idle chain slept 12-28s past follow_at
 - alive_loop always slept 12-28s, then since < nxt skipped a due follow_base. Sleep now shortens to follow_at / gesture_until, and follow_base runs before gaze.
 - Gesture holdMs divides by timeScale. Life beats start 0-0.15s in.

@@ -341,9 +341,13 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "!getActIdle()" in js.replace(" ","")
     assert "prev.paused=false" in js.replace(" ","")
     assert "(c.duration||1.2)/ts" in js.replace(" ","")
+    assert "idle rephase" in srv
+    assert "fade>=1.05" in js.replace(" ","")
+    assert "state.get(\"base\") != clip" in srv or "state.get('base')!=clip" in srv.replace(" ","")
     assert "startswith(\"look\")" in alive or "startswith('look')" in alive
     html=(ROOT/"web"/"xr.html").read_text(encoding="utf-8")
     assert "!holding&&motionState.gazeTarget" in html.replace(" ","")
+    assert "motionState.gz" in html
     assert "sitting_talking" not in html[html.find("You are in the room"):html.find("You are in the room")+800]
     assert "Stay standing" in html
 if __name__=="__main__":

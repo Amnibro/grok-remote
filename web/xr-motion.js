@@ -56,7 +56,9 @@ export function initMotion(ctx){
     if(layer==="base"){
       pendingBase=null;
       if(getActIdle()===a){
-        a.paused=false;a.enabled=true;a.setEffectiveWeight(1);a.fadeIn(Math.max(0.4,fade));
+        a.paused=false;a.enabled=true;a.setEffectiveWeight(1);
+        if(fade>=1.05&&c.duration>1)a.timeScale=0.9+Math.random()*0.2;
+        a.fadeIn(Math.max(0.4,fade));
         return;
       }
       a.paused=false;

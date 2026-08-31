@@ -1244,6 +1244,7 @@ function perform(t,dt,lvl,overlay){
 
 /* ---------- loop ---------- */
 const clock=new THREE.Clock();
+const gazeQ=new THREE.Quaternion(),gazeE=new THREE.Euler();
 renderer.setAnimationLoop(()=>{
   const dt=Math.min(0.05,clock.getDelta());
   const t=uniforms.uTime.value+=dt;
@@ -1282,11 +1283,14 @@ renderer.setAnimationLoop(()=>{
             yaw=Math.max(-0.4,Math.min(0.4,Math.atan2(lp.x,Math.max(0.2,lp.z))));
           }
           const pit=g==="up"?0.18:g==="down"?-0.14:0;
-          head.quaternion.multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(pit,yaw,0)));
+          const k=Math.min(1,dt*3.2);
+          motionState.gz=(motionState.gz||0)+(yaw-(motionState.gz||0))*k;
+          motionState.gp=(motionState.gp||0)+(pit-(motionState.gp||0))*k;
+          head.quaternion.multiply(gazeQ.setFromEuler(gazeE.set(motionState.gp,motionState.gz,0)));
           const neck=skeleton.bones.find(b=>/neck$/i.test(b.name));
-          if(neck)neck.quaternion.multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(pit*0.4,yaw*0.45,0)));
+          if(neck)neck.quaternion.multiply(gazeQ.setFromEuler(gazeE.set(motionState.gp*0.4,motionState.gz*0.45,0)));
         }
-      }else if(motionState.gazeUntil&&performance.now()>=motionState.gazeUntil){motionState.gazeTarget=null;motionState.gazeUntil=0}
+      }else if(motionState.gazeUntil&&performance.now()>=motionState.gazeUntil){motionState.gazeTarget=null;motionState.gazeUntil=0;motionState.gz=0;motionState.gp=0}
     }
     if(skelRoot)skelRoot.updateMatrixWorld(true);
     if(modelRoot)modelRoot.updateMatrixWorld(true);
