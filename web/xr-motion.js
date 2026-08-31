@@ -2,7 +2,7 @@ export function initMotion(ctx){
   const {THREE,getMixer,getClips,getActIdle,setActIdle,panels}=ctx;
   const state=ctx.state||{gestureHold:0,gazeTarget:null,gazeUntil:0};
   const gestureOut=new Map(),fetchedClips=new Set(),warming=new Map();
-  let mws=null,pendingPlays=[],actGesture=null,pendingBase=null,clipIx={},mixerHooked=false;
+  let mws=null,pendingPlays=[],actGesture=null,pendingBase=null,clipIx={},mixerHooked=false,pbTimer=null;
   fetch("/static/clip_index.json",{cache:"no-store"}).then(r=>r.json()).then(j=>{clipIx=j.clips||{}}).catch(()=>{});
   function warmPool(){
     fetch(httpBase()+"/motion/alive",{cache:"no-store"}).then(r=>r.json()).then(j=>{
@@ -39,6 +39,17 @@ export function initMotion(ctx){
     mixerHooked=true;
     mixer.addEventListener("finished",ev=>{if(ev.action===actGesture)endGesture(ev.action)});
   }
+  function flushBase(){
+    pbTimer=null;
+    const pb=pendingBase;pendingBase=null;
+    if(pb)motionPlay(pb[0],"base",pb[1]);
+  }
+  function queueBase(name,fade){
+    pendingBase=[name,fade];
+    const wait=Math.max(40,(state.gestureHold||0)-performance.now()+40);
+    if(pbTimer)clearTimeout(pbTimer);
+    pbTimer=setTimeout(flushBase,wait);
+  }
   function endGesture(a){
     if(actGesture!==a)return;
     if(gestureOut.has(a)){clearTimeout(gestureOut.get(a));gestureOut.delete(a)}
@@ -46,11 +57,7 @@ export function initMotion(ctx){
     try{a.fadeOut(0.45)}catch(e){}
     setTimeout(()=>{try{a.stop();a.enabled=false}catch(e){}},480);
     if(actGesture===a)actGesture=null;
-    if(pendingBase){
-      const pb=pendingBase;
-      setTimeout(()=>{if(pendingBase!==pb)return;pendingBase=null;motionPlay(pb[0],"base",pb[1])},500);
-      return;
-    }
+    if(pendingBase){queueBase(pendingBase[0],pendingBase[1]);return}
     const idl=getActIdle();
     if(idl){idl.paused=false;idl.enabled=true;idl.setEffectiveWeight(1);idl.fadeIn(0.45)}
   }
@@ -69,7 +76,7 @@ export function initMotion(ctx){
     if(!mixer){pendingPlays.push([name,layer,fade]);return}
     hookMixer();
     if(layer==="base"&&!canLoop(name))name=HOME;
-    if(layer==="base"&&performance.now()<state.gestureHold){pendingBase=[name,fade];return}
+    if(layer==="base"&&performance.now()<state.gestureHold){queueBase(name,fade);return}
     const c=findClip(name);
     if(!c){warm(name).then(ok=>{if(ok)motionPlay(name,layer,fade)});return}
     stripRoot(c);
