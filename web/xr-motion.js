@@ -83,6 +83,7 @@ export function initMotion(ctx){
     const a=mixer.clipAction(c);
     fade=fade||0.4;
     if(layer==="base"){
+      if(pbTimer){clearTimeout(pbTimer);pbTimer=null}
       pendingBase=null;
       if(getActIdle()===a){
         a.paused=false;a.enabled=true;a.setEffectiveWeight(1);
