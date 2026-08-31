@@ -190,6 +190,9 @@ async def alive_loop(app):
         gu = state.get("gesture_until", 0)
         if now < gu:
             nap = min(nap, max(0.35, gu - now + 0.12))
+        rem = nxt - since
+        if rem > 0:
+            nap = min(nap, max(0.5, rem))
         t0 = time.time()
         await asyncio.sleep(nap)
         if not clients:

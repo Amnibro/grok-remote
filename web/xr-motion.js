@@ -42,6 +42,7 @@ export function initMotion(ctx){
   function endGesture(a){
     if(actGesture!==a)return;
     if(gestureOut.has(a)){clearTimeout(gestureOut.get(a));gestureOut.delete(a)}
+    state.gestureHold=0;
     try{a.fadeOut(0.45)}catch(e){}
     setTimeout(()=>{try{a.stop();a.enabled=false}catch(e){}},480);
     if(actGesture===a)actGesture=null;
