@@ -120,6 +120,25 @@ class HistoryMessagePriority(unittest.TestCase):
         self.assertTrue(meta["live"])
         self.assertLessEqual(len(got), 20)
 
+    def test_live_cursor_past_eof_does_not_dump_tail(self):
+        rows = [event("user_message_chunk", "hours ago")]
+        rows.append(event("agent_message_chunk", "old answer"))
+        session_dir = self.write_history(rows)
+        path = session_dir / "updates.jsonl"
+        size = path.stat().st_size
+
+        got, meta = read_session_updates(
+            session_dir,
+            limit=20,
+            since_bytes=size + 4096,
+            live=True,
+        )
+
+        self.assertEqual(got, [])
+        self.assertTrue(meta["reset"])
+        self.assertTrue(meta["live"])
+        self.assertEqual(meta["end"], size)
+
 
 if __name__ == "__main__":
     unittest.main()

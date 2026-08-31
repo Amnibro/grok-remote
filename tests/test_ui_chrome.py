@@ -12,6 +12,14 @@ def test_pair_in_upper_right_menus():
     assert 'id="btnPairPhone"' in orbit
     more=html[html.find('id="moreMenu"'):html.find('id="orbitMenu"')]
     assert 'id="btnPairPhoneMore"' in more
+    assert 'data-layer="home"' in more
+    assert 'data-goto="chat"' in more
+    assert "function showMoreLayer" in html
+    assert "function bindMoreLayers" in html
+    priv=html[html.find("if(btnPrivacy)"):html.find("if(btnPrivacy)")+160]
+    assert "closeMoreMenu()" not in priv
+    lay=html[html.find("if(btnLayoutToggle)"):html.find("if(btnLayoutToggle)")+180]
+    assert "closeMoreMenu()" not in lay
 def test_sess_filters_core_only_single_line():
     html=(ROOT/"web"/"index.html").read_text(encoding="utf-8")
     css=(ROOT/"web"/"braid-layout.css").read_text(encoding="utf-8")
@@ -44,6 +52,8 @@ def test_braid_md_and_work_dock_wired():
     assert "window.grokWork" in html
     md=(ROOT/"web"/"md.js").read_text(encoding="utf-8")
     assert "function md(" in md
+    assert 'class="path-link"' in md
+    assert "Ctrl+click to open" in md
     dock=(ROOT/"web"/"work-dock.js").read_text(encoding="utf-8")
     assert "window.grokWork" in dock
     assert "/api/fs/list" in dock
@@ -60,12 +70,20 @@ def test_interject_keeps_prior_and_no_auto_cancel_pile():
     keys=html[html.find('box.addEventListener("keydown"'):html.find('box.addEventListener("input"')]
     assert "if(sendInFlight&&!dbl)return" not in keys
     enq=html[html.find("function enqueueMsg"):html.find("function markAgentAttach")]
-    assert "Queued · " in enq
-    assert "it.echoed=true" in enq
+    assert "paintLocalUserTurn" not in enq
+    assert "Queued · " not in enq
+    assert "function echoQueuedSend" in html
+    echo=html[html.find("function echoQueuedSend"):html.find("async function sendQueuedNow")]
+    assert "paintLocalUserTurn" in echo
+    now=html[html.find("async function sendQueuedNow"):html.find("function enqueueMsg")]
+    assert "echoQueuedSend(item)" in now
+    drain=html[html.find("async function drainMsgQueue"):html.find("function nextId")]
+    assert "echoQueuedSend(item)" in drain
     assert "function finishTurnOrKeep" in html
     assert "pendingTools" in html
     assert "command still running" in html
     assert 'id="workNow"' in html
+    assert 'id="workKill"' in html
     assert "function paintWorkNow" in html
     assert "function workIsOn" in html
     assert "function fillThoughtBub" in html
@@ -99,7 +117,7 @@ def test_theme_is_bootstrapped_before_styles_load():
     head=html[:html.find('<link rel="stylesheet"')]
     assert 'root.setAttribute("data-variant",variant)' in head
     assert 'root.setAttribute("data-mode",mode)' in head
-    assert 'variant==="grok"?(mode==="light"?"#fafafa":"#000000")' in head
+    assert 'variant==="grok"?(mode==="light"?"#f4f4f5":"#111113")' in head
 def test_agent_restart_reattaches_active_session():
     html=(ROOT/"web"/"index.html").read_text(encoding="utf-8")
     fn=html[html.find("async function reattachSessionAfterHubRestart"):html.find("(function(){var f=document.getElementById")]
@@ -111,7 +129,7 @@ def test_archive_skin_supports_braid_and_legacy():
     html=(ROOT/"web"/"index.html").read_text(encoding="utf-8")
     skin=(ROOT/"web"/"grok-archive-skin.css").read_text(encoding="utf-8")
     cockpit=(ROOT/"web"/"cockpit-features.js").read_text(encoding="utf-8")
-    link='<link rel="stylesheet" href="/static/grok-archive-skin.css?v=4"/>'
+    link='<link rel="stylesheet" href="/static/grok-archive-skin.css?v=19"/>'
     assert link in html
     assert html.find("</style>") < html.find(link) < html.find("katex.min.css")
     assert 'html[data-layout="braid"][data-variant="grok"]' in skin
@@ -123,6 +141,7 @@ def test_archive_skin_supports_braid_and_legacy():
     assert 'data-variant="scient"' not in skin
     assert "openAppUrl(v,{sameWindowFallback:true})" in html
     assert "window.openAppUrl" in cockpit
+    assert "window.paintFootQuiet" in cockpit
     assert 'btnSkills.style.display=on?"":"none"' in html
     assert "encodeURIComponent(cwd)" in html
     assert "encodeURIComponent(cwd||" not in html
@@ -131,6 +150,142 @@ def test_archive_skin_supports_braid_and_legacy():
     assert ':2423/motion/state' not in html
     assert 'isDemoMode()&&expectSid.startsWith("demo-")' in html
     assert 'attachCwd&&!isDemoMode()' in html
+def test_agent_bar_and_session_rail_stay_put():
+    html=(ROOT/"web"/"index.html").read_text(encoding="utf-8")
+    skin=(ROOT/"web"/"grok-archive-skin.css").read_text(encoding="utf-8")
+    braid=(ROOT/"web"/"braid-layout.css").read_text(encoding="utf-8")
+    work=html[html.find(".work-line{"):html.find(".work-line{")+420]
+    assert "display:flex" in work
+    assert "display:none" not in work
+    on=html[html.find('.work-line[data-on="1"]'):html.find('.work-line[data-on="1"]')+80]
+    assert "display:flex" not in on
+    assert "function paintWorkNow" in html
+    paint=html[html.find("function paintWorkNow"):html.find("function applyWorkJob")]
+    assert "workTimer" not in paint
+    assert "workTick" not in paint
+    assert "bits.join(" in paint
+    assert "function applySessRow" in html
+    assert "function sessRowClass" in html
+    assert "function syncSessionWorkMarks" in html
+    assert "structSig" in html
+    render=html[html.find("function renderSessions"):html.find("const HORIZON_PUNS")]
+    assert "applySessRow(existing" in render
+    assert "syncSessionWorkMarks" in html[html.find('method==="_x.ai/work/changed"'):html.find('method==="_x.ai/queue/changed"')]
+    assert 'html[data-variant="grok"] .work-line' in skin
+    assert 'html[data-variant="grok"] #picker.panel.on' in skin
+    assert "function isPlaceholderSid" in html
+    assert "missing:true" in html[html.find("async function paintDiskHistory"):html.find("async function loadOlderHistory")]
+    assert "if(!ok&&lastErr&&!/invalid params" in html
+    assert "border-top: none !important" in skin
+    assert ".thought-row .nm" in skin
+    assert "font-style: italic" in skin
+    assert "border-radius: 22px 22px 8px 22px" in skin
+    assert "border-left: 3px solid #52525b" in skin
+    assert "background: #c4c4c8 !important" in skin
+    assert "#railHint" in skin
+    assert 'id="footQuiet"' in html
+    assert 'id="btnStatusDebug"' in html
+    assert "function paintFootQuiet" in html
+    assert "function toggleStatusDebug" in html
+    assert "window.paintFootQuiet" in html
+    assert 'id="agentRail"' in html
+    assert 'id="agentRailList"' in html
+    assert "function placeAgentView" in html
+    assert "function dismissAgentView" in html
+    assert "function syncAgentRail" in html
+    assert "function bindAgentRail" in html
+    assert "function paintAgentJobs" in html
+    assert "placeAgentView(el)" in html
+    assert "placeAgentView(row)" in html
+    assert "clearAgentRail()" in html
+    assert ".agent-rail" in skin
+    assert "2026-08-31-sess-list" in html
+    assert "else showPage(\"setup\",true)" not in html[html.find("const doAuto="):html.find("const forceTour=")]
+    assert "const linking=connecting||!!(ws&&(ws.readyState===0||ws.readyState===1))" in html
+    assert "#chatStage:not(.on){display:none!important" in html
+    assert "#chatStage:not(.on){display:none!important" in braid
+    assert 'src="/static/chat-runtime.js?v=2026-08-31-sess-list"' in html
+    assert "braid-layout.css?v=1.8.27" in html
+    assert "grok-archive-skin.css?v=19" in html
+    assert "function stampMsgRow" in html
+    assert "className=\"msg-at\"" in html
+    assert "_x.ai/remote/loop_fire" in html
+    assert "bits.length>0" in html
+    assert "inset 3px 0 0" not in html
+    assert "inset 3px 0 0" not in braid
+    assert "inset 3px 0 0" not in skin
+    assert "function uniqDotBits" in html
+    assert "function collapseRepeatNote" in html
+    assert "function workLineKind" in html
+    assert "if(agentQueueNote)bits.push" not in html
+    assert '.work-line{display:flex' in html and "overflow:visible" in html[html.find(".work-line{display:flex"):html.find(".work-line{display:flex")+400]
+    assert "else if(t===\"tool_call\"){curAgent=null;curThought=null;curThoughtRow=null}" in html
+    assert "work-spin-slot" in html
+    assert ".work-line .send-spin[hidden]{display:none!important}" in html
+    assert ".work-line .send-spin[hidden]{visibility:hidden;display:block!important" not in html
+    assert "rows.slice(0,-1).forEach(r=>r.classList.add(\"dismissed\"))" in html
+    assert "function feedHasUserText" in html
+    assert "if(!replaying&&display&&feedHasUserText(display)&&!media)" in html
+    assert "/returned nothing/i.test(String(job.detail||\"\"))" in html
+    assert ".work-kill,.work-kill[hidden]{display:none!important" in html
+    assert "kill.hidden=true" in html
+    assert "meta.reset" in html[html.find("async function diskLiveCatchup"):html.find("async function softCatchup")]
+    assert "window.grokChat.open" in html
+    assert "Do not wait on upstream ensure" in (ROOT/"server.py").read_text(encoding="utf-8")
+    hub=(ROOT/"server.py").read_text(encoding="utf-8")
+    assert "inbox=asyncio.Queue()" in hub
+    assert "heartbeat=45" in hub
+    onopen=html[html.find("ws.onopen=async"):html.find("ws.onmessage=")]
+    assert onopen.find("_x.ai/remote/hello") < onopen.find('req("initialize"')
+    assert onopen.find("fetchSessions") > onopen.find('req("initialize"')
+    assert "if(connecting||hubReinitBusy)return" in html
+    assert "chip._hitchAt" in html
+    assert "function settleRailTools" in html
+    assert "function dropAckedQueue" in html
+    assert "function bindPathOpens" in html
+    assert "function openExternalTarget" in html
+    assert 'fetch("/api/open"' in html
+    bind=html[html.find("function bindPathOpens"):html.find("window.bindPathOpens")]
+    assert "openLocInIde" not in bind
+    assert "e.ctrlKey||e.metaKey" in bind
+    assert "a.md-a" in bind
+    cockpit=(ROOT/"web"/"cockpit-features.js").read_text(encoding="utf-8")
+    wire=cockpit[cockpit.find("function wireToolPathClicks"):cockpit.find("function injectChrome")]
+    assert "openLocInIde" not in wire
+    assert "window.bindPathOpens" in wire
+    hub=(ROOT/"server.py").read_text(encoding="utf-8")
+    assert "app.router.add_post(\"/api/open\",open_external)" in hub
+    assert "def classify_open_target" in hub
+    assert "function selectionIn" in html
+    assert "if(selectionIn(bub))return" in html[html.find("function bindMsgPress"):html.find("function wireRx")]
+    assert ".bub{cursor:text;-webkit-touch-callout:default;-webkit-user-select:text;user-select:text}" in html
+    assert "function sessionIsWorking" in html
+    assert "d.className=sessRowClass(st)" in html
+    assert "sess-dot" in html[html.find("function sessTitleHtml"):html.find("function sessMetaHtml")]
+    assert "open-mark" not in html[html.find("function sessTitleHtml"):html.find("function sessMetaHtml")]
+    assert "open-mark" not in html[html.find("function paintSessionCurrent"):html.find("function setSelectedSession")]
+    assert "2026-08-31-sess-list" in html
+    assert "#sessList:not([data-ready" not in html
+    assert "#sessList:not([data-ready" not in braid
+    assert "function revealSessList" in html
+    assert "function paintCancelBtn" in html
+    assert "return cancelShown" in html[html.find("function workIsOn"):html.find("function collapseRepeatNote")]
+    assert "agent_thought_chunk|agent_message_chunk" not in html[html.find("async function diskLiveCatchup"):html.find("async function softCatchup")]
+    assert "if(!replaying&&!historyPainting&&!cancelInFlight" in html[html.find("else if(t===\"agent_thought_chunk\")"):html.find("else if(t===\"tool_call\"")]
+    assert "socket timeout" in html
+    assert "if(!sessionIdsMatch(sessionId,sid))return" in html
+    assert "if(evSid&&expectSid&&!sessionIdsMatch(evSid,expectSid))continue" in html
+    runtime=(ROOT/"web"/"chat-runtime.js").read_text(encoding="utf-8")
+    assert "function createChatRuntime" in runtime
+    assert "function idsMatch" in runtime
+    assert "belongs" in runtime
+    assert "function ensureHome" in runtime
+    assert "agent-home-act" in runtime
+    assert "placeBatch" in runtime
+    assert 'classList.contains("settled")' in runtime
+    assert "function turnHasAgentReply" in html
+    assert "underReply" in html
+    assert "title(id)" in html[html.find("function paintAgentJobs"):html.find("async function hydrateWork")]
 if __name__=="__main__":
     test_pair_in_upper_right_menus()
     test_sess_filters_core_only_single_line()
@@ -141,4 +296,5 @@ if __name__=="__main__":
     test_theme_is_bootstrapped_before_styles_load()
     test_agent_restart_reattaches_active_session()
     test_archive_skin_supports_braid_and_legacy()
+    test_agent_bar_and_session_rail_stay_put()
     print("ok")

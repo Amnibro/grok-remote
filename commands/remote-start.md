@@ -25,3 +25,4 @@ if (Test-Path "$PLUGIN\connect.url") { Get-Content "$PLUGIN\connect.url" }
 - PC browser: `http://127.0.0.1:2421/?auto=1`
 - Stop: UI **Stop** button, `/remote-stop`, or Desktop **Grok Remote Stop**
 - Pin: run `/remote` then UI **Pin**, or `scripts\install-shortcut.ps1`
+- Windows app: https://github.com/Amnibro/grok-remote/releases/latest/download/GrokRemote.exe

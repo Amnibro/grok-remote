@@ -123,6 +123,19 @@ grok plugin marketplace list
 
 Then install from the Marketplace tab (`/marketplace`) or CLI.
 
+## 3b. Windows desktop app
+
+The plugin is the hub (`:2421`). The optional **Tauri** window is a separate download (not inside the plugin, so install stays small).
+
+| Get | URL |
+|-----|-----|
+| Product page | https://amni-scient.com/grok-remote.html |
+| Portable exe | https://github.com/Amnibro/grok-remote/releases/latest/download/GrokRemote.exe |
+| NSIS setup | https://github.com/Amnibro/grok-remote/releases/latest/download/Grok.Remote_1.4.4_x64-setup.exe |
+| GitHub releases | https://github.com/Amnibro/grok-remote/releases |
+
+Ship a new desktop build: `cd desktop-tauri && npm run build`, then attach `grok-remote-desktop.exe` as `GrokRemote.exe` plus the NSIS/MSI bundles to the GitHub release. Cloudflare/GitHub Pages is a poor host for the binary — prefer the release asset.
+
 ## 4. After install — how people use it
 
 1. In Grok TUI: `/remote`
@@ -136,6 +149,7 @@ Then install from the Marketplace tab (`/marketplace`) or CLI.
 - [x] Skill `skills/remote` → `/remote`
 - [x] Commands `commands/remote.md`, `remote-stop.md`
 - [x] Runtime files `start.ps1`, `server.py`, `web/`
+- [x] Windows desktop: GitHub release `GrokRemote.exe` + amni-scient product page
 - [ ] Push to GitHub (your account)
 - [ ] Optional marketplace repo
 - [ ] `grok plugin validate` clean

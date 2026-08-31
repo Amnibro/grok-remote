@@ -16,6 +16,8 @@ metadata:
 
 Start (or manage) **Grok-Remote**: a **live** phone controller for Grok Build (not history-only).
 
+Windows desktop app: https://github.com/Amnibro/grok-remote/releases/latest/download/GrokRemote.exe — product page https://amni-scient.com/grok-remote.html. Hub plugin: `grok plugin install Amnibro/grok-remote --trust`.
+
 ## What it does
 
 1. Runs `grok agent --always-approve --leader serve` on **127.0.0.1:2419** (tools on this PC).

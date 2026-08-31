@@ -1,3 +1,11 @@
+## 2026-08-31 v1.9.21 / desktop v1.4.4 — session rail, quiet chrome, download lineup
+- Session list no longer flashes every archived chat on boot, then hides the rail. Active/Live/Arch
+  counts stay; rows paint from the local archive filter while the server copy syncs in the background.
+- Cancel and the work line ignore leftover catch-up thought/tool events. Status no longer flip-flops
+  thinking / waiting / idle while a chat hydrates.
+- Windows desktop download: GitHub release assets (`GrokRemote.exe`, NSIS, MSI) plus the amni-scient
+  product page. Plugin install stays `grok plugin install Amnibro/grok-remote@v1.9.21 --trust`.
+
 ## 2026-08-26 v1.9.20 / desktop v1.4.4 — dual-layout Grok theme and desktop reliability
 - The archive's quiet zinc-on-black Grok appearance now covers both Braid and Legacy. Braid keeps
   its wrapped two-row composer; Legacy keeps its flexible rail and single-row composer. Removed the

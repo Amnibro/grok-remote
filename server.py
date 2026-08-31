@@ -2,7 +2,7 @@
 import os,sys,json,socket,argparse,asyncio,mimetypes,subprocess,shutil,re,time,uuid
 from pathlib import Path
 from work_board import WorkBoard,strip_ask
-from urllib.parse import quote,unquote
+from urllib.parse import quote,unquote,urlparse
 ROOT=Path(__file__).resolve().parent
 try:
  import room as room_store
@@ -260,6 +260,13 @@ def _cache_session_dir(sid,cwd,d):
  if not d:return d
  _SID_DIR_CACHE[(sid,str(cwd or ""))]= (str(d),time.time()+90)
  return d
+def _sid_match(a,b):
+ """July 20 keep-rule: equal, or 8+ char prefix cut on a hyphen."""
+ x,y=str(a or "").strip(),str(b or "").strip()
+ if not x or not y:return False
+ if x==y:return True
+ short,long=(x,y) if len(x)<=len(y) else (y,x)
+ return len(short)>=8 and long.startswith(short) and (len(long)==len(short) or long[len(short)]=="-")
 def find_session_dir(session_id:str,cwd:str|None=None):
  sid=str(session_id or "").strip()
  if not sid or ".." in sid or "/" in sid or "\\" in sid:return None
@@ -294,6 +301,10 @@ def find_session_dir(session_id:str,cwd:str|None=None):
  hits=list(_sid_index().get(sid) or [])
  if not hits and (time.time()-_SID_INDEX_AT)>5.0:
   hits=list(_sid_index(force=True).get(sid) or [])
+ if not hits:
+  idx=_sid_index()
+  for k,dirs in idx.items():
+   if k!=sid and _sid_match(k,sid):hits.extend(dirs)
  hits=[d for d in hits if _session_dir_ok(d)]
  if len(hits)==1:return _cache_session_dir(sid,cwd,hits[0])
  if len(hits)>1:
@@ -452,9 +463,14 @@ def read_session_updates(session_dir:Path,limit=1600,max_bytes=8_000_000,since_b
  size=path.stat().st_size
  since=int(since_bytes or 0)
  if since<0:since=0
- if since>size:since=0
+ # A cursor past EOF is a rotate/truncate, not "read the last 512KB as new
+ # events". Dumping that tail made the client append hours-old You bubbles
+ # under a message that was just sent.
+ if live and since>size:
+  return [],{"path":str(path),"size":size,"returned":0,"scanned":0,"since":since,"live":True,"has_more":False,"end":size,"reset":True}
  if live and since>=size:
   return [],{"path":str(path),"size":size,"returned":0,"scanned":0,"since":since,"live":True,"has_more":False,"end":size}
+ if since>size:since=0
  end_pos=size
  window_start=0
  scored=[]
@@ -708,6 +724,44 @@ def under_root(path:Path,root:Path):
   path=path.resolve();root=root.resolve()
   return str(path).startswith(str(root)+os.sep) or path==root
  except Exception:return False
+_OPEN_BLOCK=re.compile(r"^(javascript|data|vbscript|about|blob):",re.I)
+_OPEN_URL=re.compile(r"^(https?://|mailto:)",re.I)
+def classify_open_target(raw,cwd=""):
+ s=str(raw or "").strip().strip("\"'").replace("\x00","")
+ s=re.sub(r"^📄\s*","",s)
+ s=re.sub(r"^(?:\[file\]\s*|file\s+)","",s,flags=re.I).strip()
+ if not s or len(s)>2048:return None,"empty"
+ if _OPEN_BLOCK.search(s):return None,"blocked"
+ if s.lower().startswith("file:"):
+  u=urlparse(s)
+  path=unquote(u.path or "")
+  if os.name=="nt":
+   if u.netloc:path="\\\\"+u.netloc+path.replace("/","\\")
+   elif re.match(r"^/[A-Za-z]:",path):path=path[1:].replace("/","\\")
+   else:path=path.replace("/","\\")
+  s=path
+ if _OPEN_URL.match(s):return "url",s
+ if re.match(r"^www\.",s,re.I):return "url","https://"+s
+ p=s
+ try:
+  if cwd and not os.path.isabs(p) and not str(p).startswith("\\\\"):
+   p=str(Path(cwd).expanduser()/p)
+  p=os.path.normpath(str(Path(p).expanduser()))
+ except Exception:
+  return None,"bad-path"
+ if os.path.exists(p):return "path",p
+ return None,"missing"
+def launch_open_target(kind,target):
+ if kind=="url":
+  import webbrowser
+  webbrowser.open(target,new=2)
+  return
+ if os.name=="nt":
+  os.startfile(target)
+ elif sys.platform=="darwin":
+  subprocess.Popen(["open",target])
+ else:
+  subprocess.Popen(["xdg-open",target])
 class HubTerminal:
  def __init__(self,tid,proc,limit=1_048_576):
   self.id=tid
@@ -795,6 +849,7 @@ class AgentHub:
   self.work=WorkBoard()
   self._work_dirty=False
   self._work_task=None
+  self._last_sid=""
  def _schedule_work_push(self):
   """A session/load replays the ENTIRE transcript over this socket, and every replayed tool_call
   used to fire its own _x.ai/work/changed. The client rebuilds the session rail on each one, so
@@ -905,7 +960,7 @@ class AgentHub:
   except ValueError:pass
   self._detach_client_pending(old)
   try:
-   if not getattr(old,"closed",True):await old.close()
+   if not getattr(old,"closed",True):await asyncio.wait_for(old.close(),1.0)
   except Exception:pass
   print("[hub] replaced duplicate client %s · n=%d"%(cid[:16],len(self.clients)),flush=True)
  def _ws_loopback(self,c):
@@ -942,7 +997,7 @@ class AgentHub:
    self.clients.discard(old)
    self._detach_client_pending(old)
    try:
-    if not getattr(old,"closed",True):await old.close()
+    if not getattr(old,"closed",True):await asyncio.wait_for(old.close(),1.0)
    except Exception:pass
    print("[hub] pruned extra client · n=%d"%len(self.clients),flush=True)
    print("[hub] dropped stale client · n=%d"%len(self.clients),flush=True)
@@ -1183,6 +1238,23 @@ class AgentHub:
    await self._reply_agent(rid,error={"code":-32000,"message":str(e)[:400]})
    return True
   return False
+ def _ensure_session_id(self,obj):
+  """ACP sometimes omits sessionId on chunks. Tag with the last known sid so
+  every client can route the update to one room — the Aug 1 braid contract."""
+  if not isinstance(obj,dict):return False
+  method=obj.get("method")
+  if method not in ("session/update","_x.ai/session/update","x.ai/session/update","_x.ai/queue/changed","session/request_permission"):
+   return False
+  params=obj.get("params") if isinstance(obj.get("params"),dict) else None
+  if params is None:return False
+  sid=str(params.get("sessionId") or "")
+  if sid:
+   self._last_sid=sid
+   return False
+  last=str(getattr(self,"_last_sid","") or "")
+  if not last:return False
+  params["sessionId"]=last
+  return True
  def _work_note(self,obj):
   try:
    method=obj.get("method")
@@ -1206,7 +1278,9 @@ class AgentHub:
    await self._broadcast(raw);return
   rid=obj.get("id",None)
   method=obj.get("method")
+  tagged=False
   if method:
+   tagged=self._ensure_session_id(obj)
    self._work_note(obj)
    k=""
    if method=="session/update":
@@ -1254,7 +1328,7 @@ class AgentHub:
    handled=await self._handle_reverse(obj)
    if handled:return
    self._agent_req_ids.add(rid)
-  await self._broadcast(raw if isinstance(raw,str) else json.dumps(obj,separators=(",",":")))
+  await self._broadcast(json.dumps(obj,separators=(",",":")) if tagged else (raw if isinstance(raw,str) else json.dumps(obj,separators=(",",":"))))
  async def _broadcast(self,data:str):
   """Dropping a client here used to leave its socket OPEN. handle_client kept answering its
   pings, so the phone read 'live' and received nothing for the rest of the run - a heavy
@@ -1303,14 +1377,24 @@ class AgentHub:
   try:client._last_rx=time.time()
   except Exception:pass
   print("[hub] client join from remote · n=%d"%len(self.clients),flush=True)
+  # RPCs that call ensure() can wait up to 15s for the agent. aiohttp heartbeat
+  # needs the receive loop to keep reading pongs; blocking here closed the desktop
+  # socket ("connection closed") and the UI hitch/init-failed looped until the
+  # agent happened to be up fast enough.
+  inbox=asyncio.Queue()
+  async def _rpc_worker():
+   while True:
+    raw=await inbox.get()
+    if raw is None:return
+    try:await self._to_agent(client,raw)
+    except Exception as e:print("[hub] client rpc:",e,flush=True)
+  worker=asyncio.create_task(_rpc_worker())
   try:
-   # A cold boot spawns the agent AFTER the web port is serving, so the first phone can
-   # arrive up to ~18s before :2419 listens. Wait it out instead of failing the first
-   # connection - the client is showing "connecting..." either way.
-   up=await self.ensure(retries=(2 if (self._agent is not None and not self._agent.closed) else 24),delay=0.5)
-   if not up:
-    try:await client.send_str(json.dumps({"jsonrpc":"2.0","method":"error","params":{"message":"agent hub unavailable · start agent serve on :2419 · "+(self._last_err or "")}}))
-    except Exception:pass
+   # Do not wait on upstream ensure() before reading this socket. Desktop WebView
+   # stays on "connecting…" with an empty session rail until initialize returns;
+   # a hung ws_connect held _lock and made every new client miss hello/pong.
+   # Ping/hello are answered below without the agent. Methods that need it wait
+   # inside _to_agent on the worker task.
    async for msg in client:
     raw=None
     if msg.type==WSMsgType.TEXT:raw=msg.data
@@ -1335,10 +1419,14 @@ class AgentHub:
       await client.send_str(json.dumps({"jsonrpc":"2.0","method":"_x.ai/remote/pong","params":{"t":params.get("t"),"s":time.time(),"clients":len(self.clients),"hub_up":bool(self._agent and not self._agent.closed)}},separators=(",",":")))
      except Exception:pass
      continue
-    await self._to_agent(client,raw)
+    await inbox.put(raw)
   except Exception as e:
    print("[hub] client error:",e,flush=True)
   finally:
+   try:worker.cancel()
+   except Exception:pass
+   try:await worker
+   except Exception:pass
    self.clients.discard(client)
    try:self._client_seq.remove(client)
    except ValueError:pass
@@ -1382,6 +1470,7 @@ class AgentHub:
   if orig is not None and method:
    params=obj.get("params") if isinstance(obj.get("params"),dict) else {}
    sid=str((params or {}).get("sessionId") or "")
+   if sid:self._last_sid=sid
    lent=self._loads.get(sid) if sid else None
    if method=="session/load" and lent is not None:
     async def _join():
@@ -1683,7 +1772,7 @@ async def main_async(a):
   if name.endswith(".webmanifest"):ctype="application/manifest+json"
   if name.endswith(".woff2"):ctype="font/woff2"
   elif name.endswith(".woff"):ctype="font/woff"
-  cc="no-cache" if name.startswith("xr-") and name.endswith(".js") else "public, max-age=86400"
+  cc="no-cache" if name.endswith(".js") and (name.startswith("xr-") or name=="chat-runtime.js") else "public, max-age=86400"
   return web.FileResponse(p,headers={"Content-Type":ctype,"Cache-Control":cc})
  def _peer_loopback(request):
   try:peer=request.remote or ""
@@ -1775,6 +1864,20 @@ async def main_async(a):
   p.parent.mkdir(parents=True,exist_ok=True)
   p.write_text(content,encoding="utf-8",newline="\n")
   return web.json_response({"ok":True,"path":str(p),"rel":str(p.relative_to(root_path())).replace("\\","/"),"size":p.stat().st_size})
+ async def open_external(request):
+  try:body=await request.json()
+  except Exception:body={}
+  raw=str(body.get("target") or body.get("url") or body.get("path") or "").strip()
+  cwd=str(body.get("cwd") or state.get("cwd") or "").strip()
+  kind,val=classify_open_target(raw,cwd)
+  if kind is None:
+   code=404 if val=="missing" else 400
+   return web.json_response({"ok":False,"error":val},status=code)
+  try:
+   await asyncio.get_event_loop().run_in_executor(None,lambda:launch_open_target(kind,val))
+  except Exception as e:
+   return web.json_response({"ok":False,"error":str(e)[:200]},status=500)
+  return web.json_response({"ok":True,"kind":kind,"target":val})
  async def fs_mkdir(request):
   try:body=await request.json()
   except Exception:raise web.HTTPBadRequest(text="json required")
@@ -2228,7 +2331,7 @@ async def main_async(a):
   except Exception as e:
    return web.json_response({"ok":False,"error":str(e)},status=500)
  async def ws_proxy(request):
-  client=web.WebSocketResponse(heartbeat=12,max_msg_size=16*1024*1024,autoping=True)
+  client=web.WebSocketResponse(heartbeat=45,max_msg_size=16*1024*1024,autoping=True)
   await client.prepare(request)
   await hub.handle_client(client)
   return client
@@ -2257,6 +2360,7 @@ async def main_async(a):
  app.router.add_get("/api/fs/read",fs_read)
  app.router.add_post("/api/fs/write",fs_write)
  app.router.add_post("/api/fs/mkdir",fs_mkdir)
+ app.router.add_post("/api/open",open_external)
  app.router.add_get("/api/skills/list",skills_list)
  app.router.add_get("/api/sessions",session_list_http)
  app.router.add_get("/api/session/history",session_history)

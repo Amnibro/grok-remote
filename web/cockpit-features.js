@@ -618,14 +618,7 @@ function enhanceBubbles(){
  feed.querySelectorAll(".row-acts,.rx").forEach(n=>n.remove());
 }
 function wireToolPathClicks(){
- const feed=$("feed");if(!feed||feed._locClick)return;
- feed.addEventListener("click",e=>{
- const loc=e.target.closest&&e.target.closest(".loc");
- if(!loc)return;
- const t=(loc.textContent||"").replace(/^(\[file\]\s*|file\s*)/, "").trim();
- if(t)openLocInIde(t);
- });
- feed._locClick=true;
+ if(window.bindPathOpens)window.bindPathOpens();
 }
 function injectChrome(){
   if($("cockpitBar")||$("toolsRow")||document.body.dataset.cockpitInjected==="1")return;
