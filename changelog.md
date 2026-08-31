@@ -1,3 +1,6 @@
+## 2026-08-31 rephase guitar/phone; excited is bounce not jump
+- Same-base pick rephases every idle. Base timeScale 0.94-1.08. excited/bounce/jump map to excited_bounce; jump_* clips skip.
+
 ## 2026-08-31 hold tail through Mixamo fade; holdMs uses remaining time
 - endGesture hold lasts +480ms through fadeOut so Quest yaw does not start mid-salute. holdMs subtracts the start offset. angry skipped.
 
