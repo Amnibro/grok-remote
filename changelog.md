@@ -1,3 +1,9 @@
+## 2026-08-31 sit-trap, guitar head-only, dwell on follow_base
+- Room brief no longer names sitting_talking as home. Stay standing on standing_w_briefcase_idle. talk emote is chin_think. Sit/lay/crouch/plank and travel clips skip.
+- BASE is briefcase/phone/guitar only. idle recover returns HOME if the base is off IDLES for more than 8s.
+- follow_base respects IDLE_DWELL. Guitar life beats are LIFE_HEAD so arms stay on the strings.
+- LIFE includes wave_hello. Long Mixamo idles start in the first 12% of the clip.
+
 ## 2026-08-31 companion idle home, Mixamo gaze hold, extra_life kneel
 - Additive Head/Neck gaze is skipped while a Mixamo gesture is held, so look_over_shoulder is not yanked at the headset. Overlay gaze uses performance.now() only.
 - alive_loop does not broadcast gaze during gesture_until. Life beats that start with look skip the follow-up gaze:user.
