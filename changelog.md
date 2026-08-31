@@ -1,3 +1,6 @@
+## 2026-08-31 renderer refuses arm takes on guitar and phone
+- `/pose` still plays whatever it gets. Client `curBase` + `clientPropOk` drop arm Mixamo on guitar/phone. HOME before `curBase`. Skip `beckon`.
+
 ## 2026-08-31 play/drain refuse arm takes on guitar and phone
 - play() and the gesture queue could still fire wave/salute on guitar. prop_ok skips those unless force. Drain drops queued arm takes if the base is a prop idle.
 

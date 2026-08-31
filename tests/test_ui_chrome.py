@@ -393,6 +393,17 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "if(pendingBase){queueBase" not in js.replace(" ","")
     assert "gazeWP" in html
     assert "xrP" in html
+    assert "function clientPropOk(" in js
+    assert "const HEAD=new Set" in js
+    assert "SOFT=new Set" in js
+    assert "layer!==\"base\"&&!clientPropOk" in js.replace(" ","")
+    assert "const HOME=" in js[:js.find("curBase")]
+    assert "curBase=HOME" in js.replace(" ","")
+    assert "if(d.layer===\"base\")curBase=d.clip" in js.replace(" ","")
+    assert "if(d.type===\"state\"&&d.base){curBase=d.base" in js.replace(" ","")
+    assert '"beckon"' in srv[srv.find("if clip in TRAVEL"):srv.find("if clip in TRAVEL")+520]
+    assert "life_head" in js
+    assert "life_soft" in js
 if __name__=="__main__":
     test_pair_in_upper_right_menus()
     test_sess_filters_core_only_single_line()

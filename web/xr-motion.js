@@ -2,7 +2,14 @@ export function initMotion(ctx){
   const {THREE,getMixer,getClips,getActIdle,setActIdle,panels}=ctx;
   const state=ctx.state||{gestureHold:0,gazeTarget:null,gazeUntil:0};
   const gestureOut=new Map(),fetchedClips=new Set(),warming=new Map();
-  let mws=null,pendingPlays=[],actGesture=null,pendingBase=null,clipIx={},mixerHooked=false,pbTimer=null;
+  const HOME="standing_w_briefcase_idle";
+  let mws=null,pendingPlays=[],actGesture=null,pendingBase=null,clipIx={},mixerHooked=false,pbTimer=null,curBase=HOME;
+  const HEAD=new Set(["module_check","machinamachina_spark"]),SOFT=new Set(["agree","module_check","machinamachina_spark","chin_think"]);
+  function clientPropOk(clip){
+    if(curBase==="guitar_playing")return HEAD.has(clip);
+    if(curBase==="talking_on_phone")return SOFT.has(clip);
+    return true;
+  }
   fetch("/static/clip_index.json",{cache:"no-store"}).then(r=>r.json()).then(j=>{clipIx=j.clips||{}}).catch(()=>{});
   function warmPool(){
     fetch(httpBase()+"/motion/alive",{cache:"no-store"}).then(r=>r.json()).then(j=>{
@@ -13,7 +20,6 @@ export function initMotion(ctx){
   const httpBase=()=>"http"+(location.protocol==="https:"?"s":"")+"://"+location.hostname+":2423";
   const wsBase=()=>location.protocol.replace("http","ws")+"//"+location.hostname+":2423";
   const linked=()=>!!(mws&&mws.readyState===1);
-  const HOME="standing_w_briefcase_idle";
   function findClip(n){n=(n||"").toLowerCase();const cl=getClips();return cl.find(c=>c.name.toLowerCase()===n)||null}
   function stripRoot(c){
     if(!c||!c.tracks)return c;
@@ -76,6 +82,7 @@ export function initMotion(ctx){
     if(!mixer){pendingPlays.push([name,layer,fade]);return}
     hookMixer();
     if(layer==="base"&&!canLoop(name))name=HOME;
+    if(layer!=="base"&&!clientPropOk(name))return;
     if(layer==="base"&&performance.now()<state.gestureHold){queueBase(name,fade);return}
     const c=findClip(name);
     if(!c){warm(name).then(ok=>{if(ok)motionPlay(name,layer,fade)});return}
@@ -83,6 +90,7 @@ export function initMotion(ctx){
     const a=mixer.clipAction(c);
     fade=fade||0.4;
     if(layer==="base"){
+      curBase=name;
       if(pbTimer){clearTimeout(pbTimer);pbTimer=null}
       pendingBase=null;
       if(getActIdle()===a){
@@ -156,8 +164,8 @@ export function initMotion(ctx){
       let d;
       try{d=JSON.parse(ev.data)}catch(e){return}
       const hud=panels.hud();
-      if(d.type==="play"){motionPlay(d.clip,d.layer,d.fade||0.4);if(hud){hud[d.layer==="base"?"base":"gesture"]=d.clip;hud.seq=d.seq||hud.seq}}
-      if(d.type==="state"&&d.base){motionPlay(d.base,"base",0.5);if(hud)hud.base=d.base}
+      if(d.type==="play"){if(d.layer==="base")curBase=d.clip;motionPlay(d.clip,d.layer,d.fade||0.4);if(hud){hud[d.layer==="base"?"base":"gesture"]=d.clip;hud.seq=d.seq||hud.seq}}
+      if(d.type==="state"&&d.base){curBase=d.base;motionPlay(d.base,"base",0.5);if(hud)hud.base=d.base}
       if(d.type==="gaze"){state.gazeTarget=d.target;state.gazeUntil=performance.now()+5500;if(hud){hud.gaze=d.target;hud.seq=d.seq||hud.seq}}
     };
     mws.onclose=()=>setTimeout(connect,3000);
