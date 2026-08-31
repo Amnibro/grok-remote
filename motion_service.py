@@ -6,8 +6,8 @@ os.makedirs(CLIP_DIR, exist_ok=True)
 def custom_clips():
     return [f[:-5] for f in os.listdir(CLIP_DIR) if f.endswith(".json")]
 CLIPS = ["idle", "agree", "headshake", "walk", "run", "sad_pose", "sneak_pose"]
-BASE = {"idle", "walk", "run", "jogging", "female_walk", "sitting", "guitar_playing", "standing_w_briefcase_idle", "sitting_talking", "talking_on_phone"}
-EMOTES = {"excited": "joyful_jump", "bounce": "joyful_jump", "yes": "agree", "nod": "agree", "wave": "wave_hello", "hello": "wave_hello", "hi": "wave_hello", "greet": "standing_greeting", "no": "dismissing_gesture", "sad": "sad_pose", "sneaky": "crawling", "apology": "bow_apology", "sorry": "bow_apology", "bow": "bow_apology", "kiss": "blow_kiss", "point": "point_ahead", "salute": "salute", "squat": "squat_down", "lie": "sitting", "laydown": "sitting", "rest": "sitting", "clap": "standing_clap", "phone": "talking_on_phone", "talk": "sitting_talking", "guitar": "guitar_playing", "dance": "dance_loop", "angry": "angry", "surprised": "surprised", "come": "beckoning", "go": "dismissing_gesture", "walk": "walk", "run": "run", "jog": "jogging", "jump": "joyful_jump", "punch": "punch_jab", "idle": "standing_w_briefcase_idle"}
+BASE = {"guitar_playing", "standing_w_briefcase_idle", "talking_on_phone"}
+EMOTES = {"excited": "joyful_jump", "bounce": "joyful_jump", "yes": "agree", "nod": "agree", "wave": "wave_hello", "hello": "wave_hello", "hi": "wave_hello", "greet": "standing_greeting", "no": "dismissing_gesture", "sad": "sad_pose", "sneaky": "crawling", "apology": "bow_apology", "sorry": "bow_apology", "bow": "bow_apology", "kiss": "blow_kiss", "point": "point_ahead", "salute": "salute", "squat": "squat_down", "clap": "standing_clap", "phone": "talking_on_phone", "talk": "chin_think", "guitar": "guitar_playing", "dance": "dance_loop", "angry": "angry", "surprised": "surprised", "come": "beckoning", "go": "dismissing_gesture", "walk": "walk", "run": "run", "jog": "jogging", "jump": "joyful_jump", "punch": "punch_jab", "idle": "standing_w_briefcase_idle"}
 state = {"base": "standing_w_briefcase_idle", "gesture": None, "gaze": None, "seq": 0, "gesture_at": 0.0}
 clients = set()
 def cors(r):
@@ -72,8 +72,8 @@ async def play(req):
         return cors(web.json_response({"ok": False, "err": "unknown clip", "clips": CLIPS + custom_clips()}, status=400))
     TRAVEL = {"start_walking", "walk_strafe_left", "jumping_down", "jump_loop", "jump_land", "crouch_to_stand", "crouch_turn_to_stand", "standing_up", "situp_to_idle", "sitting_enter", "sitting_exit", "roll", "crawling", "push_loop", "swim_fwd_loop", "sprint_loop", "driving_loop", "punch_enter", "spell_simple_enter", "spell_simple_exit"}
     layer = d.get("layer") or ("base" if clip in BASE else "gesture")
-    if clip in TRAVEL and layer == "gesture":
-        return cors(web.json_response({"ok": True, "clip": clip, "layer": "skipped", "note": "travel/transition clips distort the stage - pick an in-place move instead"}))
+    if clip in TRAVEL or any(x in clip for x in ("sit", "lay", "crouch", "plank")):
+        return cors(web.json_response({"ok": True, "clip": clip, "layer": "skipped", "note": "ground/travel clips leave the standing stage - stay standing"}))
     fade = d.get("fade", 0.4)
     now = time.time()
     if layer == "gesture":
@@ -124,9 +124,10 @@ HOME = "standing_w_briefcase_idle"
 IDLES = ["standing_w_briefcase_idle", "talking_on_phone", "guitar_playing"]
 IDLE_W = {"standing_w_briefcase_idle": 6, "talking_on_phone": 1, "guitar_playing": 1}
 IDLE_DWELL = {"standing_w_briefcase_idle": 32.0, "talking_on_phone": 16.0, "guitar_playing": 14.0}
-LIFE = ["look_over_shoulder", "agree", "waist_side_stretch", "surprised", "dismissing_gesture", "point_ahead", "salute", "module_check", "sun_salute", "bow_apology", "excited_bounce", "machinamachina_spark", "chin_think", "blow_kiss", "hand_on_heart", "standing_clap"]
-LIFE_W = [3, 3, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 2, 1, 2, 1]
-LIFE_SOFT = ["look_over_shoulder", "agree", "module_check", "machinamachina_spark", "surprised", "chin_think", "hand_on_heart"]
+LIFE = ["look_over_shoulder", "agree", "waist_side_stretch", "surprised", "dismissing_gesture", "point_ahead", "salute", "module_check", "sun_salute", "bow_apology", "excited_bounce", "machinamachina_spark", "chin_think", "blow_kiss", "hand_on_heart", "standing_clap", "wave_hello"]
+LIFE_W = [2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 2, 2, 1, 2, 1, 1]
+LIFE_SOFT = ["look_over_shoulder", "agree", "module_check", "machinamachina_spark", "surprised"]
+LIFE_HEAD = ["look_over_shoulder", "module_check", "machinamachina_spark"]
 def extra_life():
     p = os.path.join(os.path.dirname(os.path.abspath(__file__)), "web", "clip_index.json")
     if not os.path.isfile(p):
@@ -135,7 +136,7 @@ def extra_life():
         idx = (json.load(open(p, encoding="utf-8")) or {}).get("clips") or {}
     except Exception:
         return
-    skip = set(IDLES) | set(LIFE) | {"wave_hello", "standing_greeting", "idle", "headshake", "beckoning", "angry", "acknowledging", "walk", "female_walk"}
+    skip = set(IDLES) | set(LIFE) | {"standing_greeting", "idle", "headshake", "beckoning", "angry", "acknowledging", "walk", "female_walk"}
     bad = ("sit", "lay", "crouch", "run", "jog", "dance", "pistol", "sword", "swim", "crawl", "roll", "kneel", "plank", "pray", "squat", "jump", "punch", "hit_", "walk")
     for name, m in idx.items():
         if name in skip or any(b in name for b in bad):
@@ -165,7 +166,7 @@ def pick_chain(cur):
     alts = [c for c in IDLES if c != HOME]
     return weighted(alts, [IDLE_W.get(c, 1) for c in alts]) if alts else HOME
 async def get_alive(req):
-    return cors(web.json_response({"home": HOME, "idles": IDLES, "life": LIFE, "life_soft": LIFE_SOFT, "idle_w": IDLE_W}))
+    return cors(web.json_response({"home": HOME, "idles": IDLES, "life": LIFE, "life_soft": LIFE_SOFT, "life_head": LIFE_HEAD, "idle_w": IDLE_W}))
 async def alive_loop(app):
     nxt = random.uniform(22, 42)
     since = 0.0
@@ -193,10 +194,14 @@ async def alive_loop(app):
             nxt = random.uniform(14, 26)
             continue
         if state.get("base") not in IDLES:
-            nxt = random.uniform(22, 42)
+            if time.time() - state.get("base_at", 0) > 8:
+                await fire(HOME, "base", 1.1, "idle recover")
+                nxt = random.uniform(14, 26)
+            else:
+                nxt = random.uniform(6, 12)
             continue
         quiet = time.time() - state.get("gesture_at", 0)
-        pool = LIFE if state.get("base") == HOME else LIFE_SOFT
+        pool = LIFE_HEAD if state.get("base") == "guitar_playing" else (LIFE_SOFT if state.get("base") != HOME else LIFE)
         did = False
         if quiet > 8 and random.random() < 0.48:
             fresh = [c for c in pool if time.time() - recent.get(c, 0) > REPEAT_WINDOW]
@@ -208,8 +213,12 @@ async def alive_loop(app):
                     await bcast({"type": "gaze", "target": "user", "seq": state["seq"]})
                 did = True
                 if random.random() < 0.35:
-                    state["follow_base"] = pick_chain(state.get("base"))
-                    state["follow_at"] = state.get("gesture_until", time.time())
+                    nxtb = pick_chain(state.get("base"))
+                    dwell0 = time.time() - state.get("base_at", 0)
+                    need0 = IDLE_DWELL.get(state.get("base"), 20)
+                    if nxtb == HOME or dwell0 >= need0:
+                        state["follow_base"] = nxtb
+                        state["follow_at"] = state.get("gesture_until", time.time())
         if not did:
             cur = state.get("base")
             dwell = time.time() - state.get("base_at", 0)

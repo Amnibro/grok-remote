@@ -52,7 +52,8 @@ export function initMotion(ctx){
       a.enabled=true;
       a.reset().setLoop(THREE.LoopRepeat,Infinity).setEffectiveWeight(1);
       a.timeScale=0.88+Math.random()*0.28;
-      if(c.duration>0.5)a.time=Math.random()*c.duration;
+      if(c.duration>8)a.time=Math.random()*Math.min(3,c.duration*0.12);
+      else if(c.duration>0.5)a.time=Math.random()*c.duration;
       a.play();
       const prev=getActIdle();
       if(prev&&prev!==a){
@@ -122,7 +123,7 @@ export function initMotion(ctx){
   }
   function flushPending(){const q=pendingPlays.splice(0);for(const p of q)motionPlay(...p)}
   warm(HOME).then(ok=>{if(ok)motionPlay(HOME,"base",0.35)});
-  ["talking_on_phone","guitar_playing","agree","look_over_shoulder","waist_side_stretch","hand_on_heart","surprised","dismissing_gesture","point_ahead","salute","module_check","sun_salute","bow_apology","excited_bounce","machinamachina_spark","chin_think","blow_kiss","standing_clap"].forEach(n=>warm(n));
+  ["talking_on_phone","guitar_playing","agree","look_over_shoulder","waist_side_stretch","hand_on_heart","surprised","dismissing_gesture","point_ahead","salute","module_check","sun_salute","bow_apology","excited_bounce","machinamachina_spark","chin_think","blow_kiss","standing_clap","wave_hello"].forEach(n=>warm(n));
   warmPool();
   return {motionPlay,sendMotion,connect,flushPending,findClip,linked,state};
 }
