@@ -1,3 +1,6 @@
+## 2026-08-31 drain waits FADE_PAD; acknowledging is agree
+- drain_loop waits gesture_until+FADE_PAD so queued Mixamo does not start under fadeOut. acknowledging aliases to agree. mixer finished rebinds if the mixer is new.
+
 ## 2026-08-31 interact life beat; follow_at after fade; greeting alias
 - follow_at is gesture_until+0.55s. standing_greeting aliases to wave_hello. interact is a 2s reach in LIFE.
 

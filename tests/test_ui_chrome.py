@@ -365,7 +365,9 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "sitting_talking" not in html[html.find("You are in the room"):html.find("You are in the room")+800]
     assert "Stay standing" in html
     assert 'if clip == "standing_greeting"' in srv
-    assert "+ 0.55" in srv or "+0.55" in srv.replace(" ","")
+    assert "FADE_PAD" in srv
+    assert 'if clip == "acknowledging"' in srv
+    assert "mixerHooked===mixer" in js.replace(" ","")
     assert "function queueBase(" in js
     assert "function flushBase(" in js
     assert "rephase_at" in srv
