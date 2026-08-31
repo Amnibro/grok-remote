@@ -7,7 +7,7 @@ def custom_clips():
     return [f[:-5] for f in os.listdir(CLIP_DIR) if f.endswith(".json")]
 CLIPS = ["idle", "agree", "headshake", "walk", "run", "sad_pose", "sneak_pose"]
 BASE = {"idle", "walk", "run", "jogging", "female_walk", "sitting", "guitar_playing", "standing_w_briefcase_idle", "sitting_talking", "talking_on_phone"}
-EMOTES = {"excited": "joyful_jump", "bounce": "joyful_jump", "yes": "agree", "nod": "agree", "wave": "wave_hello", "hello": "wave_hello", "hi": "wave_hello", "greet": "standing_greeting", "no": "dismissing_gesture", "sad": "sad_pose", "sneaky": "crawling", "apology": "praying", "sorry": "defeated", "bow": "praying", "kiss": "beckoning", "point": "point_ahead", "salute": "salute", "squat": "squat_down", "lie": "sitting", "laydown": "sitting", "rest": "sitting", "clap": "standing_clap", "phone": "talking_on_phone", "talk": "sitting_talking", "guitar": "guitar_playing", "dance": "dance_loop", "angry": "angry", "surprised": "surprised", "come": "beckoning", "go": "dismissing_gesture", "walk": "walk", "run": "run", "jog": "jogging", "jump": "joyful_jump", "punch": "punch_jab", "idle": "standing_w_briefcase_idle"}
+EMOTES = {"excited": "joyful_jump", "bounce": "joyful_jump", "yes": "agree", "nod": "agree", "wave": "wave_hello", "hello": "wave_hello", "hi": "wave_hello", "greet": "standing_greeting", "no": "dismissing_gesture", "sad": "sad_pose", "sneaky": "crawling", "apology": "bow_apology", "sorry": "bow_apology", "bow": "bow_apology", "kiss": "blow_kiss", "point": "point_ahead", "salute": "salute", "squat": "squat_down", "lie": "sitting", "laydown": "sitting", "rest": "sitting", "clap": "standing_clap", "phone": "talking_on_phone", "talk": "sitting_talking", "guitar": "guitar_playing", "dance": "dance_loop", "angry": "angry", "surprised": "surprised", "come": "beckoning", "go": "dismissing_gesture", "walk": "walk", "run": "run", "jog": "jogging", "jump": "joyful_jump", "punch": "punch_jab", "idle": "standing_w_briefcase_idle"}
 state = {"base": "standing_w_briefcase_idle", "gesture": None, "gaze": None, "seq": 0, "gesture_at": 0.0}
 clients = set()
 def cors(r):
@@ -123,9 +123,31 @@ async def opt(req):
 HOME = "standing_w_briefcase_idle"
 IDLES = ["standing_w_briefcase_idle", "talking_on_phone", "guitar_playing"]
 IDLE_W = {"standing_w_briefcase_idle": 6, "talking_on_phone": 1, "guitar_playing": 1}
-LIFE = ["look_over_shoulder", "agree", "waist_side_stretch", "surprised", "dismissing_gesture", "point_ahead", "salute", "module_check", "sun_salute", "bow_apology", "excited_bounce", "machinamachina_spark"]
-LIFE_W = [3, 3, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1]
-LIFE_SOFT = ["look_over_shoulder", "agree", "module_check", "machinamachina_spark", "surprised"]
+LIFE = ["look_over_shoulder", "agree", "waist_side_stretch", "surprised", "dismissing_gesture", "point_ahead", "salute", "module_check", "sun_salute", "bow_apology", "excited_bounce", "machinamachina_spark", "chin_think", "blow_kiss", "female_walk"]
+LIFE_W = [3, 3, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 2, 1, 1]
+LIFE_SOFT = ["look_over_shoulder", "agree", "module_check", "machinamachina_spark", "surprised", "chin_think"]
+def extra_life():
+    p = os.path.join(os.path.dirname(os.path.abspath(__file__)), "web", "clip_index.json")
+    if not os.path.isfile(p):
+        return
+    try:
+        idx = (json.load(open(p, encoding="utf-8")) or {}).get("clips") or {}
+    except Exception:
+        return
+    skip = set(IDLES) | set(LIFE) | {"wave_hello", "standing_greeting", "idle", "headshake"}
+    bad = ("sit", "lay", "crouch", "run", "jog", "dance", "pistol", "sword", "swim", "crawl", "roll")
+    for name, m in idx.items():
+        if name in skip or any(b in name for b in bad):
+            continue
+        if not m.get("loops") or (m.get("seam") or 0) > 1:
+            continue
+        if (m.get("tier") or "") not in ("calm", "moderate"):
+            continue
+        if (m.get("energy") or 99) > 32 or (m.get("dur") or 0) > 6 or (m.get("dur") or 0) < 1.2:
+            continue
+        LIFE.append(name)
+        LIFE_W.append(1)
+extra_life()
 def weighted(names, weights):
     use = [(n, weights[i] if i < len(weights) else 1) for i, n in enumerate(names)]
     tot = sum(w for _, w in use) or 1
