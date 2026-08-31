@@ -7,7 +7,7 @@ def custom_clips():
     return [f[:-5] for f in os.listdir(CLIP_DIR) if f.endswith(".json")]
 CLIPS = ["idle", "agree", "headshake", "walk", "run", "sad_pose", "sneak_pose"]
 BASE = {"guitar_playing", "standing_w_briefcase_idle", "talking_on_phone"}
-EMOTES = {"excited": "excited_bounce", "bounce": "excited_bounce", "yes": "agree", "nod": "agree", "wave": "wave_hello", "hello": "wave_hello", "hi": "wave_hello", "greet": "wave_hello", "no": "dismissing_gesture", "sad": "sad_pose", "sneaky": "look_over_shoulder", "apology": "bow_apology", "sorry": "bow_apology", "bow": "bow_apology", "kiss": "blow_kiss", "point": "point_ahead", "salute": "salute", "squat": "squat_down", "clap": "standing_clap", "phone": "talking_on_phone", "talk": "chin_think", "guitar": "guitar_playing", "dance": "dance_loop", "angry": "angry", "surprised": "surprised", "come": "interact", "go": "dismissing_gesture", "walk": "walk", "run": "run", "jog": "jogging", "jump": "excited_bounce", "punch": "punch_jab", "idle": "standing_w_briefcase_idle"}
+EMOTES = {"excited": "excited_bounce", "bounce": "excited_bounce", "yes": "agree", "nod": "agree", "wave": "wave_hello", "hello": "wave_hello", "hi": "wave_hello", "greet": "wave_hello", "no": "dismissing_gesture", "sad": "sad_pose", "sneaky": "look_over_shoulder", "apology": "bow_apology", "sorry": "bow_apology", "bow": "bow_apology", "kiss": "blow_kiss", "point": "point_ahead", "salute": "salute", "squat": "squat_down", "clap": "standing_clap", "phone": "talking_on_phone", "talk": "chin_think", "guitar": "guitar_playing", "dance": "excited_bounce", "angry": "dismissing_gesture", "surprised": "surprised", "come": "interact", "go": "dismissing_gesture", "walk": "walk", "run": "run", "jog": "jogging", "jump": "excited_bounce", "punch": "dismissing_gesture", "idle": "standing_w_briefcase_idle"}
 state = {"base": "standing_w_briefcase_idle", "gesture": None, "gaze": None, "seq": 0, "gesture_at": 0.0}
 clients = set()
 def cors(r):
@@ -79,7 +79,7 @@ async def play(req):
         return cors(web.json_response({"ok": False, "err": "unknown clip", "clips": CLIPS + custom_clips()}, status=400))
     TRAVEL = {"start_walking", "walk_strafe_left", "jumping_down", "jump_loop", "jump_land", "crouch_to_stand", "crouch_turn_to_stand", "standing_up", "situp_to_idle", "sitting_enter", "sitting_exit", "roll", "crawling", "push_loop", "swim_fwd_loop", "sprint_loop", "driving_loop", "punch_enter", "spell_simple_enter", "spell_simple_exit"}
     layer = d.get("layer") or ("base" if clip in BASE else "gesture")
-    if clip in TRAVEL or any(x in clip for x in ("sit", "lay", "crouch", "plank", "walk", "run", "jog", "sprint", "dance", "twerk", "shuffle", "kneel", "pray", "squat", "angry", "jump", "jab_cross", "beckon")):
+    if clip in TRAVEL or any(x in clip for x in ("sit", "lay", "crouch", "plank", "walk", "run", "jog", "sprint", "dance", "twerk", "shuffle", "kneel", "pray", "squat", "angry", "jump", "jab_cross", "beckon", "punch")):
         return cors(web.json_response({"ok": True, "clip": clip, "layer": "skipped", "note": "ground/travel clips leave the standing stage - stay standing"}))
     fade = d.get("fade", 0.4)
     now = time.time()
@@ -165,7 +165,12 @@ def extra_life():
         LIFE_W.append(1)
 extra_life()
 def fade_pad():
-    return 0.0 if state.get("gesture") in LIFE_HEAD else FADE_PAD
+    g = state.get("gesture")
+    if g in LIFE_HEAD:
+        return 0.0
+    if g == "chin_think" and state.get("base") == "talking_on_phone":
+        return 0.0
+    return FADE_PAD
 def prop_ok(clip):
     b = state.get("base")
     if b == "guitar_playing":

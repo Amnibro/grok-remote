@@ -415,7 +415,14 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "baseHold" in js
     assert "baseHold-performance.now()" in js.replace(" ","")
     assert "if(layer===\"base\"&&performance.now()<baseHold)" in js.replace(" ","")
-    assert "return 0.0 if state.get(\"gesture\") in LIFE_HEAD else FADE_PAD" in srv or "return 0.0 if state.get('gesture')in LIFE_HEAD else FADE_PAD" in srv.replace(" ","")
+    assert "g in LIFE_HEAD" in srv[srv.find("def fade_pad"):srv.find("def prop_ok")]
+    assert "chin_think" in srv[srv.find("def fade_pad"):srv.find("def prop_ok")]
+    assert "clip===\"chin_think\"&&curBase===\"talking_on_phone\"" in js.replace(" ","")
+    em=srv[srv.find("EMOTES"):srv.find("state =")]
+    assert '"dance": "excited_bounce"' in em
+    assert '"angry": "dismissing_gesture"' in em
+    assert '"punch": "dismissing_gesture"' in em
+    assert '"punch"' in srv[srv.find("if clip in TRAVEL"):srv.find("if clip in TRAVEL")+560]
 if __name__=="__main__":
     test_pair_in_upper_right_menus()
     test_sess_filters_core_only_single_line()

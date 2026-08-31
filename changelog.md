@@ -1,3 +1,6 @@
+## 2026-08-31 chin_think overlays the phone; dance/punch/angry stay standing
+- Phone keepIdle + fade_pad 0 for chin_think. dance/angry/punch map to standing takes. punch_* skip.
+
 ## 2026-08-31 head nods do not park the idle chain
 - fade_pad is 0 on LIFE_HEAD. Client baseHold only when idle was frozen. agree out of LIFE_SOFT (full skeleton).
 
