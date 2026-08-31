@@ -1,3 +1,6 @@
+## 2026-08-31 defer pendingBase until Mixamo fade finishes
+- pendingBase waits 500ms past the hold tail so guitar does not start under a fading salute. Base defers on gestureHold alone.
+
 ## 2026-08-31 rephase guitar/phone; excited is bounce not jump
 - Same-base pick rephases every idle. Base timeScale 0.94-1.08. excited/bounce/jump map to excited_bounce; jump_* clips skip.
 

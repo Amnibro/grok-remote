@@ -46,8 +46,11 @@ export function initMotion(ctx){
     try{a.fadeOut(0.45)}catch(e){}
     setTimeout(()=>{try{a.stop();a.enabled=false}catch(e){}},480);
     if(actGesture===a)actGesture=null;
-    const pb=pendingBase;pendingBase=null;
-    if(pb){motionPlay(pb[0],"base",pb[1]);return}
+    if(pendingBase){
+      const pb=pendingBase;
+      setTimeout(()=>{if(pendingBase!==pb)return;pendingBase=null;motionPlay(pb[0],"base",pb[1])},500);
+      return;
+    }
     const idl=getActIdle();
     if(idl){idl.paused=false;idl.enabled=true;idl.setEffectiveWeight(1);idl.fadeIn(0.45)}
   }
@@ -66,7 +69,7 @@ export function initMotion(ctx){
     if(!mixer){pendingPlays.push([name,layer,fade]);return}
     hookMixer();
     if(layer==="base"&&!canLoop(name))name=HOME;
-    if(layer==="base"&&actGesture&&performance.now()<state.gestureHold){pendingBase=[name,fade];return}
+    if(layer==="base"&&performance.now()<state.gestureHold){pendingBase=[name,fade];return}
     const c=findClip(name);
     if(!c){warm(name).then(ok=>{if(ok)motionPlay(name,layer,fade)});return}
     stripRoot(c);
@@ -76,7 +79,7 @@ export function initMotion(ctx){
       pendingBase=null;
       if(getActIdle()===a){
         a.paused=false;a.enabled=true;a.setEffectiveWeight(1);
-        if(fade>=1.05&&c.duration>1)a.timeScale=0.9+Math.random()*0.2;
+        if(fade>=1.05&&c.duration>1)a.timeScale=0.94+Math.random()*0.14;
         a.fadeIn(Math.max(0.4,fade));
         return;
       }

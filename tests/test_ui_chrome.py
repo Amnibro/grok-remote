@@ -363,6 +363,8 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "motionState.gz" in html
     assert "sitting_talking" not in html[html.find("You are in the room"):html.find("You are in the room")+800]
     assert "Stay standing" in html
+    assert "pendingBase!==pb" in js.replace(" ","")
+    assert "layer===\"base\"&&performance.now()<state.gestureHold" in js.replace(" ","")
 if __name__=="__main__":
     test_pair_in_upper_right_menus()
     test_sess_filters_core_only_single_line()
