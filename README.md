@@ -12,12 +12,26 @@
 | **Plugin** | `/remote` · `/remote-stop` · `/remote-autostart` |
 | **Default theme** | **Grok** (full greyscale) · dark |
 | **Safe demo** | `http://host:2421/?demo=1` — no real chats, no agent |
+| **Companion** | Optional `/xr` hologram — off until Settings → Apps → Companion |
+| **License** | MIT |
+
+Companion model: [High Poly Rikku](https://skfb.ly/pIrZ9) by HumanContraband, CC BY 4.0. Clip JSON under `clips/` is Mixamo-baked motion for that rig.
 
 <p align="center">
   <img src="docs/screenshots/01-hero-desktop-grok.png" alt="Grok Remote desktop — Grok theme, sessions rail and live chat" width="920"/>
 </p>
 
 <p align="center"><sub>Desktop · Grok theme · demo data only</sub></p>
+
+---
+
+## Companion (`/xr`)
+
+Opt-in hologram in your room (Quest browser or Preview on a 2D screen). Turn it on from **Settings → Apps → Companion**, then **Open companion** or the composer **XR** chip. **Remote** in the overlay returns to the text UI. Motion service is `motion_service.py` on port 2423.
+
+```bash
+python motion_service.py
+```
 
 ---
 

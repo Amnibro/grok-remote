@@ -83,7 +83,6 @@ function fmtTok(n){
 }
 async function refreshSessionContext(){
  const sid=window.sid;if(!sid)return;
- if(typeof window.isDemoMode==="function"&&window.isDemoMode()&&String(sid).startsWith("demo-"))return;
  const cwd=window.sidCwd||(document.getElementById("cwd")&&document.getElementById("cwd").value)||"";
  try{
   const j=await jfetch("/api/session/signals?sessionId="+encodeURIComponent(sid)+"&cwd="+encodeURIComponent(cwd||"."));
@@ -409,8 +408,7 @@ function openDelve(){
   "/delve"
  ];
  const go=urls[0];
- if(typeof window.openAppUrl==="function")window.openAppUrl(go,{sameWindowFallback:true}).catch(()=>{});
- else if(window.grokRemote&&window.grokRemote.openExternal)window.grokRemote.openExternal(go);
+ if(window.grokRemote&&window.grokRemote.openExternal)window.grokRemote.openExternal(go);
  else window.open(go,"_blank");
  chip("Amni-Delve · opening local hub");
 }
@@ -561,19 +559,6 @@ async function injectProjectContext(){
 function bindSlashComplete(){
  const box=$("box");const menu=$("slashMenu");if(!box||!menu)return;
  const hide=()=>{menu.classList.remove("on");menu.innerHTML=""};
- const place=()=>{
- const r=box.getBoundingClientRect();
- const width=Math.min(Math.max(220,r.width),window.innerWidth-16);
- let left=Math.max(8,Math.min(r.left,window.innerWidth-width-8));
- menu.style.width=Math.round(width)+"px";
- menu.style.left=Math.round(left)+"px";
- menu.style.right="auto";
- const mh=menu.offsetHeight||220;
- let top=r.top-mh-6;
- if(top<8)top=Math.min(window.innerHeight-mh-8,r.bottom+6);
- menu.style.top=Math.max(8,Math.round(top))+"px";
- menu.style.bottom="auto";
- };
  box.addEventListener("input",()=>{
  const v=box.value;
  if(!v.startsWith("/")||v.includes(" ")||v.includes("\n")){hide();return}
@@ -586,6 +571,7 @@ function bindSlashComplete(){
  {name:"stop",description:"Cancel current turn"},
  {name:"agents",description:"Inject AGENTS.md / CLAUDE.md into composer"},
  {name:"effort",description:"Set reasoning effort · low|medium|high|xhigh"},
+ {name:"actor",description:"Local grok-actor · /actor washington chat (no agent turn)"},
  {name:"loop",description:"Hub loop · /loop 5m check deploy (no CLI needed)"},
  {name:"loops",description:"List remote loops for this chat"},
  {name:"unloop",description:"Stop remote loops for this chat"}
@@ -606,7 +592,6 @@ function bindSlashComplete(){
  menu.appendChild(d);
  });
  menu.classList.add("on");
- requestAnimationFrame(place);
  });
  box.addEventListener("keydown",e=>{
  if(e.key==="Escape"){hide();return}
@@ -617,7 +602,7 @@ function bindSlashComplete(){
  if(tv==="/diff"){e.preventDefault();hide();box.value="";showGitDiff();return}
  if(tv==="/stop"){e.preventDefault();hide();box.value="";stopTurn();return}
  if(tv==="/agents"){e.preventDefault();hide();box.value="";injectProjectContext();return}
- if(tv==="/effort"||tv.startsWith("/effort ")||tv==="/loop"||tv.startsWith("/loop ")||tv==="/loops"||tv==="/unloop"||tv.startsWith("/unloop")){
+ if(tv==="/effort"||tv.startsWith("/effort ")||tv==="/actor"||tv.startsWith("/actor ")||tv==="/loop"||tv.startsWith("/loop ")||tv==="/loops"||tv==="/unloop"||tv.startsWith("/unloop")){
  e.preventDefault();hide();
  if(window.handleRemoteSlash){window.handleRemoteSlash(tv).then(()=>{box.value=""}).catch(err=>chip(String(err)));return}
  }
@@ -627,8 +612,6 @@ function bindSlashComplete(){
  }
  });
  document.addEventListener("click",e=>{if(!menu.contains(e.target)&&e.target!==box)hide()});
- window.addEventListener("resize",()=>{if(menu.classList.contains("on"))place()});
- if(window.visualViewport)window.visualViewport.addEventListener("resize",()=>{if(menu.classList.contains("on"))place()});
 }
 function enhanceBubbles(){
  const feed=$("feed");if(!feed)return;
@@ -678,7 +661,9 @@ function injectChrome(){
   document.body.appendChild(floatHost);
   if(!$("slashMenu")){
     const sm=document.createElement("div");sm.id="slashMenu";sm.className="slash-menu";
-    document.body.appendChild(sm);
+    const comp=foot.querySelector(".composer");
+    if(comp){comp.style.position="relative";comp.appendChild(sm)}
+    else foot.appendChild(sm);
   }
   const orphanStop=$("btnStop");
   if(orphanStop&&orphanStop.parentNode)orphanStop.parentNode.removeChild(orphanStop);
@@ -707,7 +692,7 @@ function injectChrome(){
       m==="go"||m==="dictate"?window.grokVoice.setMode("off"):window.grokVoice.setMode("go");
     }else startVoice();
   };
-  if($("btnComposerXr"))$("btnComposerXr").onclick=()=>{window.grokVoice?window.grokVoice.enterBestXr():chip("voice loading…")};
+  if($("btnComposerXr"))$("btnComposerXr").onclick=()=>{if(typeof window.grokCompanionOn==="function"&&!window.grokCompanionOn()){chip("Companion is off — ⚙ Settings → Companion");return}const key=new URLSearchParams(location.search).get("key");location.href="/xr"+(key?"?key="+encodeURIComponent(key):"")};
   if($("btnCp"))$("btnCp").onclick=()=>{closeMore();checkpointNow()};
   if($("btnExport"))$("btnExport").onclick=()=>{closeMore();exportChat("html")};
   if($("btnTerm"))$("btnTerm").onclick=()=>{

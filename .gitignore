@@ -22,3 +22,12 @@ desktop/package-lock.json
 desktop-tauri/node_modules/
 desktop-tauri/src-tauri/target/
 desktop-tauri/dist/
+*.fbx
+*.tar.gz
+web/ual/
+web/vendor/mp/
+web/bake_clips_log.txt
+web/rikku_mixamo_log.txt
+web/rikku_mixamo_*.png
+web/rig*.txt
+web/Soldier.glb

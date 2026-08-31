@@ -45,10 +45,10 @@ function paintBtns(){
  });
  const xrBtn=$("btnComposerXr");
  if(xrBtn){
-  const show=!!(xrCaps.xr||xrCaps.uaWearable||cfg.mode==="xr");
-  xrBtn.classList.toggle("show",show);
-  xrBtn.textContent=xrCaps.ar?"AR":(xrCaps.vr?"VR":"XR");
-  xrBtn.title=xrCaps.ar?"AR detected — glance HUD + spatial":xrCaps.vr?"VR detected":"XR / AR HUD";
+  const want=typeof window.grokCompanionOn==="function"&&window.grokCompanionOn();
+  xrBtn.classList.toggle("show",!!want);
+  xrBtn.textContent="XR";
+  xrBtn.title=want?"Open hologram companion":"Companion is off — enable in Settings";
  }
  const menuXr=$("btnXrMenu");
  if(menuXr){
@@ -288,6 +288,7 @@ async function enterBestXr(){
 }
 async function setMode(mode){
  const next=mode||"off";
+ if(next==="xr"&&typeof window.grokCompanionOn==="function"&&!window.grokCompanionOn()){chip("Companion is off — ⚙ Settings → Companion");return}
  if(next===cfg.mode&&next!=="off"){cfg.mode="off";saveCfg();stopListen();stopSpeak();if(xrSess)try{xrSess.end()}catch(e){}paintHud();paintBtns();return}
  cfg.mode=next;saveCfg();
  ensureAudioCtx();

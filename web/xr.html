@@ -1,0 +1,1300 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+<title>Grok Remote · Companion</title>
+<script>(function(){try{var v=localStorage.getItem("grok_remote_variant")||"grok";var m=localStorage.getItem("grok_remote_mode")||"dark";document.documentElement.setAttribute("data-variant",v);document.documentElement.setAttribute("data-mode",m);document.documentElement.setAttribute("data-layout",localStorage.getItem("grok_remote_layout")||"braid")}catch(e){document.documentElement.setAttribute("data-variant","grok");document.documentElement.setAttribute("data-mode","dark")}})();</script>
+<link rel="stylesheet" href="/static/theme-tokens.css"/>
+<style>
+html,body{margin:0;height:100%;background:var(--bg);color:var(--tx);font-family:var(--font);overflow:hidden}
+#gl{position:fixed;inset:0}
+#land{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;overflow-y:auto;overscroll-behavior:contain;padding:12px 0;box-sizing:border-box;background:var(--bg);z-index:10}
+#land h1{font-size:13px;letter-spacing:.14em;color:var(--mut);font-weight:650;margin:0;text-transform:uppercase}
+#land .orb{width:56px;height:56px;border-radius:50%;border:1px solid var(--line);background:var(--panel2);box-shadow:0 0 0 8px var(--acc-dim)}
+#land button,#roomBar button,#exit,#typeGo,#glbClear,.xr-chip{font-size:13px;padding:10px 16px;border-radius:var(--radius);border:1px solid var(--line);background:var(--panel2);color:var(--tx);cursor:pointer;min-height:40px;font-weight:600}
+#land button.pri,#typeGo{background:var(--acc);border-color:var(--acc);color:var(--bg)}
+#land .note{font-size:12px;color:var(--mut);max-width:34em;text-align:center;line-height:1.5}
+#hud{position:fixed;left:0;right:0;bottom:0;display:none;flex-direction:column;align-items:center;gap:8px;padding:0 12px calc(14px + env(safe-area-inset-bottom));z-index:5;pointer-events:none}
+#cap{display:none}
+#talk{pointer-events:auto;width:72px;height:72px;border-radius:50%;border:1px solid var(--line);background:var(--panel2);color:var(--acc);font-size:10px;letter-spacing:.08em;cursor:pointer;user-select:none;-webkit-user-select:none;touch-action:none;font-weight:700;z-index:12}
+#talk.rec{background:var(--acc);color:var(--bg);border-color:var(--acc);box-shadow:0 0 24px var(--acc-glow)}
+#state{display:none}
+#exit{position:fixed;top:calc(10px + env(safe-area-inset-top));left:12px;z-index:12;display:none}
+#xrui{position:fixed;inset:0;pointer-events:none;z-index:8}
+#xrui button,#xrui input,#talk,#exit,#hud,.xr-rail{pointer-events:auto}
+.xr-rail{position:fixed;top:calc(52px + env(safe-area-inset-top));bottom:calc(110px + env(safe-area-inset-bottom));width:min(280px,28vw);background:var(--glass);border:1px solid var(--line);border-radius:var(--radius);z-index:11;overflow:auto;padding:8px;display:none;flex-direction:column;gap:4px}
+#sessRail{left:12px}
+#feedRail{right:12px;width:min(340px,32vw);padding:0;overflow:hidden}
+#feedChat,#feedWork{flex:1;overflow:auto;padding:8px;min-height:0}
+#feedChat{border-bottom:1px solid var(--line)}
+.xr-rail-h{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--mut);font-weight:650;padding:4px 6px}
+.xr-sess{display:block;width:100%;text-align:left;background:transparent;border:0;color:var(--tx);padding:8px 8px;border-radius:8px;cursor:pointer;font:12.5px var(--font);min-height:0}
+.xr-sess.on,.xr-sess:hover{background:var(--acc-dim)}
+.xr-ev{margin:0 0 8px;line-height:1.35}
+.xr-ev .k{font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--mut);font-weight:650}
+.xr-ev .b{font-size:12.5px;color:var(--tx);white-space:pre-wrap;word-break:break-word}
+.xr-ev-you .k{color:var(--you)}
+.xr-ev-think .k{color:var(--gold)}
+.xr-ev-read .k,.xr-ev-write .k,.xr-ev-tool .k{color:var(--acc)}
+#typeRow,#roomBar,#desk{display:none!important}
+#modelSel,#glbClear,input[type=file]{background:var(--panel2);color:var(--tx);border:1px solid var(--line);border-radius:8px;padding:5px 8px;max-width:240px;font-family:var(--font)}
+.xr-sheet{position:fixed;background:var(--glass);color:var(--tx);border:1px solid var(--line);border-radius:var(--radius);z-index:49;overflow-y:auto;font:12px var(--font)}
+.xr-chip{font:13px var(--font)}
+</style>
+</head>
+<body>
+<canvas id="gl"></canvas>
+<div id="land">
+  <div class="orb"></div>
+  <h1>Grok Remote · Companion</h1>
+  <button class="pri" id="btnAR">Enter your room</button>
+  <button id="btnPrev">Preview on this screen</button>
+  <div style="margin-top:10px"><select id="modelSel"><option value="">avatar: default</option></select></div>
+  <div style="margin-top:6px"><label class="note" style="cursor:pointer">bring your own .glb <input type="file" id="glbFile" accept=".glb,model/gltf-binary" style="max-width:180px"></label> <button id="glbClear" style="display:none">clear</button></div>
+  <p class="note" id="landNote">Hologram companion — female or male body follows the active actor (override with ?body=female or ?body=male). Quest 3: headset browser, secure context. Preview works anywhere; mic wants localhost.</p>
+  <p class="note" style="font-size:9.5px;opacity:.7">Model: "High Poly Rikku" (skfb.ly/pIrZ9) by HumanContraband, CC Attribution 4.0</p>
+</div>
+<div id="xrui">
+<div id="state">waking</div>
+<button id="exit">Remote</button>
+<div id="sessRail" class="xr-rail"></div>
+<div id="feedRail" class="xr-rail">
+  <div class="xr-rail-h">Chat</div>
+  <div id="feedChat"></div>
+  <div class="xr-rail-h">Think · read · write</div>
+  <div id="feedWork"></div>
+</div>
+<div id="hud">
+  <div id="cap"></div>
+  <div id="roomBar"></div>
+  <div id="typeRow"><input id="typeBox" placeholder="say something…" autocomplete="off"/><button id="typeGo">Send</button></div>
+  <button id="talk">HOLD·TALK</button>
+</div>
+<div id="desk"></div>
+</div>
+<script type="importmap">{"imports":{"three":"./static/three.module.js","/utils/BufferGeometryUtils.js":"/static/BufferGeometryUtils.js"}}</script>
+<script type="module">
+import * as THREE from "three";
+import {reposeStatic,meterize} from "./static/xr-body.js";
+import {buildSkeleton,skinWeights,dominantBone,CAPSULES} from "./static/xr-skin.js";
+import {skinFrame,clothStep,deformStats,resetDeformStats,strayRadius,CLOTH,makeLag,lagStep,lagAuto,lagAutoPair,strandSpread,lagReport,LAGTUNE,SLOWMUL,hairFlex,LOOSE} from "./static/xr-deform.js";
+import {GLTFLoader} from "./static/GLTFLoader.js";
+const errLog=[];
+function noteErr(src,msg){
+  const m=String(msg==null?"?":msg).replace(/\s+/g," ").slice(0,180);
+  const last=errLog[errLog.length-1];
+  if(last&&last.msg===m&&last.src===src){last.n++;last.ts=Date.now();return}
+  errLog.push({src,msg:m,n:1,ts:Date.now()});
+  if(errLog.length>30)errLog.shift();
+}
+addEventListener("error",e=>noteErr("js",(e.message||e.error||"error")+" @"+String(e.filename||"").split("/").pop()+":"+(e.lineno||0)));
+addEventListener("unhandledrejection",e=>noteErr("promise",e.reason&&e.reason.message||e.reason));
+const _ce=console.error.bind(console);
+console.error=(...a)=>{const m=a.map(x=>x&&x.message||x).join(" ");if(!/^INFO:|XNNPACK|TensorFlow Lite/i.test(m))noteErr("console",m);_ce(...a)};
+const Q=new URLSearchParams(location.search);
+const KEY=Q.get("key")||"";
+try{const _ux=JSON.parse(localStorage.getItem("grok_remote_ux")||"{}");if(!_ux.companion)location.replace("/"+(KEY?"?key="+encodeURIComponent(KEY):""))}catch(e){}
+const stateEl=document.getElementById("state"),cap=document.getElementById("cap");
+const esc=s=>String(s||"").replace(/[<>&]/g,c=>({"<":"&lt;",">":"&gt;","&":"&amp;"}[c]));
+const say=(t,you)=>{cap.innerHTML=(you?'<span class="you">you said · '+esc(you)+"</span>":"")+esc(t||"")};
+
+/* ---------- scene ---------- */
+const canvas=document.getElementById("gl");
+const renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:true,preserveDrawingBuffer:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.setSize(innerWidth,innerHeight);
+renderer.xr.enabled=true;
+const scene=new THREE.Scene();
+const camera=new THREE.PerspectiveCamera(58,innerWidth/innerHeight,0.02,60);
+camera.position.set(0,1.45,2.3);
+addEventListener("resize",()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
+const rig=new THREE.Group();
+scene.add(rig);
+rig.position.set(0,0,-1.35);
+const stage=new THREE.Group();
+rig.add(stage);
+function cssCol(name,fb){const s=getComputedStyle(document.documentElement).getPropertyValue(name).trim();const c=new THREE.Color();try{c.set(s||fb)}catch(e){c.set(fb)}return c}
+const accCol=cssCol("--acc","#d4d4d8");
+const floorGlow=new THREE.Mesh(
+  new THREE.CircleGeometry(0.55,64),
+  new THREE.MeshBasicMaterial({color:accCol,transparent:true,opacity:0.08,blending:THREE.AdditiveBlending,depthWrite:false})
+);
+floorGlow.rotation.x=-Math.PI/2;floorGlow.position.y=0.004;
+stage.add(floorGlow);
+const ringMat=new THREE.MeshBasicMaterial({color:accCol,transparent:true,opacity:0.18,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide});
+function addRing(r){
+  const g=new THREE.RingGeometry(r,r+0.012,64);
+  const m=new THREE.Mesh(g,ringMat.clone());
+  m.rotation.x=-Math.PI/2;m.position.y=0.006;stage.add(m);return m;
+}
+const rings=[addRing(0.18),addRing(0.32),addRing(0.48)];
+const beam=new THREE.Mesh(
+  new THREE.CylinderGeometry(0.035,0.22,1.72,32,1,true),
+  new THREE.MeshBasicMaterial({color:accCol,transparent:true,opacity:0.04,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide})
+);
+beam.position.y=0.86;beam.visible=false;
+
+/* ---------- shared point shader (skinned + static paths) ---------- */
+const uniforms={
+  uTime:{value:0},uLevel:{value:0},uListen:{value:0},uThink:{value:0},uSpeak:{value:0},uForm:{value:0},
+  uPx:{value:renderer.getPixelRatio()},
+  uBoneTex:{value:null},uBoneTexLag:{value:null},uBoneTexLag2:{value:null},uCloth:{value:0},uBindMat:{value:new THREE.Matrix4()},uBindMatInv:{value:new THREE.Matrix4()}
+};
+const poseP=import("./static/xr-pose.js?t="+Date.now()).then(m=>{modUp("body");modUp("skin");modUp("deform");const P=m.initPose({THREE,getSkeleton:()=>skeleton});modUp("pose");return P});
+function makeMaterial(skinned){
+  return new THREE.ShaderMaterial({
+    uniforms,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,
+    defines:skinned?{USE_SKIN:1}:{},
+    vertexShader:`
+attribute vec4 aRnd;
+attribute vec3 aCol;
+attribute vec3 aNrm;
+#ifdef USE_SKIN
+attribute vec4 aSkinIndex;
+attribute vec4 aSkinWeight;
+attribute float aFlex;
+uniform sampler2D uBoneTex,uBoneTexLag,uBoneTexLag2;
+uniform float uCloth;
+uniform mat4 uBindMat,uBindMatInv;
+mat4 boneMat(float i){
+  int size=textureSize(uBoneTex,0).x;
+  int j=int(i)*4;
+  int x=j%size,y=j/size;
+  return mat4(texelFetch(uBoneTex,ivec2(x,y),0),texelFetch(uBoneTex,ivec2(x+1,y),0),texelFetch(uBoneTex,ivec2(x+2,y),0),texelFetch(uBoneTex,ivec2(x+3,y),0));
+}
+mat4 boneMatLag(float i){
+  int size=textureSize(uBoneTexLag,0).x;
+  int j=int(i)*4;
+  int x=j%size,y=j/size;
+  return mat4(texelFetch(uBoneTexLag,ivec2(x,y),0),texelFetch(uBoneTexLag,ivec2(x+1,y),0),texelFetch(uBoneTexLag,ivec2(x+2,y),0),texelFetch(uBoneTexLag,ivec2(x+3,y),0));
+}
+mat4 boneMatLag2(float i){
+  int size=textureSize(uBoneTexLag2,0).x;
+  int j=int(i)*4;
+  int x=j%size,y=j/size;
+  return mat4(texelFetch(uBoneTexLag2,ivec2(x,y),0),texelFetch(uBoneTexLag2,ivec2(x+1,y),0),texelFetch(uBoneTexLag2,ivec2(x+2,y),0),texelFetch(uBoneTexLag2,ivec2(x+3,y),0));
+}
+#endif
+uniform float uTime,uLevel,uListen,uThink,uSpeak,uForm,uPx;
+varying float vA;varying float vGrp;varying float vGlow;varying vec3 vCol;
+void main(){
+  vec3 p=position;
+  vec3 nrm=aNrm;
+#ifdef USE_SKIN
+  mat4 skin=aSkinWeight.x*boneMat(aSkinIndex.x)+aSkinWeight.y*boneMat(aSkinIndex.y)+aSkinWeight.z*boneMat(aSkinIndex.z)+aSkinWeight.w*boneMat(aSkinIndex.w);
+  mat4 skinFull=uBindMatInv*skin*uBindMat;
+  vec3 pNow=(skinFull*vec4(p,1.0)).xyz;
+  nrm=mat3(skinFull)*nrm;
+  float cw=aFlex*uCloth;
+  if(cw>0.001){
+    float hv=fract(aRnd.z*7.13);
+    mat4 lag=aSkinWeight.x*boneMatLag(aSkinIndex.x)+aSkinWeight.y*boneMatLag(aSkinIndex.y)+aSkinWeight.z*boneMatLag(aSkinIndex.z)+aSkinWeight.w*boneMatLag(aSkinIndex.w);
+    mat4 lag2=aSkinWeight.x*boneMatLag2(aSkinIndex.x)+aSkinWeight.y*boneMatLag2(aSkinIndex.y)+aSkinWeight.z*boneMatLag2(aSkinIndex.z)+aSkinWeight.w*boneMatLag2(aSkinIndex.w);
+    vec3 pLag=(uBindMatInv*lag*uBindMat*vec4(p,1.0)).xyz;
+    vec3 pLag2=(uBindMatInv*lag2*uBindMat*vec4(p,1.0)).xyz;
+    pNow=mix(pNow,mix(pLag,pLag2,hv),clamp(cw*(0.65+0.5*hv),0.0,0.85));
+  }
+  p=pNow;
+#endif
+  float grp=aRnd.w;vGrp=grp;
+  float fade=smoothstep(0.12,0.55,p.y);
+  if(grp>1.5){
+    vec3 dir=normalize(vec3(p.x,0.0001,p.z)+vec3(0.0001));
+    p+=dir*sin(uTime*0.35+aRnd.x*2.0)*0.012;
+    p.y+=sin(uTime*0.4+aRnd.x)*0.01;
+  }
+  p.y=mix(-0.02,p.y,clamp(uForm,0.0,1.0));
+  vec4 mv=modelViewMatrix*vec4(p,1.0);
+  float base=grp>1.5?1.3:2.7;
+  float ps=(base+uLevel*1.6+uListen*0.35)*uPx;
+  gl_PointSize=clamp(ps*(1.55/max(0.35,-mv.z)),1.0,9.0);
+  vGlow=uLevel;
+  vCol=aCol;
+  vA=(grp>1.5?0.09:0.62)*fade*(0.92+0.08*sin(uTime*0.7+aRnd.x));
+  // shell visibility: only the camera-facing half renders, so interior geometry
+  // (mouth, back-of-head) can never show through the front surface
+  float facing=dot(normalize(normalMatrix*nrm),normalize(-mv.xyz));
+  float vis=smoothstep(-0.32,0.06,facing);
+  gl_PointSize*=max(vis,0.01);
+  vA*=vis;
+  gl_Position=projectionMatrix*mv;
+}`,
+    fragmentShader:`
+uniform float uThink,uSpeak,uListen,uTime,uForm,uLevel;
+varying float vA;varying float vGrp;varying float vGlow;varying vec3 vCol;
+void main(){
+  vec2 uv=gl_PointCoord-0.5;
+  float d=length(uv);
+  if(d>0.5)discard;
+  float soft=smoothstep(0.48,0.0,d);
+  vec3 col=vCol;
+  col=mix(col,vec3(0.62,0.52,1.0),uThink*0.4);
+  col=mix(col,vec3(0.70,0.95,1.0),uListen*0.25);
+  col+=vGlow*0.28*vec3(0.7,0.95,1.0);
+  float scan=0.94+0.06*sin(gl_FragCoord.y*0.11+uTime*1.6);
+  float flick=1.0-uThink*0.12*(0.5+0.5*sin(uTime*18.0));
+  gl_FragColor=vec4(col*scan,vA*soft*uForm*flick);
+}`
+  });
+}
+
+/* ---------- halo dust (always) ---------- */
+function buildHalo(n){
+  const p=new Float32Array(n*3),r=new Float32Array(n*4),c=new Float32Array(n*3);
+  for(let i=0;i<n;i++){
+    const th=Math.random()*6.283,rr=0.04+Math.random()*0.38,h=Math.pow(Math.random(),1.6)*1.7;
+    p[i*3]=rr*Math.cos(th)*(1-h*0.45);p[i*3+1]=h;p[i*3+2]=rr*Math.sin(th)*(1-h*0.45);
+    r[i*4]=Math.random()*6.283;r[i*4+1]=0.5+Math.random();r[i*4+2]=Math.random();r[i*4+3]=2;
+    const j=0.75+Math.random()*0.35;
+    c[i*3]=0.45*j;c[i*3+1]=0.78*j;c[i*3+2]=1.0*j;
+  }
+  const g=new THREE.BufferGeometry();
+  g.setAttribute("position",new THREE.BufferAttribute(p,3));
+  g.setAttribute("aRnd",new THREE.BufferAttribute(r,4));
+  g.setAttribute("aCol",new THREE.BufferAttribute(c,3));
+  stage.add(new THREE.Points(g,makeMaterial(false)));
+}
+buildHalo(2800);
+
+/* ---------- skinned model -> pointcloud ---------- */
+let mixer=null,skeleton=null,gestureBones={head:null,neck:null,spineTop:null,armL:null,armR:null,foreL:null,foreR:null};
+let baseQuat={};
+function texToCanvas(tex){
+  try{
+    const img=tex.image;
+    const cv=document.createElement("canvas");
+    cv.width=img.width;cv.height=img.height;
+    const g=cv.getContext("2d",{willReadFrequently:true});
+    g.drawImage(img,0,0);
+    return {d:g.getImageData(0,0,img.width,img.height).data,w:img.width,h:img.height};
+  }catch(e){return null}
+}
+function samplePoints(gltf,count){
+  let meshes=[],skinned=true;
+  gltf.scene.updateMatrixWorld(true);
+  gltf.scene.traverse(o=>{if(o.isSkinnedMesh)meshes.push(o)});
+  if(meshes.length>1){
+    // interior head parts (teeth/tongue/eye backs) sample as a dense creature floating in
+    // her skull - pointclouds have no occlusion, so drop small meshes in the head zone
+    const sz=new THREE.Vector3(),ct=new THREE.Vector3();
+    const keep=meshes.filter(m=>{
+      m.geometry.computeBoundingBox();
+      m.geometry.boundingBox.getSize(sz);m.geometry.boundingBox.getCenter(ct);
+      return !(sz.length()<0.28&&ct.y>1.25&&Math.abs(ct.x)<0.22&&Math.abs(ct.z)<0.25);
+    });
+    if(keep.length)meshes=keep;
+  }
+  if(!meshes.length){
+    skinned=false;
+    gltf.scene.traverse(o=>{if(o.isMesh)meshes.push(o)});
+  }
+  if(!meshes.length)return null;
+  if(skinned){
+  skeleton=meshes[0].skeleton;
+  skeleton.computeBoneTexture();
+  uniforms.uBoneTex.value=skeleton.boneTexture;
+  uniforms.uBindMat.value.copy(meshes[0].bindMatrix);
+  uniforms.uBindMatInv.value.copy(meshes[0].bindMatrixInverse);
+  sampledMeshMatrix=meshes[0].matrixWorld.clone();
+  }
+  // area-weighted triangle table over all meshes sharing the skeleton
+  const tris=[];
+  let total=0;
+  const A=new THREE.Vector3(),B=new THREE.Vector3(),C=new THREE.Vector3();
+  for(const m of meshes){
+    if(skinned&&m.skeleton!==skeleton)continue;
+    const g=m.geometry,ix=g.index,pa=g.attributes.position;
+    const n=ix?ix.count/3:pa.count/3;
+    for(let t=0;t<n;t++){
+      const a=ix?ix.getX(t*3):t*3,b=ix?ix.getX(t*3+1):t*3+1,c=ix?ix.getX(t*3+2):t*3+2;
+      A.fromBufferAttribute(pa,a);B.fromBufferAttribute(pa,b);C.fromBufferAttribute(pa,c);
+      const ar=B.sub(A).cross(C.sub(A)).length()*0.5;
+      if(ar>0){total+=ar;tris.push({m,a,b,c,cum:total})}
+    }
+  }
+  const p=new Float32Array(count*3),r=new Float32Array(count*4),cl=new Float32Array(count*3);
+  const si=new Float32Array(count*4),sw=new Float32Array(count*4),nm=new Float32Array(count*3);
+  const texCache=new Map();
+  /* classify meshes so the static repose only touches what it should: the ribbon sash is the
+     one mesh whose z-extent rivals the model height; hands are small satellites far from the
+     midline at mid height. */
+  const region=new Int8Array(count);
+  const flex=new Float32Array(count);
+  let meshStats=null;
+  if(!skinned){
+    const fb=new THREE.Box3();
+    for(const m of meshes)fb.expandByObject(m);
+    const H=fb.max.y-fb.min.y;
+    const bigZ=new Set(),hands=new Set();
+    const zs=[];
+    const mb=new Map();
+    for(const m of meshes){
+      const b=new THREE.Box3().setFromObject(m);
+      mb.set(m,b);
+      const tris=(m.geometry.index?m.geometry.index.count:m.geometry.attributes.position.count)/3;
+      if(tris>400)zs.push((b.min.z+b.max.z)/2);
+    }
+    zs.sort((a,b)=>a-b);
+    const bodyZ=zs.length?zs[(zs.length/2)|0]:0;
+    const scarf=new Set();
+    let bodyMesh=null,bodyTris=0,hairMesh=null,hairY=-1e9;
+    for(const m of meshes){
+      const tris=(m.geometry.index?m.geometry.index.count:m.geometry.attributes.position.count)/3;
+      if(tris>bodyTris){bodyTris=tris;bodyMesh=m}
+    }
+    for(const m of meshes){
+      const b=mb.get(m);
+      const tris=(m.geometry.index?m.geometry.index.count:m.geometry.attributes.position.count)/3;
+      const cxm=(b.min.x+b.max.x)/2,cym=(b.min.y+b.max.y)/2;
+      const nm=(m.name||"").toLowerCase();
+      if((b.max.z-b.min.z)>0.5*H&&tris<600)bigZ.add(m);
+      else if(tris<400&&Math.abs(cxm-(fb.min.x+fb.max.x)/2)>0.22*H&&cym>fb.min.y+0.4*H&&cym<fb.min.y+0.78*H)hands.add(m);
+      else if(tris<1000&&Math.abs(cxm-(fb.min.x+fb.max.x)/2)<0.15*H&&cym>fb.min.y+0.60*H&&cym<fb.min.y+0.82*H)scarf.add(m);
+      if(m!==bodyMesh&&(cym>hairY)&&(tris>400||/hair|ponytail|tail/.test(nm))&&cym>fb.min.y+0.65*H){hairY=cym;hairMesh=m}
+    }
+    meshStats={H,minY:fb.min.y,cx:(fb.min.x+fb.max.x)/2,bodyZ,bigZ,hands,scarf,hairMesh,bodyMesh,mb};
+  }
+  for(let i=0;i<count;i++){
+    const pickA=Math.random()*total;
+    let lo=0,hi=tris.length-1;
+    while(lo<hi){const mid=(lo+hi)>>1;tris[mid].cum<pickA?lo=mid+1:hi=mid}
+    const T=tris[lo];
+    if(!skinned&&meshStats&&meshStats.bigZ.has(T.m)){i--;continue}
+    const g=T.m.geometry,pa=g.attributes.position,ua=g.attributes.uv,sia=g.attributes.skinIndex,swa=g.attributes.skinWeight;
+    let u=Math.random(),v=Math.random();
+    if(u+v>1){u=1-u;v=1-v}
+    const w0=1-u-v;
+    let px=pa.getX(T.a)*w0+pa.getX(T.b)*u+pa.getX(T.c)*v;
+    let py=pa.getY(T.a)*w0+pa.getY(T.b)*u+pa.getY(T.c)*v;
+    let pz=pa.getZ(T.a)*w0+pa.getZ(T.b)*u+pa.getZ(T.c)*v;
+    if(!skinned){
+      A.set(px,py,pz).applyMatrix4(T.m.matrixWorld);
+      px=A.x;py=A.y;pz=A.z;
+      region[i]=meshStats.bigZ.has(T.m)?1:(meshStats.hands.has(T.m)?2:0);
+      if(!region[i]){
+        const S=meshStats;
+        if(S.scarf.has(T.m)){
+          /* looseness must be ZERO at the attachment edge or the whole piece drifts off the
+             body as a unit - only the free end swings. */
+          const b=S.mb.get(T.m);
+          const down=Math.max(0,(b.max.y-py)/Math.max(1e-6,b.max.y-b.min.y));
+          flex[i]=0.6*Math.pow(down,1.8);
+        }else if(T.m===S.hairMesh){
+          const b=S.mb.get(T.m);
+          const down=(b.max.y-py)/Math.max(1e-6,b.max.y-b.min.y);
+          if(down>0.55)flex[i]=Math.pow((down-0.55)/0.45,1.6)*0.45;
+        }
+      }
+    }
+    p[i*3]=px;p[i*3+1]=py;p[i*3+2]=pz;
+    {
+      const pa3=T.m.geometry.attributes.position;
+      const ax=pa3.getX(T.a),ay=pa3.getY(T.a),az=pa3.getZ(T.a);
+      const ux=pa3.getX(T.b)-ax,uy=pa3.getY(T.b)-ay,uz=pa3.getZ(T.b)-az;
+      const vx=pa3.getX(T.c)-ax,vy=pa3.getY(T.c)-ay,vz=pa3.getZ(T.c)-az;
+      let nx=uy*vz-uz*vy,ny=uz*vx-ux*vz,nz=ux*vy-uy*vx;
+      const nl=Math.hypot(nx,ny,nz)||1;
+      nm[i*3]=nx/nl;nm[i*3+1]=ny/nl;nm[i*3+2]=nz/nl;
+    }
+    if(skinned&&sia&&swa){
+      const acc=new Map();
+      const addC=(corner,ww)=>{for(let k=0;k<4;k++){const id=sia.getComponent(corner,k);acc.set(id,(acc.get(id)||0)+ww*swa.getComponent(corner,k))}};
+      addC(T.a,w0);addC(T.b,u);addC(T.c,v);
+      const top=[...acc.entries()].sort((a,b)=>b[1]-a[1]).slice(0,4);
+      let s=0;for(const t of top)s+=t[1];if(s<1e-8)s=1;
+      for(let k=0;k<4;k++){si[i*4+k]=top[k]?top[k][0]:0;sw[i*4+k]=top[k]?top[k][1]/s:0}
+    }
+    r[i*4]=Math.random()*6.283;r[i*4+1]=0.5+Math.random();r[i*4+2]=Math.random();r[i*4+3]=0;
+    let cc=[0.35,0.85,1.0];
+    const map=T.m.material&&T.m.material.map;
+    if(map&&ua){
+      let tc=texCache.get(map);
+      if(tc===undefined){tc=texToCanvas(map);texCache.set(map,tc)}
+      if(tc){
+        const tu=ua.getX(T.a)*w0+ua.getX(T.b)*u+ua.getX(T.c)*v;
+        const tv=ua.getY(T.a)*w0+ua.getY(T.b)*u+ua.getY(T.c)*v;
+        const px=Math.min(tc.w-1,Math.max(0,(tu%1)*tc.w))|0;
+        const py=Math.min(tc.h-1,Math.max(0,(tv%1)*tc.h))|0;
+        const o=(py*tc.w+px)*4;
+        // keep the model's shading, pull the hue toward hologram cyan
+        const lum=(tc.d[o]*0.30+tc.d[o+1]*0.59+tc.d[o+2]*0.11)/255;
+        cc=[0.30+lum*0.25,0.62+lum*0.32,0.88+lum*0.18];
+      }
+    }
+    const j=0.88+Math.random()*0.24;
+    cl[i*3]=cc[0]*j;cl[i*3+1]=cc[1]*j;cl[i*3+2]=cc[2]*j;
+  }
+  if(!skinned&&Q.get("repose")!=="0")reposeStatic(p,count,region,meshStats,flex);
+  if(skinned&&skeleton)hairInfo=hairFlex(skeleton.bones,p,count,si,sw,flex);
+  let synth=false;
+  if(!skinned){
+    meterize(p,count,meshStats);
+    const B=bindSynthetic(p,count,region,meshStats);
+    si.set(B.si);sw.set(B.sw);synth=true;
+  }
+  const geo=new THREE.BufferGeometry();
+  geo.setAttribute("position",new THREE.BufferAttribute(p,3));
+  geo.setAttribute("aRnd",new THREE.BufferAttribute(r,4));
+  geo.setAttribute("aCol",new THREE.BufferAttribute(cl,3));
+  geo.setAttribute("aSkinIndex",new THREE.BufferAttribute(si,4));
+  geo.setAttribute("aSkinWeight",new THREE.BufferAttribute(sw,4));
+  geo.setAttribute("aNrm",new THREE.BufferAttribute(nm,3));
+  geo.setAttribute("aFlex",new THREE.BufferAttribute(flex,1));
+  let fN=0,fMax=0;
+  for(let i=0;i<count;i++){if(flex[i]>0.01)fN++;if(flex[i]>fMax)fMax=flex[i]}
+  clothInfo={pts:fN,pct:Math.round(100*fN/Math.max(1,count)),max:+fMax.toFixed(3)};
+  return {geo,skinned,flex,synth};
+}
+/* Mesh-aware static repose. Region 1 = the ribbon sash mesh: everything reaching behind the
+   back rotates down about an X pivot at the knot so it drapes instead of flagpoling. Region 2
+   = hand satellite meshes, and body points beyond the shoulder line: ease toward the sides. */
+let skelRoot=null;
+function bindSynthetic(p,count,region,S){
+  const r=buildSkeleton(THREE);
+  skelRoot=r.skelRoot;skeleton=r.skeleton;
+  uniforms.uBindMat.value.identity();
+  uniforms.uBindMatInv.value.identity();
+  sampledMeshMatrix=new THREE.Matrix4();
+  const w=skinWeights(p,count,r.bones);
+  if(w.segs<12)noteErr("skin","only "+w.segs+"/12 capsules bound");
+  return {si:w.si,sw:w.sw};
+}
+let actIdle=null,actTalk=null;
+function findGestureBones(){
+  skeleton.bones.forEach(b=>{
+    const n=b.name.toLowerCase();
+    baseQuat[b.name]=b.quaternion.clone();
+    if(!gestureBones.head&&/head/.test(n))gestureBones.head=b;
+    if(!gestureBones.neck&&/neck/.test(n))gestureBones.neck=b;
+    if(!gestureBones.spineTop&&/spine2|spine3|chest|upperchest/.test(n))gestureBones.spineTop=b;
+    if(/arm/.test(n)){
+      if(!gestureBones.armL&&/left/.test(n)&&!/fore|lower/.test(n))gestureBones.armL=b;
+      if(!gestureBones.armR&&/right/.test(n)&&!/fore|lower/.test(n))gestureBones.armR=b;
+      if(!gestureBones.foreL&&/left/.test(n)&&/fore|lower/.test(n))gestureBones.foreL=b;
+      if(!gestureBones.foreR&&/right/.test(n)&&/fore|lower/.test(n))gestureBones.foreR=b;
+    }
+  });
+  for(const k in gestureBones)if(gestureBones[k]&&!baseQuat[k])baseQuat[k]=gestureBones[k].quaternion.clone();
+}
+let holoPts=null,modelRoot=null,clips=[],sampledMeshMatrix=null,modelHolder=null,physState=null,bindPos=null,skinGeo=null,synthCpu=false,bindLocalInv=null;
+const _sm=new THREE.Matrix4(),_hinv=new THREE.Matrix4(),_sv=new THREE.Vector3();
+function captureBind(){
+  if(!skeleton||!modelHolder)return;
+  modelHolder.updateMatrixWorld(true);
+  skelRoot&&skelRoot.updateMatrixWorld(true);
+  _hinv.copy(modelHolder.matrixWorld).invert();
+  bindLocalInv=skeleton.bones.map(b=>new THREE.Matrix4().multiplyMatrices(_hinv,b.matrixWorld).invert());
+}
+const _boneMats=[];
+const _dtmp={pm:new THREE.Matrix4(),pmInv:new THREE.Matrix4(),pv:new THREE.Vector3()};
+const skinCtx=()=>({skeleton,bindPos,skinGeo,bindLocalInv,modelHolder,skelRoot,hinv:_hinv,boneMats:_boneMats});
+function cpuSkin(){return synthCpu?skinFrame(THREE,skinCtx()):null}
+function clothTick(dt,t){return clothStep(THREE,physState,modelHolder,dt,t,_dtmp)}
+let bodySex="female",bodyEnergy=1,actorLabel="";
+async function resolveBody(){
+  const q=(Q.get("body")||"").toLowerCase();
+  if(q==="male"||q==="m")return "male";
+  if(q==="female"||q==="f")return "female";
+  try{
+    const r=await (await fetch("/api/actor/show",{cache:"no-store"})).json();
+    const eff=r&&r.effective||{};
+    const id=String(eff.preset||eff.id||"").toLowerCase();
+    actorLabel=eff.name||eff.preset||id||"";
+    const male=/^(trump|cowboy|washington|lord|professor|sherlock|sports|pirate|yoda|boomer|drill|shakespeare|noir|peasant|silentgen)$/.test(id);
+    if(male)return "male";
+  }catch(e){}
+  return "female";
+}
+const CAMNOTE="\n\n[Your camera eyes are ON. A fresh frame of what you can see right now was just saved to companion_view.jpg in your working directory - view that image file whenever the user asks about the room, themselves, or what you can see, then react with your body too.]";
+const SELFNOTE="\n\n[Your camera is off, so instead a fresh render of YOUR OWN BODY as it stands right now was just saved to companion_view.jpg - solid, lit, framed head to toe. View that file whenever you want to check your own posture or a move you just invented.]";
+const MOVENOTE=t=>"\n\n[Body note: "+t+". This is a nudge about pacing, not something to mention out loud.]";
+const RECAP=r=>"[You and Anthony were already talking "+r.ageMin+" minutes ago, before this page reloaded. The tail of it: "+r.lines.join(" | ")+". Pick up naturally from there; do not greet him as if he just arrived and do not recap this back at him.]\n\n";
+let braidSig="";
+const BODYNOTE=a=>"\n\n[Your body is reporting problems right now: "+a.join("; ")+". If the user asks why you are stiff or quiet, say what is actually broken in plain words. Do not apologise repeatedly and do not invent a cause you cannot see.]";
+const BRAIDNOTE=(n,last)=>"\n\n[Braid room is live right now with "+n+" agent sessions. Most recent lines - "+(last||"(quiet)")+". This is background awareness of the work happening beside you: bring it up only if the user asks about Braid, the agents, or what is running. Never recite it unprompted.]";
+const RIGWANT=["Hips","Spine","Spine1","Spine2","Neck","Head","LeftShoulder","LeftArm","LeftForeArm","LeftHand","RightShoulder","RightArm","RightForeArm","RightHand","LeftUpLeg","LeftLeg","LeftFoot","RightUpLeg","RightLeg","RightFoot"];
+const rigInfo={file:"",bones:0,matched:0,missing:[],pct:0};
+async function driveProbe(){
+  try{
+    if(!skeleton||!clips.length)return;
+    const probe=clips.find(c=>c.tracks&&c.tracks.length>8);
+    if(!probe)return;
+    const root=skeleton.bones[0].parent||skeleton.bones[0];
+    const saved=skeleton.bones.map(b=>b.quaternion.clone());
+    const mx=new THREE.AnimationMixer(modelRoot||root);
+    const act=mx.clipAction(probe);
+    act.setEffectiveWeight(1).play();
+    mx.setTime(Math.max(0.05,probe.duration*0.5));
+    let moved=0;
+    skeleton.bones.forEach((b,i)=>{if(Math.abs(b.quaternion.dot(saved[i]))<0.9999)moved++});
+    act.stop();
+    mx.uncacheClip(probe);
+    skeleton.bones.forEach((b,i)=>b.quaternion.copy(saved[i]));
+    rigInfo.driven=moved;
+    rigInfo.probe=probe.name;
+    if(!moved)noteErr("rig","clip \""+probe.name+"\" drove 0 bones - this avatar will not animate");
+  }catch(e){noteErr("rig","drive probe failed: "+(e&&e.message||e))}
+}
+let shotLights=null;
+const shotBg=new THREE.Color(0x8a8a8a);
+let shotCv=null;
+function solidShot(){
+  if(!modelRoot||!renderer)return null;
+  if(!shotLights){
+    shotLights=new THREE.Group();
+    shotLights.add(new THREE.AmbientLight(0xffffff,2.2));
+    const dl=new THREE.DirectionalLight(0xffffff,1.5);
+    dl.position.set(1,3,2);
+    shotLights.add(dl);
+    shotLights.visible=false;
+    scene.add(shotLights);
+  }
+  const wasModel=modelRoot.visible,wasPts=holoPts?holoPts.visible:null;
+  let savedBg,savedCam=null;
+  try{
+    modelRoot.visible=true;
+    shotLights.visible=true;
+    if(holoPts)holoPts.visible=false;
+    savedBg=scene.background;
+    scene.background=shotBg;
+    modelRoot.updateMatrixWorld(true);
+    const box=new THREE.Box3().setFromObject(modelRoot);
+    const c=box.getCenter(new THREE.Vector3()),sz=box.getSize(new THREE.Vector3());
+    const span=Math.max(sz.y,sz.x)||1.7;
+    savedCam={p:camera.position.clone(),q:camera.quaternion.clone(),f:camera.fov};
+    camera.fov=38;
+    camera.position.set(c.x,c.y,c.z+span*1.9);
+    camera.lookAt(c);
+    camera.updateProjectionMatrix();
+    renderer.render(scene,camera);
+    const src=renderer.domElement;
+    if(!shotCv){shotCv=document.createElement("canvas");shotCv.width=480;shotCv.height=640}
+    const g=shotCv.getContext("2d");
+    g.fillStyle="#8a8a8a";
+    g.fillRect(0,0,shotCv.width,shotCv.height);
+    const sw=src.height*(shotCv.width/shotCv.height);
+    g.drawImage(src,(src.width-sw)/2,0,sw,src.height,0,0,shotCv.width,shotCv.height);
+    return shotCv.toDataURL("image/jpeg",0.72);
+  }catch(e){noteErr("solidshot",e&&e.message||e);return null}
+  finally{
+    modelRoot.visible=wasModel;
+    shotLights.visible=false;
+    if(holoPts&&wasPts!==null)holoPts.visible=wasPts;
+    if(savedBg!==undefined)scene.background=savedBg;
+    if(savedCam){camera.position.copy(savedCam.p);camera.quaternion.copy(savedCam.q);camera.fov=savedCam.f;camera.updateProjectionMatrix();savedCam=null}
+    try{renderer.render(scene,camera)}catch(e2){}
+  }
+}
+function rigReport(url){
+  if(!skeleton)return;
+  const names=skeleton.bones.map(b=>b.name.replace(/^mixamorig:?/i,"").toLowerCase());
+  rigInfo.file=String(url||"").startsWith("blob:")?(localAvatarName||"your file")+" (local)":String(url||"").split("/").pop().split("?")[0];
+  rigInfo.bones=skeleton.bones.length;
+  rigInfo.missing=RIGWANT.filter(w=>!names.includes(w.toLowerCase()));
+  rigInfo.matched=RIGWANT.length-rigInfo.missing.length;
+  rigInfo.pct=Math.round(100*rigInfo.matched/RIGWANT.length);
+  try{localStorage.setItem("companionRig:"+rigInfo.file,JSON.stringify({pct:rigInfo.pct,bones:rigInfo.bones}))}catch(e){}
+  if(rigInfo.pct<80)say("this avatar matches "+rigInfo.matched+"/"+RIGWANT.length+" rig bones — gestures needing "+rigInfo.missing.slice(0,3).join(", ")+" will not bind");
+}
+const IDB_LOCAL="__local";
+function idb(){return new Promise((res,rej)=>{const r=indexedDB.open("companionAvatar",1);r.onupgradeneeded=()=>r.result.createObjectStore("f");r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)})}
+async function idbPut(buf,name){const db=await idb();return new Promise((res,rej)=>{const t=db.transaction("f","readwrite");t.objectStore("f").put({buf,name},"avatar");t.oncomplete=res;t.onerror=()=>rej(t.error)})}
+async function idbGet(){try{const db=await idb();return await new Promise((res,rej)=>{const t=db.transaction("f","readonly");const q=t.objectStore("f").get("avatar");q.onsuccess=()=>res(q.result||null);q.onerror=()=>rej(q.error)})}catch(e){noteErr("idb","get avatar: "+(e&&e.message||e));return null}}
+async function idbDel(){try{const db=await idb();const t=db.transaction("f","readwrite");t.objectStore("f").delete("avatar")}catch(e){}}
+async function localAvatarUrl(){
+  let recd=null;
+  try{recd=await idbGet()}catch(e){noteErr("idb","localAvatarUrl: "+(e&&e.message||e))}
+  if(!recd||!recd.buf){noteErr("idb","no stored avatar record");return null}
+  localAvatarName=recd.name||"your file";
+  return URL.createObjectURL(new Blob([recd.buf],{type:"model/gltf-binary"}));
+}
+let localAvatarName="",clothInfo={pts:0,pct:0,max:0},lagTex=null,lagTex2=null,hairInfo={pts:0,pct:0,max:0,bone:"",span:0};
+async function loadModel(){
+  bodySex=await resolveBody();
+  bodyEnergy=bodySex==="female"?1:0.78;
+  const chosen=localStorage.getItem("companionModel");
+  let localUrl=null;
+  if(chosen===IDB_LOCAL)localUrl=await localAvatarUrl();
+  const urls=localUrl?[localUrl,"/static/rikku_mixamo.glb","/static/model.glb"]:chosen?["/static/"+chosen,"/static/model.glb"]:(bodySex==="male"?["/static/Soldier.glb","/static/model.glb"]:["/static/rikku_mixamo.glb","/static/model.glb","/static/Soldier.glb"]);
+  const loader=new GLTFLoader();
+  for(const url of urls){
+    try{
+      /* /static caches for a day - after a model swap the browser resurrects the corpse.
+         Always fetch the body fresh; 1MB on LAN is nothing. */
+      const gltf=await loader.loadAsync(url.startsWith("blob:")?url:url+"?t="+Date.now());
+      const res=samplePoints(gltf,115000);
+      if(!res)continue;
+      const holder=new THREE.Group();
+      synthCpu=!!res.synth;
+      const pts=new THREE.Points(res.geo,makeMaterial(!res.synth));
+      pts.frustumCulled=false;
+      holoPts=pts;
+      if(!res.synth){
+        /* glTF spec: skinned vertices IGNORE the node transform - the joint matrices carry
+           the full placement. Bind matrices to identity, node to identity; the skeleton does
+           the rest. Holder normalization happens below, from the SKINNED cloud. */
+        uniforms.uBindMat.value.identity();
+        uniforms.uBindMatInv.value.identity();
+        holder.rotation.y=Math.PI;
+      }else{
+        bindPos=res.geo.attributes.position.array.slice();
+        skinGeo=res.geo;
+      }
+      holder.add(pts);
+      if(skelRoot)holder.add(skelRoot);
+      say("");
+      console.log("[companion] wearing",url,"bones "+(skeleton&&skeleton.bones.length)+" synth "+!!res.synth);
+      window.__dbg={rig,modelRoot,skeleton,uniforms,holder,scene,camera,THREE,gltf,physState};
+      modelRoot=gltf.scene;
+      modelRoot.visible=false;
+      scene.add(modelRoot);
+      stage.add(holder);
+      modelHolder=holder;
+      holder.updateMatrixWorld(true);
+      if(skeleton){
+        skelRoot&&skelRoot.updateMatrixWorld(true);
+        holder.updateMatrixWorld(true);
+        /* glTF skeletons SHIP their inverse binds - recomputing from the current pose makes
+           every bone matrix identity and skinning a no-op (she renders in raw exporter-local
+           space, lying down around the camera). Only the synthetic rig computes its own. */
+        if(res.synth)skeleton.calculateInverses();
+        skeleton.computeBoneTexture();
+        uniforms.uBoneTex.value=skeleton.boneTexture;
+        lagTex=makeLag(THREE,skeleton);
+        lagTex2=makeLag(THREE,skeleton);
+        uniforms.uBoneTexLag.value=lagTex?lagTex.tex:skeleton.boneTexture;
+        uniforms.uBoneTexLag2.value=lagTex2?lagTex2.tex:(lagTex?lagTex.tex:skeleton.boneTexture);
+        uniforms.uCloth.value=lagTex&&clothInfo.pts>0?1:0;
+        if(!lagTex)noteErr("cloth","no bone texture - hair will not swing");
+        else if(!clothInfo.pts)noteErr("cloth","no loose points found on this avatar");
+        findGestureBones();
+        restQ=new Map(skeleton.bones.map(b=>[b.name,b.quaternion.clone()]));
+        rigReport(url);
+        setTimeout(driveProbe,2500);
+        modUp("body");
+      }
+      if(res.synth){
+        captureBind();
+        mixer=new THREE.AnimationMixer(skelRoot);
+        const P=await poseP;
+        actIdle=mixer.clipAction(P.makeBodyClip("idle",2.4,P.idlePose));
+        actTalk=mixer.clipAction(P.makeBodyClip("talk",1.2,P.talkPose));
+        actIdle.play();actTalk.play();actTalk.setEffectiveWeight(0);
+      }else{
+        clips=(gltf.animations||[]).filter(c=>!/lay|lie|sleep|tpose|bind/i.test(c.name||""));
+        mixer=new THREE.AnimationMixer(skelRoot||gltf.scene);
+        actIdle=null;actTalk=null;
+        setTimeout(()=>motionPlay("standing_w_briefcase_idle","base",0.6),200);
+        if(motionMod)motionMod.flushPending();
+        // normalize from the SKINNED rest cloud - node bboxes and raw locals both lie
+        gltf.scene.updateMatrixWorld(true);
+        mixer.update(0);
+        skeleton.update&&skeleton.update();
+        const bm=skeleton.boneMatrices,pa2=res.geo.attributes;
+        const v=new THREE.Vector3(),tm=new THREE.Matrix4(),ac=new THREE.Vector3();
+        let mnY=1e9,mxY=-1e9;
+        for(let i=0;i<pa2.position.count;i+=17){
+          ac.set(0,0,0);
+          for(let k=0;k<4;k++){
+            const w=pa2.aSkinWeight.array[i*4+k];
+            if(w<1e-4)continue;
+            tm.fromArray(bm,(pa2.aSkinIndex.array[i*4+k]|0)*16);
+            v.fromBufferAttribute(pa2.position,i).applyMatrix4(tm).multiplyScalar(w);
+            ac.add(v);
+          }
+          if(ac.y<mnY)mnY=ac.y;
+          if(ac.y>mxY)mxY=ac.y;
+        }
+        const s2=1.7/Math.max(0.05,mxY-mnY);
+        holder.scale.setScalar(s2);
+        holder.position.y=-mnY*s2;
+        holder.rotation.y=Math.PI*0.85;
+        console.log("[companion] skinned bounds y",mnY.toFixed(2),mxY.toFixed(2),"scale",s2.toFixed(2));
+      }
+      fitPreview();
+      return true;
+    }catch(e){console.warn("[companion] model failed",url,e)}
+  }
+  return false;
+}
+
+/* ---------- procedural fallback (the sculpt) ---------- */
+function buildSculpt(){
+  const N=52000;
+  const p=new Float32Array(N*3),r=new Float32Array(N*4),c=new Float32Array(N*3);
+  let pi=0,ri=0,ci=0,used=0;
+  const R=Math.random;
+  const SKIN=[0.35,0.85,1.0],HAIR=[1.0,0.82,0.38],BAND=[1.0,0.45,0.30],VORT=[0.45,0.75,1.0];
+  const put=(x,y,z,grp,cc)=>{
+    if(used>=N)return;
+    p[pi++]=x;p[pi++]=y;p[pi++]=z;
+    r[ri++]=R()*6.283;r[ri++]=0.5+R();r[ri++]=R();r[ri++]=grp;
+    const j=0.88+R()*0.24;
+    c[ci++]=cc[0]*j;c[ci++]=cc[1]*j;c[ci++]=cc[2]*j;
+    used++;
+  };
+  const TOR=[[0.92,0.150],[0.96,0.152],[1.02,0.128],[1.10,0.096],[1.20,0.118],[1.30,0.140],[1.38,0.128],[1.46,0.118],[1.52,0.052],[1.575,0.045]];
+  const smoothr=y=>{
+    if(y<=TOR[0][0])return TOR[0][1];
+    for(let i=1;i<TOR.length;i++)if(y<=TOR[i][0]){const[y0,r0]=TOR[i-1],[y1,r1]=TOR[i],t=(y-y0)/(y1-y0),s=t*t*(3-2*t);return r0+(r1-r0)*s}
+    return TOR[TOR.length-1][1];
+  };
+  for(let i=0;i<19000;i++){const y=0.92+R()*0.655,r0=smoothr(y),th=R()*6.283,rr=r0*(0.96+R()*0.08);put(rr*Math.cos(th)*1.12,y,rr*Math.sin(th)*0.74,0,SKIN)}
+  for(let i=0;i<6000;i++){const th=R()*6.283,ph=Math.acos(2*R()-1),rr=0.086+R()*0.010;const x=rr*Math.sin(ph)*Math.cos(th)*0.86,yy=rr*Math.cos(ph),z=rr*Math.sin(ph)*Math.sin(th)*0.92;const jaw=yy<-0.02?1-(-0.02-yy)*2.6:1;put(x*Math.max(0.55,jaw),1.655+yy*1.05,z*Math.max(0.6,jaw),0,SKIN)}
+  for(let i=0;i<10500;i++){const pick=R();
+    if(pick<0.34){const th=R()*6.283,ph=Math.acos(2*R()-1),rr=0.094+R()*0.014;const x=rr*Math.sin(ph)*Math.cos(th)*0.9,yy=rr*Math.cos(ph),z=rr*Math.sin(ph)*Math.sin(th);if(yy<-0.01&&z>-0.02)continue;put(x,1.665+yy*1.05,z*0.95-0.012,0,HAIR)}
+    else if(pick<0.78){const k=(R()*7)|0,t=Math.pow(R(),0.7),baseA=-0.5+k*0.16+R()*0.05,tilt=0.55+k*0.11,len=0.16+((k*37)%5)*0.02;const dx=Math.sin(baseA)*Math.cos(tilt),dy=Math.sin(tilt),dz=-Math.abs(Math.cos(baseA))*0.8-0.25,sp=0.02*(1-t)+0.004;put(dx*len*t+(R()-0.5)*sp,1.755+dy*len*t+(R()-0.5)*sp,-0.055+dz*len*t*0.55+(R()-0.5)*sp,0,HAIR)}
+    else{const s=R()<0.5?-1:1,t=R();put(s*(0.075+t*0.012+Math.sin(t*8)*0.006),1.63-t*0.30,0.055-t*0.02+(R()-0.5)*0.015,0,HAIR)}}
+  for(let i=0;i<1100;i++){const th=-1.25+R()*2.5,rr=0.092+R()*0.008;put(Math.sin(th)*rr*0.88,1.702+(R()-0.5)*0.02,Math.cos(th)*rr*0.95,0,BAND)}
+  for(let i=0;i<6400;i++){const s=R()<0.5?-1:1,t=R();let ax,ay,az,rr;if(t<0.5){const u=t*2;ax=s*(0.128+u*0.062);ay=1.455-u*0.215;az=0.005+u*0.01;rr=0.034-u*0.007}else{const u=(t-0.5)*2;ax=s*(0.19+u*0.028);ay=1.24-u*0.20;az=0.015+u*0.075;rr=0.027-u*0.008}const th=R()*6.283;put(ax+rr*Math.cos(th),ay+(R()-0.5)*0.016,az+rr*Math.sin(th),0,SKIN)}
+  for(let i=0;i<9000;i++){const t=R(),y=0.94-t*0.60,rr=(0.11+t*0.16*(0.6+0.4*Math.sin(t*9)))*(0.75+R()*0.5),th=R()*6.283;put(rr*Math.cos(th),y,rr*Math.sin(th),1,VORT)}
+  const g=new THREE.BufferGeometry();
+  g.setAttribute("position",new THREE.BufferAttribute(p.subarray(0,used*3),3));
+  g.setAttribute("aRnd",new THREE.BufferAttribute(r.subarray(0,used*4),4));
+  g.setAttribute("aCol",new THREE.BufferAttribute(c.subarray(0,used*3),3));
+  rig.add(new THREE.Points(g,makeMaterial(false)));
+}
+loadModel().then(ok=>{if(!ok)buildSculpt()});
+
+/* ---------- state machine ---------- */
+let state="idle";
+const target={uListen:0,uThink:0,uSpeak:0};
+function setState(s){
+  state=s;stateEl.textContent=s+(linked?" · linked":"");
+  target.uListen=s==="listen"?1:0;
+  target.uThink=s==="think"?1:0;
+  target.uSpeak=s==="speak"?1:0;
+}
+let linked=false;
+setState("idle");
+
+/* ---------- her voice ---------- */
+let actx=null,analyser=null;
+function ensureAudio(){
+  if(actx)return;
+  actx=new (window.AudioContext||window.webkitAudioContext)();
+  analyser=actx.createAnalyser();analyser.fftSize=512;analyser.connect(actx.destination);
+}
+const abuf=new Uint8Array(256);
+function sampleLevel(){
+  if(!analyser)return 0;
+  analyser.getByteTimeDomainData(abuf);
+  let s=0;for(let i=0;i<abuf.length;i++){const v=(abuf[i]-128)/128;s+=v*v}
+  return Math.min(1,Math.sqrt(s/abuf.length)*3.2);
+}
+let voiceMod=null;
+const voiceQ=[],voiceV={speaking:false,alevel:0,gestureSeed:0,spoken:0};
+function speak(text){voiceMod?voiceMod.speak(text):voiceQ.push(text)}
+import("./static/xr-voice.js?t="+Date.now()).then(m=>{
+  voiceMod=m.initVoice({getState:()=>state,setState,say,ensureAudio,getAudio:()=>({ctx:actx,analyser}),KEY,V:voiceV});
+  modUp("voice");
+  for(const q of voiceQ)voiceMod.speak(q);
+  voiceQ.length=0;
+});
+
+/* ---------- brain ---------- */
+let brainMod=null;
+const brainQ=[];
+function connect(){brainMod?brainMod.connect():brainQ.push(1)}
+function sid(){return brainMod&&brainMod.B.sid}
+let restQ=null,motionMod=null;
+const modsUp=new Set();
+function modUp(n){modsUp.add(n);document.title="xr ok ["+[...modsUp].sort().join(",")+"]"+(skeleton?" "+skeleton.bones.length+" bones":"")}
+const motionState={gestureHold:0,gazeTarget:null,gazeUntil:0},motionBootQ=[];
+const layerW={idle:1,talk:0};
+window.__xr={THREE,poseP,cloth:()=>({...clothInfo,lag:!!lagTex,w:uniforms.uCloth.value,hair:hairInfo}),lagStep:()=>lagTex&&lagStep(lagTex,1),lagInfo:()=>lagReport(lagTex),lagSlow:()=>lagReport(lagTex2),strands:()=>holoPts&&strandSpread(holoPts.geometry,lagTex,lagTex2,7),LAGTUNE,SLOWMUL,deformStats,resetDeformStats,strayRadius,CLOTH,clothTick,cpuSkin,getPhys:()=>physState,driveProbe,solidShot,selfSnap,micState:()=>({recOn,guard:!!micGuard}),startRec,restQ:()=>restQ,resetBraidSig:()=>{braidSig=""},look:()=>lookMod,localAvatarUrl,idbGet,errors:()=>errLog,noteErr,rig:()=>rigInfo,rigReport,composeStats:()=>composeStats,ik:()=>ikMod,reach:doReach,vision:()=>vision,captureView:()=>captureView("probe"),mods:()=>[...modsUp],brain:()=>brainMod,motion:()=>motionMod,voice:()=>voiceMod,voiceV,motionState,clips:()=>clips,state:()=>state};
+function motionPlay(name,layer,fade){motionMod?motionMod.motionPlay(name,layer,fade):motionBootQ.push([name,layer,fade])}
+function sendMotion(kind,val){motionMod?motionMod.sendMotion(kind,val):setTimeout(()=>motionMod&&motionMod.sendMotion(kind,val),600)}
+let composeClipImpl=null,composeStats=null;
+import("./static/xr-compose.js?t="+Date.now()).then(m=>{composeClipImpl=m.initCompose({THREE,getSkeleton:()=>skeleton,getRestQ:()=>restQ,getClips:()=>clips,setClips:c=>{clips=c},motionPlay,KEY,solidShot,onStats:(n,st)=>{composeStats={name:n,...st,at:Date.now()};vision.hold=Date.now()+20000}});modUp("compose")});
+function composeClip(spec){composeClipImpl&&composeClipImpl(spec)}
+
+(async()=>{
+  try{
+    const sel=document.getElementById("modelSel");
+    if(!sel)return;
+    const r=await fetch("/api/xr/models"+(KEY?"?key="+encodeURIComponent(KEY):""),{cache:"no-store"}).then(r=>r.json());
+    for(const m of (r.models||[])){
+      const o=document.createElement("option");
+      let tag="";
+      try{const c=JSON.parse(localStorage.getItem("companionRig:"+m.file)||"null");if(c)tag=" · rig "+c.pct+"%"}catch(e){}
+      o.value=m.file;o.textContent="avatar: "+m.file.replace(/\.glb$/,"")+" ("+(m.size/1048576).toFixed(1)+"MB"+tag+")";
+      sel.appendChild(o);
+    }
+    const cur=localStorage.getItem("companionModel")||"";
+    if(cur===IDB_LOCAL){
+      const rec=await idbGet();
+      const o=document.createElement("option");
+      o.value=IDB_LOCAL;
+      o.textContent="avatar: "+((rec&&rec.name)||"your file")+" (local)";
+      sel.appendChild(o);
+      document.getElementById("glbClear").style.display="inline-block";
+    }
+    sel.value=cur;
+    sel.onchange=()=>{
+      sel.value?localStorage.setItem("companionModel",sel.value):localStorage.removeItem("companionModel");
+      location.reload();
+    };
+  }catch(e){}
+  const fi=document.getElementById("glbFile"),clr=document.getElementById("glbClear");
+  if(fi)fi.onchange=async()=>{
+    const f=fi.files&&fi.files[0];
+    if(!f)return;
+    if(!/\.glb$/i.test(f.name)){say("that is not a .glb file");return}
+    if(f.size>120*1048576){say("that glb is over 120MB - too big for the browser store");return}
+    try{
+      await idbPut(await f.arrayBuffer(),f.name);
+      localStorage.setItem("companionModel",IDB_LOCAL);
+      say("stored "+f.name+" ("+(f.size/1048576).toFixed(1)+"MB) - reloading");
+      setTimeout(()=>location.reload(),700);
+    }catch(e){say("could not store that glb: "+(e&&e.message||e))}
+  };
+  if(clr)clr.onclick=async()=>{await idbDel();localStorage.removeItem("companionModel");location.reload()};
+})();
+
+
+
+
+
+import("./static/xr-panels.js?t="+Date.now()).then(m=>{window.__panels=m.initPanels({KEY,getSid:()=>sid(),getRestQ:()=>restQ,sendMotion,motionLinked:()=>!!(motionMod&&motionMod.linked()),getVision:()=>vision,getIK:()=>ikMod,getRig:()=>rigInfo,getErrors:()=>errLog,getMotionState:()=>motionState,getMods:()=>[...modsUp],capture:()=>captureView("hud")});modUp("panels")});
+const panels={moves:n=>window.__panels&&window.__panels.moveStats?window.__panels.moveStats(n):null,recent:(m,n)=>window.__panels&&window.__panels.recentConvo?window.__panels.recentConvo(m,n):null,addConvo:(a,b)=>window.__panels&&window.__panels.addConvo(a,b),hud:()=>window.__panels&&window.__panels.hudState,cam:()=>window.__panels?window.__panels.getCam():{}};
+import("./static/xr-motion.js?t="+Date.now()).then(m=>{
+  motionMod=m.initMotion({THREE,getMixer:()=>mixer,getClips:()=>clips,getActIdle:()=>actIdle,setActIdle:a=>{actIdle=a},panels,state:motionState});
+  motionMod.connect();
+  for(const q of motionBootQ)motionMod.motionPlay(...q);
+  motionBootQ.length=0;
+  modUp("motion");
+});
+let ikMod=null,lookMod=null;
+import("./static/xr-look.js?t="+Date.now()).then(m=>{lookMod=m.initLook({getCam:()=>panels.cam(),state:motionState,noteErr});modUp("look")});
+setInterval(()=>{
+  const c=panels.cam();
+  if(c&&c.stream&&lookMod)lookMod.start(600);
+  else if(lookMod&&!(c&&c.stream))lookMod.stop();
+},3000);
+import("./static/xr-ik.js?t="+Date.now()).then(m=>{ikMod=m.initIK({THREE,getSkeleton:()=>skeleton});modUp("ik")});
+function doReach(spec){
+  if(!ikMod)return;
+  const p=String(spec||"").trim().toLowerCase().split(/[,\s]+/);
+  if(p[0]==="release"||p[0]==="off"){ikMod.release();return}
+  const side=/^(left|right)$/.test(p[0])?p.shift():"right";
+  const named={user:null,up:[0,1.9,0.35],down:[0,0.6,0.4],front:[0,1.35,0.6],left:[0.55,1.35,0.35],right:[-0.55,1.35,0.35]};
+  let t;
+  if(p.length>=3&&p.every(v=>!isNaN(parseFloat(v))))t=[+p[0],+p[1],+p[2]];
+  else if(p[0]==="user"){const w=new THREE.Vector3();camera.getWorldPosition(w);const l=rig.worldToLocal(w);t=[l.x*0.55,Math.max(0.9,Math.min(1.7,l.y)),l.z*0.35]}
+  else t=named[p[0]]||named.front;
+  ikMod.reach(side,t[0],t[1],t[2],1);
+}
+window.__reach=doReach;
+import("./static/xr-hud.js?t="+Date.now()).then(m=>{
+  window.__xrHud=m.initHud({KEY,getCwd:()=>{try{return window.__cwd||""}catch(e){return""}});
+  modUp("hud");
+});
+import("./static/xr-brain.js?t="+Date.now()).then(m=>{
+  brainMod=m.initBrain({KEY,getState:()=>state,setState,setLinked:v=>{linked=v;setState(state)},say,speak,panels,composeClip,sendMotion,onReach:doReach,onSession:id=>{modUp("sid:"+String(id).slice(0,8));if(window.__xrHud)window.__xrHud.setLiveSid(id)},onFeed:(kind,title,body)=>{if(window.__xrHud)window.__xrHud.live(kind,title,body)}});
+  modUp("brain");
+  if(brainQ.length){brainQ.length=0;brainMod.connect()}
+});
+const vision={on:false,frames:0,last:0,err:"",src:"",hold:0};
+async function selfSnap(src){
+  const shot=solidShot();
+  if(!shot)return false;
+  try{
+    const r=await fetch("/api/xr/see"+(KEY?"?key="+encodeURIComponent(KEY):""),{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({jpeg:shot})});
+    if(!r.ok)throw new Error("see "+r.status);
+    vision.frames++;
+    vision.last=Date.now();
+    vision.err="";
+    vision.src=src||"self";
+    vision.hold=Date.now()+20000;
+    return true;
+  }catch(e){vision.err=String(e&&e.message||e);return false}
+}
+async function captureView(src){
+  const c=panels.cam();
+  if(!c.stream||!c.video||!c.video.videoWidth){vision.on=false;return selfSnap(src==="ask"?"self-ask":"self")}
+  vision.on=true;
+  try{
+    const cv=document.createElement("canvas");
+    const w=640,h=Math.round(c.video.videoHeight/c.video.videoWidth*640)||360;
+    cv.width=w;cv.height=h;
+    cv.getContext("2d").drawImage(c.video,0,0,w,h);
+    const r=await fetch("/api/xr/see"+(KEY?"?key="+encodeURIComponent(KEY):""),{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({jpeg:cv.toDataURL("image/jpeg",0.7)})});
+    if(!r.ok)throw new Error("see "+r.status);
+    vision.frames++;
+    vision.last=Date.now();
+    vision.err="";
+    vision.src=src||"loop";
+    return true;
+  }catch(e){vision.err=String(e&&e.message||e);return false}
+}
+setInterval(()=>{const c=panels.cam();vision.on=!!(c.stream&&c.video&&c.video.videoWidth);if(vision.on&&Date.now()<vision.hold)return;if(vision.on&&Date.now()-vision.last>8000)captureView("loop")},4000);
+async function ask(text){
+  if(!brainMod||!brainMod.ready()){say("link is still waking — try again in a second");return}
+  brainMod.begin();
+  const recap=window.__recapSent?null:(window.__recapSent=true,panels.recent());
+  panels.addConvo("you",text);
+  if(window.__xrHud)window.__xrHud.live("you","you",text);
+  bumpReact("ack",0.55);
+  setState("think");
+  say("…",text);
+  let out=text;
+  if(!window.__bodyPrimed){
+    window.__bodyPrimed=true;
+    out="[You are in the room with Anthony as a hologram person, not a helpdesk. Talk like you are standing there: short, warm, specific, contractions. Never mention this note, the HUD, tags, files, or how you work. At most one [[motion:NAME]] per reply, often none. [[gaze:user]] when you address him. Hello=wave_hello, yes=agree, no=dismissing_gesture, curious=look_over_shoulder, task=salute, sad=sad_pose, fired up=punch_jab, clap only if he starts a celebration. Home bases: idle, sitting_talking. Invent a pose only if he asks, via [[compose:name|ms:Bone=x,y,z|ms:rest]] whole degrees, rest 700ms after the last key.]\n\n"+text;
+  }
+  if(recap)out=RECAP(recap)+out;
+  const ms=panels.moves();
+  if(ms&&ms.turns>=4){
+    const rate=ms.moves/ms.turns;
+    if(rate>0.6)out+=MOVENOTE("you have used "+ms.moves+" moves across your last "+ms.turns+" replies - that is more body than most conversations need, so let several replies pass with none");
+    else if(ms.topCount>=3)out+=MOVENOTE(ms.top+" has come up "+ms.topCount+" times lately - reach for something else or nothing at all");
+  }
+  const ail=[];
+  if(!(motionMod&&motionMod.linked()))ail.push("motion service link is down - clip playback will not reach you");
+  if(vision.err)ail.push("camera capture is failing ("+vision.err.slice(0,60)+")");
+  if(rigInfo.pct&&rigInfo.pct<80)ail.push("this avatar only matches "+rigInfo.pct+"% of the rig, missing "+rigInfo.missing.slice(0,3).join(", "));
+  const recentErr=errLog.filter(e=>Date.now()-e.ts<300000);
+  if(recentErr.length)ail.push(recentErr.length+" renderer error(s), latest "+recentErr[recentErr.length-1].src+": "+recentErr[recentErr.length-1].msg.slice(0,80));
+  if(ail.length)out+=BODYNOTE(ail);
+  try{
+    const bz=await (await fetch("/api/xr/braid"+(KEY?"?key="+encodeURIComponent(KEY):""),{cache:"no-store"})).json();
+    if(bz&&bz.live){
+      const last=(bz.transcript||[]).slice(-2).map(t=>(t.who||"?")+": "+String(t.text||"").replace(/\s+/g," ").slice(0,140)).join(" | ");
+      const sig=bz.sessions+"|"+last;
+      if(sig!==braidSig){braidSig=sig;out+=BRAIDNOTE(bz.sessions,last)}
+    }
+  }catch(e){}
+  const camOn=(()=>{const c=panels.cam();return !!(c.stream&&c.video&&c.video.videoWidth)})();
+  if(camOn){if(await captureView("ask"))out+=CAMNOTE}
+  if(composeStats&&Date.now()-composeStats.at<900000){
+    if(await selfSnap("self-ask"))out+=SELFNOTE;
+    const c=composeStats;
+    out+="\n\n[Measured on your last invented move \""+c.name+"\": peak bone rotation "+c.peakDeg+"° on "+(c.peakBone||"?")+", hand travelled "+c.travelCm+" cm, "+c.dur+"s over "+c.keys+" keys."+((c.skipped&&c.skipped.length)?" IGNORED bones you are not allowed to drive: "+c.skipped.join(", ")+" - only Spine/Spine1/Spine2/Neck/Head/Shoulder/Arm/ForeArm/Hand/UpLeg/Leg/Foot are legal, Hips stays pinned so you do not slide off the stage.":"")+" Under 20° or 8 cm reads as nothing from across the room; 40-90° on the driving bone reads clearly; past 120° usually clips through the body. Use this number, not just the snapshot, when you decide whether to re-compose.]";
+    composeStats=null;
+  }
+  const r=await brainMod.req("session/prompt",{sessionId:sid(),prompt:[{type:"text",text:out}]});
+  brainMod.flushSentences(true);
+  if(!voiceMod||voiceMod.idle())setState("idle");
+  return r;
+}
+window.__ask=ask;
+
+/* ---------- ears ---------- */
+const talk=document.getElementById("talk");
+const typeBox=document.getElementById("typeBox");
+let rec=null,recOn=false,micGuard=0;
+function startRec(){
+  ensureAudio();
+  if(!window.isSecureContext){
+    say("the mic is blocked on plain http — open http://localhost:2421/xr on the PC (or adb-reverse on Quest), or just type below");
+    typeBox.focus();
+    return;
+  }
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR){say("this browser has no speech input — type below instead");return}
+  rec=new SR();rec.lang="en-US";rec.interimResults=true;rec.continuous=false;
+  let finalTxt="";
+  rec.onresult=e=>{
+    let interim="";
+    for(const r of e.results){if(r.isFinal)finalTxt+=r[0].transcript;else interim+=r[0].transcript}
+    say("",finalTxt||interim);
+  };
+  rec.onend=()=>{
+    clearTimeout(micGuard);
+    recOn=false;talk.classList.remove("rec");
+    if(finalTxt.trim())ask(finalTxt.trim());
+    else if(state==="listen")setState("idle");
+  };
+  rec.onerror=e=>{
+    recOn=false;talk.classList.remove("rec");
+    if(state==="listen")setState("idle");
+    const why=e&&e.error||"unknown";
+    if(why==="not-allowed"||why==="service-not-allowed")say("mic permission refused — allow it in the address bar, or type below");
+    else if(why!=="no-speech"&&why!=="aborted")say("mic error: "+why+" — typing still works");
+  };
+  recOn=true;talk.classList.add("rec");bumpReact("ack",0.3);setState("listen");
+  clearTimeout(micGuard);
+  micGuard=setTimeout(()=>{
+    if(!recOn)return;
+    noteErr("mic","recognition never ended - clearing stuck listen state");
+    recOn=false;
+    talk.classList.remove("rec");
+    try{rec&&rec.stop()}catch(e){}
+    if(state==="listen")setState("idle");
+  },25000);
+  try{rec.start()}catch(e){recOn=false;talk.classList.remove("rec");setState("idle");noteErr("mic","start failed: "+(e&&e.message||e))}
+}
+function stopRec(){clearTimeout(micGuard);try{rec&&rec.stop()}catch(e){}}
+talk.addEventListener("pointerdown",e=>{e.preventDefault();if(!recOn)startRec()});
+talk.addEventListener("pointerup",e=>{e.preventDefault();stopRec()});
+addEventListener("keydown",e=>{if(e.code==="Space"&&!recOn&&!e.repeat&&document.activeElement!==typeBox){e.preventDefault();startRec()}});
+addEventListener("keyup",e=>{if(e.code==="Space"&&document.activeElement!==typeBox)stopRec()});
+function sendTyped(){
+  const t=typeBox.value.trim();
+  if(!t)return;
+  typeBox.value="";
+  ask(t);
+}
+document.getElementById("typeGo").onclick=sendTyped;
+typeBox.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();sendTyped()}});
+
+/* ---------- preview orbit ---------- */
+let prevOn=false,orb={th:0,ph:1.28,r:2.0,ty:0.88,tx:0,tz:0},drag=null;
+function applyOrbit(){
+  camera.position.set(orb.tx+orb.r*Math.sin(orb.ph)*Math.sin(orb.th),orb.ty+orb.r*Math.cos(orb.ph),orb.tz+orb.r*Math.sin(orb.ph)*Math.cos(orb.th));
+  camera.lookAt(orb.tx,orb.ty,orb.tz);
+}
+function fitPreview(){
+  orb.tx=0;orb.tz=0;orb.ty=0.90;orb.r=2.28;orb.ph=1.18;orb.th=0.42;
+  applyOrbit();
+}
+window.__view=(o)=>{Object.assign(orb,o||{});applyOrbit();return {...orb}};
+canvas.addEventListener("pointerdown",e=>{if(prevOn)drag={x:e.clientX,y:e.clientY}});
+addEventListener("pointermove",e=>{
+  if(!drag)return;
+  orb.th-=(e.clientX-drag.x)*0.005;
+  orb.ph=Math.min(2.6,Math.max(0.5,orb.ph-(e.clientY-drag.y)*0.004));
+  drag={x:e.clientX,y:e.clientY};
+});
+addEventListener("pointerup",()=>drag=null);
+addEventListener("wheel",e=>{if(prevOn){orb.r=Math.min(3.6,Math.max(1.5,orb.r+e.deltaY*0.002))}});
+
+/* ---------- modes ---------- */
+const land=document.getElementById("land"),hud=document.getElementById("hud"),exitB=document.getElementById("exit");
+let uiChrome=false;
+function enterUi(){
+  land.style.display="none";hud.style.display="flex";exitB.style.display="block";
+  ["sessRail","feedRail"].forEach(id=>{const n=document.getElementById(id);if(n)n.style.display="flex"});
+  if(window.__xrHud&&window.__xrHud.start)window.__xrHud.start();
+  uiChrome=true;
+  ensureAudio();connect();
+}
+function landFail(m){const n=document.getElementById("landNote");if(n)n.textContent=m;say(m)}
+function nudgeRig(dx,dz,dyaw){
+  if(prevOn){
+    if(dz)orb.r=Math.min(3.6,Math.max(1.2,orb.r-dz));
+    if(dx)orb.th+=dx*0.85;
+    if(dyaw)rig.rotation.y+=dyaw;
+    applyOrbit();
+    return;
+  }
+  rig.position.x+=dx;rig.position.z+=dz;
+  if(dyaw)rig.rotation.y+=dyaw;
+}
+const desk=document.getElementById("desk"),deskFrame=document.getElementById("deskFrame");
+function goRemote(){
+  const home="/"+(KEY?"?key="+encodeURIComponent(KEY):"");
+  const s=renderer.xr.getSession();
+  if(s){s.addEventListener("end",()=>location.href=home);s.end().catch(()=>location.href=home);return}
+  location.href=home;
+}
+exitB.onclick=goRemote;
+document.getElementById("btnPrev").onclick=()=>{
+  prevOn=true;enterUi();
+  rig.position.set(0,0,0);
+  fitPreview();
+  bumpReact("hi",1.2);
+  speak(bodySex==="male"?"Hey. I'm here — talk, or type below.":"Rao! I'm here. Talk to me, or type below.");
+};
+document.getElementById("btnAR").onclick=async()=>{
+  const host=location.protocol+"//"+location.host;
+  if(!window.isSecureContext){
+    landFail("Enter your room needs https or localhost (WebXR). This tab is "+host+" — Preview works here. Quest: plug in, run tools/quest-connect.cmd, open http://localhost:2421/xr");
+    return;
+  }
+  if(!navigator.xr){landFail("WebXR missing — use Meta Quest Browser, not a 2D overlay");return}
+  let ar=false;
+  try{ar=await navigator.xr.isSessionSupported("immersive-ar")}catch(e){}
+  if(!ar){landFail("immersive-ar unsupported here (Quest 3 passthrough). Preview still works.");return}
+  const btn=document.getElementById("btnAR");
+  btn.disabled=true;
+  const overlay=document.getElementById("xrui");
+  const tries=[
+    {required:["local-floor"],optional:["dom-overlay","hit-test","anchors","hand-tracking"],space:"local-floor",overlay:true},
+    {required:[],optional:["dom-overlay","local-floor","hit-test","hand-tracking"],space:"local",overlay:true},
+    {required:["local-floor"],optional:["hit-test","anchors","hand-tracking"],space:"local-floor"},
+    {required:[],optional:["local-floor","hit-test","hand-tracking"],space:"local"}
+  ];
+  let last=null;
+  for(const t of tries){
+    try{
+      const opt={requiredFeatures:t.required,optionalFeatures:t.optional};
+      if(t.overlay&&overlay)opt.domOverlay={root:overlay};
+      const session=await navigator.xr.requestSession("immersive-ar",opt);
+      enterUi();
+      rig.position.set(0,0,-1.35);
+      renderer.xr.setReferenceSpaceType(t.space);
+      await renderer.xr.setSession(session);
+      session.addEventListener("end",goRemote);
+      speak("Rao! I'm in your room now. Say hi!");
+      btn.disabled=false;
+      return;
+    }catch(e){last=e}
+  }
+  btn.disabled=false;
+  landFail("AR session failed: "+(last&&last.message||last));
+};
+
+/* ---------- gesture overlay: bones ride her voice ---------- */
+const tq=new THREE.Quaternion(),te=new THREE.Euler();
+function gestures(t,lvl){
+  if(!skeleton)return;
+  const g=gestureBones;
+  const nod=lvl*0.10*Math.sin(t*9+voiceV.gestureSeed)+lvl*0.05;
+  const sway=Math.sin(t*0.6)*0.03+lvl*0.05*Math.sin(t*5.3+voiceV.gestureSeed*2.0);
+  const th=uniforms.uThink.value,li=uniforms.uListen.value;
+  if(g.head&&baseQuat.head){
+    te.set(nod+li*0.06+th*-0.05,sway*1.6,lvl*0.04*Math.sin(t*7));
+    g.head.quaternion.copy(baseQuat.head).multiply(tq.setFromEuler(te));
+  }
+  if(g.neck&&baseQuat.neck){
+    te.set(nod*0.5,sway,0);
+    g.neck.quaternion.copy(baseQuat.neck).multiply(tq.setFromEuler(te));
+  }
+  if(g.spineTop&&baseQuat.spineTop){
+    te.set(Math.sin(t*0.9)*0.015+lvl*0.03,sway*0.7,0);
+    g.spineTop.quaternion.copy(baseQuat.spineTop).multiply(tq.setFromEuler(te));
+  }
+  const armLift=lvl*0.35;
+  if(armLift>0.04&&g.armR&&baseQuat.armR){
+    te.set(armLift*0.5*Math.sin(t*4.1+voiceV.gestureSeed),0,-armLift*(0.6+0.4*Math.sin(t*3.3+voiceV.gestureSeed)));
+    g.armR.quaternion.copy(baseQuat.armR).multiply(tq.setFromEuler(te));
+  }
+  if(armLift>0.04&&g.armL&&baseQuat.armL){
+    te.set(armLift*0.4*Math.sin(t*3.7+voiceV.gestureSeed*1.7),0,armLift*(0.5+0.4*Math.sin(t*2.9+voiceV.gestureSeed*1.3)));
+    g.armL.quaternion.copy(baseQuat.armL).multiply(tq.setFromEuler(te));
+  }
+  if(armLift>0.04&&g.foreR&&baseQuat.foreR){
+    te.set(armLift*0.6*Math.sin(t*5.1+voiceV.gestureSeed),0,0);
+    g.foreR.quaternion.copy(baseQuat.foreR).multiply(tq.setFromEuler(te));
+  }
+}
+let lookT=0,lookYaw=0,lookPit=0,lookToYaw=0,lookToPit=0,reactUntil=0,reactKind="";
+function bumpReact(kind,dur){reactKind=kind;reactUntil=uniforms.uTime.value+(dur||0.45)}
+const curE={};
+function findBone(...rx){return skeleton.bones.find(b=>rx.some(r=>r.test(b.name)))}
+function perform(t,dt,lvl,overlay){
+  if(!skeleton)return;
+  const k=1-Math.exp(-5.5*dt);
+  const setE=(b,x,y,z)=>{
+    if(!b)return;
+    const n=b.name,q=baseQuat[n];if(!q)return;
+    if(!curE[n])curE[n]={x:0,y:0,z:0};
+    const c=curE[n];
+    c.x+=(x-c.x)*k;c.y+=(y-c.y)*k;c.z+=(z-c.z)*k;
+    te.set(c.x,c.y,c.z);
+    b.quaternion.copy(q).multiply(tq.setFromEuler(te));
+  };
+  if(t>lookT){lookT=t+4+Math.random()*5;lookToYaw=(Math.random()-0.5)*0.22;lookToPit=(Math.random()-0.5)*0.06}
+  lookYaw+=(lookToYaw-lookYaw)*Math.min(1,dt*0.7);
+  lookPit+=(lookToPit-lookPit)*Math.min(1,dt*0.7);
+  const wp=new THREE.Vector3();
+  camera.getWorldPosition(wp);
+  const lp=rig.worldToLocal(wp);
+  const gy=Math.max(-0.32,Math.min(0.32,Math.atan2(lp.x,Math.max(0.2,lp.z))));
+  const gp=Math.max(-0.12,Math.min(0.16,Math.atan2(lp.y-1.42,Math.hypot(lp.x,lp.z))));
+  const li=uniforms.uListen.value,thk=uniforms.uThink.value,spk=uniforms.uSpeak.value;
+  const breath=Math.sin(t*1.15)*0.018;
+  if(motionState.lookUntil&&Date.now()<motionState.lookUntil){
+    lookToYaw=motionState.lookYaw||0;
+    lookToPit=0;
+    lookT=t+2;
+  }
+  if(motionState.gazeTarget){
+    const GZ={user:[0,0],left:[0.5,0],right:[-0.5,0],up:[0,0.2],down:[0,-0.16],away:[0.6,0.05]};
+    const g=GZ[String(motionState.gazeTarget).toLowerCase()]||GZ.user;
+    lookToYaw=g[0];lookToPit=g[1];lookT=t+6;
+    if(!motionState.gazeUntil)motionState.gazeUntil=t+6;
+    if(t>motionState.gazeUntil){motionState.gazeTarget=null;motionState.gazeUntil=0}
+  }
+  let hy=gy*0.85+lookYaw*(0.35-li*0.3),hp=gp*0.7+lookPit+breath*0.4;
+  if(t<reactUntil&&reactKind==="ack"){hp+=0.10;hy*=0.2}
+  if(t<reactUntil&&reactKind==="hi"){hp+=0.06;hy+=0.05}
+  const headB=findBone(/^head$/i,/head/i)||gestureBones.head;
+  const neckB=findBone(/^neck$/i,/neck/i)||gestureBones.neck;
+  const spineB=findBone(/spine2/i,/chest/i)||gestureBones.spineTop;
+  const hipsB=findBone(/^hips$/i,/hips/i);
+  const armL=findBone(/leftarm$/i,/left.*arm/i)||gestureBones.armL;
+  const armR=findBone(/rightarm$/i,/right.*arm/i)||gestureBones.armR;
+  const foreL=findBone(/leftfore/i,/left.*fore/i)||gestureBones.foreL;
+  const foreR=findBone(/rightfore/i,/right.*fore/i)||gestureBones.foreR;
+  if(performance.now()<motionState.gestureHold)return;
+  setE(headB,hp+spk*0.04*Math.sin(t*6.5)*lvl+thk*-0.08,hy,spk*0.03*Math.sin(t*4.2));
+  setE(neckB,hp*0.4+li*0.05,hy*0.5,0);
+  setE(spineB,0.02+breath+li*0.03+spk*0.02,hy*0.12,0);
+  if(overlay)return;
+  setE(hipsB,0.008,Math.sin(t*0.4)*0.02,0);
+  const beat=spk>0.12?0.5+0.5*Math.sin(t*2.4+voiceV.gestureSeed):0;
+  let lA=0.12,rA=0.12,lZ=0.22,rZ=-0.22,lF=0.28,rF=0.28;
+  if(spk>0.12){rA=0.18+beat*0.32;rZ=-0.38-beat*0.12;rF=0.45+beat*0.25;lA=0.14;lZ=0.20}
+  else if(thk>0.2){rA=0.55;rZ=-0.08;rF=0.85;lA=0.10;lZ=0.18;hp-=0.04}
+  else if(li>0.2){lA=0.06;rA=0.06;lZ=0.12;rZ=-0.12;lF=0.2;rF=0.2}
+  setE(armL,lA,0.02,lZ);
+  setE(armR,rA,-0.02,rZ);
+  setE(foreL,lF,0,0);
+  setE(foreR,rF,0,0);
+  setE(findBone(/leftupleg/i,/left.*upleg/i),0.03,0,0.02);
+  setE(findBone(/rightupleg/i,/right.*upleg/i),0.03,0,-0.02);
+}
+
+/* ---------- loop ---------- */
+const clock=new THREE.Clock();
+renderer.setAnimationLoop(()=>{
+  const dt=Math.min(0.05,clock.getDelta());
+  const t=uniforms.uTime.value+=dt;
+  voiceV.alevel=Math.max(voiceV.alevel*0.82,voiceV.speaking?sampleLevel():0);
+  uniforms.uLevel.value+=(voiceV.alevel-uniforms.uLevel.value)*0.35;
+  for(const k of ["uListen","uThink","uSpeak"])
+    uniforms[k].value+=((target[k]||0)-uniforms[k].value)*Math.min(1,dt*3.2);
+  uniforms.uForm.value=Math.min(1,uniforms.uForm.value+dt*0.55);
+  beam.material.opacity=0.03+0.05*uniforms.uForm.value+0.04*uniforms.uSpeak.value;
+  rings.forEach((m,i)=>{
+    const u=(t*0.12+i*0.33)%1;
+    m.scale.setScalar(0.7+u*1.4);
+    m.material.opacity=(1-u)*0.18*uniforms.uForm.value;
+  });
+  floorGlow.material.opacity=0.05+0.06*uniforms.uListen.value+0.08*uniforms.uSpeak.value;
+  stage.position.y=0.012*Math.sin(t*0.85)*bodyEnergy;
+  if(modelHolder){
+    modelHolder.position.set(0,modelHolder.position.y,0);
+  }
+  const inGesture=performance.now()<motionState.gestureHold;
+  if(actIdle&&!inGesture)actIdle.setEffectiveWeight(1);
+  if(mixer){
+    mixer.update(dt);
+    if(skeleton){
+      const head=skeleton.bones.find(b=>/^mixamorigHead$|^head$/i.test(b.name));
+      const neck=skeleton.bones.find(b=>/neck/i.test(b.name)&&!/2/.test(b.name));
+      const hips=skeleton.bones.find(b=>/hips$/i.test(b.name));
+      if(hips){hips.position.x=0;hips.position.z=0}
+      if(head&&motionState.gazeTarget){
+        const GZ={user:0,left:0.35,right:-0.35,up:0,down:0,away:0.4};
+        const yaw=GZ[String(motionState.gazeTarget).toLowerCase()];
+        if(yaw){const q=new THREE.Quaternion().setFromEuler(new THREE.Euler(0,yaw,0));head.quaternion.multiply(q)}
+      }
+    }
+    if(skelRoot)skelRoot.updateMatrixWorld(true);
+    if(modelRoot)modelRoot.updateMatrixWorld(true);
+    if(ikMod)ikMod.tick();
+    if(lagTex)lagAutoPair(lagTex,lagTex2,dt);
+    if(synthCpu)cpuSkin();
+    if(physState)clothTick(dt,uniforms.uTime.value);
+    else if(skeleton)skeleton.update();
+  }
+  if(prevOn)applyOrbit();
+  if(renderer.xr.isPresenting){
+    const cam=renderer.xr.getCamera();
+    const p=new THREE.Vector3();cam.getWorldPosition(p);
+    const a=Math.atan2(p.x-rig.position.x,p.z-rig.position.z);
+    rig.rotation.y+=(a-rig.rotation.y)*Math.min(1,dt*3);
+  }
+  renderer.render(scene,camera);
+});
+applyOrbit();
+modUp("core");
+if(/[?&]auto=1/.test(location.search))setTimeout(()=>document.getElementById("btnPrev").click(),400);
+</script>
+</body>
+</html>

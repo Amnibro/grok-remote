@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="mobile-web-app-capable" content="yes"/>
 <meta name="theme-color" content="#0a0b0e" id="themeColor"/>
-<meta name="grok-remote-ui-build" content="2026-08-26-dual-layout"/>
+<meta name="grok-remote-ui-build" content="2026-08-31-select"/>
 <title>Grok Remote · GROK BUILD</title>
 <meta http-equiv="Cache-Control" content="no-store"/>
 <script>(function(){
@@ -26,17 +26,18 @@
     root.setAttribute("data-variant",variant);
     root.setAttribute("data-mode",mode);
     var meta=document.getElementById("themeColor");
-    if(meta)meta.setAttribute("content",variant==="grok"?(mode==="light"?"#fafafa":"#000000"):(mode==="light"?"#f7f7f8":"#0b0d12"));
+    if(meta)meta.setAttribute("content",variant==="grok"?(mode==="light"?"#f4f4f5":"#111113"):(mode==="light"?"#f7f7f8":"#0b0d12"));
   }catch(e){
     root.setAttribute("data-layout","braid");
     root.setAttribute("data-variant","grok");
     root.setAttribute("data-mode","dark");
   }
 })();</script>
-<link rel="stylesheet" href="/static/braid-layout.css?v=1.8.20"/>
+<link rel="stylesheet" href="/static/braid-layout.css?v=1.8.23"/>
 <style>
 :root{
   --comp-h:48px;
+  --work-line-h:22px;
   --z-content:1;
   --z-footer:20;
   --z-inline-popover:30;
@@ -76,7 +77,7 @@ html[data-mode="light"]{
 }
 /* Product accents — dark */
 html[data-variant="scient"][data-mode="dark"]{--acc:#00ff9d;--acc-soft:#2ce8a0;--acc-dim:rgba(0,255,157,.12);--acc-glow:rgba(0,255,157,.32);--me-bg:#0c1f18;--me-line:#14532d}
-html[data-variant="grok"][data-mode="dark"]{--acc:#d4d4d8;--acc-soft:#fafafa;--acc-dim:rgba(255,255,255,.1);--acc-glow:rgba(255,255,255,.2);--you:#e4e4e7;--ok:#a1a1aa;--bad:#71717a;--gold:#8a8a92;--me-bg:#26262b;--me-line:#52525b;--bg:#000000;--bg2:#0a0a0a;--panel:#111111;--panel2:#18181b;--line:#27272a;--line2:#3f3f46;--tx:#fafafa;--mut:#a1a1aa;--soft:#e4e4e7;--in:#0c0c0e}
+html[data-variant="grok"][data-mode="dark"]{--acc:#c4c4c8;--acc-soft:#e4e4e7;--acc-dim:rgba(255,255,255,.08);--acc-glow:rgba(255,255,255,.12);--you:#d4d4d8;--ok:#a1a1aa;--bad:#71717a;--gold:#8a8a92;--me-bg:#26262b;--me-line:#52525b;--bg:#111113;--bg2:#161618;--panel:#18181b;--panel2:#1c1c1f;--line:#2a2a2e;--line2:#3f3f46;--tx:#e4e4e7;--mut:#a1a1aa;--soft:#d4d4d8;--in:#161618}
 html[data-variant="ai"][data-mode="dark"]{--acc:#ffb74d;--acc-soft:#ffc970;--acc-dim:rgba(255,183,77,.13);--acc-glow:rgba(255,183,77,.3);--me-bg:#1a1408;--me-line:#5a4a1a}
 html[data-variant="explore"][data-mode="dark"]{--acc:#00b4ff;--acc-soft:#48c8ff;--acc-dim:rgba(0,180,255,.13);--acc-glow:rgba(0,180,255,.3);--you:#48c8ff;--me-bg:#0a1520;--me-line:#0d47a1}
 html[data-variant="calc"][data-mode="dark"]{--acc:#ff6b35;--acc-soft:#ff8a5e;--acc-dim:rgba(255,107,53,.13);--acc-glow:rgba(255,107,53,.3);--me-bg:#1a0e08;--me-line:#bf360c}
@@ -238,6 +239,7 @@ header{display:none!important}
 @media(min-width:900px){body.desktop .btn-settings.foot-settings,body.electron .btn-settings.foot-settings{display:none}}
 .send-spin{width:14px;height:14px;border-radius:50%;border:2px solid var(--line);border-top-color:var(--acc);animation:send-spin .7s linear infinite;flex:none}
 .send-spin[hidden]{display:none!important}
+.work-line .send-spin[hidden]{visibility:hidden;display:block!important;animation:none;opacity:0;border-color:transparent}
 @keyframes send-spin{to{transform:rotate(360deg)}}
 .livebar .radio-chip,.livebar .ctx-meter,.livebar .chat-meta{flex:none}
 .livebar .ctx-meter{min-width:52px;padding:2px 7px}
@@ -284,7 +286,7 @@ header.was-chrome{padding:clamp(8px,1.2vw,14px) clamp(10px,1.5vw,18px);border-bo
 .orbit-wrap.busy .orbit-ring{stroke:var(--acc);opacity:1}
 .orbit-wrap.off .orbit-sat-g{animation-play-state:paused;opacity:.55}
 @keyframes sat-spin{to{transform:rotate(360deg)}}
-.chat-title{flex:0 1 auto;max-width:min(42vw,280px);min-width:0;border:1px solid transparent;background:transparent;color:var(--tx);font:650 13px/1.2 var(--font);letter-spacing:-.01em;padding:6px 10px;border-radius:10px;cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:left}
+.chat-title{flex:0 1 auto;max-width:min(42vw,280px);min-width:0;border:1px solid transparent;background:transparent;color:var(--tx);font:650 13px/1.2 var(--font);letter-spacing:-.01em;padding:6px 10px;border-radius:10px;cursor:text;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:left;-webkit-user-select:text;user-select:text}
 .chat-title:hover{border-color:var(--line);background:var(--panel2);color:var(--acc)}
 #chatTop{gap:8px}
 #chatTopSearch{flex:1;min-width:0}
@@ -364,6 +366,8 @@ main{flex:1;overflow-x:hidden;overflow-y:auto;padding:clamp(10px,1.2vw,20px);pad
   .bub .md-math-block,.bub .katex-display{padding:8px 0;margin:.65em 0}
 }
 .bub .file-chip{display:inline-flex;align-items:center;gap:6px;margin:4px 0;padding:5px 10px;border-radius:8px;border:1px solid var(--line);background:var(--in);font-family:var(--font-mono);font-size:11px;color:var(--acc)}
+a.path-link,.path-link,.loc{color:var(--acc);text-decoration:underline dotted;text-underline-offset:2px;cursor:text;-webkit-user-drag:none;-webkit-user-select:text;user-select:text}
+a.path-link:hover,.loc.path-link:hover,.file-chip.path-link:hover{color:var(--tx)}
 .bub .att-prev{max-width:min(100%,320px);max-height:200px;border-radius:10px;border:1px solid var(--line);margin:6px 0;display:block;object-fit:contain;background:var(--in)}
 .nm{font-size:.78em;color:var(--mut);font-family:var(--font-mono);letter-spacing:.3px;padding:0 2px}
 .nm.tog{cursor:pointer;user-select:none;display:flex;align-items:center;gap:6px}
@@ -453,7 +457,7 @@ body.page-chat #chatTop{display:flex}
 @keyframes mm-pop{from{opacity:0;transform:translateY(-8px) scale(.96)}to{opacity:1;transform:translateY(0) scale(1)}}
 .more-menu .mm-head{padding:12px 14px 10px;border-bottom:1px solid color-mix(in srgb,var(--line) 80%,transparent);background:radial-gradient(120% 80% at 100% 0%,color-mix(in srgb,var(--acc) 14%,transparent),transparent 55%)}
 .more-menu .mm-head-top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px}
-.more-menu .mm-brand{font:800 11px/1.2 var(--font);letter-spacing:.12em;text-transform:uppercase;color:var(--acc);text-shadow:0 0 16px var(--acc-glow)}
+.more-menu .mm-brand{font:700 11px/1.2 var(--font);letter-spacing:.1em;text-transform:uppercase;color:var(--soft);text-shadow:none}
 .more-menu .mm-head-x{border:1px solid var(--line);background:var(--panel2);color:var(--mut);border-radius:8px;width:28px;height:28px;font-size:14px;cursor:pointer;flex:none;line-height:1}
 .more-menu .mm-head-x:hover{border-color:var(--acc);color:var(--acc)}
 .more-menu .mm-status{display:flex;flex-wrap:wrap;gap:5px}
@@ -462,14 +466,19 @@ body.page-chat #chatTop{display:flex}
 .more-menu .mm-chip.busy{border-color:color-mix(in srgb,var(--acc) 55%,var(--line));color:var(--acc)}
 .more-menu .mm-chip.hot{border-color:color-mix(in srgb,var(--gold,#c9a227) 50%,var(--line));color:var(--gold,#c9a227)}
 .more-menu .mm-body{padding:6px;overflow:auto;flex:1;min-height:0}
+.more-menu .mm-layer{display:none}
+.more-menu .mm-layer.on{display:block}
+.more-menu .mm-back{margin-bottom:4px;color:var(--mut)!important;font-weight:600!important;letter-spacing:.01em}
+.more-menu .mm-back:hover{color:var(--tx)!important}
+.more-menu .mm-nav .mm-k{opacity:.45}
 .more-menu .mm-sec{display:flex;align-items:center;gap:6px;font-family:var(--font);font-weight:700;font-size:.65em;color:var(--mut);letter-spacing:.1em;text-transform:uppercase;padding:10px 10px 4px;border-top:1px solid color-mix(in srgb,var(--line) 55%,transparent);margin-top:2px}
 .more-menu .mm-body>.mm-sec:first-child{border-top:none;margin-top:0;padding-top:4px}
 .more-menu .mm-sec-dot{width:6px;height:6px;border-radius:50%;background:var(--acc);box-shadow:0 0 8px var(--acc-glow);flex:none}
-.more-menu button{display:flex;width:100%;align-items:center;gap:10px;text-align:left;border:1px solid transparent;background:transparent;color:var(--tx);border-radius:10px;padding:9px 10px;font-family:inherit;font-size:.92em;font-weight:650;line-height:1.3;cursor:pointer;transition:background .14s,border-color .14s,transform .14s,box-shadow .14s}
-.more-menu button:hover{background:color-mix(in srgb,var(--acc) 12%,var(--panel2));border-color:color-mix(in srgb,var(--acc) 28%,var(--line));color:var(--acc);transform:translateX(2px);box-shadow:inset 2px 0 0 var(--acc)}
-.more-menu button.on{background:var(--acc-dim);border-color:color-mix(in srgb,var(--acc) 35%,var(--line));color:var(--acc)}
-.more-menu button .mm-ico{flex:none;width:22px;height:22px;display:inline-grid;place-items:center;border-radius:7px;font-size:12px;font-weight:800;background:color-mix(in srgb,var(--panel2) 90%,var(--acc) 8%);border:1px solid color-mix(in srgb,var(--line) 80%,var(--acc));color:var(--acc);line-height:1}
-.more-menu button:hover .mm-ico,.more-menu button.on .mm-ico{border-color:var(--acc);box-shadow:0 0 10px -4px var(--acc-glow)}
+.more-menu button{display:flex;width:100%;align-items:center;gap:10px;text-align:left;border:1px solid transparent;background:transparent;color:var(--tx);border-radius:10px;padding:9px 10px;font-family:inherit;font-size:.92em;font-weight:650;line-height:1.3;cursor:pointer;transition:background .14s,border-color .14s}
+.more-menu button:hover{background:color-mix(in srgb,var(--panel2) 88%,var(--tx) 6%);border-color:transparent;color:var(--tx)}
+.more-menu button.on{background:var(--acc-dim);border-color:color-mix(in srgb,var(--acc) 22%,var(--line));color:var(--tx)}
+.more-menu button .mm-ico{flex:none;width:22px;height:22px;display:inline-grid;place-items:center;border-radius:7px;font-size:12px;font-weight:800;background:color-mix(in srgb,var(--panel2) 94%,transparent);border:1px solid var(--line);color:var(--soft);line-height:1}
+.more-menu button:hover .mm-ico,.more-menu button.on .mm-ico{border-color:var(--line2);box-shadow:none}
 .more-menu button .mm-lab{flex:1;min-width:0}
 .more-menu button .mm-k{color:var(--mut);font-family:inherit;font-size:.78em;font-weight:600;opacity:.9;flex:none;margin-left:auto}
 .more-menu .mm-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:2px 4px 4px}
@@ -542,7 +551,47 @@ body.busy-turn .msg-mode-row,body.msg-mode-force .msg-mode-row{display:none!impo
 .font-chips{display:flex;flex-wrap:wrap;gap:6px}
 .font-chips .mode-chip{cursor:pointer}
 #chatStage{min-height:0;flex:1;display:flex;flex-direction:column;overflow:hidden}
-#chatStage main#feed{padding-bottom:var(--feed-pad-bottom,88px);flex:1;min-height:0}
+.chat-mid{flex:1;min-height:0;display:flex;flex-direction:row;overflow:hidden;position:relative}
+#chatStage .chat-mid main#feed,#chatStage main#feed{padding-bottom:var(--feed-pad-bottom,88px);flex:1;min-width:0;min-height:0}
+.agent-rail{flex:none;width:0;min-width:0;position:relative;z-index:5;overflow:visible}
+.agent-rail[hidden]{display:none!important}
+.agent-rail-tab{position:absolute;right:0;top:18%;transform:translateX(-100%);z-index:6;display:inline-flex;align-items:center;gap:6px;margin:0;padding:10px 7px;border:1px solid var(--line);border-right:0;border-radius:10px 0 0 10px;background:var(--panel);color:var(--mut);font:650 10px/1.2 var(--font);letter-spacing:.08em;text-transform:uppercase;cursor:pointer;writing-mode:vertical-rl;text-orientation:mixed}
+.agent-rail-tab:hover{color:var(--tx);border-color:color-mix(in srgb,var(--acc) 30%,var(--line))}
+.agent-rail-n{display:inline-grid;place-items:center;min-width:16px;height:16px;padding:0 4px;border-radius:999px;background:color-mix(in srgb,var(--acc) 18%,var(--panel2));color:var(--tx);font:700 10px/1 var(--font-mono);writing-mode:horizontal-tb}
+.agent-rail-n[hidden]{display:none!important}
+.agent-rail-pan{display:none;flex:1;min-height:0;flex-direction:column;width:min(300px,36vw);background:var(--bg);border-left:1px solid var(--line)}
+.agent-rail[data-open="1"]{display:flex;flex-direction:column;width:min(300px,36vw);overflow:hidden}
+.agent-rail[data-open="1"] .agent-rail-tab{display:none}
+.agent-rail[data-open="1"] .agent-rail-pan{display:flex}
+.agent-rail-head{flex:none;display:flex;align-items:center;gap:8px;padding:8px 10px;border-bottom:1px solid var(--line)}
+.agent-rail-title{flex:1;min-width:0;font:650 11px/1.2 var(--font);letter-spacing:.1em;text-transform:uppercase;color:var(--mut)}
+.agent-rail-act{border:0;background:transparent;color:var(--mut);font:650 11px/1 var(--font);padding:4px 6px;border-radius:8px;cursor:pointer}
+.agent-rail-act:hover{color:var(--tx);background:color-mix(in srgb,var(--acc) 10%,transparent)}
+.agent-rail-hide{font-size:16px;line-height:1;padding:0 6px}
+.agent-rail-list{flex:1;min-height:0;overflow:auto;padding:8px}
+.agent-rail-list .tool,.agent-rail-list .thought-row{width:100%;max-width:none;margin:0 0 8px}
+.agent-rail-list .thought-row{display:flex;flex-direction:column;gap:2px;border:1px solid var(--line);border-radius:10px;background:color-mix(in srgb,var(--panel) 88%,transparent);padding:0;overflow:hidden}
+.agent-rail-list .thought-row .nm{display:flex;align-items:center;gap:6px;padding:6px 8px;margin:0}
+.agent-rail-list .thought-row .bub.thought{margin:0;padding:0 10px 8px}
+.agent-job{width:100%;margin:0 0 8px;border:1px solid var(--line);border-radius:10px;background:color-mix(in srgb,var(--panel) 88%,transparent);overflow:hidden}
+.agent-job-head{display:flex;align-items:center;gap:6px;padding:6px 8px;cursor:pointer;color:var(--mut);font:650 11px/1.2 var(--font)}
+.agent-job-head .tt{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.agent-job-body{padding:0 8px 8px;display:flex;flex-direction:column;gap:8px}
+.agent-job.collapsed .agent-job-body{display:none}
+.agent-job.collapsed .chev{transform:rotate(-90deg)}
+.agent-job .d{color:var(--mut);font-size:11px;line-height:1.35;word-break:break-word}
+.agent-job button[data-wkill]{align-self:flex-start;border:1px solid var(--line);background:transparent;color:var(--mut);border-radius:999px;padding:3px 8px;font:650 10px/1 var(--font);cursor:pointer}
+.agent-job.dismissed{display:none!important}
+.agent-x{flex:none;margin-left:auto;border:0;background:transparent;color:var(--mut);width:22px;height:22px;border-radius:999px;font:650 14px/1 var(--font);cursor:pointer;padding:0}
+.agent-x:hover{color:var(--tx);background:color-mix(in srgb,var(--acc) 12%,transparent)}
+.tool .tool-head .agent-x,.thought-row .nm .agent-x{order:9}
+.tool.dismissed,.thought-row.dismissed{display:none!important}
+@media (max-width:899px){
+  .agent-rail{position:absolute;inset:0 0 0 auto;width:0;z-index:7}
+  .agent-rail[data-open="1"]{width:min(320px,92vw);box-shadow:-16px 0 40px rgba(0,0,0,.35)}
+  .agent-rail-pan{width:100%}
+  .agent-rail-tab{writing-mode:horizontal-tb;text-orientation:mixed;top:auto;bottom:18%;padding:7px 10px;border-radius:10px 0 0 10px}
+}
 footer#foot{flex:none;flex-shrink:0;position:relative;z-index:var(--z-footer)}
 body.kb-open footer#foot{padding-bottom:max(6px,env(safe-area-inset-bottom,0px));flex-shrink:0;position:relative;bottom:0;transform:translateZ(0);box-shadow:0 -8px 24px -16px rgba(0,0,0,.45)}
 body.kb-open #chatStage{min-height:0;flex:1 1 auto;overflow:hidden}
@@ -634,8 +683,10 @@ button.cancel-turn:hover{background:var(--bad);transform:translateY(-1px)}
 #rxPop .rx-q.on{background:var(--acc-dim)}
 #rxPop #rxClose{min-width:32px;padding:4px 8px;font-size:16px;line-height:1;color:var(--mut)}
 #rxEmojiIn{position:absolute;width:1px;height:1px;opacity:0;border:0;padding:0;font-size:16px}
-.bub{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
-.loc{cursor:pointer}
+#feed,.agent-rail-list,.work-board,.work-line,.q-body,.sess .item{-webkit-user-select:text;user-select:text}
+.bub{cursor:text;-webkit-touch-callout:default;-webkit-user-select:text;user-select:text}
+.tool .out,.tool .inblock,.code-body,.code-with-lines{cursor:text;-webkit-user-select:text;user-select:text}
+.loc{cursor:text}
 .loc:hover{border-color:var(--acc);color:var(--acc)}
 .panel{padding:clamp(14px,2vw,28px);display:none;flex:1;overflow:auto;min-height:0;max-width:100%}
 .panel.on{display:block}
@@ -656,7 +707,7 @@ button.cancel-turn:hover{background:var(--bad);transform:translateY(-1px)}
 .btn-sess-filter{display:none}
 .sess{flex:1;min-height:0;overflow-x:hidden;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding:8px clamp(12px,1.5vw,18px);margin:0}
 .sess .item{border:1px solid color-mix(in srgb,var(--line) 90%,var(--acc));border-radius:12px;padding:clamp(10px,.8vw,14px);margin:8px 0;background:var(--panel);cursor:pointer;display:flex;gap:8px;align-items:flex-start;transition:border-color .18s,box-shadow .18s,transform .12s}
-.sess .item:hover,.sess .item:active{border-color:var(--acc);box-shadow:0 0 0 1px var(--acc-dim),0 0 18px -10px var(--acc-glow);transform:translateY(-1px)}
+.sess .item:hover,.sess .item:active{border-color:var(--acc);box-shadow:0 0 0 1px var(--acc-dim),0 0 18px -10px var(--acc-glow)}
 .sess .item.archived{opacity:.72}
 .sess-scope-rail,.sess-scope-rail.mode-row{display:flex!important;flex-wrap:nowrap!important;gap:4px;padding:0 clamp(12px,1.5vw,18px) 8px;margin:0;overflow-x:auto;overflow-y:hidden;align-items:center}
 .sess-scope-rail .mode-chip{font-size:11px;padding:5px 8px;flex:none;white-space:nowrap}
@@ -732,24 +783,37 @@ body.sidebar-collapsed.desktop .rail-tab,body.sidebar-collapsed.electron .rail-t
 .picker-head .rail-tools p{margin:0;flex:1;min-width:0}
 .btn-rail{border:1px solid var(--line);background:var(--panel2);color:var(--mut);border-radius:8px;padding:5px 9px;font-size:11px;font-weight:700;cursor:pointer;font-family:var(--font-mono)}
 .btn-rail:hover,.btn-rail.on{border-color:var(--acc);color:var(--acc);background:var(--acc-dim)}
-.foot-status{margin-top:6px;padding-top:4px}
+.foot-status{margin-top:2px;padding-top:0;border:0}
+.foot-quiet{display:flex;align-items:center;gap:10px;min-height:18px}
+.fq-crit{flex:1;min-width:0;font:500 11px/1.2 var(--font);color:var(--mut);letter-spacing:.01em}
+.fq-crit[data-q="warn"]{color:var(--gold)}
+.fq-crit[data-q="bad"]{color:var(--gold)}
+.fq-debug{margin-left:auto;border:0;background:transparent;color:var(--mut);font:500 11px/1 var(--font);cursor:pointer;padding:2px 0;opacity:.55;letter-spacing:.02em}
+.fq-debug:hover,.fq-debug.on{opacity:1;color:var(--tx)}
+.status-debug{display:none;margin-top:6px;padding:10px 12px;border:1px solid var(--line);border-radius:16px;background:var(--panel)}
+.status-debug.on{display:block}
+.status-debug .sd-head{font:600 10px/1.2 var(--font);letter-spacing:.08em;text-transform:uppercase;color:var(--mut);margin-bottom:8px}
+.status-debug .livebar{flex-wrap:wrap!important;overflow:visible!important}
+.status-debug .livebar .lb-link,.status-debug .livebar .lb-sep,.status-debug .livebar .lb-git,.status-debug .livebar .lb-cost,.status-debug .livebar .lb-sess,.status-debug .livebar .lb-sep-git,.status-debug .livebar .lb-sep-cost,.status-debug .livebar .lb-sep-sess,.status-debug #chatMeta{display:inline!important}
 .livebar{font-size:clamp(10px,.2vw + 9px,12px);color:var(--mut);padding:2px 2px 0;font-family:var(--font-mono);display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;line-height:1.35}
 .livebar b{color:var(--ok);text-shadow:0 0 10px color-mix(in srgb,var(--ok) 40%,transparent)}
 .livebar .lb-sep{opacity:.45;flex:none}
-.work-line{display:none;align-items:center;gap:8px;min-height:22px;padding:6px 14px 8px;font:700 12px/1.25 var(--font-mono);color:var(--mut);flex:none;border-top:1px solid color-mix(in srgb,var(--line) 70%,transparent);background:color-mix(in srgb,var(--panel) 88%,transparent)}
-.work-line[data-on="1"]{display:flex;color:var(--acc)}
+.work-line{display:flex;align-items:center;justify-content:center;gap:8px;height:var(--work-line-h,22px);min-height:var(--work-line-h,22px);max-height:var(--work-line-h,22px);padding:0 14px;box-sizing:border-box;font:500 11px/1 var(--font);color:var(--mut);flex:none;overflow:hidden;border:0;background:transparent}
+.work-line[data-on="0"] #workNow{opacity:0}
+.work-line[data-on="1"]{color:var(--mut)}
 /* Lives in the CHAT column, under the feed and above the work line. It used to sit in the rail
    directly above #sessList: 201px tall, so the moment a turn started it shoved the whole
    conversation list down and the row under your cursor slid out from under it - hover died and
    never came back. Nothing above the session list may change height. */
-.work-board{padding:6px 8px 8px;border-top:1px solid var(--line);max-height:22vh;overflow:auto;flex:none}
-.work-board .wj{display:flex;gap:8px;align-items:flex-start;padding:6px 8px;margin:0 0 4px;border:1px solid var(--line);border-radius:8px;background:var(--panel2);font-size:11px;cursor:pointer}
-.work-board .wj.on{border-color:var(--acc)}
+.work-board{position:absolute;left:0;right:0;bottom:var(--work-line-h,22px);z-index:6;padding:0;border:0;max-height:22vh;overflow:auto;background:var(--bg)}
+.work-board .wj{display:flex;gap:8px;align-items:center;padding:4px 14px;margin:0;border:0;border-radius:0;background:transparent;font-size:11px;cursor:pointer}
+.work-board .wj.on{background:transparent}
 .work-board .wj .wj-body{flex:1;min-width:0}
-.work-board .wj b{display:block;color:var(--acc);font-size:11px}
-.work-board .wj .d{color:var(--mut);word-break:break-word;line-height:1.3}
-.work-board .wj button{flex:none;border:1px solid var(--bad,#e55);background:transparent;color:var(--bad,#e55);border-radius:6px;padding:3px 8px;font-size:10px;cursor:pointer}
-.work-line #workNow{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:min(72vw,640px)}
+.work-board .wj b{display:block;color:var(--tx);font-size:11px}
+.work-board .wj .d{color:var(--mut);word-break:break-word;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.work-board .wj button{flex:none;border:1px solid var(--line);background:transparent;color:var(--mut);border-radius:6px;padding:3px 8px;font-size:10px;cursor:pointer}
+.work-line #workNow{min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.work-kill,.work-kill[hidden]{display:none!important;width:0!important;min-width:0!important;padding:0!important;margin:0!important;border:0!important;height:0!important;overflow:hidden}
 .livebar .lb-phase,.livebar .lb-dot,.livebar .lb-phase-t,.livebar .lb-extra{display:none!important}
 .livebar .lb-dot{width:7px;height:7px;border-radius:50%;background:var(--mut);flex:none;box-shadow:0 0 0 0 transparent}
 .livebar .lb-sess{flex:1 1 120px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin:0;padding:0;font-size:inherit;color:var(--mut)}
@@ -761,13 +825,17 @@ body.sidebar-collapsed.desktop .rail-tab,body.sidebar-collapsed.electron .rail-t
 .livebar[data-phase="error"] .lb-dot{background:#e55}
 .livebar[data-phase="waiting"] .lb-phase-t,.livebar[data-phase="thinking"] .lb-phase-t,.livebar[data-phase="responding"] .lb-phase-t,.livebar[data-phase="tools"] .lb-phase-t,.livebar[data-phase="sync"] .lb-phase-t{color:var(--tx)}
 @media (max-width:899px){
-  body.desktop #app,body.electron #app,body.phone-like #app{
+  body.desktop #app,body.electron #app,body.phone-like #app,body.phone-landscape #app{
     display:flex!important;flex-direction:column!important;
-    grid-template-columns:none!important;grid-template-areas:none!important
+    grid-template-columns:none!important;grid-template-areas:none!important;
+    height:100%!important;min-height:0!important
   }
   body.desktop header,body.electron header{display:none}
   body.page-chat #picker.panel.on{display:none!important}
   #picker.panel.on{position:relative;inset:auto;width:100%!important;flex:1 1 auto;min-height:0;overflow:hidden!important;height:auto;max-height:none}
+  #setup.panel.on{flex:1 1 auto;min-height:0;max-width:100%}
+  #chatStage:not(.on){display:none!important;flex:none!important}
+  #chatStage.on{display:flex!important;flex:1 1 auto!important;min-height:0!important}
   #btnCollapseRail{display:none!important}
   body.desktop #chatStage,body.electron #chatStage{flex:1 1 auto;min-height:0;max-height:none}
   body.desktop footer,body.electron footer{grid-area:auto}
@@ -785,8 +853,11 @@ footer#foot{padding-top:6px!important}
 .btn-settings.foot-settings{display:inline-grid}
 }
 @keyframes lb-pulse{0%,100%{opacity:.45;transform:scale(.9)}50%{opacity:1;transform:scale(1.15)}}
-.sess .item.current{border-color:var(--acc);box-shadow:0 0 0 1px color-mix(in srgb,var(--acc) 40%,transparent)}
+.sess .item.current{border-color:var(--acc);box-shadow:inset 3px 0 0 var(--acc)}
 .sess .item.current .t{color:var(--acc)}
+.sess .sess-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin:0 8px 1px 0;vertical-align:middle;background:var(--mut);flex:none}
+.sess .item.live .sess-dot,.sess .item.working .sess-dot{background:#4ade80;box-shadow:0 0 8px color-mix(in srgb,#4ade80 55%,transparent)}
+.sess .item.working .sess-dot{animation:lb-pulse 1s ease-in-out infinite}
 html[data-mode="light"] .bub.thought{color:#4a3f6b}
 html[data-mode="light"] button.send{color:#fff}
 html[data-variant="grok"][data-mode="light"] button.send{color:#fff}
@@ -799,6 +870,7 @@ html[data-variant="scient"][data-mode="light"] button.send{color:#fff}
   body.desktop header,body.electron header{display:none!important}
   body.desktop #picker.panel.on,body.electron #picker.panel.on{grid-area:side;display:flex!important;flex-direction:column;border-right:1px solid var(--line);max-width:none;background:var(--bg2);min-height:0;max-height:100%;overflow:hidden;height:100%;transition:opacity .2s,transform .28s ease}
   body.desktop #chatStage,body.electron #chatStage{grid-area:main;min-height:0;max-height:100%;overflow:hidden}
+  body.desktop #chatStage .chat-mid,body.electron #chatStage .chat-mid{min-height:0;max-height:100%}
   body.desktop #chatStage main#feed,body.electron #chatStage main#feed{min-height:0;max-height:100%;overflow-y:auto;overflow-x:hidden}
   body.desktop footer,body.electron footer{grid-area:foot;min-height:0}
   body.desktop #setup.panel.on,body.electron #setup.panel.on{grid-column:1/-1;grid-row:2/-1;max-width:min(720px,90vw);margin:0 auto;width:100%;overflow:auto}
@@ -955,7 +1027,7 @@ main::-webkit-scrollbar-thumb:hover,.sess::-webkit-scrollbar-thumb:hover{backgro
 .row:hover .nm{color:var(--acc)!important}
 .nm.tog:hover{color:var(--acc)}
 .tool{transition:border-color var(--dur) var(--ease),box-shadow var(--dur) var(--ease),transform var(--dur) var(--ease),background var(--dur) var(--ease)!important;box-shadow:var(--elev-1)}
-.tool:hover{border-color:color-mix(in srgb,var(--acc) 55%,var(--line))!important;box-shadow:0 0 0 1px var(--acc-dim),var(--elev-2);transform:translateY(-1px)}
+.tool:hover{border-color:color-mix(in srgb,var(--acc) 55%,var(--line))!important;box-shadow:0 0 0 1px var(--acc-dim),var(--elev-2)}
 .tool .tool-head{transition:background var(--dur) var(--ease)}
 .tool .tool-head:hover{background:color-mix(in srgb,var(--acc) 8%,transparent)}
 .collapsible{transition:border-color var(--dur) var(--ease),box-shadow var(--dur) var(--ease)!important}
@@ -981,9 +1053,8 @@ button.send:active:not(:disabled){transform:scale(.98)}
 .mode-chip.on,.theme-chip.on,.persona-chip.on{box-shadow:0 0 0 1px color-mix(in srgb,var(--acc) 30%,transparent),0 0 18px -8px var(--acc-glow)}
 .theme-chip .sw{transition:transform var(--dur) var(--ease),box-shadow var(--dur) var(--ease)}
 .theme-chip:hover .sw{transform:scale(1.25);box-shadow:0 0 10px var(--sw,var(--acc))}
-.sess .item{border:1px solid var(--hairline)!important;background:color-mix(in srgb,var(--panel) 88%,transparent)!important;border-radius:14px!important;transition:transform var(--dur) var(--ease),border-color var(--dur) var(--ease),box-shadow var(--dur) var(--ease),background var(--dur) var(--ease)!important}
-.sess .item:hover,.sess .item:active{transform:translateY(-2px);border-color:color-mix(in srgb,var(--acc) 45%,var(--line))!important;box-shadow:var(--elev-2),0 0 0 1px var(--acc-dim)!important;background:color-mix(in srgb,var(--panel) 95%,var(--acc-dim))!important}
-.sess .item:active{transform:translateY(0) scale(.995)}
+.sess .item{border:1px solid var(--hairline)!important;background:color-mix(in srgb,var(--panel) 88%,transparent)!important;border-radius:14px!important;transition:border-color .12s ease,background .12s ease!important;transform:none!important}
+.sess .item:hover,.sess .item:active{transform:none!important;border-color:color-mix(in srgb,var(--acc) 45%,var(--line))!important;box-shadow:none!important;background:color-mix(in srgb,var(--panel) 95%,var(--acc-dim))!important}
 .sess .t{letter-spacing:-.01em}
 .badge{transition:border-color var(--dur) var(--ease),background var(--dur) var(--ease),color var(--dur) var(--ease)}
 .badge.live{box-shadow:0 0 8px -2px color-mix(in srgb,var(--ok) 50%,transparent)}
@@ -1012,7 +1083,7 @@ button.send:active:not(:disabled){transform:scale(.98)}
 .recap:hover{box-shadow:0 0 24px -10px color-mix(in srgb,var(--ok) 45%,transparent)}
 .att-chip{transition:border-color var(--dur) var(--ease),transform var(--dur) var(--ease),background var(--dur) var(--ease)}
 .att-chip:hover{border-color:var(--acc);transform:translateY(-1px)}
-.livebar{letter-spacing:.04em;opacity:.85;transition:opacity var(--dur) var(--ease)}
+.livebar{letter-spacing:.04em;opacity:1;min-height:22px;flex-wrap:nowrap;overflow:hidden;transition:none}
 footer:hover .livebar{opacity:1}
 .composer{gap:10px}
 .picker-head{background:color-mix(in srgb,var(--bg2) 88%,transparent)!important;backdrop-filter:blur(12px)}
@@ -1055,7 +1126,9 @@ header::-webkit-scrollbar{display:none}
 .sub{min-width:0;flex:1 1 auto}
 #chatStage{display:none;flex:1;min-height:0;position:relative;flex-direction:column;overflow:hidden}
 #chatStage.on{display:flex}
-#chatStage main#feed{flex:1;min-height:0;height:auto;display:block}
+#chatStage .chat-mid{flex:1;min-height:0}
+#chatStage main#feed{flex:1;min-height:0;height:100%;display:flex;flex-direction:column}
+#chatStage main#feed::before{content:"";flex:1 0 0;min-height:0;pointer-events:none}
 #horizonLoad{display:none;position:absolute;inset:0;z-index:8;align-items:center;justify-content:center;flex-direction:column;gap:16px;background:radial-gradient(ellipse 70% 60% at 50% 45%,color-mix(in srgb,var(--panel) 70%,transparent),color-mix(in srgb,var(--bg) 92%,transparent) 70%);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);pointer-events:none}
 #horizonLoad.on{display:flex}
 .horizon-stage{position:relative;width:min(160px,38vw);height:min(160px,38vw);display:grid;place-items:center}
@@ -1135,14 +1208,15 @@ body.voice-go #voiceHud,body.voice-xr #voiceHud{bottom:calc(var(--stack-h,120px)
 #voiceHud.xr .vh-line{font-size:18px}
 }
 </style>
-<link rel="stylesheet" href="/static/grok-archive-skin.css?v=4"/>
+<link rel="stylesheet" href="/static/grok-archive-skin.css?v=16"/>
 <link rel="stylesheet" href="/static/vendor/katex/katex.min.css"/>
 <script defer src="/static/vendor/katex/katex.min.js"></script>
-<script src="/static/md.js?v=2"></script>
+<script src="/static/md.js?v=4"></script>
 <script src="/static/presets.js"></script>
+<script src="/static/chat-runtime.js?v=2026-08-30-j21"></script>
 <script src="/static/work-dock.js" defer></script>
 <script src="/static/voice-mode.js" defer></script>
-<script src="/static/cockpit-features.js?v=rx5" defer></script>
+<script src="/static/cockpit-features.js?v=rx6" defer></script>
 <script src="/static/ide.js" defer></script>
 </head>
 <body>
@@ -1160,53 +1234,73 @@ body.voice-go #voiceHud,body.voice-xr #voiceHud{bottom:calc(var(--stack-h,120px)
       <div class="more-menu" id="moreMenu" role="menu" hidden>
         <div class="mm-head">
           <div class="mm-head-top">
-            <div class="mm-brand">Command deck</div>
+            <div class="mm-brand">Settings</div>
             <button type="button" class="mm-head-x" id="btnMoreClose" aria-label="Close menu">×</button>
           </div>
           <div class="mm-status" id="moreMenuStatus" aria-live="polite"></div>
         </div>
         <div class="mm-body">
-        <div class="mm-sec"><span class="mm-sec-dot"></span>Session</div>
-        <button type="button" id="btnRenameChat" role="menuitem"><span class="mm-ico" aria-hidden="true">✎</span><span class="mm-lab">Rename chat</span><span class="mm-k">title</span></button>
-        <button type="button" id="btnSkills" role="menuitem"><span class="mm-ico" aria-hidden="true">✦</span><span class="mm-lab">Skills</span><span class="mm-k">/</span></button>
-        <button type="button" id="btnMsgModeMenu" role="menuitem"><span class="mm-ico" aria-hidden="true">⇉</span><span class="mm-lab">Delivery</span><span class="mm-k">queue</span></button>
-        <button type="button" class="mm-tog" id="btnPermCycle" role="menuitem" title="Tap to cycle Always → Ask → Plan"><span class="mm-ico" aria-hidden="true">◈</span><span class="mm-lab">Permission</span><span class="mm-k">always</span></button>
-        <button type="button" class="mm-tog" id="btnEffortCycle" role="menuitem" title="Tap to cycle reasoning effort"><span class="mm-ico" aria-hidden="true">⚡</span><span class="mm-lab">Effort</span><span class="mm-k">low</span></button>
-        <button type="button" id="btnActor" role="menuitem" title="Grok Actor · local /actor, no agent turn"><span class="mm-ico" aria-hidden="true">🎭</span><span class="mm-lab">Actor</span><span class="mm-k">voice</span></button>
-        <div id="moreToolsHost"></div>
-        <div class="mm-sec"><span class="mm-sec-dot"></span>Show in feed</div>
-        <div class="mm-grid" id="viewHideGrid">
-          <button type="button" class="mm-tog" id="togHideThink" role="menuitem" data-ux="hideThink"><span class="mm-ico" aria-hidden="true">·</span><span class="mm-lab">Think</span><span class="mm-k">✓</span></button>
-          <button type="button" class="mm-tog" id="togHideTools" role="menuitem" data-ux="hideTools"><span class="mm-ico" aria-hidden="true">·</span><span class="mm-lab">Tools</span><span class="mm-k">✓</span></button>
-          <button type="button" class="mm-tog" id="togHideEdit" role="menuitem" data-ux="hideEdit"><span class="mm-ico" aria-hidden="true">·</span><span class="mm-lab">Edits</span><span class="mm-k">✓</span></button>
-          <button type="button" class="mm-tog" id="togHideRead" role="menuitem" data-ux="hideRead"><span class="mm-ico" aria-hidden="true">·</span><span class="mm-lab">Reads</span><span class="mm-k">✓</span></button>
-          <button type="button" class="mm-tog" id="togHideCode" role="menuitem" data-ux="hideCode"><span class="mm-ico" aria-hidden="true">·</span><span class="mm-lab">Code</span><span class="mm-k">✓</span></button>
+        <div class="mm-layer on" data-layer="home">
+          <button type="button" class="mm-nav" data-goto="chat"><span class="mm-ico" aria-hidden="true">✎</span><span class="mm-lab">Chat</span><span class="mm-k">▸</span></button>
+          <button type="button" class="mm-nav" data-goto="feed"><span class="mm-ico" aria-hidden="true">☰</span><span class="mm-lab">Feed</span><span class="mm-k">▸</span></button>
+          <button type="button" class="mm-nav" data-goto="look"><span class="mm-ico" aria-hidden="true">▣</span><span class="mm-lab">Appearance</span><span class="mm-k">▸</span></button>
+          <button type="button" class="mm-nav" data-goto="apps"><span class="mm-ico" aria-hidden="true">◇</span><span class="mm-lab">Apps</span><span class="mm-k">▸</span></button>
+          <button type="button" class="mm-nav" data-goto="link"><span class="mm-ico" aria-hidden="true">◈</span><span class="mm-lab">Connection</span><span class="mm-k">▸</span></button>
         </div>
-        <div class="mm-sec"><span class="mm-sec-dot"></span>Collapse by default</div>
-        <div class="mm-grid" id="viewCollapseGrid">
-          <button type="button" class="mm-tog" id="togCollapseThink" role="menuitem" data-ux="collapseThink"><span class="mm-ico" aria-hidden="true">▾</span><span class="mm-lab">Think</span><span class="mm-k">–</span></button>
-          <button type="button" class="mm-tog" id="togCollapseTools" role="menuitem" data-ux="collapseTools"><span class="mm-ico" aria-hidden="true">▾</span><span class="mm-lab">Tools</span><span class="mm-k">–</span></button>
-          <button type="button" class="mm-tog" id="togCollapseCode" role="menuitem" data-ux="collapseCode"><span class="mm-ico" aria-hidden="true">▾</span><span class="mm-lab">Code</span><span class="mm-k">–</span></button>
+        <div class="mm-layer" data-layer="chat">
+          <button type="button" class="mm-back" data-goto="home">‹ Chat</button>
+          <button type="button" id="btnRenameChat" role="menuitem"><span class="mm-ico" aria-hidden="true">✎</span><span class="mm-lab">Rename chat</span><span class="mm-k">title</span></button>
+          <button type="button" id="btnSkills" role="menuitem"><span class="mm-ico" aria-hidden="true">✦</span><span class="mm-lab">Skills</span><span class="mm-k">/</span></button>
+          <button type="button" id="btnMsgModeMenu" role="menuitem"><span class="mm-ico" aria-hidden="true">⇉</span><span class="mm-lab">Delivery</span><span class="mm-k">queue</span></button>
+          <button type="button" class="mm-tog" id="btnPermCycle" role="menuitem" title="Tap to cycle Always → Ask → Plan"><span class="mm-ico" aria-hidden="true">◈</span><span class="mm-lab">Permission</span><span class="mm-k">always</span></button>
+          <button type="button" class="mm-tog" id="btnEffortCycle" role="menuitem" title="Tap to cycle reasoning effort"><span class="mm-ico" aria-hidden="true">⚡</span><span class="mm-lab">Effort</span><span class="mm-k">low</span></button>
+          <button type="button" id="btnActor" role="menuitem" title="Grok Actor · local /actor, no agent turn"><span class="mm-ico" aria-hidden="true">🎭</span><span class="mm-lab">Actor</span><span class="mm-k">voice</span></button>
+          <div id="moreToolsHost"></div>
         </div>
-        <div class="mm-sec"><span class="mm-sec-dot"></span>Apps</div>
-        <button type="button" id="btnWork" role="menuitem"><span class="mm-ico" aria-hidden="true">☰</span><span class="mm-lab">Work</span><span class="mm-k">tools</span></button>
-        <button type="button" id="btnIde" role="menuitem"><span class="mm-ico" aria-hidden="true">&lt;/&gt;</span><span class="mm-lab">IDE</span><span class="mm-k">files</span></button>
-        <button type="button" id="btnPersona" role="menuitem"><span class="mm-ico" aria-hidden="true">◎</span><span class="mm-lab">Persona</span><span class="mm-k">style</span></button>
-        <button type="button" id="btnWatch" role="menuitem"><span class="mm-ico" aria-hidden="true">⌚</span><span class="mm-lab">Watch</span><span class="mm-k">galaxy</span></button>
-        <button type="button" id="btnWatchPin" role="menuitem" title="6-digit code so the watch never types the key"><span class="mm-ico" aria-hidden="true">⌚</span><span class="mm-lab">Watch PIN</span><span class="mm-k">pair</span></button>
-        <div class="mm-sec"><span class="mm-sec-dot"></span>Appearance</div>
-        <button type="button" id="btnTheme" role="menuitem"><span class="mm-ico" aria-hidden="true">▣</span><span class="mm-lab">Theme &amp; fonts</span><span class="mm-k">skin</span></button>
-        <button type="button" id="btnLayoutToggle" role="menuitem" title="Toggle Braid vs Legacy layout"><span class="mm-ico" aria-hidden="true">◫</span><span class="mm-lab">Layout</span><span class="mm-k">braid</span></button>
-        <button type="button" id="btnPrivacy" role="menuitem"><span class="mm-ico" aria-hidden="true">◌</span><span class="mm-lab">Spoiler</span><span class="mm-k">off</span></button>
-        <div class="mm-sec"><span class="mm-sec-dot"></span>Help</div>
-        <button type="button" id="btnPairPhoneMore" role="menuitem" title="Pair a phone — QR on this PC"><span class="mm-ico" aria-hidden="true">▦</span><span class="mm-lab">Pair phone</span><span class="mm-k">QR</span></button>
-        <button type="button" id="btnHealthMore" role="menuitem" title="Check the UI hub and agent connection"><span class="mm-ico" aria-hidden="true">◇</span><span class="mm-lab">Health check</span><span class="mm-k">status</span></button>
-        <button type="button" id="btnStartRemoteMore" role="menuitem" title="Start / restart agent serve"><span class="mm-ico" aria-hidden="true">►</span><span class="mm-lab">Start server</span><span class="mm-k">2419</span></button>
-        <button type="button" id="btnStopRemoteMore" role="menuitem" title="Stop remote UI + agent serve"><span class="mm-ico" aria-hidden="true">■</span><span class="mm-lab">Stop remote</span><span class="mm-k">stack</span></button>
-        <button type="button" id="btnTour" role="menuitem"><span class="mm-ico" aria-hidden="true">?</span><span class="mm-lab">Feature tour</span><span class="mm-k">guide</span></button>
-        <button type="button" id="btnPin" role="menuitem"><span class="mm-ico" aria-hidden="true">★</span><span class="mm-lab">Pin shortcuts</span><span class="mm-k">desk</span></button>
+        <div class="mm-layer" data-layer="feed">
+          <button type="button" class="mm-back" data-goto="home">‹ Feed</button>
+          <div class="mm-sec">Show in feed</div>
+          <div class="mm-grid" id="viewHideGrid">
+            <button type="button" class="mm-tog" id="togHideThink" role="menuitem" data-ux="hideThink"><span class="mm-ico" aria-hidden="true">·</span><span class="mm-lab">Think</span><span class="mm-k">✓</span></button>
+            <button type="button" class="mm-tog" id="togHideTools" role="menuitem" data-ux="hideTools"><span class="mm-ico" aria-hidden="true">·</span><span class="mm-lab">Tools</span><span class="mm-k">✓</span></button>
+            <button type="button" class="mm-tog" id="togHideEdit" role="menuitem" data-ux="hideEdit"><span class="mm-ico" aria-hidden="true">·</span><span class="mm-lab">Edits</span><span class="mm-k">✓</span></button>
+            <button type="button" class="mm-tog" id="togHideRead" role="menuitem" data-ux="hideRead"><span class="mm-ico" aria-hidden="true">·</span><span class="mm-lab">Reads</span><span class="mm-k">✓</span></button>
+            <button type="button" class="mm-tog" id="togHideCode" role="menuitem" data-ux="hideCode"><span class="mm-ico" aria-hidden="true">·</span><span class="mm-lab">Code</span><span class="mm-k">✓</span></button>
+          </div>
+          <div class="mm-sec">Collapse by default</div>
+          <div class="mm-grid" id="viewCollapseGrid">
+            <button type="button" class="mm-tog" id="togCollapseThink" role="menuitem" data-ux="collapseThink"><span class="mm-ico" aria-hidden="true">▾</span><span class="mm-lab">Think</span><span class="mm-k">–</span></button>
+            <button type="button" class="mm-tog" id="togCollapseTools" role="menuitem" data-ux="collapseTools"><span class="mm-ico" aria-hidden="true">▾</span><span class="mm-lab">Tools</span><span class="mm-k">–</span></button>
+            <button type="button" class="mm-tog" id="togCollapseCode" role="menuitem" data-ux="collapseCode"><span class="mm-ico" aria-hidden="true">▾</span><span class="mm-lab">Code</span><span class="mm-k">–</span></button>
+          </div>
         </div>
-        <div class="mm-foot" id="moreMenuFoot">tap outside · Esc to close</div>
+        <div class="mm-layer" data-layer="look">
+          <button type="button" class="mm-back" data-goto="home">‹ Appearance</button>
+          <button type="button" id="btnTheme" role="menuitem"><span class="mm-ico" aria-hidden="true">▣</span><span class="mm-lab">Theme &amp; fonts</span><span class="mm-k">skin</span></button>
+          <button type="button" id="btnLayoutToggle" role="menuitem" title="Toggle Braid vs Legacy layout"><span class="mm-ico" aria-hidden="true">◫</span><span class="mm-lab">Layout</span><span class="mm-k">braid</span></button>
+          <button type="button" id="btnPrivacy" role="menuitem"><span class="mm-ico" aria-hidden="true">◌</span><span class="mm-lab">Spoiler</span><span class="mm-k">off</span></button>
+        </div>
+        <div class="mm-layer" data-layer="apps">
+          <button type="button" class="mm-back" data-goto="home">‹ Apps</button>
+          <button type="button" id="btnWork" role="menuitem"><span class="mm-ico" aria-hidden="true">☰</span><span class="mm-lab">Work</span><span class="mm-k">tools</span></button>
+          <button type="button" id="btnIde" role="menuitem"><span class="mm-ico" aria-hidden="true">&lt;/&gt;</span><span class="mm-lab">IDE</span><span class="mm-k">files</span></button>
+          <button type="button" id="btnPersona" role="menuitem"><span class="mm-ico" aria-hidden="true">◎</span><span class="mm-lab">Persona</span><span class="mm-k">style</span></button>
+          <button type="button" id="btnWatch" role="menuitem"><span class="mm-ico" aria-hidden="true">⌚</span><span class="mm-lab">Watch</span><span class="mm-k">galaxy</span></button>
+          <button type="button" id="btnWatchPin" role="menuitem" title="6-digit code so the watch never types the key"><span class="mm-ico" aria-hidden="true">⌚</span><span class="mm-lab">Watch PIN</span><span class="mm-k">pair</span></button>
+          <button type="button" class="mm-tog" id="togCompanion" role="menuitem" data-ux="companion" title="Hologram companion on /xr — off until you turn it on"><span class="mm-ico" aria-hidden="true">◈</span><span class="mm-lab">Companion</span><span class="mm-k">–</span></button>
+          <button type="button" id="btnOpenCompanion" role="menuitem" title="Open hologram companion" hidden><span class="mm-ico" aria-hidden="true">◈</span><span class="mm-lab">Open companion</span><span class="mm-k">/xr</span></button>
+        </div>
+        <div class="mm-layer" data-layer="link">
+          <button type="button" class="mm-back" data-goto="home">‹ Connection</button>
+          <button type="button" id="btnPairPhoneMore" role="menuitem" title="Pair a phone — QR on this PC"><span class="mm-ico" aria-hidden="true">▦</span><span class="mm-lab">Pair phone</span><span class="mm-k">QR</span></button>
+          <button type="button" id="btnHealthMore" role="menuitem" title="Check the UI hub and agent connection"><span class="mm-ico" aria-hidden="true">◇</span><span class="mm-lab">Health check</span><span class="mm-k">status</span></button>
+          <button type="button" id="btnStartRemoteMore" role="menuitem" title="Start / restart agent serve"><span class="mm-ico" aria-hidden="true">►</span><span class="mm-lab">Start server</span><span class="mm-k">2419</span></button>
+          <button type="button" id="btnStopRemoteMore" role="menuitem" title="Stop remote UI + agent serve"><span class="mm-ico" aria-hidden="true">■</span><span class="mm-lab">Stop remote</span><span class="mm-k">stack</span></button>
+          <button type="button" id="btnTour" role="menuitem"><span class="mm-ico" aria-hidden="true">?</span><span class="mm-lab">Feature tour</span><span class="mm-k">guide</span></button>
+          <button type="button" id="btnPin" role="menuitem"><span class="mm-ico" aria-hidden="true">★</span><span class="mm-lab">Pin shortcuts</span><span class="mm-k">desk</span></button>
+        </div>
+        </div>
+        <div class="mm-foot" id="moreMenuFoot">a category stays open · Esc closes</div>
       </div>
     </div>
     <div class="orbit-menu-wrap">
@@ -1328,9 +1422,22 @@ body.voice-go #voiceHud,body.voice-xr #voiceHud{bottom:calc(var(--stack-h,120px)
   <button type="button" class="chat-title" id="chatTitle" title="Rename chat">Chat</button>
   <input type="search" id="chatTopSearch" placeholder="Search this chat…" autocomplete="off" enterkeyhint="search"/>
 </div>
+<div class="chat-mid" id="chatMid">
 <main id="feed" class="pulse-frame"></main>
+<aside id="agentRail" class="agent-rail" hidden data-open="0">
+  <button type="button" class="agent-rail-tab" id="btnAgentRailTab" title="Show agent activity" aria-expanded="false" aria-controls="agentRailPan">Agents<span class="agent-rail-n" id="agentRailN" hidden>0</span></button>
+  <div class="agent-rail-pan" id="agentRailPan">
+    <div class="agent-rail-head">
+      <span class="agent-rail-title">Agents</span>
+      <button type="button" class="agent-rail-act" id="btnAgentRailClear" title="Remove all agent cards">Clear</button>
+      <button type="button" class="agent-rail-act agent-rail-hide" id="btnAgentRailHide" title="Hide agent panel">×</button>
+    </div>
+    <div class="agent-rail-list" id="agentRailList"></div>
+  </div>
+</aside>
+</div>
 <div id="workBoard" class="work-board" hidden></div>
-<div class="work-line" id="workLine" data-on="0" aria-live="polite"><span id="sendSpin" class="send-spin" hidden aria-hidden="true"></span><span id="workNow">idle</span></div>
+<div class="work-line" id="workLine" data-on="0" aria-live="polite"><span id="sendSpin" class="send-spin" hidden aria-hidden="true"></span><span id="workNow">idle</span><button type="button" class="work-kill" id="workKill" hidden>Kill</button></div>
 <div id="horizonLoad" aria-live="polite" aria-busy="false">
   <div class="horizon-stage" aria-hidden="true">
     <div class="horizon-disk"></div>
@@ -1355,22 +1462,28 @@ body.voice-go #voiceHud,body.voice-xr #voiceHud{bottom:calc(var(--stack-h,120px)
     <button class="send" id="send">Send</button>
   </div>
   <div class="foot-status" id="footStatus">
-    <div class="livebar" id="livebar" data-phase="idle" aria-live="polite">
+    <div class="foot-quiet" id="footQuiet">
       <button type="button" class="btn-settings foot-settings" id="btnSettingsFoot" title="Settings" aria-haspopup="menu" aria-expanded="false" aria-controls="moreMenu">⚙</button>
-      <span class="radio-chip" id="radioChip" title="Link quality">—</span>
-      <span id="ctxMeter" class="ctx-meter ctx-send" title="Context estimate — click for details"><i></i><span>ctx</span></span>
-      <span class="chat-meta" id="chatMeta" hidden></span>
-      <span class="lb-link">link: <b id="lbLink">standby</b></span>
-      <span class="lb-sep">·</span>
-      <button type="button" class="lb-perm" id="lbPerm" title="Permission level for this chat — tap to cycle">perm: always</button>
-      <button type="button" class="lb-perm lb-effort" id="lbEffort" title="Reasoning effort — tap to cycle low/medium/high">effort: low</button>
-      <button type="button" class="lb-more" id="lbMore" title="More status" aria-expanded="false">···</button>
-      <span class="lb-sep lb-sep-git" id="lbGitSep" hidden>·</span>
-      <span class="lb-git" id="lbGit" title="Git — tap to refresh" hidden></span>
-      <span class="lb-sep lb-sep-cost" id="lbCostSep" hidden>·</span>
-      <span class="lb-cost" id="lbCost" title="Turns / context" hidden></span>
-      <span class="lb-sep lb-sep-sess">·</span>
-      <span class="lb-sess hint" id="hint">Desktop + phone share this session</span>
+      <span class="fq-crit" id="fqCrit" aria-live="polite" hidden></span>
+      <button type="button" class="fq-debug" id="btnStatusDebug" title="Debug status" aria-haspopup="menu" aria-expanded="false" aria-controls="statusDebug">debug</button>
+    </div>
+    <div class="status-debug" id="statusDebug" hidden>
+      <div class="sd-head">Debug</div>
+      <div class="livebar" id="livebar" data-phase="idle">
+        <span class="radio-chip" id="radioChip" title="Link quality">—</span>
+        <span id="ctxMeter" class="ctx-meter ctx-send" title="Context estimate — click for details"><i></i><span>ctx</span></span>
+        <span class="chat-meta" id="chatMeta" hidden></span>
+        <span class="lb-link">link: <b id="lbLink">standby</b></span>
+        <span class="lb-sep">·</span>
+        <button type="button" class="lb-perm" id="lbPerm" title="Permission level for this chat — tap to cycle">perm: always</button>
+        <button type="button" class="lb-perm lb-effort" id="lbEffort" title="Reasoning effort — tap to cycle low/medium/high">effort: low</button>
+        <span class="lb-sep lb-sep-git" id="lbGitSep" hidden>·</span>
+        <span class="lb-git" id="lbGit" title="Git — tap to refresh" hidden></span>
+        <span class="lb-sep lb-sep-cost" id="lbCostSep" hidden>·</span>
+        <span class="lb-cost" id="lbCost" title="Turns / context" hidden></span>
+        <span class="lb-sep lb-sep-sess">·</span>
+        <span class="lb-sess hint" id="hint">Desktop + phone share this session</span>
+      </div>
     </div>
   </div>
 </footer>
@@ -1543,6 +1656,7 @@ const themeSheet=document.getElementById("themeSheet"),btnTheme=document.getElem
 let ws=null,sid=null,selectedSid=null,sidCwd=".",nid=0,pending=new Map(),busy=false,defaultCwd=".",sessions=[];
 let replaying=false,showThoughts=true,stickBottom=true,autoScroll=true,page="setup";
 let curUser=null,curAgent=null,curThought=null,toolMap={},curThoughtRow=null;
+let prependAgentNodes=null,agentRailUserClosed=false;
 let seenEvents=new Set(),seenUserTexts=new Set(),promptCount=0,commands=[];
 let pollTimer=null,catchupBusy=false,lastLiveAt=0,localEchoUntil=0,sendInFlight=false,lastLocalUserPlain="",ignoreScrollUntil=0,scrollSettleTimer=0,lastDispatch=null;
 let composerBoundSid=null,composerDrafts={};
@@ -1563,10 +1677,10 @@ let hubUp=true,hubReinitBusy=false;
 Object.defineProperty(window,"replaying",{get:()=>replaying,set:v=>{replaying=!!v},configurable:true});
 Object.defineProperty(window,"sessionSwitching",{get:()=>sessionSwitching,set:v=>{sessionSwitching=!!v},configurable:true});
 let variant="grok",mode="dark";
-let ux={borders:true,collapseThink:true,collapseCode:true,collapseTools:false,autoScroll:true,privacy:false,hideThink:false,hideTools:false,hideCode:false,hideEdit:false,hideRead:false};
+let ux={borders:true,collapseThink:true,collapseCode:true,collapseTools:false,autoScroll:true,privacy:false,hideThink:false,hideTools:false,hideCode:false,hideEdit:false,hideRead:false,companion:false};
 let archived=new Set(),sessScope="active";
-let sessListSig="",workBoardSig="";
-let msgMode="queue",msgQueue=[],msgDrainBusy=false,lastMsgDrain=0,msgRetryTimer=0,agentQueueNote="",lastEnterAt=0,pendingTools=new Set(),workTick=0,workTimer=0,lastWorkTitle="",workJobs=[];
+let sessListSig="",sessListPaintSig="",workBoardSig="";
+let msgMode="queue",msgQueue=[],msgDrainBusy=false,lastMsgDrain=0,msgRetryTimer=0,agentQueueNote="",lastEnterAt=0,pendingTools=new Set(),lastWorkTitle="",workJobs=[];
 let permLevel="always",permBySession={};
 const PERM_ORDER=["always","ask","plan"];
 const PERM_LABEL={always:"always approve",ask:"ask each tool",plan:"plan gate"};
@@ -1738,8 +1852,10 @@ function applyUx(){
   document.body.classList.toggle("hide-code",!!ux.hideCode);
   document.body.classList.toggle("hide-edit",!!ux.hideEdit);
   document.body.classList.toggle("hide-read",!!ux.hideRead);
+  try{syncAgentRail()}catch(e){}
   autoScroll=ux.autoScroll!==false;
   paintViewToggles();
+  applyCompanion();
   if(autoScroll){stickBottom=true;scroll()}
   const mq=window.matchMedia;
   const finePtr=!(mq)||mq("(hover:hover) and (pointer:fine)").matches;
@@ -1855,14 +1971,15 @@ function paintViewToggles(){
     ["hideCode","Code","·",true],
     ["collapseThink","Think","▾",false],
     ["collapseTools","Tools","▾",false],
-    ["collapseCode","Code","▾",false]
+    ["collapseCode","Code","▾",false],
+    ["companion","Companion","◈",false]
   ];
   map.forEach(([k,lab,ico,inv])=>{
     const el=document.querySelector('.mm-tog[data-ux="'+k+'"]');
     if(!el)return;
     const on=inv?!ux[k]:!!ux[k];
     el.classList.toggle("on",on);
-    el.title=(inv?"Tap to show or hide "+lab.toLowerCase()+" in the feed":"Tap to start "+lab.toLowerCase()+" expanded or collapsed");
+    el.title=k==="companion"?(on?"Companion on — XR chip + /xr":"Companion off until you turn it on"):(inv?"Tap to show or hide "+lab.toLowerCase()+" in the feed":"Tap to start "+lab.toLowerCase()+" expanded or collapsed");
     el.innerHTML='<span class="mm-ico" aria-hidden="true">'+(ico||"·")+'</span><span class="mm-lab">'+lab+'</span><span class="mm-k">'+(on?"✓":"–")+"</span>";
   });
 }
@@ -1910,6 +2027,30 @@ function paintUxChips(){
   };
   paint(document.getElementById("uxChips"));
   paint(document.getElementById("uxChipsSheet"));
+}
+window.grokCompanionOn=()=>!!(ux&&ux.companion);
+function xrUrl(){
+  const key=new URLSearchParams(location.search).get("key");
+  return "/xr"+(key?"?key="+encodeURIComponent(key):"");
+}
+function applyCompanion(){
+  const on=!!ux.companion;
+  document.body.classList.toggle("companion-on",on);
+  const xr=document.getElementById("btnComposerXr");
+  if(xr){
+    xr.classList.toggle("show",on);
+    xr.textContent="XR";
+    xr.title=on?"Open hologram companion":"Companion is off — enable in Settings";
+  }
+  const open=document.getElementById("btnOpenCompanion");
+  if(open)open.hidden=!on;
+  if(on)compStart();
+  else{
+    if(typeof compTimer!=="undefined"&&compTimer){clearInterval(compTimer);compTimer=null}
+    const b=document.getElementById("compBadge");
+    if(b)b.style.display="none";
+    try{if(window.grokVoice&&window.grokVoice.mode==="xr")window.grokVoice.setMode("off")}catch(e){}
+  }
 }
 function applyCollapseDefaults(){
   document.querySelectorAll(".thought-row").forEach(r=>{
@@ -2031,11 +2172,23 @@ function paintSessScopeChips(){
     archived:"Arch"+(nArch?" "+nArch:""),
     all:"All"
   };
+  const specs=[["active","Active"],["live","Live"],["archived","Archived"],["all","All"]];
   hosts.forEach(host=>{
+    const chips=[...host.querySelectorAll("button.mode-chip")];
+    if(chips.length===specs.length&&chips.every((b,i)=>b.dataset.scope===specs[i][0])){
+      chips.forEach((b,i)=>{
+        const id=specs[i][0];
+        const lab=labels[id]||id;
+        if(b.textContent!==lab)b.textContent=lab;
+        b.classList.toggle("on",sessScope===id);
+      });
+      return;
+    }
     host.innerHTML="";
-    [["active","Active"],["live","Live"],["archived","Archived"],["all","All"]].forEach(([id])=>{
+    specs.forEach(([id])=>{
       const b=document.createElement("button");
       b.type="button";b.className="mode-chip"+(sessScope===id?" on":"");
+      b.dataset.scope=id;
       b.textContent=labels[id]||id;
       b.title=id==="archived"?"Archived":id.charAt(0).toUpperCase()+id.slice(1);
       b.onclick=()=>{
@@ -2232,7 +2385,10 @@ function measureBottomStack(opts){
     h=footEl.getBoundingClientRect().height||0;
   }
   if(h<88)h=page==="chat"?120:80;
-  const pad=Math.max(100,Math.ceil(h+28));
+  const desktop=document.body.classList.contains("desktop")||document.body.classList.contains("electron");
+  /* Desktop composer lives in its own grid row. Padding the feed by the
+     footer height left a blank band under the last bubbles. */
+  const pad=desktop?16:Math.max(100,Math.ceil(h+28));
   const prev=lastStackH||0;
   document.documentElement.style.setProperty("--stack-h",Math.ceil(h)+"px");
   document.documentElement.style.setProperty("--feed-pad-bottom",pad+"px");
@@ -2345,7 +2501,15 @@ function jumpToBottom(){
   forceScrollBottom({pin:true,settle:true});
 }
 function log(m){logEl.textContent+=(new Date().toLocaleTimeString())+"  "+m+"\n";logEl.scrollTop=logEl.scrollHeight}
-function defaultWs(){return (location.protocol==="https:"?"wss:":"ws:")+"//"+location.host+"/ws"}
+function defaultWs(){
+  const proto=location.protocol==="https:"?"wss:":"ws:";
+  let url=proto+"//"+location.host+"/ws";
+  try{
+    const k=new URLSearchParams(location.search).get("key");
+    if(k)url+="?key="+encodeURIComponent(k);
+  }catch(e){}
+  return url;
+}
 function atBottom(){
   if(!feed)return true;
   const slop=document.body.classList.contains("kb-open")?200:160;
@@ -2539,6 +2703,7 @@ function paintLivebar(){
   const om=document.getElementById("orbitMenuMeta");
   if(om)om.textContent=linkLab+" · "+(PHASE_LABEL[phase]||phase)+" · perm "+getPermLevel(sid)+" · "+reasoningEffort;
   try{const mm=document.getElementById("moreMenu");if(mm&&mm.classList.contains("on")&&typeof paintMoreMenuChrome==="function")paintMoreMenuChrome()}catch(e){}
+  try{paintFootQuiet()}catch(e){}
 }
 async function setEffort(level,opts){
   opts=opts||{};
@@ -2923,6 +3088,40 @@ function shortFolder(p){
   const parts=s.split("/").filter(Boolean);
   return parts.length?parts[parts.length-1]:s;
 }
+function paintFootQuiet(){
+  const el=document.getElementById("fqCrit");
+  if(!el)return;
+  const on=linkState==="uplink"||linkState==="sync";
+  const bits=[];
+  if(!on)bits.push("offline");
+  else if(hubUp===false)bits.push("hub down");
+  const ctx=document.getElementById("ctxMeter");
+  const m=(ctx&&ctx.textContent||"").match(/(\d+)\s*%/);
+  const pct=m?+m[1]:0;
+  if(pct>=55)bits.push("ctx "+pct+"%");
+  el.textContent=bits.join(" · ");
+  el.hidden=!bits.length;
+  el.dataset.q=(!on||hubUp===false||pct>=80)?"bad":(pct>=55?"warn":"ok");
+}
+window.paintFootQuiet=paintFootQuiet;
+function closeStatusDebug(){
+  const d=document.getElementById("statusDebug");
+  const b=document.getElementById("btnStatusDebug");
+  if(d){d.classList.remove("on");d.hidden=true}
+  if(b){b.classList.remove("on");b.setAttribute("aria-expanded","false")}
+}
+function toggleStatusDebug(e){
+  if(e){e.preventDefault();e.stopPropagation()}
+  const d=document.getElementById("statusDebug");
+  const b=document.getElementById("btnStatusDebug");
+  if(!d)return;
+  const open=!d.classList.contains("on");
+  if(open){
+    d.hidden=false;d.classList.add("on");
+    if(b){b.classList.add("on");b.setAttribute("aria-expanded","true")}
+    try{paintRadioChip();paintLivebar();paintFootQuiet()}catch(err){}
+  }else closeStatusDebug();
+}
 function paintRadioChip(){
   const el=document.getElementById("radioChip");
   if(!el)return;
@@ -2937,12 +3136,14 @@ function paintRadioChip(){
   el.textContent=bits.join(" · ")||"—";
   el.dataset.q=hubUp===false?"bad":q;
   el.title="RTT / hub · last packet "+(quiet?Math.round(quiet/1000)+"s ago":"now");
+  try{paintFootQuiet()}catch(e){}
 }
 function msgPhaseDetail(){
   const active=agentPhase!=="idle"&&agentPhase!=="error";
   return active?" · "+(PHASE_LABEL[agentPhase]||agentPhase):"";
 }
 function workIsOn(){
+  if(/stalled/i.test(String(agentPhase||"")))return false;
   return (!!busy&&!replaying)||pendingTools.size>0||!!(handleMsg&&handleMsg._waitPrompt!=null);
 }
 function currentWorkBits(){
@@ -2964,63 +3165,108 @@ function paintWorkNow(){
   const line=document.getElementById("workLine");
   const el=document.getElementById("workNow");
   const spin=document.getElementById("sendSpin");
-  const txt=on?(bits[workTick%Math.max(bits.length,1)]||PHASE_LABEL[agentPhase]||"working"):"idle";
-  if(line)line.dataset.on=on?"1":"0";
-  if(el){el.textContent=txt;el.title=bits.join(" · ")||txt}
-  if(spin){spin.hidden=!on;spin.setAttribute("aria-hidden",on?"false":"true")}
-  if(on&&!workTimer)workTimer=setInterval(()=>{workTick++;paintWorkNow()},1400);
-  if(!on&&workTimer){clearInterval(workTimer);workTimer=0;workTick=0}
+  const kill=document.getElementById("workKill");
+  const txt=on?(bits.join(" · ")||PHASE_LABEL[agentPhase]||"working"):"";
+  if(line&&line.dataset.on!==(on?"1":"0"))line.dataset.on=on?"1":"0";
+  if(el&&el.textContent!==txt){el.textContent=txt;el.title=bits.join(" · ")||txt}
+  if(spin){const hide=!on;if(spin.hidden!==hide){spin.hidden=hide;spin.setAttribute("aria-hidden",hide?"true":"false")}}
+  if(kill){
+    kill.hidden=true;
+    if(!kill._bound){kill._bound=true;kill.onclick=e=>{e.preventDefault();e.stopPropagation();if(sid)killWork(sid)}}
+  }
+}
+function settleRailTools(){
+  try{
+    const list=agentRailList();
+    if(list)list.querySelectorAll(".tool").forEach(el=>{
+      const st=el._tool||{};
+      const s=String(st.status||"");
+      if(!s||/pend|run|progress|start/i.test(s)){
+        st.status="completed";
+        const stEl=el.querySelector(".st");
+        if(stEl){stEl.textContent="completed";stEl.className="st ok"}
+      }
+    });
+  }catch(e){}
+  try{
+    if(window.grokChat&&sid){
+      const r=window.grokChat.room(sid);
+      r.pendingTools=new Set();
+      pendingTools=r.pendingTools;
+    }else pendingTools=new Set();
+  }catch(e){pendingTools=new Set()}
+  try{if(handleMsg._waitPrompt!=null&&!(pending&&pending.has(handleMsg._waitPrompt)))handleMsg._waitPrompt=null}catch(e){}
+}
+function dropAckedQueue(job){
+  if(!msgQueue.length)return;
+  const acked=new Set();
+  const add=t=>{const n=normUserEcho(t);if(n)acked.add(n)};
+  if(job){
+    add(job.last_user);
+    (job.asks||[]).forEach(a=>{if(a&&a.acked)add(a.text)});
+  }
+  if(!acked.size)return;
+  const keep=msgQueue.filter(q=>!acked.has(normUserEcho(q.tRaw)));
+  if(keep.length===msgQueue.length)return;
+  msgQueue.splice(0,msgQueue.length,...keep);
+  try{paintMsgQueue()}catch(e){}
 }
 function applyWorkJob(job){
+  const chat=window.grokChat;
   if(!job){
-    pendingTools=new Set();
+    if(chat){const r=chat.room(sid);r.pendingTools=new Set();pendingTools=r.pendingTools}
+    else pendingTools=new Set();
     lastWorkTitle="";
     agentQueueNote="";
+    settleRailTools();
+    dropAckedQueue(null);
     setBusy(false);
     setPhase("idle");
     paintWorkBoard();
     return;
   }
   const open=(job.tools||[]).filter(t=>!/completed|failed|cancelled|canceled|error/i.test(String(t.status||"")));
-  pendingTools=new Set(open.map(t=>String(t.id||t.tool_id||"")));
-  lastWorkTitle=(open[0]&&((open[0].title||"")+(open[0].cmd?" · "+open[0].cmd:"")))||job.detail||job.last_user||"";
-  agentQueueNote=job.queue||"";
-  const live=open.length>0||(!!job.running&&!(job.tools||[]).length)||(!!job.running&&/thinking|responding/.test(String(job.phase||"")));
-  if(live){setBusy(true,job.sid);setPhase(job.phase||"tools",job.detail||lastWorkTitle)}
-  else{setBusy(false,job.sid);setPhase("idle")}
-  paintWorkNow();
+  const roomTools=chat?chat.room(job.sid).pendingTools:new Set();
+  roomTools.clear();
+  open.forEach(t=>roomTools.add(String(t.id||t.tool_id||"")));
+  if(!chat||chat.belongs(job.sid)){
+    pendingTools=roomTools;
+    const stalled=/stalled/i.test(String(job.phase||""))||/returned nothing/i.test(String(job.detail||""));
+    if(stalled){
+      lastWorkTitle="";
+      agentQueueNote="";
+      try{if(handleMsg._waitPrompt!=null)handleMsg._waitPrompt=null}catch(e){}
+      settleRailTools();
+      dropAckedQueue(job);
+      setBusy(false,job.sid);
+      setPhase("idle");
+      paintWorkNow();
+    }else{
+      lastWorkTitle=(open[0]&&((open[0].title||"")+(open[0].cmd?" · "+open[0].cmd:"")))||job.detail||job.last_user||"";
+      agentQueueNote=job.queue||"";
+      const live=open.length>0||(!!job.running&&!(job.tools||[]).length)||(!!job.running&&/thinking|responding/.test(String(job.phase||"")));
+      if(live){setBusy(true,job.sid);setPhase(job.phase||"tools",job.detail||lastWorkTitle)}
+      else{
+        settleRailTools();
+        dropAckedQueue(job);
+        setBusy(false,job.sid);setPhase("idle");
+      }
+      paintWorkNow();
+    }
+  }
   paintWorkBoard();
   try{paintMsgQueue()}catch(e){}
 }
 function paintWorkBoard(){
   const el=document.getElementById("workBoard");
-  if(!el)return;
-  const live=workJobs.filter(j=>j&&(j.running||(j.asks||[]).some(a=>!a.acked)||(j.tools||[]).some(t=>!/completed|failed|cancelled|canceled|error/i.test(String(t.status||"")))));
-  if(!live.length){el.hidden=true;el.innerHTML="";workBoardSig="";return}
-  el.hidden=false;
-  const html=live.map(j=>{
-    const ask=(j.last_user||(j.asks&&j.asks[0]&&j.asks[0].text)||"").slice(0,90);
-    const st=j.running?(j.phase||"work"):"idle";
-    const title=(j.title||j.sid||"").slice(0,28);
-    return '<div class="wj'+(sessionIdsMatch(j.sid,sid)?" on":"")+'" data-wsid="'+esc(j.sid)+'"><div class="wj-body"><b>'+esc(st)+" · "+esc(title)+'</b><div class="d">'+esc(ask||j.detail||j.queue||"working")+'</div></div><button type="button" data-wkill="'+esc(j.sid)+'">Kill</button></div>';
-  }).join("");
-  /* Same reason as renderSessions: replacing innerHTML drops the hovered node. */
-  if(html===workBoardSig&&el.children.length)return;
-  workBoardSig=html;
-  el.innerHTML=html;
-  el.querySelectorAll(".wj").forEach(row=>{
-    row.onclick=e=>{
-      if(e.target.closest("button"))return;
-      const id=row.getAttribute("data-wsid");
-      const s=(sessions||[]).find(x=>sessionIdsMatch(x.sessionId,id));
-      if(s)openSession(s);
-    };
-  });
-  el.querySelectorAll("button[data-wkill]").forEach(btn=>{
-    btn.onclick=e=>{
-      e.preventDefault();e.stopPropagation();
-      killWork(btn.getAttribute("data-wkill"));
-    };
+  if(el){el.hidden=true;if(el.innerHTML)el.innerHTML="";workBoardSig=""}
+  paintAgentJobs();
+}
+function paintAgentJobs(){
+  if(!window.grokChat)return;
+  window.grokChat.setJobs(workJobs,{
+    open(id){const s=(sessions||[]).find(x=>sessionIdsMatch(x.sessionId,id));if(s)openSession(s)},
+    kill(id){killWork(id)}
   });
 }
 async function hydrateWork(forSid){
@@ -3105,9 +3351,7 @@ function setBusy(b,forSid){
 function liveBelongsHere(sessionId){
   if(!sid)return false;
   if(sessionSwitching)return false;
-  const want=String(sid),got=String(sessionId||"").trim();
-  if(!got)return false;
-  return got===want||(got.length>=12&&want.startsWith(got))||(want.length>=12&&got.startsWith(want));
+  return sessionIdsMatch(sid,sessionId);
 }
 window.setBusy=setBusy;
 window.setPhase=setPhase;
@@ -3204,6 +3448,15 @@ function paintMsgQueue(){
     };
   });
 }
+function echoQueuedSend(item){
+  if(!item||item.echoed)return;
+  const viewing=sessionIdsMatch(sid,item.sessionId||sid);
+  if(viewing&&(item.tRaw||(item.files&&item.files.length))){
+    const pre=item.mode==="fyi"?"FYI · ":"";
+    paintLocalUserTurn(pre+(item.tRaw||""),item.files||[]);
+    item.echoed=true;
+  }
+}
 async function sendQueuedNow(i){
   if(!(i>=0)||i>=msgQueue.length)return;
   const item=msgQueue.splice(i,1)[0];
@@ -3213,22 +3466,16 @@ async function sendQueuedNow(i){
   try{
     await cancelTurn(target,{waitMs:360,force:true});
     await sleep(80);
-    if(String(sid)===target&&(item.tRaw||(item.files&&item.files.length)))paintLocalUserTurn("Interject · "+(item.tRaw||""),item.files||[]);
+    echoQueuedSend(item);
     const ok=await dispatchPromptPayload(item.tRaw,item.files||[],"interject",{fromQueue:true,wasBusy:true,interjected:true,sessionId:target,sessionGen:sessionGen,allowCrossSession:true});
-    if(!ok){msgQueue.unshift(item);paintMsgQueue()}
-  }catch(e){msgQueue.unshift(item);paintMsgQueue();chip("send now: "+e)}
+    if(!ok){item.echoed=false;msgQueue.unshift(item);paintMsgQueue()}
+  }catch(e){item.echoed=false;msgQueue.unshift(item);paintMsgQueue();chip("send now: "+e)}
 }
 function enqueueMsg(item){
   const it=Object.assign({id:"mq-"+Date.now()+"-"+Math.random().toString(36).slice(2,7),echoed:false},item);
   msgQueue.push(it);
-  const viewing=String(sid||"")===String(it.sessionId||sid||"");
-  if(viewing&&(it.tRaw||(it.files&&it.files.length))){
-    paintLocalUserTurn((it.mode==="fyi"?"FYI · ":"Queued · ")+(it.tRaw||""),it.files||[]);
-    it.echoed=true;
-  }
   paintMsgQueue();
   armMsgRetry();
-  chip((it.mode||"queue")+" · waiting ("+msgQueue.length+")");
 }
 function markAgentAttach(sid,ready){
   agentAttachSid=String(sid||"");
@@ -3241,12 +3488,12 @@ function markAgentAttach(sid,ready){
 }
 function waitAgentAttach(sid,ms){
   const want=String(sid||"");
-  if(agentAttachReady&&(!want||agentAttachSid===want||!agentAttachSid))return Promise.resolve(true);
+  if(agentAttachReady&&(!want||!agentAttachSid||sessionIdsMatch(agentAttachSid,want)))return Promise.resolve(true);
   return new Promise(resolve=>{
     let done=false;
     const fin=ok=>{if(done)return;done=true;resolve(!!ok)};
     agentAttachWaiters.push(()=>fin(true));
-    setTimeout(()=>fin(agentAttachReady&&(!want||agentAttachSid===want||!agentAttachSid)),ms||60000);
+    setTimeout(()=>fin(agentAttachReady&&(!want||!agentAttachSid||sessionIdsMatch(agentAttachSid,want))),ms||60000);
   });
 }
 function isActiveTurn(token){return token!=null&&token===activeTurnToken}
@@ -3255,14 +3502,21 @@ function toolStatusOf(u,meta){
   const up=meta&&meta.updateParams;
   return String((up&&up.status)||(u&&u.status)||"").toLowerCase();
 }
-function noteToolLife(u,meta){
+function noteToolLife(u,meta,forSid){
   const id=toolCallIdOf(u);
   if(!id)return;
   const st=toolStatusOf(u,meta);
+  const target=String(forSid||sid||"");
+  if(window.grokChat&&target){
+    pendingTools=window.grokChat.noteTool(target,id,st);
+    return;
+  }
   if(!st||/pending|in_progress|inprogress|running/.test(st))pendingTools.add(id);
   if(/completed|failed|error|cancelled|canceled|timed.?out/.test(st))pendingTools.delete(id);
 }
 function finishTurnOrKeep(want){
+  const target=String(want||sid||"");
+  if(window.grokChat&&target)pendingTools=window.grokChat.room(target).pendingTools;
   if(pendingTools.size){
     setBusy(true,want||sid);
     setPhase("tools","command running");
@@ -3294,7 +3548,7 @@ function dropPendingPrompts(sessionId,reason){
   const dropped=[];
   for(const [id,p] of [...pending.entries()]){
     if(!p||p.kind!=="prompt")continue;
-    if(target&&p.sessionId&&String(p.sessionId)!==target)continue;
+    if(target&&p.sessionId&&!sessionIdsMatch(p.sessionId,target))continue;
     pending.delete(id);
     dropped.push(id);
     if(lastDispatch&&lastDispatch.id===id)lastDispatch.acked=true;
@@ -3370,7 +3624,7 @@ async function dispatchPromptPayload(tRaw,files,mode,opts){
   if(sessionSwitching&&!opts.allowCrossSession){chip("wait · switching chat");return false}
   const wrapped=wrapForMode(tRaw,mode,{fromQueue:!!opts.fromQueue,wasBusy:!!opts.wasBusy,interjected:!!opts.interjected});
   const t=(opts.fromQueue||opts.skipSetup)?wrapped:withAgentSetup(wrapped,targetSid);
-  const viewing=()=>String(sid)===targetSid;
+  const viewing=()=>sessionIdsMatch(sid,targetSid);
   turnToken++;
   const myToken=turnToken;
   activeTurnToken=myToken;
@@ -3407,7 +3661,7 @@ async function dispatchPromptPayload(tRaw,files,mode,opts){
   if(!isActiveTurn(myToken)){chip("superseded · not sent");return false}
   const id=nextId();
   if(viewing())handleMsg._waitPrompt=id;
-  const stillHere=()=>String(sid)===targetSid;
+  const stillHere=()=>sessionIdsMatch(sid,targetSid);
   const onDone=ok=>{
     stopPromptWatch();
     if(lastDispatch&&lastDispatch.id===id)lastDispatch.acked=true;
@@ -3515,14 +3769,13 @@ async function drainMsgQueue(){
   paintMsgQueue();
   const itemSid=String(item.sessionId||sid||"");
   try{
-    const qDisp=(item.mode==="fyi"?"FYI · ":"")+(item.mode==="queue"?"Queued · ":"")+(item.mode==="interject"?"Interject · ":"")+(item.tRaw||"");
-    if(!item.echoed&&(item.tRaw||(item.files&&item.files.length)))paintLocalUserTurn(qDisp,item.files||[]);
+    echoQueuedSend(item);
     localEchoUntil=Date.now()+5000;
     promoteSessionAfterMessage(itemSid).catch(()=>{});
     try{if(window.grokVoice)window.grokVoice.onTaskSent(item.tRaw)}catch(e){}
     const ok=await dispatchPromptPayload(item.tRaw,item.files||[],item.mode||"queue",{fromQueue:true,wasBusy:item.mode!=="fyi",sessionId:itemSid,sessionGen:sessionGen,allowCrossSession:true});
-    if(!ok){msgQueue.unshift(item);paintMsgQueue()}
-  }catch(e){chip("queue drain: "+e);msgQueue.unshift(item);paintMsgQueue()}
+    if(!ok){item.echoed=false;msgQueue.unshift(item);paintMsgQueue()}
+  }catch(e){item.echoed=false;chip("queue drain: "+e);msgQueue.unshift(item);paintMsgQueue()}
   finally{msgDrainBusy=false;armMsgRetry()}
 }
 function nextId(){return ++nid}
@@ -3606,12 +3859,35 @@ function openSheet(el,btn){
   if(btn)btn.classList.add("on");
 }
 function settingsAnchors(){return [document.getElementById("btnSettings"),document.getElementById("btnSettingsFoot"),document.getElementById("btnMore")].filter(Boolean)}
+const MORE_LAYER_TITLES={home:"Settings",chat:"Chat",feed:"Feed",look:"Appearance",apps:"Apps",link:"Connection"};
+function showMoreLayer(name){
+  const m=document.getElementById("moreMenu");
+  if(!m)return;
+  const want=String(name||"home");
+  m.querySelectorAll(".mm-layer").forEach(el=>el.classList.toggle("on",el.getAttribute("data-layer")===want));
+  m.dataset.layer=want;
+  const brand=m.querySelector(".mm-brand");
+  if(brand)brand.textContent=MORE_LAYER_TITLES[want]||"Settings";
+}
+function bindMoreLayers(){
+  const m=document.getElementById("moreMenu");
+  if(!m||m._layers)return;
+  m._layers=true;
+  m.addEventListener("click",e=>{
+    const go=e.target.closest("[data-goto]");
+    if(!go||!m.contains(go))return;
+    e.preventDefault();
+    e.stopPropagation();
+    showMoreLayer(go.getAttribute("data-goto"));
+  });
+}
 function closeMoreMenu(){
   const m=document.getElementById("moreMenu");
-  if(m){m.classList.remove("on");m.hidden=true}
+  if(m){m.classList.remove("on");m.hidden=true;try{showMoreLayer("home")}catch(e){}}
   settingsAnchors().forEach(b=>{b.classList.remove("on");b.setAttribute("aria-expanded","false")});
 }
 window.closeMoreMenu=closeMoreMenu;
+window.showMoreLayer=showMoreLayer;
 function toggleMoreMenu(e){
   if(e){e.preventDefault();e.stopPropagation()}
   const m=document.getElementById("moreMenu");
@@ -3777,6 +4053,24 @@ function showRxPop(row){
   p.style.left=Math.round(left)+"px";p.style.top=Math.round(top)+"px";
   }catch(e){}
 }
+function selectionIn(el){
+  try{
+    const s=window.getSelection&&window.getSelection();
+    if(!s||s.isCollapsed)return false;
+    if(!String(s).trim())return false;
+    if(!el)return true;
+    const node=s.anchorNode||s.focusNode;
+    if(!node)return true;
+    const n=node.nodeType===1?node:node.parentElement;
+    return !!(n&&el.contains(n));
+  }catch(e){return false}
+}
+function clickWasDrag(el,e,thresh){
+  const t=thresh||8;
+  const dx=(e.clientX||0)-(el&&el._sx||0);
+  const dy=(e.clientY||0)-(el&&el._sy||0);
+  return (dx*dx+dy*dy)>(t*t);
+}
 function bindMsgPress(row){
   if(!row||row._rxBound)return;
   row._rxBound=true;
@@ -3787,7 +4081,7 @@ function bindMsgPress(row){
   const start=e=>{
     const p=e.touches?e.touches[0]:e;
     sx=p.clientX;sy=p.clientY;
-    tmr=setTimeout(()=>{tmr=0;showRxPop(row)},480);
+    tmr=setTimeout(()=>{tmr=0;if(selectionIn(bub))return;showRxPop(row)},480);
   };
   const cancel=e=>{
     if(rxHeld&&e){try{e.preventDefault()}catch(x){}}
@@ -3801,7 +4095,10 @@ function bindMsgPress(row){
   bub.addEventListener("touchend",cancel,{passive:false});
   bub.addEventListener("touchcancel",cancel,{passive:false});
   bub.addEventListener("touchmove",move,{passive:true});
-  bub.addEventListener("contextmenu",e=>{e.preventDefault();e.stopPropagation();showRxPop(row)});
+  bub.addEventListener("contextmenu",e=>{
+    if(selectionIn(bub))return;
+    e.preventDefault();e.stopPropagation();showRxPop(row);
+  });
 }
 function wireRx(row){bindMsgPress(row)}
 (function wireRxPopChrome(){
@@ -4062,7 +4359,7 @@ function inlineMd(s){
   t=t.replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g,'<a class="md-a" href="$2" target="_blank" rel="noopener">$1</a>');
   t=t.replace(/(^|[\s(])(https?:\/\/[^\s<]+)/g,'$1<a class="md-a" href="$2" target="_blank" rel="noopener">$2</a>');
   t=t.replace(/(^|[\s(])((?:[A-Za-z]:\\|\/|\.\/|\.\.\/)[^\s<|*?"<>]{2,200}\.\w{2,12})/g,function(_,pre,path){
-    return pre+'<span class="file-chip spoiler-path">📄 '+path+"</span>";
+    return pre+'<a class="path-link file-chip spoiler-path" href="#" draggable="false" data-path="'+path+'" title="Ctrl+click to open">📄 '+path+"</a>";
   });
   t=t.replace(/\b(019[0-9a-f]{4}-[0-9a-f-]{20,})\b/gi,'<span class="spoiler">$1</span>');
   t=restoreMathPlaceholders(t,prot.bag);
@@ -4275,6 +4572,19 @@ function noteSeenUser(key){
 function normUserEcho(text){
   return stripPromptChrome(String(text||"")).replace(/\s+/g," ").trim();
 }
+function feedHasUserText(text){
+  const plain=normUserEcho(text);
+  if(!plain)return false;
+  if(seenUserTexts.has(plain)||seenUserTexts.has(String(text||"").trim()))return true;
+  try{
+    const rows=feed?feed.querySelectorAll(".row.me .bub"):[];
+    for(let i=0;i<rows.length;i++){
+      const raw=normUserEcho(rows[i].dataset.raw||rows[i].innerText||"");
+      if(raw&&(raw===plain||plain.endsWith(raw)||raw.endsWith(plain)))return true;
+    }
+  }catch(e){}
+  return false;
+}
 function isLocalUserEcho(text){
   if(Date.now()>=localEchoUntil)return false;
   const plain=normUserEcho(text);
@@ -4298,6 +4608,9 @@ function paintHistoryUser(text,content){
   const media=contentMedia(content);
   if(!display.trim()&&!media)return false;
   if(!replaying&&display&&isLocalUserEcho(display)&&!media){noteSeenUser(display);return false}
+  /* Live catch-up must not append a You bubble the feed already shows. That
+     is how "Did you finish?" (hours ago) landed under a prompt just sent. */
+  if(!replaying&&display&&feedHasUserText(display)&&!media){noteSeenUser(display);return false}
   const bub=addRow("You");
   bub.classList.add("md");
   bub.dataset.raw=display;
@@ -4310,6 +4623,7 @@ function paintHistoryUser(text,content){
     }else bub.appendChild(renderMdBlock(display));
   }
   if(media){const n=attNode(media);if(n)bub.appendChild(n)}
+  if(display)noteSeenUser(display);
   curUser=null;
   return true;
 }
@@ -4351,9 +4665,7 @@ function compMount(){
   document.body.appendChild(b);
   return b;
 }
-function compStart(){if(!compTimer){compPoll();compTimer=setInterval(compPoll,10000)}}
-addEventListener("DOMContentLoaded",compStart);
-if(document.readyState!=="loading")compStart();
+function compStart(){if(!ux.companion)return;if(!compTimer){compPoll();compTimer=setInterval(compPoll,10000)}}
 function takeAgentRx(text){
   let t=String(text||"");
   const found=[];
@@ -4463,6 +4775,34 @@ function fillThoughtBub(el){
   });
   queueMathTypeset(el);
 }
+function agentRailEl(){return document.getElementById("agentRail")}
+function agentRailList(){return document.getElementById("agentRailList")}
+function agentRailWide(){try{return window.matchMedia("(min-width:900px)").matches}catch(e){return false}}
+function placeAgentView(el){return window.grokChat?window.grokChat.place(el):el}
+function dismissAgentView(el){if(window.grokChat)window.grokChat.dismiss(el)}
+function syncAgentRail(maybeOpen){if(window.grokChat)window.grokChat.sync(maybeOpen)}
+function setAgentRailOpen(on){if(window.grokChat)window.grokChat.setOpen(on)}
+function clearAgentRail(){if(window.grokChat)window.grokChat.clear()}
+function gatherAgentViewsFromFeed(){if(window.grokChat)window.grokChat.gather()}
+function bindPathOpens(){
+  if(document.documentElement.dataset.pathOpen==="1")return;
+  document.documentElement.dataset.pathOpen="1";
+  document.addEventListener("click",e=>{
+    const el=e.target.closest&&e.target.closest("a.path-link,.path-link,.file-chip.spoiler-path,.loc");
+    if(!el)return;
+    if(el.tagName==="A"||el.classList.contains("path-link"))e.preventDefault();
+    if(!(e.ctrlKey||e.metaKey))return;
+    e.stopPropagation();
+    const p=el.getAttribute("data-path")||(el.textContent||"");
+    const path=String(p).replace(/^📄\s*/,"").replace(/^(\[file\]\s*|file\s*)/i,"").trim();
+    if(!path)return;
+    if(window.grokCockpit&&window.grokCockpit.openLocInIde)window.grokCockpit.openLocInIde(path);
+    else if(window.grokIde&&window.grokIde.openFile)window.grokIde.openFile(path,{forceReload:true}).catch(err=>chip(String(err)));
+    else chip("IDE not ready · "+path);
+  });
+}
+window.bindPathOpens=bindPathOpens;
+function bindAgentRail(){if(window.grokChat)window.grokChat.bind()}
 function appendThought(text){
   if(!showThoughts||ux.hideThink)return;
   if(!curThought){
@@ -4474,7 +4814,7 @@ function appendThought(text){
       row.classList.toggle("collapsed");
       if(!row.classList.contains("collapsed"))fillThoughtBub(row.querySelector(".bub"));
     };
-    feed.appendChild(row);curThought=row.querySelector(".bub");curThought.dataset.raw="";curThoughtRow=row;
+    placeAgentView(row);curThought=row.querySelector(".bub");curThought.dataset.raw="";curThoughtRow=row;
   }
   curThought.dataset.raw=(curThought.dataset.raw||"")+(text||"");
   const raw=curThought.dataset.raw;
@@ -4631,7 +4971,10 @@ function upsertTool(u){
     el.innerHTML='<div class="tool-head"><span class="chev">▾</span><span class="tt"></span><span class="st"></span></div><div class="tool-body"></div>';
     el.querySelector(".tool-head").onclick=()=>el.classList.toggle("collapsed");
     el._tool={id:id,title:"",kind:"",status:"",content:"",input:"",output:"",locs:[]};
-    feed.appendChild(el);toolMap[id]=el;
+    placeAgentView(el);toolMap[id]=el;
+  }else if(el.classList.contains("dismissed")){
+    el.classList.remove("dismissed");
+    syncAgentRail(true);
   }
   const st=el._tool||(el._tool={});
   if(u.title)st.title=u.title;
@@ -4662,12 +5005,7 @@ function upsertTool(u){
   if(st.locs&&st.locs.length){
     const row=document.createElement("div");row.className="meta";
     st.locs.slice(0,8).forEach(p=>{
-      const s=document.createElement("span");s.className="loc spoiler-path";s.textContent="📄 "+p;s.title="Open in IDE";s.style.cursor="pointer";
-      s.onclick=e=>{
-        e.stopPropagation();
-        if(window.grokIde&&window.grokIde.openFile)window.grokIde.openFile(p,{forceReload:true}).catch(err=>chip(String(err)));
-        else if(window.grokCockpit&&window.grokCockpit.openLocInIde)window.grokCockpit.openLocInIde(p);
-      };
+      const s=document.createElement("a");s.className="loc spoiler-path path-link";s.href="#";s.draggable=false;s.textContent="📄 "+p;s.title="Ctrl+click to open";s.setAttribute("data-path",p);
       row.appendChild(s);
     });
     body.appendChild(row);
@@ -4776,15 +5114,22 @@ function appendRecap(u){
 }
 function handleUpdate(u,sessionId,meta){
   if(!u)return;
-  if(attachReplay||suppressLive)return;
+  /* Aug 1 braid gate: suppress only while switching / attach, then match this
+     session with prefix-tolerant ids. Do not drop same-chat live because
+     attachReplay is set or the hub sent a shorter sessionId. */
+  if(suppressLive&&!historyPainting)return;
   if(sessionSwitching&&!historyPainting)return;
   if(!sid)return;
-  const want=String(sid);
   if(sessionId){
-    const got=String(sessionId);
-    if(got!==want&&!(historyPainting&&got.slice(0,12)===want.slice(0,12)))return;
-    if(!historyPainting&&got!==want)return;
+    if(!sessionIdsMatch(sessionId,sid))return;
   }else if(!historyPainting)return;
+  const chat=window.grokChat;
+  const want=String(sid);
+  if(chat){
+    const bag=chat.cursors(want);
+    curUser=bag.curUser;curAgent=bag.curAgent;curThought=bag.curThought;curThoughtRow=bag.curThoughtRow;
+    userWireBuf=bag.userWireBuf;toolMap=bag.toolMap;pendingTools=bag.pendingTools;
+  }
   const eid=meta&&meta.eventId;
   if(eid){
     if(seenEvents.has(eid))return;
@@ -4827,7 +5172,7 @@ function handleUpdate(u,sessionId,meta){
     if(meta&&meta.updateParams&&meta.updateParams.status&&!u.status)u.status=meta.updateParams.status;
     upsertTool(u);
     if(!replaying&&!historyPainting){
-      noteToolLife(u,meta);
+      noteToolLife(u,meta,want);
       const tit=u.title||u.kind||u.toolName||"";
       const cmd=(u.rawInput&&(u.rawInput.command||u.rawInput.path||u.rawInput.query))||"";
       lastWorkTitle=(tit+(cmd?(" · "+String(cmd).replace(/\s+/g," ").slice(0,56)):"")).slice(0,80);
@@ -4871,12 +5216,12 @@ function handleUpdate(u,sessionId,meta){
       if(!replaying){chip("mode · "+u.mode);paintPermChip()}
     }
   }
+  if(chat)chat.saveCursors({curUser,curAgent,curThought,curThoughtRow,userWireBuf},want);
 }
 
 function handleMsg(data){
   if(data.id!=null&&pending.has(data.id)){
     const p=pending.get(data.id);pending.delete(data.id);
-    const active=p&&(p.turnToken==null||isActiveTurn(p.turnToken));
     if(data.error){
       try{p.reject(new Error(data.error.message||JSON.stringify(data.error)))}catch(e){}
     }else{
@@ -4884,7 +5229,13 @@ function handleMsg(data){
     }
     if(handleMsg._waitPrompt===data.id){
       handleMsg._waitPrompt=null;
-      if(active&&!cancelInFlight){setBusy(false);try{closeOpen()}catch(e){}setPhase("idle")}
+      if(!cancelInFlight){
+        const same=!p||!p.sessionId||sessionIdsMatch(p.sessionId,sid);
+        if(same){
+          try{closeOpen()}catch(e){}
+          finishTurnOrKeep(sid);
+        }
+      }
     }
     return;
   }
@@ -4928,7 +5279,7 @@ function handleMsg(data){
     paintWorkBoard();
     const mine=workJobs.find(x=>sessionIdsMatch(x.sid,sid));
     if(mine&&!sessionSwitching)applyWorkJob(mine);
-    try{renderSessions()}catch(e){}
+    try{syncSessionWorkMarks()}catch(e){}
     return;
   }
   if(method==="_x.ai/queue/changed"){
@@ -5016,6 +5367,7 @@ async function paintDiskEvents(events,sessionId,opts){
   let aborted=false;
   if(prepend&&feed){
     nodes=[];
+    if(window.grokChat)window.grokChat.beginPrepend();
     origAppend=feed.appendChild.bind(feed);
     feed.appendChild=function(node){nodes.push(node);return node};
   }
@@ -5029,7 +5381,7 @@ async function paintDiskEvents(events,sessionId,opts){
       const update=params.update;
       if(!update)continue;
       const evSid=params.sessionId||(params.update&&params.update.sessionId)||null;
-      if(evSid&&expectSid&&String(evSid)!==String(expectSid))continue;
+      if(evSid&&expectSid&&!sessionIdsMatch(evSid,expectSid))continue;
       const meta=params._meta||update._meta||null;
       handleUpdate(update,expectSid,meta);
       n++;
@@ -5042,7 +5394,12 @@ async function paintDiskEvents(events,sessionId,opts){
       if(!aborted&&expectGen===sessionGen&&String(sid||"")===expectSid){
         const first=feed.firstChild;
         for(let i=0;i<(nodes||[]).length;i++)feed.insertBefore(nodes[i],first);
-      }
+        const list=agentRailList();
+        const afirst=list&&list.firstChild;
+        const pre=window.grokChat?window.grokChat.takePrepend():[];
+        for(let i=0;i<pre.length;i++){if(list)list.insertBefore(pre[i],afirst)}
+        if(pre.length)syncAgentRail(true);
+      }else if(window.grokChat)window.grokChat.takePrepend();
     }else if(aborted&&expectGen!==sessionGen){
       /* stale paint discarded by newer clearSessionFeed */
     }
@@ -5052,9 +5409,10 @@ async function paintDiskEvents(events,sessionId,opts){
         const last=feed&&feed.querySelector(".row.msg:last-of-type");
         if(last)markLatestMsg(last);
         try{upgradeRichBubbles(feed)}catch(e){}
+        try{gatherAgentViewsFromFeed()}catch(e){}
       }
     }
-    else if(n&&!aborted){touchLive();if(stickBottom||atBottom())scroll()}
+    else if(n&&!aborted){touchLive();try{gatherAgentViewsFromFeed()}catch(e){}if(stickBottom||atBottom())scroll()}
   }
   return aborted?0:n;
 }
@@ -5097,9 +5455,10 @@ async function paintDiskHistory(sessionId,cwd,opts){
   let j=null;try{j=JSON.parse(String(text).replace(/^\uFEFF/,"").trim())}catch(e){j=null}
   if(!r.ok||!j||!j.ok){
     const err=(j&&j.error)||text.slice(0,120)||("HTTP "+r.status);
+    if(/session dir not found/i.test(String(err)))return {count:0,meta:{has_more:false},title:"",events:[],missing:true};
     throw new Error(err||"history fetch failed");
   }
-  if(j.sessionId&&String(j.sessionId)!==expectSid)throw new Error("history session mismatch");
+    if(j.sessionId&&!sessionIdsMatch(j.sessionId,expectSid))throw new Error("history session mismatch");
   if(expectGen!==sessionGen||String(sid||"")!==expectSid)return {count:0,meta:{},title:"",events:[],stale:true};
   const events=Array.isArray(j.events)?j.events:[];
   const n=await paintDiskEvents(events,expectSid,{replay:!opts.prepend,prepend:!!opts.prepend,gen:expectGen});
@@ -5162,25 +5521,48 @@ async function diskLiveCatchup(){
     let j=null;try{j=JSON.parse(String(text).replace(/^\uFEFF/,"").trim())}catch(e){j=null}
     if(String(sid)!==expect||gen!==sessionGen||sessionSwitching||replaying)return 0;
     if(!r.ok||!j||!j.ok)return 0;
-    if(j.sessionId&&String(j.sessionId)!==expect)return 0;
+    if(j.sessionId&&!sessionIdsMatch(j.sessionId,expect))return 0;
     const meta=j.meta||{};
     const fileSize=typeof meta.size==="number"?meta.size:historyFileSize;
-    if(historyFileSize>0&&fileSize<historyFileSize)historyFileSize=0;
+    if(meta.reset||(historyFileSize>0&&fileSize<historyFileSize)){
+      historyFileSize=typeof meta.end==="number"?meta.end:(typeof fileSize==="number"?fileSize:0);
+      return 0;
+    }
     const events=Array.isArray(j.events)?j.events:[];
+    const alreadyPainted=!!(feed&&feed.querySelector(".row.msg"));
+    if(!(historyFileSize>0)&&alreadyPainted){
+      if(typeof meta.end==="number")historyFileSize=meta.end;
+      else if(typeof fileSize==="number")historyFileSize=fileSize;
+      return 0;
+    }
     let n=0;
     if(events.length){
       n=await paintDiskEvents(events,expect,{replay:false,gen:gen});
       if(String(sid)!==expect||gen!==sessionGen)return 0;
       if(n){
-        setBusy(true,expect);
-        const last=events[events.length-1];
-        const kind=((last.params||{}).update||{}).sessionUpdate||"";
-        if(kind==="agent_thought_chunk")setPhase("thinking");
-        else if(kind==="agent_message_chunk")setPhase("responding");
-        else if(kind==="tool_call"||kind==="tool_call_update")setPhase("tools");
-        else if(kind==="turn_completed"||kind==="task_completed"){
-          if(eventsHaveOpenTool(events)){setBusy(true,expect);setPhase("tools","command running")}
-          else{setBusy(false,expect);setPhase("idle")}
+        /* Hub work board is the live/idle source of truth. Catch-up used to
+           replay a pending read as if it were still running, so after
+           "back online" the Agents rail and spinner stayed on while the PC
+           had already finished. */
+        const job=workJobs.find(x=>sessionIdsMatch(x.sid,expect));
+        if(job)applyWorkJob(job);
+        else{
+          const last=events[events.length-1];
+          const kind=((last.params||{}).update||{}).sessionUpdate||"";
+          const done=events.some(ev=>{
+            const k=(((ev||{}).params||{}).update||{}).sessionUpdate||"";
+            return k==="turn_completed"||k==="task_completed";
+          });
+          const liveKind=/^(agent_thought_chunk|agent_message_chunk|tool_call|tool_call_update)$/.test(kind);
+          if(liveKind&&!done){
+            setBusy(true,expect);
+            if(kind==="agent_thought_chunk")setPhase("thinking");
+            else if(kind==="agent_message_chunk")setPhase("responding");
+            else setPhase("tools");
+          }else if(done){
+            if(eventsHaveOpenTool(events)){setBusy(true,expect);setPhase("tools","command running")}
+            else{setBusy(false,expect);setPhase("idle")}
+          }
         }
       }
     }
@@ -5205,6 +5587,7 @@ async function softCatchup(){
 }
 function clearSessionFeed(){
   feed.innerHTML="";
+  clearAgentRail();
   resetBubbles();
   seenEvents=new Set();
   seenUserTexts=new Set();
@@ -5297,7 +5680,7 @@ function startPoll(){
     }
     softCatchup().catch(()=>{});
     try{trimFeedDom()}catch(e){}
-  },busy||softDetach?500:900);
+  },500);
 }
 function stopPoll(){if(pollTimer){clearInterval(pollTimer);pollTimer=null}}
 
@@ -5532,6 +5915,7 @@ function isDemoMode(){try{return new URLSearchParams(location.search).get("demo"
 function paintDemoChat(){
   if(!feed)return;
   feed.innerHTML="";
+  clearAgentRail();
   const mk=(who,html)=>{const r=document.createElement("div");r.className="row "+who;const b=document.createElement("div");b.className="bub";b.innerHTML=html;r.appendChild(b);feed.appendChild(r)};
   mk("me","<div class='md-p'>Polish the auth helper and show me the edit with syntax colors.</div>");
   mk("you","<div class='md-p'>On it — opening the file, applying a small guard, then summarizing.</div>");
@@ -5542,7 +5926,7 @@ function paintDemoChat(){
   tb.appendChild(meta);
   const sample="function requireUser(req){\n  // reject anonymous before handlers run\n  if(!req.user){\n    throw new Error(\"unauthorized\");\n  }\n  return req.user;\n}\nexport {requireUser};";
   tb.appendChild(makeCodePane(sample,"js",{className:"out",startLine:12}));
-  feed.appendChild(tool);
+  placeAgentView(tool);
   mk("you","<div class='md-p'><strong>Done.</strong> Added <code class='ic'>requireUser</code> so protected routes fail closed. Tap <code class='ic'>+</code> for Attach / Todos / Git diff.</div>");
   try{const h=document.getElementById("hint");if(h)h.textContent="demo session · sample UI"}catch(e){}
   stickBottom=true;scroll();
@@ -5565,7 +5949,7 @@ function mergeSessionLists(disk,live){
   });
   try{
     const last=JSON.parse(localStorage.getItem("grok_remote_last")||"{}");
-    if(last&&last.sid&&!by.has(String(last.sid))){
+    if(last&&last.sid&&!isPlaceholderSid(last.sid)&&!by.has(String(last.sid))){
       by.set(String(last.sid),{sessionId:String(last.sid),cwd:last.cwd||defaultCwd||"",title:titleOverrides[last.sid]||"",resident:false,activity:"recent",lastChangeUnixMs:last.at||Date.now()});
     }
   }catch(e){}
@@ -5598,11 +5982,12 @@ function railSessionId(){
   try{return String((feed&&feed.dataset&&feed.dataset.sid)||"").trim()}catch(e){return""}
 }
 function sessionIdsMatch(a,b){
+  if(window.grokChat&&typeof window.grokChat.idsMatch==="function")return window.grokChat.idsMatch(a,b);
   const x=String(a||"").trim(),y=String(b||"").trim();
   if(!x||!y)return false;
   if(x===y)return true;
   const short=x.length<=y.length?x:y,long=x.length<=y.length?y:x;
-  if(short.length>=12&&long.startsWith(short)&&(long.length===short.length||long[short.length]==="-"))return true;
+  if(short.length>=8&&long.startsWith(short)&&(long.length===short.length||long[short.length]==="-"))return true;
   return false;
 }
 function paintSessionCurrent(){
@@ -5612,17 +5997,6 @@ function paintSessionCurrent(){
     const id=String(el.dataset.sid||"");
     const on=sessionIdsMatch(id,want);
     el.classList.toggle("current",on);
-    const t=el.querySelector(".t");
-    if(!t)return;
-    let badge=t.querySelector(".badge.open-mark");
-    if(on){
-      if(!badge){
-        badge=document.createElement("span");
-        badge.className="badge live open-mark";
-        badge.textContent="open";
-        t.insertBefore(badge,t.firstChild);
-      }
-    }else if(badge)badge.remove();
   });
   try{
     const cur=sessList.querySelector(".item.current");
@@ -5641,6 +6015,65 @@ function setSelectedSession(id,opts){
   if(opts.render){try{renderSessions()}catch(e){paintSessionCurrent()}}
   else paintSessionCurrent();
   try{paintChatTitle()}catch(e){}
+}
+const workHoldUntil=Object.create(null);
+const WORK_HOLD_MS=8000;
+function sessionIsWorking(id){
+  const k=String(id||"");
+  if(!k)return false;
+  const job=(workJobs||[]).find(j=>sessionIdsMatch(j.sid,k));
+  let on=false;
+  if(job){
+    const ph=String(job.phase||"");
+    const open=(job.tools||[]).some(t=>t&&!/completed|failed|cancelled|canceled|error/i.test(String(t.status||"")));
+    on=!!job.running||open||(/think|respond|tool|wait|sync/i.test(ph)&&!/idle|error|stalled/i.test(ph));
+  }
+  if(on){workHoldUntil[k]=Date.now()+WORK_HOLD_MS;return true}
+  return Date.now()<(workHoldUntil[k]||0);
+}
+function sessRowState(s,want){
+  const id=String(s.sessionId||"");
+  const arch=isArchived(id);
+  const cur=sessionIdsMatch(id,want);
+  const working=sessionIsWorking(id);
+  const title=sessionTitle(s);
+  const titleShow=title&&title!=="Untitled"?title:("Chat · "+id.slice(0,8));
+  const path=shortPath(s.cwd||"");
+  const ago=relTime(sessionStamp(s));
+  return {id,arch,cur,working,resident:!!s.resident,titleShow,ago,path,cwd:String(s.cwd||"")};
+}
+function sessRowClass(st){
+  return "item"+(st.arch?" archived":"")+(st.cur?" current":"")+(st.resident||st.working?" live":"")+(st.working?" working":"");
+}
+function sessTitleHtml(st){
+  const hot=st.working||st.resident;
+  return (hot?'<span class="sess-dot" title="'+(st.working?"working":"live")+'"></span>':'')+(st.arch?'<span class="badge">archived</span>':'')+'<span class="spoiler">'+esc(st.titleShow)+'</span>';
+}
+function sessMetaHtml(st){
+  return (st.path?'<span class="spoiler-path">'+esc(st.path)+"</span>":(st.arch?esc(st.id.slice(0,13)+"…"):""))+(st.ago?(st.path||st.arch?" · ":"")+esc(st.ago):"");
+}
+function applySessRow(el,s,want){
+  if(!el||!s)return;
+  const st=sessRowState(s,want);
+  const cls=sessRowClass(st);
+  if(el.className!==cls)el.className=cls;
+  const tip=ux.privacy?"":(sessionTitle(s)+(s.cwd?" · "+String(s.cwd):""));
+  if(el.title!==tip)el.title=tip;
+  const t=el.querySelector(".t");
+  const m=el.querySelector(".m");
+  const th=sessTitleHtml(st);
+  const mh=sessMetaHtml(st);
+  if(t&&t.innerHTML!==th)t.innerHTML=th;
+  if(m&&m.innerHTML!==mh)m.innerHTML=mh;
+}
+function syncSessionWorkMarks(){
+  if(!sessList)return;
+  const want=railSessionId();
+  const by=new Map((sessions||[]).map(s=>[String(s.sessionId||""),s]));
+  sessList.querySelectorAll(".item").forEach(el=>{
+    const s=by.get(String(el.dataset.sid||""));
+    if(s)applySessRow(el,s,want);
+  });
 }
 function renderSessions(){
   if(sessScope==="archived"||sessScope==="all")try{mergeArchivedStubs()}catch(e){}
@@ -5674,25 +6107,6 @@ function renderSessions(){
     const rr=(b.resident?1:0)-(a.resident?1:0);if(rr)return rr;
     return sessionStamp(b)-sessionStamp(a);
   });
-  /* This wipes and rebuilds every row, which destroys the node under the cursor and kills :hover.
-     A live turn pushes the work board every 0.4s and each push calls this, so hovering the rail
-     during a turn flickered ~2.5x a second. Skip the rebuild when the rendered output would be
-     identical - the underlying list almost never changes between pushes. */
-  const sig=JSON.stringify([sessScope,q,String(want||""),sessListExpanded,items.map(s=>{
-    const id=String(s.sessionId||"");
-    return [id,sessionTitle(s),!!s.resident,isArchived(id),String(s.activity||""),String(s.cwd||""),
-            relTime(sessionStamp(s)),workJobs.some(j=>sessionIdsMatch(j.sid,id)&&j.running)];
-  })]);
-  if(sig===sessListSig&&sessList.children.length){syncSessFilterChrome();return}
-  sessListSig=sig;
-  sessList.innerHTML="";
-  if(!items.length){
-    const empty=document.createElement("div");empty.className="sess-empty";
-    empty.textContent=sessScope==="archived"
-      ?(archived.size?"Archived ids loaded · titles hydrating… tap ↻":"No archived chats yet · Archive on a session row")
-      :(q?"No matches":"No sessions yet — New chat");
-    sessList.appendChild(empty);syncSessFilterChrome();return;
-  }
   const PREVIEW=sessScope==="archived"?50:3;
   const braid=isBraidLayout();
   const useCollapse=braid&&!q&&items.length>PREVIEW&&!isWideLayout();
@@ -5707,34 +6121,60 @@ function renderSessions(){
     const headIds=new Set(head.map(s=>String(s.sessionId||"")));
     rest=items.filter(s=>!headIds.has(String(s.sessionId||"")));
   }
+  const shown=useCollapse&&rest.length&&!sessListExpanded?head:(useCollapse?head.concat(rest):items);
+  /* Identity is the visible id order. Titles, badges, and relative times patch the existing
+     nodes so hover and scroll stay put. A live turn used to wipe the rail ~2.5x a second. */
+  const structSig=JSON.stringify([sessScope,q,String(want||""),sessListExpanded,shown.map(s=>String(s.sessionId||""))]);
+  const paintSig=JSON.stringify(shown.map(s=>{
+    const st=sessRowState(s,want);
+    return [st.id,st.titleShow,st.resident,st.arch,st.working,st.cwd,st.actBadge,st.ago];
+  }));
+  const existing=[...sessList.querySelectorAll(".item")];
+  const sameOrder=existing.length===shown.length&&existing.every((el,i)=>String(el.dataset.sid||"")===String(shown[i].sessionId||""));
+  if(structSig===sessListSig&&sameOrder&&existing.length){
+    if(paintSig!==sessListPaintSig){
+      shown.forEach((s,i)=>applySessRow(existing[i],s,want));
+      sessListPaintSig=paintSig;
+    }
+    syncSessFilterChrome();
+    return;
+  }
+  sessListSig=structSig;
+  sessListPaintSig=paintSig;
+  sessList.innerHTML="";
+  if(!items.length){
+    const empty=document.createElement("div");empty.className="sess-empty";
+    empty.textContent=sessScope==="archived"
+      ?(archived.size?"Archived ids loaded · titles hydrating… tap ↻":"No archived chats yet · Archive on a session row")
+      :(q?"No matches":"No sessions yet — New chat");
+    sessList.appendChild(empty);syncSessFilterChrome();return;
+  }
   function paintSessRow(s,host){
     const id=String(s.sessionId||"");
-    const arch=isArchived(id);
-    const cur=sessionIdsMatch(id,want);
-    const d=document.createElement("div");d.className="item"+(arch?" archived":"")+(cur?" current":"");
+    const st=sessRowState(s,want);
+    const d=document.createElement("div");d.className=sessRowClass(st);
     d.dataset.sid=id;
     d.title=ux.privacy?"":(sessionTitle(s)+(s.cwd?" · "+String(s.cwd):""));
     const body=document.createElement("div");body.className="body";
-    const when=sessionStamp(s);const ago=relTime(when);
-    const path=shortPath(s.cwd||"");
-    const working=workJobs.some(j=>sessionIdsMatch(j.sid,id)&&j.running);
-    const actBadge=working?"work":(s.resident?"live":(s.activity&&!/dormant|idle|archived/i.test(String(s.activity))?s.activity:""));
-    const title=sessionTitle(s);
-    const titleShow=title&&title!=="Untitled"?title:("Chat · "+id.slice(0,8));
-    body.innerHTML='<div class="t spoiler">'+(cur?'<span class="badge live open-mark">open</span>':'')+(working?'<span class="badge live">work</span>':'')+(s.resident&&!working?'<span class="badge live">live</span>':'')+(arch?'<span class="badge">archived</span>':'')+(actBadge&&!s.resident&&!working?'<span class="badge idle">'+esc(actBadge)+'</span>':'')+'<span class="spoiler">'+esc(titleShow)+'</span></div><div class="m spoiler">'+(path?'<span class="spoiler-path">'+esc(path)+"</span>":(arch?esc(id.slice(0,13)+"…"):""))+(ago?(path||arch?" · ":"")+esc(ago):"")+"</div>";
+    body.innerHTML='<div class="t spoiler">'+sessTitleHtml(st)+'</div><div class="m spoiler">'+sessMetaHtml(st)+"</div>";
     const acts=document.createElement("div");acts.className="acts";
     const rb=document.createElement("button");rb.type="button";rb.textContent="Rename";rb.title="Rename chat";
     rb.onclick=e=>{e.stopPropagation();renameSession(id).catch(err=>chip(String(err)))};
     acts.appendChild(rb);
-    const ab=document.createElement("button");ab.type="button";ab.textContent=arch?"Unarchive":"Archive";
+    const ab=document.createElement("button");ab.type="button";ab.textContent=st.arch?"Unarchive":"Archive";
     ab.onclick=e=>toggleArchive(id,e);
     acts.appendChild(ab);
     const pb=document.createElement("button");pb.type="button";pb.className="pin";pb.textContent="Pin";
     pb.onclick=e=>{e.stopPropagation();if(window.grokCockpit)window.grokCockpit.pinSession(s);chip("pinned "+sessionTitle(s))};
     acts.appendChild(pb);
     d.appendChild(body);d.appendChild(acts);
-    body.querySelector(".t")&&body.querySelector(".t").addEventListener("dblclick",e=>{e.stopPropagation();renameSession(id).catch(err=>chip(String(err)))});
-    d.onclick=e=>{if(e.target.closest&&e.target.closest(".acts"))return;if(isDemoMode()){setSelectedSession(id,{bindSid:true});sidCwd=s.cwd||"";renderSessions();paintDemoChat();page="chat";updateChrome();return}openSession(s)};
+    d.onpointerdown=e=>{d._sx=e.clientX;d._sy=e.clientY};
+    d.onclick=e=>{
+      if(e.target.closest&&e.target.closest(".acts"))return;
+      if(selectionIn(d)||clickWasDrag(d,e,8))return;
+      if(isDemoMode()){setSelectedSession(id,{bindSid:true});sidCwd=s.cwd||"";renderSessions();paintDemoChat();page="chat";updateChrome();return}
+      openSession(s);
+    };
     host.appendChild(d);
   }
   head.forEach(s=>paintSessRow(s,sessList));
@@ -5836,7 +6276,11 @@ function abortSessionSwitch(){
   try{pending.forEach((p,id)=>{if(p&&(p.kind==="prompt"||p.kind==="cancel"))return;try{p.reject(new Error("session switched"))}catch(e){} pending.delete(id)})}catch(e){}
 }
 
+function isPlaceholderSid(id){
+  return !String(id||"").trim()||/^demo-/i.test(String(id||"").trim());
+}
 function rememberSessionSid(id,cwd){
+  if(isPlaceholderSid(id))return;
   try{localStorage.setItem("grok_remote_last",JSON.stringify({sid:String(id||""),cwd:String(cwd||""),at:Date.now()}))}catch(e){}
   try{localStorage.setItem("grok_remote_watch",JSON.stringify({sid:String(id||"")}))}catch(e){}
 }
@@ -5882,6 +6326,7 @@ async function openSession(s){
   markAgentAttach(String(s.sessionId),false);
   const gen=++sessionGen;
   const openId=String(s.sessionId);
+  try{if(window.grokChat)window.grokChat.open(openId,gen)}catch(e){}
   setSelectedSession(openId,{render:true});
   sid=null;window.sid=null;loadExpectSid=null;
   sidCwd=String(s.cwd||defaultCwd||".").replace(/\\\\/g,"\\");
@@ -5913,7 +6358,7 @@ async function openSession(s){
       if(gen===sessionGen&&String(sid)===openId){
         clearSessionFeed();
         try{if(feed)feed.dataset.sid=openId}catch(x){}
-        chip("disk history: "+e);
+        if(!/session dir not found/i.test(String(e)))chip("disk history: "+e);
       }
     }
     if(gen!==sessionGen||String(sid)!==openId)return;
@@ -5929,6 +6374,7 @@ async function openSession(s){
   }finally{
     if(gen===sessionGen&&String(sid)===openId){
       loadExpectSid=null;sessionSwitching=false;replaying=false;closeOpen();
+      try{if(window.grokChat)window.grokChat.warming(openId)}catch(e){}
       selectedSid=openId;window.sid=sid;
       hydrateWork(openId).catch(()=>{});
       hydrateAtts(openId).catch(()=>{});
@@ -5972,8 +6418,9 @@ async function openSession(s){
       }
       if(attachGen===sessionGen&&String(sid)===attachId){
         markAgentAttach(attachId,true);
+        try{if(window.grokChat)window.grokChat.ready(attachId)}catch(e){}
         scheduleMsgDrain(80);
-        if(!ok&&lastErr)try{chip("agent attach: "+lastErr.slice(0,80)+" · disk history is up, retrying quiet")}catch(x){}
+        if(!ok&&lastErr&&!/invalid params|unknown session|not found|no such session/i.test(lastErr))try{chip("agent attach: "+lastErr.slice(0,80))}catch(x){}
       }
       if(attachGen!==sessionGen||String(sid)!==attachId)return;
       try{await loadCommands()}catch(e){}
@@ -6012,6 +6459,7 @@ async function newSession(cwd,firstMsg){
     const newId=r&& (r.sessionId||r.session_id||(r.session&&r.session.sessionId));
     if(!newId)throw new Error("session/new returned no id · "+JSON.stringify(r||{}).slice(0,180));
     sid=String(newId);window.sid=sid;selectedSid=sid;loadExpectSid=null;rememberSessionSid(sid,sidCwd);
+    try{if(window.grokChat)window.grokChat.open(sid,gen)}catch(e){}
     try{if(feed)feed.dataset.sid=sid}catch(e){}
     paintSessionCurrent();
     composerBoundSid=sid;
@@ -6035,6 +6483,7 @@ async function newSession(cwd,firstMsg){
   if(gen!==sessionGen)return;
   loadExpectSid=null;sessionSwitching=false;replaying=false;setBusy(false);
   markAgentAttach(sid,true);
+  try{if(window.grokChat)window.grokChat.ready(sid)}catch(e){}
   stickBottom=true;forceScrollBottom({pin:true,settle:true,settleMs:100});hideHorizon();
   clearSessionFeed();
   sessionFresh=true;
@@ -6218,7 +6667,7 @@ function resumeAfterSoftReconnect(){
 async function maybeResendOrphan(){
   const d=lastDispatch;
   if(!d||d.acked||d.retried)return;
-  if(!sid||String(sid)!==String(d.sid))return;
+  if(!sid||!sessionIdsMatch(sid,d.sid))return;
   if(Date.now()-d.at>12000)return;
   if(lastLocalUserPlain&&normUserEcho(d.tRaw)!==normUserEcho(lastLocalUserPlain))return;
   if(!ws||ws.readyState!==1)return;
@@ -6369,7 +6818,9 @@ function onHubState(up){
     try{setConn(true,"agent restarting…");setPhase("sync","agent")}catch(e){}
     return
   }
-  if(hubReinitBusy)return;
+  /* onopen already runs initialize. A second initialize on the same socket while
+     connect() is in flight raced the agent and dropped the desktop link. */
+  if(connecting||hubReinitBusy)return;
   hubReinitBusy=true;
   (async()=>{try{
     await req("initialize",initParams(),15000);
@@ -6413,10 +6864,25 @@ async function connect(opts){
     return;
   }
   const sock=ws;
+  const openWatch=setTimeout(()=>{
+    if(myGen!==connectGen||ws!==sock)return;
+    if(sock.readyState===1)return;
+    try{sock.close()}catch(e){}
+    connecting=false;
+    setConn(false,"socket timeout");
+    if(reconnectArmed||wantReconnect)scheduleReconnect(1200,"ws timeout");
+  },8000);
   ws.onopen=async()=>{
+    try{clearTimeout(openWatch)}catch(e){}
     if(myGen!==connectGen||ws!==sock){try{sock.close()}catch(e){}return}
     log("open");
     linkLastRx=Date.now();
+    /* Hide the connecting banner as soon as the socket is up. Waiting for
+       initialize used to leave the desktop EXE on an empty Sessions rail.
+       Do not RPC sessions/list before initialize — the agent treats that as a
+       protocol error and the hub hitch/init-failed loop follows. Disk list
+       already filled the rail at boot. */
+    try{paintLinkBanner("")}catch(e){}
     try{ws.send(JSON.stringify({jsonrpc:"2.0",method:"_x.ai/remote/hello",params:{t:Date.now(),cid:clientId()}}))}catch(e){}
     try{
       const keepSid=String(sid||window.__wantSession||"");
@@ -6463,25 +6929,35 @@ async function connect(opts){
         showPage("chat");
         picker.classList.add("on");
         try{history.replaceState({page:"chat"},"","#chat")}catch(e){}
-      }else if(!wasDetach||!keepSid){
+      }else{
         showPage("sessions");
         try{history.replaceState({page:"sessions"},"","#sessions")}catch(e){}
       }
       if(window.__wantSession){
         const want=String(window.__wantSession);
-        let s=sessions.find(x=>String(x.sessionId).startsWith(want)||String(x.sessionId)===want);
-        if(!s){
-          let cwd=defaultCwd||"";
-          try{const last=JSON.parse(localStorage.getItem("grok_remote_last")||"{}");if(last&&last.cwd)cwd=last.cwd}catch(e){}
-          s={sessionId:want,cwd:cwd,resident:false,title:titleOverrides[want]||""};
+        const forced=!!window.__wantSessionForced;
+        window.__wantSession=null;window.__wantSessionForced=false;
+        if(isPlaceholderSid(want))await autoOpenBestSession();
+        else{
+          let s=sessions.find(x=>sessionIdsMatch(x.sessionId,want)||String(x.sessionId).startsWith(want));
+          if(!s&&forced){
+            let cwd=defaultCwd||"";
+            try{const last=JSON.parse(localStorage.getItem("grok_remote_last")||"{}");if(last&&last.cwd)cwd=last.cwd}catch(e){}
+            s={sessionId:want,cwd:cwd,resident:false,title:titleOverrides[want]||""};
+          }
+          if(s){
+            if(sessionIdsMatch(sid,s.sessionId))resumeAfterSoftReconnect();
+            else await openSession(s);
+          }else await autoOpenBestSession();
         }
-        if(String(sid)===String(s.sessionId)){window.__wantSession=null;resumeAfterSoftReconnect()}
-        else await openSession(s);
-        window.__wantSession=null;
       }else if(window.__wantTask){
         await newSession(document.getElementById("cwd").value,window.__wantTask);
-      }else if(keepSid&&String(sid)===keepSid){
+      }else if(keepSid&&sessionIdsMatch(sid,keepSid)){
         resumeAfterSoftReconnect();
+      }else if(keepSid){
+        const s=sessions.find(x=>sessionIdsMatch(x.sessionId,keepSid));
+        if(s)await openSession(s);
+        else if(!sid)await autoOpenBestSession();
       }else if(!sid){
         await autoOpenBestSession();
       }
@@ -6493,7 +6969,11 @@ async function connect(opts){
       setConn(false,"init failed");setPhase("error",msg.slice(0,60));
       log(msg);
       const needAgent=/offline|timeout|unavailable|2419|disconnect|agent/i.test(msg);
-      try{chip("init failed: "+msg.slice(0,120)+(needAgent?" · try Start Server":""))}catch(x){}
+      /* Socket already closed → onclose painted the hitch chip. Repeating
+         "init failed: connection closed" every 200ms buried the feed. */
+      if(!/connection closed/i.test(msg)){
+        try{chip("init failed: "+msg.slice(0,120)+(needAgent?" · try Start Server":""))}catch(x){}
+      }
       if(needAgent&&!opts.didStart&&!opts.fromStart&&connectAttempt<2){
         connecting=false;
         const ok=await startRemoteStack({force:false});
@@ -6524,6 +7004,7 @@ async function connect(opts){
     }catch(e){try{log("ws parse: "+String(e).slice(0,120)+" · "+String(ev.data).slice(0,80))}catch(x){}}
   };
   ws.onclose=()=>{
+    try{clearTimeout(openWatch)}catch(e){}
     if(ws!==sock&&ws)return;
     if(myGen===connectGen)connecting=false;
     stopLinkKeepalive();
@@ -6545,7 +7026,11 @@ async function connect(opts){
     if(nDet||busy){
       setPhase("sync","bg on PC");
       const loopback=/^127\.0\.0\.1$|^localhost$|^\[::1\]$/i.test(location.hostname);
-      try{chip(loopback?"hub hitch · socket dropped on this PC · catch-up on HTTP":"link drop · catch-up on HTTP · PC keeps working")}catch(e){}
+      const hitch=loopback?"hub hitch · socket dropped on this PC · catch-up on HTTP":"link drop · catch-up on HTTP · PC keeps working";
+      if(Date.now()-(chip._hitchAt||0)>10000){
+        chip._hitchAt=Date.now();
+        try{chip(hitch)}catch(e){}
+      }
     }
     else setPhase("sync","reconnecting");
     if(reconnectArmed||wantReconnect||softDetach){
@@ -6886,7 +7371,7 @@ async function sendPrompt(forcedMode){
     pendingFiles=[];paintAttachBar();
     try{await stashFiles(sendSid,files,tRaw)}catch(e){}
     closeOpen();
-    const viewing=String(sid||"")===sendSid;
+    const viewing=sessionIdsMatch(sid,sendSid);
     const agentWorking=/working/i.test(String(agentQueueNote||""));
     const isBusy=viewing?((!!busy&&!replaying)||agentWorking):agentWorking;
     if(viewing&&isBusy&&mode==="queue"){
@@ -6921,7 +7406,7 @@ async function sendPrompt(forcedMode){
       stickBottom=true;
       forceScrollBottom({pin:true,settle:true,settleMs:80});
     }
-    if(!agentAttachReady&&String(agentAttachSid||sendSid)===sendSid){
+    if(!agentAttachReady&&(!agentAttachSid||sessionIdsMatch(agentAttachSid,sendSid))){
       chip("waiting for agent to attach…");
       await waitAgentAttach(sendSid,60000);
     }
@@ -6981,14 +7466,10 @@ document.addEventListener("click",e=>{
 document.addEventListener("keydown",e=>{
   if(e.key==="Escape"&&sessFilterOpen&&isBraidLayout()){setSessFilterOpen(false);e.preventDefault()}
 });
-const lbMore=document.getElementById("lbMore");
-if(lbMore)lbMore.onclick=()=>{
-  const on=!document.body.classList.contains("livebar-more");
-  document.body.classList.toggle("livebar-more",on);
-  lbMore.classList.toggle("on",on);
-  lbMore.setAttribute("aria-expanded",on?"true":"false");
-  lbMore.title=on?"Hide extra status":"More status";
-};
+const btnStatusDebug=document.getElementById("btnStatusDebug");
+if(btnStatusDebug)btnStatusDebug.onclick=toggleStatusDebug;
+const statusDebug=document.getElementById("statusDebug");
+if(statusDebug)statusDebug.addEventListener("click",e=>e.stopPropagation());
 if(btnSess)btnSess.onclick=()=>{closeMoreMenu();goSessions()};
 btnBack.onclick=()=>goSessions();
 const btnChatBack=document.getElementById("btnChatBack");
@@ -7055,9 +7536,9 @@ document.addEventListener("keyup",e=>{
 });
 window.addEventListener("blur",()=>document.body.classList.remove("privacy-reveal"));
 const btnPrivacy=document.getElementById("btnPrivacy");
-if(btnPrivacy)btnPrivacy.onclick=()=>{closeMoreMenu();togglePrivacy()};
+if(btnPrivacy)btnPrivacy.onclick=()=>{togglePrivacy();try{paintMoreMenuChrome()}catch(e){}};
 const btnLayoutToggle=document.getElementById("btnLayoutToggle");
-if(btnLayoutToggle)btnLayoutToggle.onclick=()=>{closeMoreMenu();toggleLayout()};
+if(btnLayoutToggle)btnLayoutToggle.onclick=()=>{toggleLayout();try{paintMoreMenuChrome()}catch(e){}};
 const btnMore=document.getElementById("btnMore");
 if(btnMore)btnMore.onclick=toggleMoreMenu;
 const btnSettings=document.getElementById("btnSettings");
@@ -7068,6 +7549,9 @@ const btnMoreClose=document.getElementById("btnMoreClose");
 if(btnMoreClose)btnMoreClose.onclick=e=>{e.preventDefault();e.stopPropagation();closeMoreMenu()};
 const moreMenu=document.getElementById("moreMenu");
 if(moreMenu)moreMenu.addEventListener("click",e=>e.stopPropagation());
+bindMoreLayers();
+bindAgentRail();
+bindPathOpens();
 const btnPlus=document.getElementById("btnPlus");
 if(btnPlus)btnPlus.onclick=e=>{e.stopPropagation();const pick=document.getElementById("filePick");if(pick)pick.click()};
 const btnComposerVoice=document.getElementById("btnComposerVoice");
@@ -7079,7 +7563,7 @@ if(btnComposerVoice)btnComposerVoice.onclick=()=>{
   }else chip("voice loading…");
 };
 const btnComposerXr=document.getElementById("btnComposerXr");
-if(btnComposerXr)btnComposerXr.onclick=()=>{window.grokVoice?window.grokVoice.setMode("xr"):chip("voice loading…")};
+if(btnComposerXr)btnComposerXr.onclick=()=>{if(!ux.companion){chip("Companion is off — Settings → Apps → Companion");return}location.href=xrUrl()};
 wireViewToggles();
 const chatTopSearch=document.getElementById("chatTopSearch");
 if(chatTopSearch)chatTopSearch.oninput=e=>{if(window.grokCockpit&&window.grokCockpit.searchChat)window.grokCockpit.searchChat(e.target.value)};
@@ -7139,7 +7623,8 @@ if(btnCancelTurn)btnCancelTurn.onclick=e=>{
 const btnRenameChat=document.getElementById("btnRenameChat");
 if(btnRenameChat)btnRenameChat.onclick=()=>{closeMoreMenu();renameSession(sid||selectedSid).catch(e=>chip(String(e)))};
 const chatTitleBtn=document.getElementById("chatTitle");
-if(chatTitleBtn)chatTitleBtn.onclick=()=>renameSession(sid||selectedSid).catch(e=>chip(String(e)));
+if(chatTitleBtn)chatTitleBtn.onclick=e=>{if(selectionIn(chatTitleBtn)||clickWasDrag(chatTitleBtn,e,8))return;renameSession(sid||selectedSid).catch(err=>chip(String(err)))};
+if(chatTitleBtn)chatTitleBtn.onpointerdown=e=>{chatTitleBtn._sx=e.clientX;chatTitleBtn._sy=e.clientY};
 (function wireMsgModeRow(){
   const host=document.getElementById("msgModeRow");if(!host)return;
   host.querySelectorAll(".mode-chip[data-mode]").forEach(b=>{
@@ -7380,6 +7865,8 @@ document.getElementById("pingHealth").onclick=async()=>{
 if(btnPersona)btnPersona.onclick=()=>{closeMoreMenu();loadPersonas();openSheet(personaSheet,btnPersona)};
 const btnWatch=document.getElementById("btnWatch");
 if(btnWatch)btnWatch.onclick=()=>{closeMoreMenu();openAppUrl("/watch",{sameWindowFallback:true}).catch(()=>{})};
+const btnOpenCompanion=document.getElementById("btnOpenCompanion");
+if(btnOpenCompanion)btnOpenCompanion.onclick=()=>{if(!ux.companion){chip("Companion is off — turn it on in this menu");return}closeMoreMenu();location.href=xrUrl()};
 const btnWatchPin=document.getElementById("btnWatchPin");
 if(btnWatchPin)btnWatchPin.onclick=async()=>{
   try{
@@ -7459,8 +7946,8 @@ if(orbit){
 }
 const orbitMenu=document.getElementById("orbitMenu");
 if(orbitMenu)orbitMenu.addEventListener("click",e=>e.stopPropagation());
-document.addEventListener("click",()=>{closeOrbitMenu();closeMoreMenu()});
-document.addEventListener("keydown",e=>{if(e.key==="Escape"){closeOrbitMenu();closeMoreMenu()}});
+document.addEventListener("click",()=>{closeOrbitMenu();closeMoreMenu();closeStatusDebug();if(!agentRailWide())setAgentRailOpen(false)});
+document.addEventListener("keydown",e=>{if(e.key==="Escape"){closeOrbitMenu();closeMoreMenu();closeStatusDebug();if(!agentRailWide())setAgentRailOpen(false)}});
 window.addEventListener("resize",()=>{
   const mm=document.getElementById("moreMenu"),bm=document.getElementById("btnSettings")||document.getElementById("btnSettingsFoot")||document.getElementById("btnMore");
   if(mm&&mm.classList.contains("on"))placeFixedMenu(mm,bm);
@@ -7520,11 +8007,11 @@ const TOUR_STEPS=[
   {title:"Welcome",body:"Grok Remote is your phone + browser remote for Grok Build on this PC. A few short stops — Skip anytime. Nothing here changes your agent until you Connect.",sel:null,prep:()=>{try{showPage("setup",true)}catch(e){}}},
   {title:"1 · Connect",body:"Choose Grok (default greyscale) or another theme, set your project folder if needed, then hit Connect. Health checks the agent; Start Server wakes it if it’s down.",sel:"#setup .rowbtns,#connect,#btnStartSetup",prep:()=>{try{showPage("setup",true);closeAllSheets()}catch(e){}}},
   {title:"2 · Sessions",body:"After connect, the left rail (or Sessions on phone) lists chats. New chat starts clean. Search filters titles. Archive only hides on this device.",sel:"#picker,#newSess",prep:()=>{try{if(isLinked())showPage("sessions",true);else showPage("setup",true)}catch(e){}}},
-  {title:"3 · Chat",body:"The feed is live history + streaming replies. Tool cards show edits and terminal output. Use Search this chat to jump around.",sel:"#chatStage,#feed",prep:()=>{try{if(isLinked()&&sid)showPage("chat",true);else if(isLinked())showPage("sessions",true)}catch(e){}}},
+  {title:"3 · Chat",body:"The feed is live history + streaming replies. Agent tools and thinking sit in the side rail — expand a card or remove it. Use Search this chat to jump around.",sel:"#chatStage,#feed,#agentRail",prep:()=>{try{if(isLinked()&&sid)showPage("chat",true);else if(isLinked())showPage("sessions",true)}catch(e){}}},
   {title:"4 · Composer",body:"+ attaches files. Mic sits next to the box for Go voice. When busy: Interject / Queue / FYI. Cancel is its own button next to Send.",sel:"#foot .composer,#box,#send,#btnPlus,#btnComposerVoice,#msgModeRow,#btnCancelTurn",prep:()=>{try{if(isLinked())showPage("chat",true)}catch(e){}}},
   {title:"5 · Settings",body:"Settings lives bottom-left on the sessions rail (and in the status row on phone). Skills, delivery, permission, apps, theme, start/stop. Composer still has Mic / XR.",sel:"#btnSettings,#btnSettingsFoot",prep:()=>{try{closeAllSheets();const m=document.getElementById("moreMenu"),b=document.getElementById("btnSettings")||document.getElementById("btnSettingsFoot");if(m){m.hidden=false;m.classList.add("on");placeFixedMenu(m,b)}}catch(e){}}},
   {title:"6 · Watch & XR",body:"Mic / XR sit next to the composer. Watch companion is under ☰ → Apps → Watch (/watch for Galaxy Watch).",sel:"#btnComposerXr,#btnComposerVoice,#btnMore",prep:()=>{try{closeAllSheets()}catch(e){}}},
-  {title:"7 · Link + status",body:"RTT and hub sit on the bottom status row (ms · hub). Start / Stop live in Settings. Stop remote only kills the remote UI + agent serve — not your desktop Grok chat.",sel:"#livebar,#radioChip",prep:()=>{try{closeAllSheets();closeMoreMenu&&closeMoreMenu()}catch(e){}}},
+  {title:"7 · Link + status",body:"Problems (offline, hub down, high context) whisper under the composer. Everything else is Debug. Start / Stop live in Settings. Stop remote only kills the remote UI + agent serve — not your desktop Grok chat.",sel:"#footQuiet,#btnStatusDebug",prep:()=>{try{closeAllSheets();closeMoreMenu&&closeMoreMenu()}catch(e){}}},
   {title:"You’re ready",body:"From any Grok Build window: /remote · /remote stop · /remote-autostart. Re-open this tour from ☰ anytime. Have fun.",sel:null,prep:()=>{try{closeAllSheets()}catch(e){}}}
 ];
 let tourIdx=0,tourOpen=false,tourHiEls=[];
@@ -7697,9 +8184,13 @@ window.addEventListener("resize",()=>{
     try{if(window.grokRemote.getCwd){const c=await window.grokRemote.getCwd();if(c)document.getElementById("cwd").value=c}}catch(e){}
   }
   await loadCfg();
+  try{
+    const last=JSON.parse(localStorage.getItem("grok_remote_last")||"{}");
+    if(last&&isPlaceholderSid(last.sid))localStorage.removeItem("grok_remote_last");
+  }catch(e){}
   if(q.get("cwd"))document.getElementById("cwd").value=q.get("cwd");
   if(q.get("ws"))document.getElementById("wsurl").value=q.get("ws");
-  if(q.get("session"))window.__wantSession=q.get("session");
+  if(q.get("session")){window.__wantSession=q.get("session");window.__wantSessionForced=true}
   if(q.get("task"))window.__wantTask=q.get("task");
   if(isDemoMode()){
     sessions=DEMO_SESSIONS.slice();
@@ -7723,14 +8214,12 @@ window.addEventListener("resize",()=>{
   const doAuto=!isDemoMode()&&(q.get("auto")==="1"||q.get("auto")!=="0"&&(window.grokRemote&&window.grokRemote.autoConnect!==false||!window.grokRemote&&location.protocol!=="file:"));
   if(doAuto){
     reconnectArmed=true;wantReconnect=true;connectAttempt=0;
-    const desk=q.get("desktop")==="1"||q.get("layout")==="desktop"||isWideLayout();
-    if(desk){
-      try{
-        const last=JSON.parse(localStorage.getItem("grok_remote_last")||"{}");
-        if(last&&last.sid&&!window.__wantSession)window.__wantSession=String(last.sid);
-      }catch(e){}
-      showPage("sessions",true);
-    }else showPage("setup",true);
+    try{
+      const last=JSON.parse(localStorage.getItem("grok_remote_last")||"{}");
+      if(last&&last.sid&&!isPlaceholderSid(last.sid)&&!window.__wantSession)window.__wantSession=String(last.sid);
+    }catch(e){}
+    showPage("sessions",true);
+    try{await fetchSessions()}catch(e){}
     try{
       const h=await fetch("/health",{cache:"no-store"}).then(r=>r.json()).catch(()=>null);
       if(h&&h.ok===false){
@@ -7745,8 +8234,9 @@ window.addEventListener("resize",()=>{
       paintLinkBanner("Connect failed · tap Reconnect");
       try{await connect()}catch(x){}
     }
-    if(!(ws&&ws.readyState===1)){
-      if(!(q.get("desktop")==="1"||q.get("layout")==="desktop"||isWideLayout()))showPage("setup",true);
+    const linking=connecting||!!(ws&&(ws.readyState===0||ws.readyState===1));
+    if(!linking){
+      showPage("setup",true);
       paintLinkBanner("Still offline · check Wi‑Fi + Start Server, or copy phone link below");
       try{
         const h2=await fetch("/health",{cache:"no-store"}).then(r=>r.json()).catch(()=>null);
