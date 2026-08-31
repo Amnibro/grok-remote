@@ -1,3 +1,6 @@
+## 2026-08-31 clear gestureHold on restore; nap to nxt
+- endGesture left gestureHold live ~450ms after idle restored. Now gestureHold=0. Sleep shortens to nxt-since.
+
 ## 2026-08-31 mixer finished restores idle; kneel skip; dwell 24s
 - mixer finished calls endGesture so a throttled timer cannot freeze the last Mixamo frame. Kneel/pray/squat skip. Briefcase dwell 24s.
 
