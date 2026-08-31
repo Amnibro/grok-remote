@@ -87,7 +87,7 @@ export function initMotion(ctx){
     const mixer=getMixer();
     if(!mixer){pendingPlays.push([name,layer,fade]);return}
     hookMixer();
-    if(layer==="base"&&!canLoop(name))name=HOME;
+    if(layer==="base"&&(travelSkip(name)||!canLoop(name)))name=HOME;
     if(layer!=="base"&&(travelSkip(name)||!clientPropOk(name)))return;
     if(layer==="base"&&performance.now()<baseHold){queueBase(name,fade);return}
     const c=findClip(name);

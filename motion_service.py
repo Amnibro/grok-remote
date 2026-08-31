@@ -137,8 +137,8 @@ HOME = "standing_w_briefcase_idle"
 IDLES = ["standing_w_briefcase_idle", "talking_on_phone", "guitar_playing"]
 IDLE_W = {"standing_w_briefcase_idle": 6, "talking_on_phone": 1, "guitar_playing": 1}
 IDLE_DWELL = {"standing_w_briefcase_idle": 24.0, "talking_on_phone": 16.0, "guitar_playing": 14.0}
-LIFE = ["look_over_shoulder", "agree", "waist_side_stretch", "dismissing_gesture", "point_ahead", "salute", "module_check", "sun_salute", "bow_apology", "excited_bounce", "machinamachina_spark", "chin_think", "blow_kiss", "hand_on_heart", "interact"]
-LIFE_W = [2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 2, 2, 1, 2, 1]
+LIFE = ["look_over_shoulder", "agree", "waist_side_stretch", "dismissing_gesture", "point_ahead", "salute", "module_check", "sun_salute", "bow_apology", "machinamachina_spark", "chin_think", "hand_on_heart", "interact"]
+LIFE_W = [2, 2, 2, 2, 2, 2, 2, 1, 1, 2, 2, 2, 1]
 LIFE_SOFT = ["module_check", "machinamachina_spark", "chin_think"]
 LIFE_HEAD = ["module_check", "machinamachina_spark"]
 FAM = {"look_over_shoulder": "look", "agree": "nod", "chin_think": "nod", "salute": "arm_up", "sun_salute": "arm_up", "standing_clap": "arm_up", "wave_hello": "arm_up", "waist_side_stretch": "stretch", "point_ahead": "point", "dismissing_gesture": "point", "module_check": "check", "machinamachina_spark": "spark", "surprised": "soft", "hand_on_heart": "heart", "bow_apology": "heart", "blow_kiss": "heart", "excited_bounce": "bounce", "interact": "reach"}
@@ -150,7 +150,7 @@ def extra_life():
         idx = (json.load(open(p, encoding="utf-8")) or {}).get("clips") or {}
     except Exception:
         return
-    skip = set(IDLES) | set(LIFE) | {"standing_greeting", "idle", "headshake", "beckoning", "angry", "acknowledging", "walk", "female_walk", "surprised", "sad_pose", "defeated", "wave_hello", "standing_clap"}
+    skip = set(IDLES) | set(LIFE) | {"standing_greeting", "idle", "headshake", "beckoning", "angry", "acknowledging", "walk", "female_walk", "surprised", "sad_pose", "defeated", "wave_hello", "standing_clap", "excited_bounce", "blow_kiss"}
     bad = ("sit", "lay", "crouch", "run", "jog", "dance", "pistol", "sword", "swim", "crawl", "roll", "kneel", "plank", "pray", "squat", "jump", "punch", "hit_", "walk")
     for name, m in idx.items():
         if name in skip or any(b in name for b in bad):
