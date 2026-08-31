@@ -344,6 +344,10 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "idle rephase" in srv
     assert "fade>=1.05" in js.replace(" ","")
     assert "state.get(\"base\") != clip" in srv or "state.get('base')!=clip" in srv.replace(" ","")
+    assert "function endGesture(" in js
+    assert 'addEventListener("finished"' in js
+    assert "24.0" in srv[srv.find("IDLE_DWELL"):srv.find("LIFE =")]
+    assert '"kneel"' in srv[srv.find("if clip in TRAVEL"):srv.find("if clip in TRAVEL")+420]
     assert "startswith(\"look\")" in alive or "startswith('look')" in alive
     html=(ROOT/"web"/"xr.html").read_text(encoding="utf-8")
     assert "!holding&&motionState.gazeTarget" in html.replace(" ","")
