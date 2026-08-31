@@ -329,7 +329,7 @@ def test_idle_chain_uses_seamless_mixamo():
     js=(ROOT/"web"/"xr-motion.js").read_text(encoding="utf-8")
     assert "warmPool" in js
     assert "idle.fadeOut(0.28)" in js.replace(" ","")
-    assert "c.duration>8" in js.replace(" ","")
+    assert "c.duration>4" in js.replace(" ","")
     assert "pendingBase" in js
     assert "actGesture!==a" in js.replace(" ","")
     assert "lasts" in alive
@@ -435,6 +435,9 @@ def test_idle_chain_uses_seamless_mixamo():
     assert '"squat": "waist_side_stretch"' in em
     assert "if(actGesture){" in js.replace(" ","")
     assert "setTimeout(()=>{try{g.stop()" in js.replace(" ","")
+    assert "c.duration>4" in js.replace(" ","")
+    assert "c.duration*0.12" in js.replace(" ","")
+    assert "LIFE_W = [2, 2, 2, 1," in srv
 if __name__=="__main__":
     test_pair_in_upper_right_menus()
     test_sess_filters_core_only_single_line()
