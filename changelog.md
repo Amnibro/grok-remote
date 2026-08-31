@@ -1,3 +1,6 @@
+## 2026-08-31 play/drain refuse arm takes on guitar and phone
+- play() and the gesture queue could still fire wave/salute on guitar. prop_ok skips those unless force. Drain drops queued arm takes if the base is a prop idle.
+
 ## 2026-08-31 guitar/phone life is head-only, not look_over_shoulder
 - look_over_shoulder is RightArm. LIFE_HEAD is module_check + machinamachina_spark. LIFE_SOFT is agree, those two, chin_think.
 

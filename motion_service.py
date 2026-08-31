@@ -66,6 +66,8 @@ async def drain_loop(app):
         await asyncio.sleep(0.25)
         if not pending or time.time() < state.get("gesture_until", 0) + FADE_PAD:continue
         clip, layer, fade = pending.pop(0)
+        if layer == "gesture" and not prop_ok(clip):
+            continue
         await fire(clip, layer, fade, "queued")
 async def play(req):
     d = await req.json()
@@ -85,6 +87,8 @@ async def play(req):
         state["follow_base"] = clip
         state["follow_at"] = state.get("gesture_until", now) + FADE_PAD
         return cors(web.json_response({"ok": True, "clip": clip, "layer": "queued", "note": "idle after gesture"}))
+    if layer == "gesture" and not d.get("force") and not prop_ok(clip):
+        return cors(web.json_response({"ok": True, "clip": clip, "layer": "skipped", "note": "prop idle keeps the arms, head-only moves"}))
     if layer == "gesture":
         if not d.get("force") and now - recent.get(clip, 0) < REPEAT_WINDOW:
             return cors(web.json_response({"ok": True, "clip": clip, "layer": "skipped", "note": "just played %.0fs ago - repeating it reads as a twitch" % (now - recent[clip])}))
@@ -160,6 +164,13 @@ def extra_life():
         LIFE.append(name)
         LIFE_W.append(1)
 extra_life()
+def prop_ok(clip):
+    b = state.get("base")
+    if b == "guitar_playing":
+        return clip in LIFE_HEAD
+    if b == "talking_on_phone":
+        return clip in LIFE_SOFT
+    return True
 def weighted(names, weights):
     use = [(n, weights[i] if i < len(weights) else 1) for i, n in enumerate(names)]
     tot = sum(w for _, w in use) or 1
