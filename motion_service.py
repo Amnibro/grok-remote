@@ -141,6 +141,7 @@ LIFE = ["look_over_shoulder", "waist_side_stretch", "dismissing_gesture", "point
 LIFE_W = [2, 2, 2, 2, 2, 2, 1, 1, 2, 2, 2, 1]
 LIFE_SOFT = ["module_check", "machinamachina_spark", "chin_think"]
 LIFE_HEAD = ["module_check", "machinamachina_spark"]
+ARM_LEFT = {"waist_side_stretch", "sun_salute", "chin_think", "interact"}
 FAM = {"look_over_shoulder": "look", "agree": "nod", "chin_think": "nod", "salute": "arm_up", "sun_salute": "arm_up", "standing_clap": "arm_up", "wave_hello": "arm_up", "waist_side_stretch": "stretch", "point_ahead": "point", "dismissing_gesture": "point", "module_check": "check", "machinamachina_spark": "spark", "surprised": "soft", "hand_on_heart": "heart", "bow_apology": "heart", "blow_kiss": "heart", "excited_bounce": "bounce", "interact": "reach"}
 def extra_life():
     p = os.path.join(os.path.dirname(os.path.abspath(__file__)), "web", "clip_index.json")
@@ -248,7 +249,7 @@ async def alive_loop(app):
                 nxt = random.uniform(6, 12)
             continue
         quiet = time.time() - state.get("gesture_at", 0)
-        pool = LIFE_HEAD if state.get("base") == "guitar_playing" else (LIFE_SOFT if state.get("base") != HOME else LIFE)
+        pool = LIFE_HEAD if state.get("base") == "guitar_playing" else (LIFE_SOFT if state.get("base") != HOME else [c for c in LIFE if c not in ARM_LEFT])
         did = False
         if quiet > 8 and random.random() < (0.62 if state.get("base") == HOME else 0.55):
             lasts = sorted(recent, key=recent.get, reverse=True)[:2]

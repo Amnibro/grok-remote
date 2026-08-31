@@ -468,6 +468,10 @@ def test_idle_chain_uses_seamless_mixamo():
     em=srv[srv.find("EMOTES"):srv.find("state =")]
     assert '"yes": "agree"' in em
     assert '"nod": "agree"' in em
+    assert "ARM_LEFT" in srv
+    assert "c not in ARM_LEFT" in srv
+    assert "waist_side_stretch" in srv[srv.find("ARM_LEFT"):srv.find("FAM")]
+    assert "chin_think" in srv[srv.find("ARM_LEFT"):srv.find("FAM")]
 if __name__=="__main__":
     test_pair_in_upper_right_menus()
     test_sess_filters_core_only_single_line()
