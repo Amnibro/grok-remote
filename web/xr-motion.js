@@ -106,6 +106,12 @@ export function initMotion(ctx){
         }
         return;
       }
+      if(actGesture){
+        const g=actGesture;actGesture=null;
+        if(gestureOut.has(g)){clearTimeout(gestureOut.get(g));gestureOut.delete(g)}
+        try{g.fadeOut(0.25)}catch(e){}
+        setTimeout(()=>{try{g.stop();g.enabled=false}catch(e){}},280);
+      }
       a.paused=false;
       a.enabled=true;
       a.reset().setLoop(THREE.LoopRepeat,Infinity).setEffectiveWeight(1);

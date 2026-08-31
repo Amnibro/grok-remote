@@ -432,6 +432,9 @@ def test_idle_chain_uses_seamless_mixamo():
     assert '"walk": "look_over_shoulder"' in em
     assert '"run": "point_ahead"' in em
     assert '"jog": "waist_side_stretch"' in em
+    assert '"squat": "waist_side_stretch"' in em
+    assert "if(actGesture){" in js.replace(" ","")
+    assert "setTimeout(()=>{try{g.stop()" in js.replace(" ","")
 if __name__=="__main__":
     test_pair_in_upper_right_menus()
     test_sess_filters_core_only_single_line()
