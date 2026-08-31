@@ -1,3 +1,6 @@
+## 2026-08-31 briefcase remaps left-arm emotes instead of skipping
+- ARM_HOME maps left-arm takes to look/point/module_check/salute on briefcase.
+
 ## 2026-08-31 play() and the XR client refuse left-arm takes on briefcase
 - prop_ok False for ARM_LEFT on HOME. Client LEFT set matches. Phone chin_think still allowed.
 

@@ -309,7 +309,7 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "IDLE_DWELL" in srv
     assert "/motion/alive" in srv
     assert "LIFE_HEAD" in srv
-    head=srv[srv.find("LIFE_HEAD"):srv.find("FAM")]
+    head=srv[srv.find("LIFE_HEAD"):srv.find("ARM_LEFT")]
     soft=srv[srv.find("LIFE_SOFT"):srv.find("LIFE_HEAD")]
     assert "look_over_shoulder" not in head
     assert "look_over_shoulder" not in soft
@@ -475,6 +475,10 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "clip in ARM_LEFT" in srv[srv.find("def prop_ok"):srv.find("def weighted")]
     assert "LEFT=new Set" in js
     assert "curBase===HOME)return!LEFT.has" in js.replace(" ","")
+    assert "ARM_HOME" in srv
+    assert '"chin_think": "module_check"' in srv
+    assert '"interact": "point_ahead"' in srv
+    assert "clip in ARM_HOME" in srv
 if __name__=="__main__":
     test_pair_in_upper_right_menus()
     test_sess_filters_core_only_single_line()
