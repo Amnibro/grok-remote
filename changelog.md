@@ -1,3 +1,6 @@
+## 2026-08-31 reconnect does not rephase a live idle; overlay skips gaze:user
+- WS state skips motionPlay when the running idle already matches. Overlay life beats do not broadcast gaze:user.
+
 ## 2026-08-31 chin_think overlays the phone; dance/punch/angry stay standing
 - Phone keepIdle + fade_pad 0 for chin_think. dance/angry/punch map to standing takes. punch_* skip.
 

@@ -171,7 +171,13 @@ export function initMotion(ctx){
       try{d=JSON.parse(ev.data)}catch(e){return}
       const hud=panels.hud();
       if(d.type==="play"){if(d.layer==="base")curBase=d.clip;motionPlay(d.clip,d.layer,d.fade||0.4);if(hud){hud[d.layer==="base"?"base":"gesture"]=d.clip;hud.seq=d.seq||hud.seq}}
-      if(d.type==="state"&&d.base){curBase=d.base;motionPlay(d.base,"base",0.5);if(hud)hud.base=d.base}
+      if(d.type==="state"&&d.base){
+        curBase=d.base;
+        const idl=getActIdle();
+        const nm=(idl&&idl.getClip&&idl.getClip().name||"").toLowerCase();
+        if(!idl||nm!==String(d.base).toLowerCase())motionPlay(d.base,"base",0.5);
+        if(hud)hud.base=d.base
+      }
       if(d.type==="gaze"){state.gazeTarget=d.target;state.gazeUntil=performance.now()+5500;if(hud){hud.gaze=d.target;hud.seq=d.seq||hud.seq}}
     };
     mws.onclose=()=>setTimeout(connect,3000);
