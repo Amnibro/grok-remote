@@ -135,8 +135,8 @@ IDLE_W = {"standing_w_briefcase_idle": 6, "talking_on_phone": 1, "guitar_playing
 IDLE_DWELL = {"standing_w_briefcase_idle": 24.0, "talking_on_phone": 16.0, "guitar_playing": 14.0}
 LIFE = ["look_over_shoulder", "agree", "waist_side_stretch", "surprised", "dismissing_gesture", "point_ahead", "salute", "module_check", "sun_salute", "bow_apology", "excited_bounce", "machinamachina_spark", "chin_think", "blow_kiss", "hand_on_heart", "standing_clap", "wave_hello", "interact"]
 LIFE_W = [2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 2, 2, 1, 2, 1, 1, 1]
-LIFE_SOFT = ["look_over_shoulder", "agree", "module_check", "machinamachina_spark", "surprised"]
-LIFE_HEAD = ["look_over_shoulder", "module_check", "machinamachina_spark"]
+LIFE_SOFT = ["agree", "module_check", "machinamachina_spark", "chin_think"]
+LIFE_HEAD = ["module_check", "machinamachina_spark"]
 FAM = {"look_over_shoulder": "look", "agree": "nod", "chin_think": "nod", "salute": "arm_up", "sun_salute": "arm_up", "standing_clap": "arm_up", "wave_hello": "arm_up", "waist_side_stretch": "stretch", "point_ahead": "point", "dismissing_gesture": "point", "module_check": "soft", "machinamachina_spark": "soft", "surprised": "soft", "hand_on_heart": "heart", "bow_apology": "heart", "blow_kiss": "heart", "excited_bounce": "bounce", "interact": "reach"}
 def extra_life():
     p = os.path.join(os.path.dirname(os.path.abspath(__file__)), "web", "clip_index.json")

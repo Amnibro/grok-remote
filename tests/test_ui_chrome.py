@@ -309,6 +309,13 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "IDLE_DWELL" in srv
     assert "/motion/alive" in srv
     assert "LIFE_HEAD" in srv
+    head=srv[srv.find("LIFE_HEAD"):srv.find("FAM")]
+    soft=srv[srv.find("LIFE_SOFT"):srv.find("LIFE_HEAD")]
+    assert "look_over_shoulder" not in head
+    assert "look_over_shoulder" not in soft
+    assert "module_check" in head
+    assert "chin_think" in soft
+    assert "look_over_shoulder" in life
     assert "idle recover" in alive
     assert "dwell0 >= need0" in alive
     em=srv[srv.find("EMOTES"):srv.find("state =")]
