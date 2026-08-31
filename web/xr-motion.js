@@ -43,9 +43,14 @@ export function initMotion(ctx){
     fade=fade||0.4;
     if(layer==="base"){
       if(getActIdle()===a)return;
+      a.enabled=true;
       a.reset().setLoop(THREE.LoopRepeat,Infinity).setEffectiveWeight(1).play();
       const prev=getActIdle();
-      if(prev&&prev!==a)prev.crossFadeTo(a,Math.max(fade,0.85),false);
+      if(prev&&prev!==a){
+        prev.crossFadeTo(a,Math.max(fade,0.85),false);
+        const dying=prev;
+        setTimeout(()=>{if(dying!==getActIdle()){try{dying.stop();dying.enabled=false}catch(e){}}},950);
+      }
       setActIdle(a);
     }else{
       stopGestures(a);
@@ -64,6 +69,7 @@ export function initMotion(ctx){
       gestureOut.set(a,setTimeout(()=>{
         gestureOut.delete(a);
         try{a.fadeOut(0.45)}catch(e){}
+        setTimeout(()=>{try{a.stop();a.enabled=false}catch(e){}},480);
         const idl=getActIdle();
         if(idl){idl.enabled=true;idl.setEffectiveWeight(1);idl.fadeIn(0.45)}
         if(actGesture===a)actGesture=null;
@@ -102,6 +108,6 @@ export function initMotion(ctx){
   }
   function flushPending(){if(pendingMotion){const p=pendingMotion;pendingMotion=null;motionPlay(...p)}}
   warm(HOME).then(ok=>{if(ok)motionPlay(HOME,"base",0.35)});
-  ["talking_on_phone","guitar_playing","agree","look_over_shoulder","waist_side_stretch","wave_hello","surprised","dismissing_gesture","point_ahead","salute","module_check","sun_salute"].forEach(n=>warm(n));
+  ["talking_on_phone","guitar_playing","agree","look_over_shoulder","waist_side_stretch","wave_hello","surprised","dismissing_gesture","point_ahead","salute","module_check","sun_salute","bow_apology","excited_bounce","machinamachina_spark"].forEach(n=>warm(n));
   return {motionPlay,sendMotion,connect,flushPending,findClip,linked,state};
 }
