@@ -297,18 +297,30 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "point_ahead" in life
     assert "hand_on_heart" in life
     assert "standing_clap" in life
+    assert "wave_hello" in life
     assert "female_walk" not in life
     assert "kneel" in extra
     assert "acknowledging" in extra
     assert "pick_chain" in srv
     assert "IDLE_DWELL" in srv
     assert "/motion/alive" in srv
+    assert "LIFE_HEAD" in srv
+    assert "idle recover" in alive
+    assert "dwell0 >= need0" in alive
+    em=srv[srv.find("EMOTES"):srv.find("state =")]
+    assert '"talk": "chin_think"' in em
+    assert "sitting_talking" not in em
+    base=srv[srv.find("BASE"):srv.find("EMOTES")]
+    assert "sitting" not in base
     js=(ROOT/"web"/"xr-motion.js").read_text(encoding="utf-8")
     assert "warmPool" in js
     assert "idle.fadeOut(0.28)" in js.replace(" ","")
+    assert "c.duration>8" in js.replace(" ","")
     assert "startswith(\"look\")" in alive or "startswith('look')" in alive
     html=(ROOT/"web"/"xr.html").read_text(encoding="utf-8")
     assert "!holding&&motionState.gazeTarget" in html.replace(" ","")
+    assert "sitting_talking" not in html[html.find("You are in the room"):html.find("You are in the room")+800]
+    assert "Stay standing" in html
 if __name__=="__main__":
     test_pair_in_upper_right_menus()
     test_sess_filters_core_only_single_line()
