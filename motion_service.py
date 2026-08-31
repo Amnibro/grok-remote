@@ -70,6 +70,7 @@ async def play(req):
     d = await req.json()
     print(f"play {d.get('clip')} from {req.remote} ua={req.headers.get('User-Agent','?')[:60]}", flush=True)
     clip = EMOTES.get((d.get("clip") or "").strip().lower(), (d.get("clip") or "").strip().lower())
+    if clip == "standing_greeting":clip = "wave_hello"
     if clip not in CLIPS and clip not in custom_clips():
         return cors(web.json_response({"ok": False, "err": "unknown clip", "clips": CLIPS + custom_clips()}, status=400))
     TRAVEL = {"start_walking", "walk_strafe_left", "jumping_down", "jump_loop", "jump_land", "crouch_to_stand", "crouch_turn_to_stand", "standing_up", "situp_to_idle", "sitting_enter", "sitting_exit", "roll", "crawling", "push_loop", "swim_fwd_loop", "sprint_loop", "driving_loop", "punch_enter", "spell_simple_enter", "spell_simple_exit"}
@@ -80,7 +81,7 @@ async def play(req):
     now = time.time()
     if layer == "base" and now < state.get("gesture_until", 0) and not d.get("force"):
         state["follow_base"] = clip
-        state["follow_at"] = state.get("gesture_until", now)
+        state["follow_at"] = state.get("gesture_until", now) + 0.55
         return cors(web.json_response({"ok": True, "clip": clip, "layer": "queued", "note": "idle after gesture"}))
     if layer == "gesture":
         if not d.get("force") and now - recent.get(clip, 0) < REPEAT_WINDOW:
@@ -130,11 +131,11 @@ HOME = "standing_w_briefcase_idle"
 IDLES = ["standing_w_briefcase_idle", "talking_on_phone", "guitar_playing"]
 IDLE_W = {"standing_w_briefcase_idle": 6, "talking_on_phone": 1, "guitar_playing": 1}
 IDLE_DWELL = {"standing_w_briefcase_idle": 24.0, "talking_on_phone": 16.0, "guitar_playing": 14.0}
-LIFE = ["look_over_shoulder", "agree", "waist_side_stretch", "surprised", "dismissing_gesture", "point_ahead", "salute", "module_check", "sun_salute", "bow_apology", "excited_bounce", "machinamachina_spark", "chin_think", "blow_kiss", "hand_on_heart", "standing_clap", "wave_hello"]
-LIFE_W = [2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 2, 2, 1, 2, 1, 1]
+LIFE = ["look_over_shoulder", "agree", "waist_side_stretch", "surprised", "dismissing_gesture", "point_ahead", "salute", "module_check", "sun_salute", "bow_apology", "excited_bounce", "machinamachina_spark", "chin_think", "blow_kiss", "hand_on_heart", "standing_clap", "wave_hello", "interact"]
+LIFE_W = [2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 2, 2, 1, 2, 1, 1, 1]
 LIFE_SOFT = ["look_over_shoulder", "agree", "module_check", "machinamachina_spark", "surprised"]
 LIFE_HEAD = ["look_over_shoulder", "module_check", "machinamachina_spark"]
-FAM = {"look_over_shoulder": "look", "agree": "nod", "chin_think": "nod", "salute": "arm_up", "sun_salute": "arm_up", "standing_clap": "arm_up", "wave_hello": "arm_up", "waist_side_stretch": "stretch", "point_ahead": "point", "dismissing_gesture": "point", "module_check": "soft", "machinamachina_spark": "soft", "surprised": "soft", "hand_on_heart": "heart", "bow_apology": "heart", "blow_kiss": "heart", "excited_bounce": "bounce"}
+FAM = {"look_over_shoulder": "look", "agree": "nod", "chin_think": "nod", "salute": "arm_up", "sun_salute": "arm_up", "standing_clap": "arm_up", "wave_hello": "arm_up", "waist_side_stretch": "stretch", "point_ahead": "point", "dismissing_gesture": "point", "module_check": "soft", "machinamachina_spark": "soft", "surprised": "soft", "hand_on_heart": "heart", "bow_apology": "heart", "blow_kiss": "heart", "excited_bounce": "bounce", "interact": "reach"}
 def extra_life():
     p = os.path.join(os.path.dirname(os.path.abspath(__file__)), "web", "clip_index.json")
     if not os.path.isfile(p):
@@ -254,7 +255,7 @@ async def alive_loop(app):
                     need0 = IDLE_DWELL.get(state.get("base"), 20)
                     if nxtb != state.get("base") and (nxtb == HOME or dwell0 >= need0):
                         state["follow_base"] = nxtb
-                        state["follow_at"] = state.get("gesture_until", time.time())
+                        state["follow_at"] = state.get("gesture_until", time.time()) + 0.55
         if not did:
             cur = state.get("base")
             dwell = time.time() - state.get("base_at", 0)

@@ -1,3 +1,6 @@
+## 2026-08-31 interact life beat; follow_at after fade; greeting alias
+- follow_at is gesture_until+0.55s. standing_greeting aliases to wave_hello. interact is a 2s reach in LIFE.
+
 ## 2026-08-31 queueBase flushes hold-tail idles; rephase throttle
 - Guitar after endGesture during hold tail set pendingBase with no timer. queueBase flushes at gestureHold+40ms. Rephase at most every 40s. greet -> wave_hello, sneaky -> look_over_shoulder.
 
