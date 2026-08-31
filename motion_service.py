@@ -64,7 +64,7 @@ async def fire(clip, layer, fade, note=""):
 async def drain_loop(app):
     while True:
         await asyncio.sleep(0.25)
-        if not pending or time.time() < state.get("gesture_until", 0) + FADE_PAD:continue
+        if not pending or time.time() < state.get("gesture_until", 0) + fade_pad():continue
         clip, layer, fade = pending.pop(0)
         if layer == "gesture" and not prop_ok(clip):
             continue
@@ -83,22 +83,22 @@ async def play(req):
         return cors(web.json_response({"ok": True, "clip": clip, "layer": "skipped", "note": "ground/travel clips leave the standing stage - stay standing"}))
     fade = d.get("fade", 0.4)
     now = time.time()
-    if layer == "base" and now < state.get("gesture_until", 0) + FADE_PAD and not d.get("force"):
+    if layer == "base" and now < state.get("gesture_until", 0) + fade_pad() and not d.get("force"):
         state["follow_base"] = clip
-        state["follow_at"] = state.get("gesture_until", now) + FADE_PAD
+        state["follow_at"] = state.get("gesture_until", now) + fade_pad()
         return cors(web.json_response({"ok": True, "clip": clip, "layer": "queued", "note": "idle after gesture"}))
     if layer == "gesture" and not d.get("force") and not prop_ok(clip):
         return cors(web.json_response({"ok": True, "clip": clip, "layer": "skipped", "note": "prop idle keeps the arms, head-only moves"}))
     if layer == "gesture":
         if not d.get("force") and now - recent.get(clip, 0) < REPEAT_WINDOW:
             return cors(web.json_response({"ok": True, "clip": clip, "layer": "skipped", "note": "just played %.0fs ago - repeating it reads as a twitch" % (now - recent[clip])}))
-        if now < state.get("gesture_until", 0) + FADE_PAD:
+        if now < state.get("gesture_until", 0) + fade_pad():
             if any(q[0] == clip for q in pending):
                 return cors(web.json_response({"ok": True, "clip": clip, "layer": "skipped", "note": "already queued"}))
             if len(pending) >= QUEUE_MAX:
                 return cors(web.json_response({"ok": True, "clip": clip, "layer": "dropped", "note": "gesture queue full", "queued": len(pending)}))
             pending.append((clip, layer, fade))
-            return cors(web.json_response({"ok": True, "clip": clip, "layer": "queued", "queued": len(pending), "waitMs": int((state["gesture_until"] + FADE_PAD - now) * 1000)}))
+            return cors(web.json_response({"ok": True, "clip": clip, "layer": "queued", "queued": len(pending), "waitMs": int((state["gesture_until"] + fade_pad() - now) * 1000)}))
     return cors(web.json_response(await fire(clip, layer, fade)))
 async def gaze(req):
     d = await req.json()
@@ -139,7 +139,7 @@ IDLE_W = {"standing_w_briefcase_idle": 6, "talking_on_phone": 1, "guitar_playing
 IDLE_DWELL = {"standing_w_briefcase_idle": 24.0, "talking_on_phone": 16.0, "guitar_playing": 14.0}
 LIFE = ["look_over_shoulder", "agree", "waist_side_stretch", "surprised", "dismissing_gesture", "point_ahead", "salute", "module_check", "sun_salute", "bow_apology", "excited_bounce", "machinamachina_spark", "chin_think", "blow_kiss", "hand_on_heart", "standing_clap", "wave_hello", "interact"]
 LIFE_W = [2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 2, 2, 1, 2, 1, 1, 1]
-LIFE_SOFT = ["agree", "module_check", "machinamachina_spark", "chin_think"]
+LIFE_SOFT = ["module_check", "machinamachina_spark", "chin_think"]
 LIFE_HEAD = ["module_check", "machinamachina_spark"]
 FAM = {"look_over_shoulder": "look", "agree": "nod", "chin_think": "nod", "salute": "arm_up", "sun_salute": "arm_up", "standing_clap": "arm_up", "wave_hello": "arm_up", "waist_side_stretch": "stretch", "point_ahead": "point", "dismissing_gesture": "point", "module_check": "check", "machinamachina_spark": "spark", "surprised": "soft", "hand_on_heart": "heart", "bow_apology": "heart", "blow_kiss": "heart", "excited_bounce": "bounce", "interact": "reach"}
 def extra_life():
@@ -164,6 +164,8 @@ def extra_life():
         LIFE.append(name)
         LIFE_W.append(1)
 extra_life()
+def fade_pad():
+    return 0.0 if state.get("gesture") in LIFE_HEAD else FADE_PAD
 def prop_ok(clip):
     b = state.get("base")
     if b == "guitar_playing":
@@ -201,7 +203,7 @@ async def alive_loop(app):
         nap = random.uniform(12, 28)
         if state.get("follow_base"):
             nap = min(nap, max(0.35, state.get("follow_at", now) - now))
-        gu = state.get("gesture_until", 0) + FADE_PAD
+        gu = state.get("gesture_until", 0) + fade_pad()
         if now < gu:
             nap = min(nap, max(0.35, gu - now + 0.12))
         rem = nxt - since
@@ -214,7 +216,7 @@ async def alive_loop(app):
             continue
         since += time.time() - t0
         now = time.time()
-        busy = now < state.get("gesture_until", 0) + FADE_PAD
+        busy = now < state.get("gesture_until", 0) + fade_pad()
         if state.get("follow_base"):
             if pending or busy:
                 continue
@@ -268,7 +270,7 @@ async def alive_loop(app):
                     need0 = IDLE_DWELL.get(state.get("base"), 20)
                     if nxtb != state.get("base") and (nxtb == HOME or dwell0 >= need0):
                         state["follow_base"] = nxtb
-                        state["follow_at"] = state.get("gesture_until", time.time()) + FADE_PAD
+                        state["follow_at"] = state.get("gesture_until", time.time()) + fade_pad()
         if not did:
             cur = state.get("base")
             dwell = time.time() - state.get("base_at", 0)
