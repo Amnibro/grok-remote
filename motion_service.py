@@ -166,11 +166,10 @@ async def alive_loop(app):
         await asyncio.sleep(nap)
         if not clients:
             continue
-        state["seq"] += 1
-        g = random.choices(["user", "user", "user", "left", "right", "down"], k=1)[0]
-        await bcast({"type": "gaze", "target": g, "seq": state["seq"]})
         since += nap
         if since < nxt:
+            g = random.choices(["user", "user", "user", "left", "right", "down"], k=1)[0]
+            await bcast({"type": "gaze", "target": g, "seq": state["seq"]})
             continue
         since = 0.0
         if time.time() < state.get("gesture_until", 0):

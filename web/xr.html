@@ -1260,19 +1260,25 @@ renderer.setAnimationLoop(()=>{
   if(modelHolder){
     modelHolder.position.set(0,modelHolder.position.y,0);
   }
-  const inGesture=performance.now()<motionState.gestureHold;
-  if(actIdle&&!inGesture)actIdle.setEffectiveWeight(1);
   if(mixer){
     mixer.update(dt);
     if(skeleton){
       const head=skeleton.bones.find(b=>/^mixamorigHead$|^head$/i.test(b.name));
-      const neck=skeleton.bones.find(b=>/neck/i.test(b.name)&&!/2/.test(b.name));
       const hips=skeleton.bones.find(b=>/hips$/i.test(b.name));
       if(hips){hips.position.x=0;hips.position.z=0}
       if(head&&motionState.gazeTarget){
-        const GZ={user:0,left:0.35,right:-0.35,up:0,down:0,away:0.4};
-        const yaw=GZ[String(motionState.gazeTarget).toLowerCase()];
-        if(yaw){const q=new THREE.Quaternion().setFromEuler(new THREE.Euler(0,yaw,0));head.quaternion.multiply(q)}
+        const GZ={user:0,left:0.38,right:-0.38,up:0,down:0,away:0.42};
+        const g=String(motionState.gazeTarget).toLowerCase();
+        if(Object.prototype.hasOwnProperty.call(GZ,g)){
+          let yaw=GZ[g];
+          if(g==="user"){
+            const wp=new THREE.Vector3();camera.getWorldPosition(wp);
+            const lp=rig.worldToLocal(wp);
+            yaw=Math.max(-0.4,Math.min(0.4,Math.atan2(lp.x,Math.max(0.2,lp.z))));
+          }
+          const pit=g==="up"?0.18:g==="down"?-0.14:0;
+          head.quaternion.multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(pit,yaw,0)));
+        }
       }
     }
     if(skelRoot)skelRoot.updateMatrixWorld(true);
