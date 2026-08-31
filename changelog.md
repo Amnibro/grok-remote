@@ -1,3 +1,6 @@
+## 2026-08-31 head Mixamo overlays the idle; chain leaves home more
+- keepIdle leaves guitar/phone/briefcase running under Head/Neck takes. FAM splits check vs spark. pick_chain stay-home 0.45. Prop life 0.55. Follow-after-beat 0.48.
+
 ## 2026-08-31 renderer refuses arm takes on guitar and phone
 - `/pose` still plays whatever it gets. Client `curBase` + `clientPropOk` drop arm Mixamo on guitar/phone. HOME before `curBase`. Skip `beckon`.
 

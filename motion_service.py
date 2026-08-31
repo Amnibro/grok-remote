@@ -141,7 +141,7 @@ LIFE = ["look_over_shoulder", "agree", "waist_side_stretch", "surprised", "dismi
 LIFE_W = [2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 2, 2, 1, 2, 1, 1, 1]
 LIFE_SOFT = ["agree", "module_check", "machinamachina_spark", "chin_think"]
 LIFE_HEAD = ["module_check", "machinamachina_spark"]
-FAM = {"look_over_shoulder": "look", "agree": "nod", "chin_think": "nod", "salute": "arm_up", "sun_salute": "arm_up", "standing_clap": "arm_up", "wave_hello": "arm_up", "waist_side_stretch": "stretch", "point_ahead": "point", "dismissing_gesture": "point", "module_check": "soft", "machinamachina_spark": "soft", "surprised": "soft", "hand_on_heart": "heart", "bow_apology": "heart", "blow_kiss": "heart", "excited_bounce": "bounce", "interact": "reach"}
+FAM = {"look_over_shoulder": "look", "agree": "nod", "chin_think": "nod", "salute": "arm_up", "sun_salute": "arm_up", "standing_clap": "arm_up", "wave_hello": "arm_up", "waist_side_stretch": "stretch", "point_ahead": "point", "dismissing_gesture": "point", "module_check": "check", "machinamachina_spark": "spark", "surprised": "soft", "hand_on_heart": "heart", "bow_apology": "heart", "blow_kiss": "heart", "excited_bounce": "bounce", "interact": "reach"}
 def extra_life():
     p = os.path.join(os.path.dirname(os.path.abspath(__file__)), "web", "clip_index.json")
     if not os.path.isfile(p):
@@ -185,7 +185,7 @@ def pick_chain(cur):
     if cur != HOME:
         state["last_prop"] = cur
         return HOME
-    if random.random() < 0.58:
+    if random.random() < 0.45:
         return HOME
     alts = [c for c in IDLES if c != HOME and c != state.get("last_prop")]
     if not alts:
@@ -243,7 +243,7 @@ async def alive_loop(app):
         quiet = time.time() - state.get("gesture_at", 0)
         pool = LIFE_HEAD if state.get("base") == "guitar_playing" else (LIFE_SOFT if state.get("base") != HOME else LIFE)
         did = False
-        if quiet > 8 and random.random() < (0.62 if state.get("base") == HOME else 0.4):
+        if quiet > 8 and random.random() < (0.62 if state.get("base") == HOME else 0.55):
             lasts = sorted(recent, key=recent.get, reverse=True)[:2]
             last_fam = FAM.get(state.get("gesture") or "")
             def ok(c, fam=True, rec=True):
@@ -262,7 +262,7 @@ async def alive_loop(app):
                 if not str(clip).startswith("look"):
                     await bcast({"type": "gaze", "target": "user", "seq": state["seq"]})
                 did = True
-                if random.random() < 0.35:
+                if random.random() < 0.48:
                     nxtb = pick_chain(state.get("base"))
                     dwell0 = time.time() - state.get("base_at", 0)
                     need0 = IDLE_DWELL.get(state.get("base"), 20)

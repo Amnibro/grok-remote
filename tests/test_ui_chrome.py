@@ -345,7 +345,7 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "idle after gesture" in srv
     assert "since = 0.0" in alive or "since=0.0" in alive.replace(" ","")
     assert '"dance"' in srv[srv.find("if clip in TRAVEL"):srv.find("if clip in TRAVEL")+360]
-    assert "random.random() < 0.58" in srv
+    assert "random.random() < 0.45" in srv
     assert "pick == cur" in srv or "pick==cur" in srv.replace(" ","")
     assert "0.62 if state.get(\"base\") == HOME" in srv
     assert "!getActIdle()" in js.replace(" ","")
@@ -404,6 +404,12 @@ def test_idle_chain_uses_seamless_mixamo():
     assert '"beckon"' in srv[srv.find("if clip in TRAVEL"):srv.find("if clip in TRAVEL")+520]
     assert "life_head" in js
     assert "life_soft" in js
+    assert "function keepIdle(" in js
+    assert "if(keepIdle(name))" in js.replace(" ","")
+    assert '"module_check": "check"' in srv
+    assert '"machinamachina_spark": "spark"' in srv
+    assert "random.random() < 0.48" in srv
+    assert "0.62 if state.get(\"base\") == HOME else 0.55" in srv or "0.62 if state.get('base')==HOME else 0.55" in srv.replace(" ","")
 if __name__=="__main__":
     test_pair_in_upper_right_menus()
     test_sess_filters_core_only_single_line()
