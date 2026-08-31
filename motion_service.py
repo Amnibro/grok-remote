@@ -79,7 +79,7 @@ async def play(req):
         return cors(web.json_response({"ok": False, "err": "unknown clip", "clips": CLIPS + custom_clips()}, status=400))
     TRAVEL = {"start_walking", "walk_strafe_left", "jumping_down", "jump_loop", "jump_land", "crouch_to_stand", "crouch_turn_to_stand", "standing_up", "situp_to_idle", "sitting_enter", "sitting_exit", "roll", "crawling", "push_loop", "swim_fwd_loop", "sprint_loop", "driving_loop", "punch_enter", "spell_simple_enter", "spell_simple_exit"}
     layer = d.get("layer") or ("base" if clip in BASE else "gesture")
-    if clip in TRAVEL or any(x in clip for x in ("sit", "lay", "crouch", "plank", "walk", "run", "jog", "sprint", "dance", "twerk", "shuffle", "kneel", "pray", "squat", "angry", "jump", "jab_cross")):
+    if clip in TRAVEL or any(x in clip for x in ("sit", "lay", "crouch", "plank", "walk", "run", "jog", "sprint", "dance", "twerk", "shuffle", "kneel", "pray", "squat", "angry", "jump", "jab_cross", "beckon")):
         return cors(web.json_response({"ok": True, "clip": clip, "layer": "skipped", "note": "ground/travel clips leave the standing stage - stay standing"}))
     fade = d.get("fade", 0.4)
     now = time.time()
