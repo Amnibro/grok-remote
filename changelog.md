@@ -1,3 +1,7 @@
+## 2026-08-31 stay-home idle, no HOME slam over pose state
+- pick_chain from briefcase stays home 58% so guitar/phone are not a 32s metronome. Same-base pick is a no-op. Life beats 62% on HOME, 40% on props.
+- warm(HOME) only plays if no idle is up. Dying idle unpauses before crossFadeTo.
+
 ## 2026-08-31 pause idle under Mixamo gestures
 - Idle kept advancing at weight 0 during a wave, so fade-in landed on a later pose than she left. Gesture now pauses the idle; restore unpauses the same frame.
 - Server BASE plays during gesture_until queue as follow_base. No clients resets alive_loop since. Dance/twerk/shuffle skip. Life beats jitter timeScale 0.92-1.08.
