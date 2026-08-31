@@ -57,7 +57,7 @@ export function initMotion(ctx){
     try{a.fadeOut(0.45)}catch(e){}
     setTimeout(()=>{try{a.stop();a.enabled=false}catch(e){}},480);
     if(actGesture===a)actGesture=null;
-    if(pendingBase){queueBase(pendingBase[0],pendingBase[1]);return}
+    if(pendingBase)queueBase(pendingBase[0],pendingBase[1]);
     const idl=getActIdle();
     if(idl){idl.paused=false;idl.enabled=true;idl.setEffectiveWeight(1);idl.fadeIn(0.45)}
   }
