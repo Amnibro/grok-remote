@@ -1,3 +1,6 @@
+## 2026-08-31 briefcase idle skips left-arm Mixamo
+- HOME pool is LIFE minus ARM_LEFT (waist_side_stretch, sun_salute, chin_think, interact). Phone still LIFE_SOFT.
+
 ## 2026-08-31 idle chain drops full-body agree
 - agree out of LIFE. yes/nod emotes stay. extra_life skips agree.
 
