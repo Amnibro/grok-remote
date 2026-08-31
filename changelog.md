@@ -1,3 +1,6 @@
+## 2026-08-31 same-clip rephase does not fadeIn from weight 0; walk/run/jog stay standing
+- Same-idle rephase re-rolls timeScale and nudges time, no fadeIn. walk/run/jog map to standing takes.
+
 ## 2026-08-31 overlay end does not fadeIn the idle from weight 0
 - three.js fadeIn is 0→1. endGesture only fadeIn when the idle was frozen.
 
