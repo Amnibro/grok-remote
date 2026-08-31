@@ -340,7 +340,7 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "0.62 if state.get(\"base\") == HOME" in srv
     assert "!getActIdle()" in js.replace(" ","")
     assert "prev.paused=false" in js.replace(" ","")
-    assert "(c.duration||1.2)/ts" in js.replace(" ","")
+    assert "(c.duration||1.2)-a.time)/ts" in js.replace(" ","")
     assert "idle rephase" in srv
     assert "fade>=1.05" in js.replace(" ","")
     assert "state.get(\"base\") != clip" in srv or "state.get('base')!=clip" in srv.replace(" ","")
@@ -348,7 +348,8 @@ def test_idle_chain_uses_seamless_mixamo():
     assert 'addEventListener("finished"' in js
     assert "24.0" in srv[srv.find("IDLE_DWELL"):srv.find("LIFE =")]
     assert '"kneel"' in srv[srv.find("if clip in TRAVEL"):srv.find("if clip in TRAVEL")+420]
-    assert "state.gestureHold=0" in js.replace(" ","")
+    assert "gestureHold=performance.now()+480" in js.replace(" ","")
+    assert '"angry"' in srv[srv.find("if clip in TRAVEL"):srv.find("if clip in TRAVEL")+450]
     assert "nxt - since" in alive or "nxt-since" in alive.replace(" ","")
     assert "startswith(\"look\")" in alive or "startswith('look')" in alive
     html=(ROOT/"web"/"xr.html").read_text(encoding="utf-8")
