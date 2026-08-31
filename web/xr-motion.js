@@ -10,7 +10,7 @@ export function initMotion(ctx){
     if(curBase==="talking_on_phone")return SOFT.has(clip);
     return true;
   }
-  function keepIdle(clip){return HEAD.has(clip)}
+  function keepIdle(clip){return HEAD.has(clip)||(clip==="chin_think"&&curBase==="talking_on_phone")}
   fetch("/static/clip_index.json",{cache:"no-store"}).then(r=>r.json()).then(j=>{clipIx=j.clips||{}}).catch(()=>{});
   function warmPool(){
     fetch(httpBase()+"/motion/alive",{cache:"no-store"}).then(r=>r.json()).then(j=>{
