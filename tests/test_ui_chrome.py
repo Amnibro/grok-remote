@@ -427,6 +427,11 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "getClip().name" in js.replace(" ","")
     assert "nm!==String(d.base)" in js.replace(" ","")
     assert "if(!keepIdle(state.lastGesture||\"\"))idl.fadeIn(0.45)" in js.replace(" ","")
+    assert "%Math.max(0.01,c.duration)" in js.replace(" ","")
+    em=srv[srv.find("EMOTES"):srv.find("state =")]
+    assert '"walk": "look_over_shoulder"' in em
+    assert '"run": "point_ahead"' in em
+    assert '"jog": "waist_side_stretch"' in em
 if __name__=="__main__":
     test_pair_in_upper_right_menus()
     test_sess_filters_core_only_single_line()
