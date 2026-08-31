@@ -1,3 +1,6 @@
+## 2026-08-31 idle chain drops 5s wave and lively clap
+- wave_hello and standing_clap out of LIFE. greet/clap emotes stay. extra_life skips both.
+
 ## 2026-08-31 idle chain drops 4s surprise; sad is a bow
 - surprised out of LIFE. sad maps to bow_apology. extra_life skips surprised/sad_pose/defeated.
 
