@@ -322,7 +322,8 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "pendingBase" in js
     assert "actGesture!==a" in js.replace(" ","")
     assert "lasts" in alive
-    assert "if pending or time.time()" in alive
+    assert alive.find("follow_base") < alive.find("if since < nxt")
+    assert "since += time.time() - t0" in alive or "since+=time.time()-t0" in alive.replace(" ","")
     assert '"walk"' in srv[srv.find("if clip in TRAVEL"):srv.find("if clip in TRAVEL")+280]
     assert '"up"' in alive[alive.find("random.choices"):alive.find("random.choices")+180]
     assert "last_prop" in srv
@@ -339,6 +340,7 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "0.62 if state.get(\"base\") == HOME" in srv
     assert "!getActIdle()" in js.replace(" ","")
     assert "prev.paused=false" in js.replace(" ","")
+    assert "(c.duration||1.2)/ts" in js.replace(" ","")
     assert "startswith(\"look\")" in alive or "startswith('look')" in alive
     html=(ROOT/"web"/"xr.html").read_text(encoding="utf-8")
     assert "!holding&&motionState.gazeTarget" in html.replace(" ","")
