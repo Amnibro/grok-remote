@@ -316,6 +316,8 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "module_check" in head
     assert "chin_think" in soft
     assert "look_over_shoulder" in life
+    assert "def prop_ok(" in srv
+    assert "prop idle keeps the arms" in srv
     assert "idle recover" in alive
     assert "dwell0 >= need0" in alive
     em=srv[srv.find("EMOTES"):srv.find("state =")]
