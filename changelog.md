@@ -1,3 +1,6 @@
+## 2026-08-31 freeze idle with timeScale 0 so fadeOut still runs
+- paused=true skipped three.js weight fading, so briefcase stayed at weight 1 under Mixamo. Gesture start uses timeScale=0; restore puts 0.94-1.08 back.
+
 ## 2026-08-31 idle fade-in during pending guitar; reuse gaze vectors
 - endGesture always fadeIn idle even when pendingBase is set. Gaze/XR yaw reuse Vector3.
 
