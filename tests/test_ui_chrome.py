@@ -363,8 +363,12 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "motionState.gz" in html
     assert "sitting_talking" not in html[html.find("You are in the room"):html.find("You are in the room")+800]
     assert "Stay standing" in html
-    assert "pendingBase!==pb" in js.replace(" ","")
-    assert "layer===\"base\"&&performance.now()<state.gestureHold" in js.replace(" ","")
+    assert "function queueBase(" in js
+    assert "function flushBase(" in js
+    assert "rephase_at" in srv
+    em=srv[srv.find("EMOTES"):srv.find("state =")]
+    assert '"greet": "wave_hello"' in em
+    assert '"sneaky": "look_over_shoulder"' in em
 if __name__=="__main__":
     test_pair_in_upper_right_menus()
     test_sess_filters_core_only_single_line()

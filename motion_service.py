@@ -7,7 +7,7 @@ def custom_clips():
     return [f[:-5] for f in os.listdir(CLIP_DIR) if f.endswith(".json")]
 CLIPS = ["idle", "agree", "headshake", "walk", "run", "sad_pose", "sneak_pose"]
 BASE = {"guitar_playing", "standing_w_briefcase_idle", "talking_on_phone"}
-EMOTES = {"excited": "excited_bounce", "bounce": "excited_bounce", "yes": "agree", "nod": "agree", "wave": "wave_hello", "hello": "wave_hello", "hi": "wave_hello", "greet": "standing_greeting", "no": "dismissing_gesture", "sad": "sad_pose", "sneaky": "crawling", "apology": "bow_apology", "sorry": "bow_apology", "bow": "bow_apology", "kiss": "blow_kiss", "point": "point_ahead", "salute": "salute", "squat": "squat_down", "clap": "standing_clap", "phone": "talking_on_phone", "talk": "chin_think", "guitar": "guitar_playing", "dance": "dance_loop", "angry": "angry", "surprised": "surprised", "come": "beckoning", "go": "dismissing_gesture", "walk": "walk", "run": "run", "jog": "jogging", "jump": "excited_bounce", "punch": "punch_jab", "idle": "standing_w_briefcase_idle"}
+EMOTES = {"excited": "excited_bounce", "bounce": "excited_bounce", "yes": "agree", "nod": "agree", "wave": "wave_hello", "hello": "wave_hello", "hi": "wave_hello", "greet": "wave_hello", "no": "dismissing_gesture", "sad": "sad_pose", "sneaky": "look_over_shoulder", "apology": "bow_apology", "sorry": "bow_apology", "bow": "bow_apology", "kiss": "blow_kiss", "point": "point_ahead", "salute": "salute", "squat": "squat_down", "clap": "standing_clap", "phone": "talking_on_phone", "talk": "chin_think", "guitar": "guitar_playing", "dance": "dance_loop", "angry": "angry", "surprised": "surprised", "come": "beckoning", "go": "dismissing_gesture", "walk": "walk", "run": "run", "jog": "jogging", "jump": "excited_bounce", "punch": "punch_jab", "idle": "standing_w_briefcase_idle"}
 state = {"base": "standing_w_briefcase_idle", "gesture": None, "gaze": None, "seq": 0, "gesture_at": 0.0}
 clients = set()
 def cors(r):
@@ -264,6 +264,10 @@ async def alive_loop(app):
                 continue
             pick = pick_chain(cur)
             if pick == cur:
+                if time.time() - state.get("rephase_at", 0) < 40:
+                    nxt = random.uniform(8, 16)
+                    continue
+                state["rephase_at"] = time.time()
                 await fire(cur, "base", 1.15, "idle rephase")
                 did = True
             else:

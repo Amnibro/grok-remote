@@ -1,3 +1,6 @@
+## 2026-08-31 queueBase flushes hold-tail idles; rephase throttle
+- Guitar after endGesture during hold tail set pendingBase with no timer. queueBase flushes at gestureHold+40ms. Rephase at most every 40s. greet -> wave_hello, sneaky -> look_over_shoulder.
+
 ## 2026-08-31 defer pendingBase until Mixamo fade finishes
 - pendingBase waits 500ms past the hold tail so guitar does not start under a fading salute. Base defers on gestureHold alone.
 
