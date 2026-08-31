@@ -81,6 +81,8 @@ async def play(req):
     layer = d.get("layer") or ("base" if clip in BASE else "gesture")
     if clip in TRAVEL or any(x in clip for x in ("sit", "lay", "crouch", "plank", "walk", "run", "jog", "sprint", "dance", "twerk", "shuffle", "kneel", "pray", "squat", "angry", "jump", "jab_cross", "beckon", "punch")):
         return cors(web.json_response({"ok": True, "clip": clip, "layer": "skipped", "note": "ground/travel clips leave the standing stage - stay standing"}))
+    if state.get("base") == HOME and clip in ARM_HOME:
+        clip = ARM_HOME[clip]
     fade = d.get("fade", 0.4)
     now = time.time()
     if layer == "base" and now < state.get("gesture_until", 0) + fade_pad() and not d.get("force"):
@@ -142,6 +144,7 @@ LIFE_W = [2, 2, 2, 2, 2, 2, 1, 1, 2, 2, 2, 1]
 LIFE_SOFT = ["module_check", "machinamachina_spark", "chin_think"]
 LIFE_HEAD = ["module_check", "machinamachina_spark"]
 ARM_LEFT = {"waist_side_stretch", "sun_salute", "chin_think", "interact"}
+ARM_HOME = {"waist_side_stretch": "look_over_shoulder", "sun_salute": "salute", "chin_think": "module_check", "interact": "point_ahead"}
 FAM = {"look_over_shoulder": "look", "agree": "nod", "chin_think": "nod", "salute": "arm_up", "sun_salute": "arm_up", "standing_clap": "arm_up", "wave_hello": "arm_up", "waist_side_stretch": "stretch", "point_ahead": "point", "dismissing_gesture": "point", "module_check": "check", "machinamachina_spark": "spark", "surprised": "soft", "hand_on_heart": "heart", "bow_apology": "heart", "blow_kiss": "heart", "excited_bounce": "bounce", "interact": "reach"}
 def extra_life():
     p = os.path.join(os.path.dirname(os.path.abspath(__file__)), "web", "clip_index.json")
