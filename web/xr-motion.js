@@ -12,6 +12,14 @@ export function initMotion(ctx){
   function stripRoot(c){
     if(!c||!c.tracks)return c;
     c.tracks=c.tracks.filter(t=>!/\.position$/i.test(t.name||""));
+    for(const tr of c.tracks){
+      if(!tr||!/\.quaternion$/i.test(tr.name||"")||!tr.values)continue;
+      const v=tr.values;
+      for(let i=0;i+3<v.length;i+=4){
+        const n=Math.hypot(v[i],v[i+1],v[i+2],v[i+3])||1;
+        v[i]/=n;v[i+1]/=n;v[i+2]/=n;v[i+3]/=n;
+      }
+    }
     return c;
   }
   function canLoop(name){
@@ -37,7 +45,7 @@ export function initMotion(ctx){
       if(getActIdle()===a)return;
       a.reset().setLoop(THREE.LoopRepeat,Infinity).setEffectiveWeight(1).play();
       const prev=getActIdle();
-      if(prev&&prev!==a)prev.crossFadeTo(a,Math.max(fade,0.7),true);
+      if(prev&&prev!==a)prev.crossFadeTo(a,Math.max(fade,0.85),false);
       setActIdle(a);
     }else{
       stopGestures(a);
@@ -94,6 +102,6 @@ export function initMotion(ctx){
   }
   function flushPending(){if(pendingMotion){const p=pendingMotion;pendingMotion=null;motionPlay(...p)}}
   warm(HOME).then(ok=>{if(ok)motionPlay(HOME,"base",0.35)});
-  ["talking_on_phone","agree","look_over_shoulder","acknowledging","waist_side_stretch","wave_hello","surprised"].forEach(n=>{if(n!==HOME)warm(n)});
+  ["talking_on_phone","guitar_playing","agree","look_over_shoulder","waist_side_stretch","wave_hello","surprised","dismissing_gesture","point_ahead","salute","module_check","sun_salute"].forEach(n=>warm(n));
   return {motionPlay,sendMotion,connect,flushPending,findClip,linked,state};
 }

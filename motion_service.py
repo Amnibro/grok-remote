@@ -35,7 +35,7 @@ async def pose_ws(req):
     return w
 DUR_CACHE = {}
 DEFAULT_DUR = 2.2
-REPEAT_WINDOW = 22.0
+REPEAT_WINDOW = 16.0
 QUEUE_MAX = 3
 def clip_dur(name):
     if name in DUR_CACHE:return DUR_CACHE[name]
@@ -121,10 +121,10 @@ async def clip_data(req):
 async def opt(req):
     return cors(web.Response())
 HOME = "standing_w_briefcase_idle"
-IDLES = ["standing_w_briefcase_idle", "talking_on_phone"]
-IDLE_W = {"standing_w_briefcase_idle": 5, "talking_on_phone": 1}
-LIFE = ["look_over_shoulder", "agree", "acknowledging", "waist_side_stretch", "surprised"]
-LIFE_W = [3, 3, 2, 2, 1]
+IDLES = ["standing_w_briefcase_idle", "talking_on_phone", "guitar_playing"]
+IDLE_W = {"standing_w_briefcase_idle": 6, "talking_on_phone": 1, "guitar_playing": 1}
+LIFE = ["look_over_shoulder", "agree", "waist_side_stretch", "surprised", "dismissing_gesture", "point_ahead", "salute", "module_check", "sun_salute"]
+LIFE_W = [3, 3, 2, 2, 2, 2, 1, 1, 1]
 def weighted(names, weights):
     use = [(n, weights[i] if i < len(weights) else 1) for i, n in enumerate(names)]
     tot = sum(w for _, w in use) or 1
