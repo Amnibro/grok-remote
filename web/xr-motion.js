@@ -42,7 +42,7 @@ export function initMotion(ctx){
   function endGesture(a){
     if(actGesture!==a)return;
     if(gestureOut.has(a)){clearTimeout(gestureOut.get(a));gestureOut.delete(a)}
-    state.gestureHold=0;
+    state.gestureHold=performance.now()+480;
     try{a.fadeOut(0.45)}catch(e){}
     setTimeout(()=>{try{a.stop();a.enabled=false}catch(e){}},480);
     if(actGesture===a)actGesture=null;
@@ -104,7 +104,7 @@ export function initMotion(ctx){
       const ts=0.92+Math.random()*0.16;
       a.timeScale=ts;
       if(c.duration>0.4)a.time=Math.random()*Math.min(0.15,c.duration*0.1);
-      const holdMs=Math.max(700,Math.min(8000,(c.duration||1.2)/ts*1000));
+      const holdMs=Math.max(700,Math.min(8000,((c.duration||1.2)-a.time)/ts*1000));
       a.setEffectiveWeight(1).fadeIn(Math.min(0.35,fade)).play();
       const idle=getActIdle();
       if(idle){idle.paused=true;idle.fadeOut(0.28)}

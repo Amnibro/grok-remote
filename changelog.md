@@ -1,3 +1,6 @@
+## 2026-08-31 hold tail through Mixamo fade; holdMs uses remaining time
+- endGesture hold lasts +480ms through fadeOut so Quest yaw does not start mid-salute. holdMs subtracts the start offset. angry skipped.
+
 ## 2026-08-31 clear gestureHold on restore; nap to nxt
 - endGesture left gestureHold live ~450ms after idle restored. Now gestureHold=0. Sleep shortens to nxt-since.
 
