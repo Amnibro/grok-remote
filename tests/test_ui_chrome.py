@@ -374,6 +374,8 @@ def test_idle_chain_uses_seamless_mixamo():
     em=srv[srv.find("EMOTES"):srv.find("state =")]
     assert '"greet": "wave_hello"' in em
     assert '"sneaky": "look_over_shoulder"' in em
+    assert "busy = now < state.get(\"gesture_until\", 0) + FADE_PAD" in srv or "busy=now<state.get(\"gesture_until\",0)+FADE_PAD" in srv.replace(" ","")
+    assert "jab_cross" in srv[srv.find("if clip in TRAVEL"):srv.find("if clip in TRAVEL")+500]
 if __name__=="__main__":
     test_pair_in_upper_right_menus()
     test_sess_filters_core_only_single_line()

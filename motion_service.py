@@ -77,11 +77,11 @@ async def play(req):
         return cors(web.json_response({"ok": False, "err": "unknown clip", "clips": CLIPS + custom_clips()}, status=400))
     TRAVEL = {"start_walking", "walk_strafe_left", "jumping_down", "jump_loop", "jump_land", "crouch_to_stand", "crouch_turn_to_stand", "standing_up", "situp_to_idle", "sitting_enter", "sitting_exit", "roll", "crawling", "push_loop", "swim_fwd_loop", "sprint_loop", "driving_loop", "punch_enter", "spell_simple_enter", "spell_simple_exit"}
     layer = d.get("layer") or ("base" if clip in BASE else "gesture")
-    if clip in TRAVEL or any(x in clip for x in ("sit", "lay", "crouch", "plank", "walk", "run", "jog", "sprint", "dance", "twerk", "shuffle", "kneel", "pray", "squat", "angry", "jump")):
+    if clip in TRAVEL or any(x in clip for x in ("sit", "lay", "crouch", "plank", "walk", "run", "jog", "sprint", "dance", "twerk", "shuffle", "kneel", "pray", "squat", "angry", "jump", "jab_cross")):
         return cors(web.json_response({"ok": True, "clip": clip, "layer": "skipped", "note": "ground/travel clips leave the standing stage - stay standing"}))
     fade = d.get("fade", 0.4)
     now = time.time()
-    if layer == "base" and now < state.get("gesture_until", 0) and not d.get("force"):
+    if layer == "base" and now < state.get("gesture_until", 0) + FADE_PAD and not d.get("force"):
         state["follow_base"] = clip
         state["follow_at"] = state.get("gesture_until", now) + FADE_PAD
         return cors(web.json_response({"ok": True, "clip": clip, "layer": "queued", "note": "idle after gesture"}))
@@ -190,7 +190,7 @@ async def alive_loop(app):
         nap = random.uniform(12, 28)
         if state.get("follow_base"):
             nap = min(nap, max(0.35, state.get("follow_at", now) - now))
-        gu = state.get("gesture_until", 0)
+        gu = state.get("gesture_until", 0) + FADE_PAD
         if now < gu:
             nap = min(nap, max(0.35, gu - now + 0.12))
         rem = nxt - since
@@ -203,7 +203,7 @@ async def alive_loop(app):
             continue
         since += time.time() - t0
         now = time.time()
-        busy = now < state.get("gesture_until", 0)
+        busy = now < state.get("gesture_until", 0) + FADE_PAD
         if state.get("follow_base"):
             if pending or busy:
                 continue

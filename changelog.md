@@ -1,3 +1,6 @@
+## 2026-08-31 alive busy includes FADE_PAD; skip jab_cross
+- alive_loop and play() base used gesture_until without FADE_PAD, so a life beat or guitar swap could start under Mixamo fade. jab_cross skipped.
+
 ## 2026-08-31 drain waits FADE_PAD; acknowledging is agree
 - drain_loop waits gesture_until+FADE_PAD so queued Mixamo does not start under fadeOut. acknowledging aliases to agree. mixer finished rebinds if the mixer is new.
 
