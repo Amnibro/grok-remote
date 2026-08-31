@@ -1,3 +1,6 @@
+## 2026-08-31 cancel stale pbTimer; cache mixamo bones; come is interact
+- Successful base play clears pbTimer. Head/Hips/Neck cached. come maps to interact.
+
 ## 2026-08-31 alive busy includes FADE_PAD; skip jab_cross
 - alive_loop and play() base used gesture_until without FADE_PAD, so a life beat or guitar swap could start under Mixamo fade. jab_cross skipped.
 

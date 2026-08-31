@@ -1245,6 +1245,7 @@ function perform(t,dt,lvl,overlay){
 /* ---------- loop ---------- */
 const clock=new THREE.Clock();
 const gazeQ=new THREE.Quaternion(),gazeE=new THREE.Euler();
+let headBone=null,hipsBone=null,neckBone=null;
 renderer.setAnimationLoop(()=>{
   const dt=Math.min(0.05,clock.getDelta());
   const t=uniforms.uTime.value+=dt;
@@ -1267,8 +1268,10 @@ renderer.setAnimationLoop(()=>{
   if(mixer){
     mixer.update(dt);
     if(skeleton){
-      const head=skeleton.bones.find(b=>/^mixamorigHead$|^head$/i.test(b.name));
-      const hips=skeleton.bones.find(b=>/hips$/i.test(b.name));
+      if(!headBone||!headBone.parent)headBone=skeleton.bones.find(b=>/^mixamorigHead$|^head$/i.test(b.name));
+      if(!hipsBone||!hipsBone.parent)hipsBone=skeleton.bones.find(b=>/hips$/i.test(b.name));
+      if(!neckBone||!neckBone.parent)neckBone=skeleton.bones.find(b=>/neck$/i.test(b.name));
+      const head=headBone,hips=hipsBone;
       if(hips){hips.position.x=0;hips.position.z=0}
       const holding=performance.now()<(motionState.gestureHold||0);
       if(head&&!holding&&motionState.gazeTarget&&(!motionState.gazeUntil||performance.now()<motionState.gazeUntil)){
@@ -1287,8 +1290,7 @@ renderer.setAnimationLoop(()=>{
           motionState.gz=(motionState.gz||0)+(yaw-(motionState.gz||0))*k;
           motionState.gp=(motionState.gp||0)+(pit-(motionState.gp||0))*k;
           head.quaternion.multiply(gazeQ.setFromEuler(gazeE.set(motionState.gp,motionState.gz,0)));
-          const neck=skeleton.bones.find(b=>/neck$/i.test(b.name));
-          if(neck)neck.quaternion.multiply(gazeQ.setFromEuler(gazeE.set(motionState.gp*0.4,motionState.gz*0.45,0)));
+          if(neckBone)neckBone.quaternion.multiply(gazeQ.setFromEuler(gazeE.set(motionState.gp*0.4,motionState.gz*0.45,0)));
         }
       }else if(motionState.gazeUntil&&performance.now()>=motionState.gazeUntil){motionState.gazeTarget=null;motionState.gazeUntil=0;motionState.gz=0;motionState.gp=0}
     }
