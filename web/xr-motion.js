@@ -55,7 +55,10 @@ export function initMotion(ctx){
     fade=fade||0.4;
     if(layer==="base"){
       pendingBase=null;
-      if(getActIdle()===a)return;
+      if(getActIdle()===a){
+        a.enabled=true;a.setEffectiveWeight(1);a.fadeIn(Math.max(0.4,fade));
+        return;
+      }
       a.enabled=true;
       a.reset().setLoop(THREE.LoopRepeat,Infinity).setEffectiveWeight(1);
       a.timeScale=0.88+Math.random()*0.28;
@@ -64,9 +67,10 @@ export function initMotion(ctx){
       a.play();
       const prev=getActIdle();
       if(prev&&prev!==a){
-        prev.crossFadeTo(a,Math.max(fade,0.85),false);
+        const fadeS=Math.max(fade,0.85);
+        prev.crossFadeTo(a,fadeS,false);
         const dying=prev;
-        setTimeout(()=>{if(dying!==getActIdle()){try{dying.stop();dying.enabled=false}catch(e){}}},950);
+        setTimeout(()=>{if(dying!==getActIdle()){try{dying.stop();dying.enabled=false}catch(e){}}},fadeS*1000+120);
       }
       setActIdle(a);
     }else{

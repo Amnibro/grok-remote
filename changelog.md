@@ -1,3 +1,8 @@
+## 2026-08-31 idle pop, same-base weight 0, family skip
+- Idle crossfade was 1.1s but the outgoing clip was stop()'d at 950ms. Dying stop now waits fadeS*1000+120.
+- pendingBase of the same idle hit getActIdle()===a and left weight 0. Same-action idle now fadeIn.
+- pick_chain remembers last_prop so guitar does not ping-pong. Life beats skip the last gesture family.
+
 ## 2026-08-31 dead gesture timer stacked idle under the next Mixamo take
 - A salute starting while agree was still armed left agree's timeout alive; it faded idle back in under the new clip. stopGestures now clears every gesture timer. Idle restore runs only if that action is still actGesture.
 - Base idle swaps during a hold are queued as pendingBase and applied after the gesture.
