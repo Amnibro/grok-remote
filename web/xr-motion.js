@@ -163,7 +163,7 @@ export function initMotion(ctx){
   }
   function flushPending(){const q=pendingPlays.splice(0);for(const p of q)motionPlay(...p)}
   warm(HOME).then(ok=>{if(ok&&!getActIdle())motionPlay(HOME,"base",0.35)});
-  ["talking_on_phone","guitar_playing","agree","look_over_shoulder","waist_side_stretch","hand_on_heart","surprised","dismissing_gesture","point_ahead","salute","module_check","sun_salute","bow_apology","excited_bounce","machinamachina_spark","chin_think","blow_kiss","standing_clap","wave_hello"].forEach(n=>warm(n));
+  ["talking_on_phone","guitar_playing","agree","look_over_shoulder","waist_side_stretch","hand_on_heart","surprised","dismissing_gesture","point_ahead","salute","module_check","sun_salute","bow_apology","excited_bounce","machinamachina_spark","chin_think","blow_kiss","standing_clap","wave_hello","interact"].forEach(n=>warm(n));
   warmPool();
   return {motionPlay,sendMotion,connect,flushPending,findClip,linked,state};
 }

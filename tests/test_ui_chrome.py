@@ -301,6 +301,7 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "hand_on_heart" in life
     assert "standing_clap" in life
     assert "wave_hello" in life
+    assert "interact" in life
     assert "female_walk" not in life
     assert "kneel" in extra
     assert "acknowledging" in extra
@@ -363,6 +364,8 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "motionState.gz" in html
     assert "sitting_talking" not in html[html.find("You are in the room"):html.find("You are in the room")+800]
     assert "Stay standing" in html
+    assert 'if clip == "standing_greeting"' in srv
+    assert "+ 0.55" in srv or "+0.55" in srv.replace(" ","")
     assert "function queueBase(" in js
     assert "function flushBase(" in js
     assert "rephase_at" in srv
