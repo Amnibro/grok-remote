@@ -106,7 +106,7 @@ export function lagStep(lag,alpha){
   lag.tex.needsUpdate=true;
   return {drift:+drift.toFixed(5),n:d.length};
 }
-export const LOOSE=/head|hair|ponytail|braid|scarf|cloth|skirt|coat|cape|tail/i;
+export const LOOSE=/hair|ponytail|pigtail|braid|scarf|skirt|coat|cape|tail|ribbon/i;
 export function hairFlex(bones,p,count,si,sw,flex,opt){
   if(!bones||!bones.length||!count)return {pts:0,pct:0,max:0,bone:"",span:0};
   const o=opt||{},maxW=o.maxW==null?0.55:o.maxW,pw=o.pow==null?1.4:o.pow;

@@ -685,7 +685,7 @@ async function loadModel(){
         clips=(gltf.animations||[]).filter(c=>!/lay|lie|sleep|tpose|bind/i.test(c.name||""));
         mixer=new THREE.AnimationMixer(skelRoot||gltf.scene);
         actIdle=null;actTalk=null;
-        setTimeout(()=>motionPlay("standing_w_briefcase_idle","base",0.6),200);
+        motionPlay("standing_w_briefcase_idle","base",0.35);
         if(motionMod)motionMod.flushPending();
         // normalize from the SKINNED rest cloud - node bboxes and raw locals both lie
         gltf.scene.updateMatrixWorld(true);
