@@ -123,8 +123,9 @@ async def opt(req):
 HOME = "standing_w_briefcase_idle"
 IDLES = ["standing_w_briefcase_idle", "talking_on_phone", "guitar_playing"]
 IDLE_W = {"standing_w_briefcase_idle": 6, "talking_on_phone": 1, "guitar_playing": 1}
-LIFE = ["look_over_shoulder", "agree", "waist_side_stretch", "surprised", "dismissing_gesture", "point_ahead", "salute", "module_check", "sun_salute"]
-LIFE_W = [3, 3, 2, 2, 2, 2, 1, 1, 1]
+LIFE = ["look_over_shoulder", "agree", "waist_side_stretch", "surprised", "dismissing_gesture", "point_ahead", "salute", "module_check", "sun_salute", "bow_apology", "excited_bounce", "machinamachina_spark"]
+LIFE_W = [3, 3, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1]
+LIFE_SOFT = ["look_over_shoulder", "agree", "module_check", "machinamachina_spark", "surprised"]
 def weighted(names, weights):
     use = [(n, weights[i] if i < len(weights) else 1) for i, n in enumerate(names)]
     tot = sum(w for _, w in use) or 1
@@ -156,9 +157,10 @@ async def alive_loop(app):
         if state.get("base") not in IDLES:
             continue
         quiet = time.time() - state.get("gesture_at", 0)
-        if quiet > 8 and random.random() < 0.62:
-            fresh = [c for c in LIFE if time.time() - recent.get(c, 0) > REPEAT_WINDOW]
-            w = [LIFE_W[LIFE.index(c)] for c in fresh]
+        pool = LIFE if state.get("base") == HOME else LIFE_SOFT
+        if quiet > 8 and random.random() < 0.48:
+            fresh = [c for c in pool if time.time() - recent.get(c, 0) > REPEAT_WINDOW]
+            w = [LIFE_W[LIFE.index(c)] if c in LIFE else 1 for c in fresh]
             if fresh:
                 await fire(weighted(fresh, w), "gesture", 0.55, "life beat")
                 continue
