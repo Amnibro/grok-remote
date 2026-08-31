@@ -44,7 +44,7 @@ def clip_dur(name):
         with open(os.path.join(CLIP_DIR, name + ".json"), encoding="utf-8") as f:
             v = float(json.load(f).get("duration") or DEFAULT_DUR)
     except Exception:pass
-    v = max(0.6, min(6.0, v))
+    v = max(0.6, min(8.0, v))
     DUR_CACHE[name] = v
     return v
 recent = {}
@@ -72,7 +72,7 @@ async def play(req):
         return cors(web.json_response({"ok": False, "err": "unknown clip", "clips": CLIPS + custom_clips()}, status=400))
     TRAVEL = {"start_walking", "walk_strafe_left", "jumping_down", "jump_loop", "jump_land", "crouch_to_stand", "crouch_turn_to_stand", "standing_up", "situp_to_idle", "sitting_enter", "sitting_exit", "roll", "crawling", "push_loop", "swim_fwd_loop", "sprint_loop", "driving_loop", "punch_enter", "spell_simple_enter", "spell_simple_exit"}
     layer = d.get("layer") or ("base" if clip in BASE else "gesture")
-    if clip in TRAVEL or any(x in clip for x in ("sit", "lay", "crouch", "plank")):
+    if clip in TRAVEL or any(x in clip for x in ("sit", "lay", "crouch", "plank", "walk", "run", "jog", "sprint")):
         return cors(web.json_response({"ok": True, "clip": clip, "layer": "skipped", "note": "ground/travel clips leave the standing stage - stay standing"}))
     fade = d.get("fade", 0.4)
     now = time.time()
@@ -179,20 +179,25 @@ async def alive_loop(app):
         busy = time.time() < state.get("gesture_until", 0)
         if since < nxt:
             if not busy:
-                g = random.choices(["user", "user", "user", "left", "right", "down"], k=1)[0]
+                g = random.choices(["user", "user", "user", "left", "right", "down", "up", "away"], k=1)[0]
                 await bcast({"type": "gaze", "target": g, "seq": state["seq"]})
             continue
         since = 0.0
         if busy:
             nxt = min(nxt, max(2.0, state.get("gesture_until", 0) - time.time() + 0.4))
             continue
-        if state.get("follow_base") and time.time() >= state.get("follow_at", 0):
-            nb = state.pop("follow_base", None)
-            state.pop("follow_at", None)
-            if nb:
-                await fire(nb, "base", 1.1, "idle chain")
-            nxt = random.uniform(14, 26)
-            continue
+        if state.get("follow_base"):
+            if pending or time.time() < state.get("gesture_until", 0):
+                wait = 0.8 if pending else max(1.2, state.get("gesture_until", 0) - time.time() + 0.4)
+                nxt = min(nxt, wait)
+                continue
+            if time.time() >= state.get("follow_at", 0):
+                nb = state.pop("follow_base", None)
+                state.pop("follow_at", None)
+                if nb:
+                    await fire(nb, "base", 1.1, "idle chain")
+                nxt = random.uniform(14, 26)
+                continue
         if state.get("base") not in IDLES:
             if time.time() - state.get("base_at", 0) > 8:
                 await fire(HOME, "base", 1.1, "idle recover")
@@ -204,7 +209,8 @@ async def alive_loop(app):
         pool = LIFE_HEAD if state.get("base") == "guitar_playing" else (LIFE_SOFT if state.get("base") != HOME else LIFE)
         did = False
         if quiet > 8 and random.random() < 0.48:
-            fresh = [c for c in pool if time.time() - recent.get(c, 0) > REPEAT_WINDOW]
+            lasts = sorted(recent, key=recent.get, reverse=True)[:2]
+            fresh = [c for c in pool if c not in lasts and c != state.get("gesture") and time.time() - recent.get(c, 0) > REPEAT_WINDOW]
             w = [LIFE_W[LIFE.index(c)] if c in LIFE else 1 for c in fresh]
             if fresh:
                 clip = weighted(fresh, w)

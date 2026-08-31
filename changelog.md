@@ -1,3 +1,9 @@
+## 2026-08-31 dead gesture timer stacked idle under the next Mixamo take
+- A salute starting while agree was still armed left agree's timeout alive; it faded idle back in under the new clip. stopGestures now clears every gesture timer. Idle restore runs only if that action is still actGesture.
+- Base idle swaps during a hold are queued as pendingBase and applied after the gesture.
+- follow_base waits until the gesture queue is empty and gesture_until has passed.
+- Life beats skip the last two recent clips. Walk/run/jog/sprint join the ground skip. Gaze can pick up and away. clip_dur cap matches the client 8s hold.
+
 ## 2026-08-31 sit-trap, guitar head-only, dwell on follow_base
 - Room brief no longer names sitting_talking as home. Stay standing on standing_w_briefcase_idle. talk emote is chin_think. Sit/lay/crouch/plank and travel clips skip.
 - BASE is briefcase/phone/guitar only. idle recover returns HOME if the base is off IDLES for more than 8s.

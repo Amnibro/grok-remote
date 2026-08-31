@@ -199,13 +199,13 @@ def test_agent_bar_and_session_rail_stay_put():
     assert "placeAgentView(row)" in html
     assert "clearAgentRail()" in html
     assert ".agent-rail" in skin
-    assert "2026-08-31-sess-list" in html
+    assert "2026-08-31-settings-menu" in html
     assert "else showPage(\"setup\",true)" not in html[html.find("const doAuto="):html.find("const forceTour=")]
     assert "const linking=connecting||!!(ws&&(ws.readyState===0||ws.readyState===1))" in html
     assert "#chatStage:not(.on){display:none!important" in html
     assert "#chatStage:not(.on){display:none!important" in braid
-    assert 'src="/static/chat-runtime.js?v=2026-08-31-sess-list"' in html
-    assert "braid-layout.css?v=1.8.27" in html
+    assert 'src="/static/chat-runtime.js?v=2026-08-31-settings-menu"' in html
+    assert "braid-layout.css?v=1.8.28" in html
     assert "grok-archive-skin.css?v=19" in html
     assert "function stampMsgRow" in html
     assert "className=\"msg-at\"" in html
@@ -264,7 +264,10 @@ def test_agent_bar_and_session_rail_stay_put():
     assert "sess-dot" in html[html.find("function sessTitleHtml"):html.find("function sessMetaHtml")]
     assert "open-mark" not in html[html.find("function sessTitleHtml"):html.find("function sessMetaHtml")]
     assert "open-mark" not in html[html.find("function paintSessionCurrent"):html.find("function setSelectedSession")]
-    assert "2026-08-31-sess-list" in html
+    assert "2026-08-31-settings-menu" in html
+    assert 'id="moreMenuStatus"' not in html
+    assert "menu.style.maxHeight" in html[html.find("function placeFixedMenu"):html.find("function protectMath")]
+    assert "placeFixedMenu(m,a)" in html[html.find("function showMoreLayer"):html.find("function bindMoreLayers")]
     assert "#sessList:not([data-ready" not in html
     assert "#sessList:not([data-ready" not in braid
     assert "function revealSessList" in html
@@ -316,6 +319,12 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "warmPool" in js
     assert "idle.fadeOut(0.28)" in js.replace(" ","")
     assert "c.duration>8" in js.replace(" ","")
+    assert "pendingBase" in js
+    assert "actGesture!==a" in js.replace(" ","")
+    assert "lasts" in alive
+    assert "if pending or time.time()" in alive
+    assert '"walk"' in srv[srv.find("if clip in TRAVEL"):srv.find("if clip in TRAVEL")+280]
+    assert '"up"' in alive[alive.find("random.choices"):alive.find("random.choices")+180]
     assert "startswith(\"look\")" in alive or "startswith('look')" in alive
     html=(ROOT/"web"/"xr.html").read_text(encoding="utf-8")
     assert "!holding&&motionState.gazeTarget" in html.replace(" ","")
