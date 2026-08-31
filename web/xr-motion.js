@@ -2,11 +2,11 @@ export function initMotion(ctx){
   const {THREE,getMixer,getClips,getActIdle,setActIdle,panels}=ctx;
   const state=ctx.state||{gestureHold:0,gazeTarget:null,gazeUntil:0};
   const gestureOut=new Map(),fetchedClips=new Set(),warming=new Map();
-  let mws=null,pendingPlays=[],actGesture=null,clipIx={};
+  let mws=null,pendingPlays=[],actGesture=null,pendingBase=null,clipIx={};
   fetch("/static/clip_index.json",{cache:"no-store"}).then(r=>r.json()).then(j=>{clipIx=j.clips||{}}).catch(()=>{});
   function warmPool(){
     fetch(httpBase()+"/motion/alive",{cache:"no-store"}).then(r=>r.json()).then(j=>{
-      const names=[HOME,...(j.idles||[]),...(j.life||[]),...(j.life_soft||[])];
+      const names=[HOME,...(j.idles||[]),...(j.life||[]),...(j.life_soft||[]),...(j.life_head||[])];
       [...new Set(names)].forEach(n=>{if(n)warm(n)});
     }).catch(()=>{});
   }
@@ -34,6 +34,11 @@ export function initMotion(ctx){
     return m.loops!==false&&!(m.seam>40);
   }
   function stopGestures(keep){
+    for(const [act,tid] of [...gestureOut]){
+      if(act===keep)continue;
+      clearTimeout(tid);gestureOut.delete(act);
+      try{act.fadeOut(0.25)}catch(e){}
+    }
     if(actGesture&&actGesture!==keep){
       try{actGesture.fadeOut(0.25)}catch(e){}
     }
@@ -42,12 +47,14 @@ export function initMotion(ctx){
     const mixer=getMixer();
     if(!mixer){pendingPlays.push([name,layer,fade]);return}
     if(layer==="base"&&!canLoop(name))name=HOME;
+    if(layer==="base"&&actGesture&&performance.now()<state.gestureHold){pendingBase=[name,fade];return}
     const c=findClip(name);
     if(!c){warm(name).then(ok=>{if(ok)motionPlay(name,layer,fade)});return}
     stripRoot(c);
     const a=mixer.clipAction(c);
     fade=fade||0.4;
     if(layer==="base"){
+      pendingBase=null;
       if(getActIdle()===a)return;
       a.enabled=true;
       a.reset().setLoop(THREE.LoopRepeat,Infinity).setEffectiveWeight(1);
@@ -78,11 +85,14 @@ export function initMotion(ctx){
       if(gestureOut.has(a))clearTimeout(gestureOut.get(a));
       gestureOut.set(a,setTimeout(()=>{
         gestureOut.delete(a);
+        if(actGesture!==a)return;
         try{a.fadeOut(0.45)}catch(e){}
         setTimeout(()=>{try{a.stop();a.enabled=false}catch(e){}},480);
+        if(actGesture===a)actGesture=null;
+        const pb=pendingBase;pendingBase=null;
+        if(pb){motionPlay(pb[0],"base",pb[1]);return}
         const idl=getActIdle();
         if(idl){idl.enabled=true;idl.setEffectiveWeight(1);idl.fadeIn(0.45)}
-        if(actGesture===a)actGesture=null;
       },Math.max(400,holdMs-450)));
     }
   }
