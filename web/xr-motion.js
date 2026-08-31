@@ -1,8 +1,8 @@
 export function initMotion(ctx){
   const {THREE,getMixer,getClips,getActIdle,setActIdle,panels}=ctx;
   const state=ctx.state||{gestureHold:0,gazeTarget:null,gazeUntil:0};
-  const gestureOut=new Map(),fetchedClips=new Set();
-  let mws=null,pendingMotion=null,actGesture=null,clipIx={};
+  const gestureOut=new Map(),fetchedClips=new Set(),warming=new Map();
+  let mws=null,pendingPlays=[],actGesture=null,clipIx={};
   fetch("/static/clip_index.json",{cache:"no-store"}).then(r=>r.json()).then(j=>{clipIx=j.clips||{}}).catch(()=>{});
   const httpBase=()=>"http"+(location.protocol==="https:"?"s":"")+"://"+location.hostname+":2423";
   const wsBase=()=>location.protocol.replace("http","ws")+"//"+location.hostname+":2423";
@@ -34,7 +34,7 @@ export function initMotion(ctx){
   }
   function motionPlay(name,layer,fade){
     const mixer=getMixer();
-    if(!mixer){pendingMotion=[name,layer,fade];return}
+    if(!mixer){pendingPlays.push([name,layer,fade]);return}
     if(layer==="base"&&!canLoop(name))name=HOME;
     const c=findClip(name);
     if(!c){warm(name).then(ok=>{if(ok)motionPlay(name,layer,fade)});return}
@@ -79,19 +79,24 @@ export function initMotion(ctx){
       },Math.max(400,holdMs-450)));
     }
   }
-  async function warm(name){
-    if(findClip(name))return true;
-    if(fetchedClips.has(name))return false;
-    fetchedClips.add(name);
-    try{
-      const d=await (await fetch(httpBase()+"/motion/clipdata/"+encodeURIComponent(name)+"?t="+Date.now(),{cache:"no-store"})).json();
-      if(!d||!d.tracks){fetchedClips.delete(name);return false}
-      const c=THREE.AnimationClip.parse(d);
-      c.name=name;
-      stripRoot(c);
-      getClips().push(c);
-      return true;
-    }catch(e){fetchedClips.delete(name);return false}
+  function warm(name){
+    if(findClip(name))return Promise.resolve(true);
+    if(warming.has(name))return warming.get(name);
+    const p=(async()=>{
+      fetchedClips.add(name);
+      try{
+        const d=await (await fetch(httpBase()+"/motion/clipdata/"+encodeURIComponent(name)+"?t="+Date.now(),{cache:"no-store"})).json();
+        if(!d||!d.tracks){fetchedClips.delete(name);return false}
+        const c=THREE.AnimationClip.parse(d);
+        c.name=name;
+        stripRoot(c);
+        getClips().push(c);
+        return true;
+      }catch(e){fetchedClips.delete(name);return false}
+      finally{warming.delete(name)}
+    })();
+    warming.set(name,p);
+    return p;
   }
   function sendMotion(kind,val){
     fetch(httpBase()+"/motion/"+(kind==="gaze"?"gaze":"play"),{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(kind==="gaze"?{target:val.trim()}:{clip:val.trim()})}).catch(()=>{});
@@ -109,7 +114,7 @@ export function initMotion(ctx){
     mws.onclose=()=>setTimeout(connect,3000);
     mws.onerror=()=>{try{mws.close()}catch(e){}};
   }
-  function flushPending(){if(pendingMotion){const p=pendingMotion;pendingMotion=null;motionPlay(...p)}}
+  function flushPending(){const q=pendingPlays.splice(0);for(const p of q)motionPlay(...p)}
   warm(HOME).then(ok=>{if(ok)motionPlay(HOME,"base",0.35)});
   ["talking_on_phone","guitar_playing","agree","look_over_shoulder","waist_side_stretch","wave_hello","surprised","dismissing_gesture","point_ahead","salute","module_check","sun_salute","bow_apology","excited_bounce","machinamachina_spark","chin_think","blow_kiss","female_walk"].forEach(n=>warm(n));
   return {motionPlay,sendMotion,connect,flushPending,findClip,linked,state};
