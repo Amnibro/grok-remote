@@ -51,7 +51,7 @@ recent = {}
 pending = []
 async def fire(clip, layer, fade, note=""):
     state["seq"] += 1
-    if layer == "base":state.update(base=clip)
+    if layer == "base":state.update(base=clip, base_at=time.time())
     else:
         state.update(gesture=clip, gesture_at=time.time())
         state["gesture_until"] = time.time() + clip_dur(clip)
@@ -123,9 +123,10 @@ async def opt(req):
 HOME = "standing_w_briefcase_idle"
 IDLES = ["standing_w_briefcase_idle", "talking_on_phone", "guitar_playing"]
 IDLE_W = {"standing_w_briefcase_idle": 6, "talking_on_phone": 1, "guitar_playing": 1}
-LIFE = ["look_over_shoulder", "agree", "waist_side_stretch", "surprised", "dismissing_gesture", "point_ahead", "salute", "module_check", "sun_salute", "bow_apology", "excited_bounce", "machinamachina_spark", "chin_think", "blow_kiss", "female_walk"]
-LIFE_W = [3, 3, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 2, 1, 1]
-LIFE_SOFT = ["look_over_shoulder", "agree", "module_check", "machinamachina_spark", "surprised", "chin_think"]
+IDLE_DWELL = {"standing_w_briefcase_idle": 32.0, "talking_on_phone": 16.0, "guitar_playing": 14.0}
+LIFE = ["look_over_shoulder", "agree", "waist_side_stretch", "surprised", "dismissing_gesture", "point_ahead", "salute", "module_check", "sun_salute", "bow_apology", "excited_bounce", "machinamachina_spark", "chin_think", "blow_kiss", "hand_on_heart", "standing_clap"]
+LIFE_W = [3, 3, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 2, 1, 2, 1]
+LIFE_SOFT = ["look_over_shoulder", "agree", "module_check", "machinamachina_spark", "surprised", "chin_think", "hand_on_heart"]
 def extra_life():
     p = os.path.join(os.path.dirname(os.path.abspath(__file__)), "web", "clip_index.json")
     if not os.path.isfile(p):
@@ -134,8 +135,8 @@ def extra_life():
         idx = (json.load(open(p, encoding="utf-8")) or {}).get("clips") or {}
     except Exception:
         return
-    skip = set(IDLES) | set(LIFE) | {"wave_hello", "standing_greeting", "idle", "headshake"}
-    bad = ("sit", "lay", "crouch", "run", "jog", "dance", "pistol", "sword", "swim", "crawl", "roll")
+    skip = set(IDLES) | set(LIFE) | {"wave_hello", "standing_greeting", "idle", "headshake", "beckoning", "angry", "acknowledging", "walk", "female_walk"}
+    bad = ("sit", "lay", "crouch", "run", "jog", "dance", "pistol", "sword", "swim", "crawl", "roll", "kneel", "plank", "pray", "squat", "jump", "punch", "hit_", "walk")
     for name, m in idx.items():
         if name in skip or any(b in name for b in bad):
             continue
@@ -158,6 +159,13 @@ def weighted(names, weights):
         if x <= acc:
             return n
     return use[-1][0]
+def pick_chain(cur):
+    if cur != HOME:
+        return HOME
+    alts = [c for c in IDLES if c != HOME]
+    return weighted(alts, [IDLE_W.get(c, 1) for c in alts]) if alts else HOME
+async def get_alive(req):
+    return cors(web.json_response({"home": HOME, "idles": IDLES, "life": LIFE, "life_soft": LIFE_SOFT, "idle_w": IDLE_W}))
 async def alive_loop(app):
     nxt = random.uniform(22, 42)
     since = 0.0
@@ -167,12 +175,14 @@ async def alive_loop(app):
         if not clients:
             continue
         since += nap
+        busy = time.time() < state.get("gesture_until", 0)
         if since < nxt:
-            g = random.choices(["user", "user", "user", "left", "right", "down"], k=1)[0]
-            await bcast({"type": "gaze", "target": g, "seq": state["seq"]})
+            if not busy:
+                g = random.choices(["user", "user", "user", "left", "right", "down"], k=1)[0]
+                await bcast({"type": "gaze", "target": g, "seq": state["seq"]})
             continue
         since = 0.0
-        if time.time() < state.get("gesture_until", 0):
+        if busy:
             nxt = min(nxt, max(2.0, state.get("gesture_until", 0) - time.time() + 0.4))
             continue
         if state.get("follow_base") and time.time() >= state.get("follow_at", 0):
@@ -192,24 +202,24 @@ async def alive_loop(app):
             fresh = [c for c in pool if time.time() - recent.get(c, 0) > REPEAT_WINDOW]
             w = [LIFE_W[LIFE.index(c)] if c in LIFE else 1 for c in fresh]
             if fresh:
-                await fire(weighted(fresh, w), "gesture", 0.55, "life beat")
-                await bcast({"type": "gaze", "target": "user", "seq": state["seq"]})
+                clip = weighted(fresh, w)
+                await fire(clip, "gesture", 0.55, "life beat")
+                if not str(clip).startswith("look"):
+                    await bcast({"type": "gaze", "target": "user", "seq": state["seq"]})
                 did = True
-                if random.random() < 0.4:
-                    alts = [c for c in IDLES if c != state.get("base")]
-                    if alts:
-                        state["follow_base"] = weighted(alts, [IDLE_W.get(c, 1) for c in alts])
-                        state["follow_at"] = state.get("gesture_until", time.time())
+                if random.random() < 0.35:
+                    state["follow_base"] = pick_chain(state.get("base"))
+                    state["follow_at"] = state.get("gesture_until", time.time())
         if not did:
-            if state.get("base") != HOME and random.random() < 0.7:
-                await fire(HOME, "base", 1.1, "idle home")
-                did = True
-            else:
-                alts = [c for c in IDLES if c != state.get("base")]
-                if alts:
-                    pick = weighted(alts, [IDLE_W.get(c, 1) for c in alts])
-                    await fire(pick, "base", 1.1, "idle chain")
-                    did = True
+            cur = state.get("base")
+            dwell = time.time() - state.get("base_at", 0)
+            need = IDLE_DWELL.get(cur, 20)
+            if dwell < need:
+                nxt = random.uniform(8, 16)
+                continue
+            pick = pick_chain(cur)
+            await fire(pick, "base", 1.1, "idle home" if pick == HOME else "idle chain")
+            did = True
         nxt = random.uniform(14, 26) if did else random.uniform(22, 42)
 async def start_bg(app):
     app["alive"] = asyncio.create_task(alive_loop(app))
@@ -221,6 +231,7 @@ app.router.add_post("/motion/play", play)
 app.router.add_post("/motion/gaze", gaze)
 app.router.add_get("/motion/state", get_state)
 app.router.add_get("/motion/clips", get_clips)
+app.router.add_get("/motion/alive", get_alive)
 app.router.add_post("/motion/clip", save_clip)
 app.router.add_get("/motion/clipdata/{name}", clip_data)
 app.router.add_route("OPTIONS", "/motion/{tail:.*}", opt)

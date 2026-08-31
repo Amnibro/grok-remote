@@ -1,3 +1,10 @@
+## 2026-08-31 companion idle home, Mixamo gaze hold, extra_life kneel
+- Additive Head/Neck gaze is skipped while a Mixamo gesture is held, so look_over_shoulder is not yanked at the headset. Overlay gaze uses performance.now() only.
+- alive_loop does not broadcast gaze during gesture_until. Life beats that start with look skip the follow-up gaze:user.
+- pick_chain always returns HOME after phone/guitar. IDLE_DWELL is 32s briefcase, 16s phone, 14s guitar.
+- LIFE dropped female_walk. Added hand_on_heart and standing_clap. extra_life skips kneel, acknowledging, walk, pray, squat, jump, punch.
+- Client warmPool() fetches /motion/alive and prefetches the real LIFE list. Bounce motion_service.py then hard-refresh /xr.
+
 ## 2026-08-31 v1.9.21 / desktop v1.4.4 — session rail, quiet chrome, download lineup
 - Session list no longer flashes every archived chat on boot, then hides the rail. Active/Live/Arch
   counts stay; rows paint from the local archive filter while the server copy syncs in the background.
