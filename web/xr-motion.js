@@ -35,8 +35,8 @@ export function initMotion(ctx){
   }
   function hookMixer(){
     const mixer=getMixer();
-    if(!mixer||mixerHooked)return;
-    mixerHooked=true;
+    if(!mixer||mixerHooked===mixer)return;
+    mixerHooked=mixer;
     mixer.addEventListener("finished",ev=>{if(ev.action===actGesture)endGesture(ev.action)});
   }
   function flushBase(){

@@ -37,6 +37,7 @@ DUR_CACHE = {}
 DEFAULT_DUR = 2.2
 REPEAT_WINDOW = 16.0
 QUEUE_MAX = 3
+FADE_PAD = 0.55
 def clip_dur(name):
     if name in DUR_CACHE:return DUR_CACHE[name]
     v = DEFAULT_DUR
@@ -63,7 +64,7 @@ async def fire(clip, layer, fade, note=""):
 async def drain_loop(app):
     while True:
         await asyncio.sleep(0.25)
-        if not pending or time.time() < state.get("gesture_until", 0):continue
+        if not pending or time.time() < state.get("gesture_until", 0) + FADE_PAD:continue
         clip, layer, fade = pending.pop(0)
         await fire(clip, layer, fade, "queued")
 async def play(req):
@@ -71,6 +72,7 @@ async def play(req):
     print(f"play {d.get('clip')} from {req.remote} ua={req.headers.get('User-Agent','?')[:60]}", flush=True)
     clip = EMOTES.get((d.get("clip") or "").strip().lower(), (d.get("clip") or "").strip().lower())
     if clip == "standing_greeting":clip = "wave_hello"
+    if clip == "acknowledging":clip = "agree"
     if clip not in CLIPS and clip not in custom_clips():
         return cors(web.json_response({"ok": False, "err": "unknown clip", "clips": CLIPS + custom_clips()}, status=400))
     TRAVEL = {"start_walking", "walk_strafe_left", "jumping_down", "jump_loop", "jump_land", "crouch_to_stand", "crouch_turn_to_stand", "standing_up", "situp_to_idle", "sitting_enter", "sitting_exit", "roll", "crawling", "push_loop", "swim_fwd_loop", "sprint_loop", "driving_loop", "punch_enter", "spell_simple_enter", "spell_simple_exit"}
@@ -81,18 +83,18 @@ async def play(req):
     now = time.time()
     if layer == "base" and now < state.get("gesture_until", 0) and not d.get("force"):
         state["follow_base"] = clip
-        state["follow_at"] = state.get("gesture_until", now) + 0.55
+        state["follow_at"] = state.get("gesture_until", now) + FADE_PAD
         return cors(web.json_response({"ok": True, "clip": clip, "layer": "queued", "note": "idle after gesture"}))
     if layer == "gesture":
         if not d.get("force") and now - recent.get(clip, 0) < REPEAT_WINDOW:
             return cors(web.json_response({"ok": True, "clip": clip, "layer": "skipped", "note": "just played %.0fs ago - repeating it reads as a twitch" % (now - recent[clip])}))
-        if now < state.get("gesture_until", 0):
+        if now < state.get("gesture_until", 0) + FADE_PAD:
             if any(q[0] == clip for q in pending):
                 return cors(web.json_response({"ok": True, "clip": clip, "layer": "skipped", "note": "already queued"}))
             if len(pending) >= QUEUE_MAX:
                 return cors(web.json_response({"ok": True, "clip": clip, "layer": "dropped", "note": "gesture queue full", "queued": len(pending)}))
             pending.append((clip, layer, fade))
-            return cors(web.json_response({"ok": True, "clip": clip, "layer": "queued", "queued": len(pending), "waitMs": int((state["gesture_until"] - now) * 1000)}))
+            return cors(web.json_response({"ok": True, "clip": clip, "layer": "queued", "queued": len(pending), "waitMs": int((state["gesture_until"] + FADE_PAD - now) * 1000)}))
     return cors(web.json_response(await fire(clip, layer, fade)))
 async def gaze(req):
     d = await req.json()
@@ -255,7 +257,7 @@ async def alive_loop(app):
                     need0 = IDLE_DWELL.get(state.get("base"), 20)
                     if nxtb != state.get("base") and (nxtb == HOME or dwell0 >= need0):
                         state["follow_base"] = nxtb
-                        state["follow_at"] = state.get("gesture_until", time.time()) + 0.55
+                        state["follow_at"] = state.get("gesture_until", time.time()) + FADE_PAD
         if not did:
             cur = state.get("base")
             dwell = time.time() - state.get("base_at", 0)
