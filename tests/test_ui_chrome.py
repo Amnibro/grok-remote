@@ -472,6 +472,9 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "c not in ARM_LEFT" in srv
     assert "waist_side_stretch" in srv[srv.find("ARM_LEFT"):srv.find("FAM")]
     assert "chin_think" in srv[srv.find("ARM_LEFT"):srv.find("FAM")]
+    assert "clip in ARM_LEFT" in srv[srv.find("def prop_ok"):srv.find("def weighted")]
+    assert "LEFT=new Set" in js
+    assert "curBase===HOME)return!LEFT.has" in js.replace(" ","")
 if __name__=="__main__":
     test_pair_in_upper_right_menus()
     test_sess_filters_core_only_single_line()
