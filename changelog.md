@@ -1,3 +1,6 @@
+## 2026-08-31 guitar idle starts in the first 12%; surprised is rarer
+- Looping bases >4s start in the first 12% (cap 2.5s). surprised LIFE_W is 1.
+
 ## 2026-08-31 idle chain drops overlay Mixamo before a base swap; squat stays standing
 - Base swaps fadeOut the overlay gesture. squat maps to waist_side_stretch.
 
