@@ -8,7 +8,7 @@ export function initMotion(ctx){
   const wsBase=()=>location.protocol.replace("http","ws")+"//"+location.hostname+":2423";
   const linked=()=>!!(mws&&mws.readyState===1);
   const HOME="standing_w_briefcase_idle";
-  function findClip(n){n=(n||"").toLowerCase();const cl=getClips();return cl.find(c=>c.name.toLowerCase()===n)||cl.find(c=>c.name.toLowerCase().includes(n))}
+  function findClip(n){n=(n||"").toLowerCase();const cl=getClips();return cl.find(c=>c.name.toLowerCase()===n)||null}
   function stripRoot(c){
     if(!c||!c.tracks)return c;
     c.tracks=c.tracks.filter(t=>!/\.position$/i.test(t.name||""));
