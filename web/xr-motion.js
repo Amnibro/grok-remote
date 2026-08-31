@@ -29,7 +29,7 @@ export function initMotion(ctx){
     if(!mixer){pendingMotion=[name,layer,fade];return}
     if(layer==="base"&&!canLoop(name))name=HOME;
     const c=findClip(name);
-    if(!c){fetchClip(name,layer,fade);return}
+    if(!c){warm(name).then(ok=>{if(ok)motionPlay(name,layer,fade)});return}
     stripRoot(c);
     const a=mixer.clipAction(c);
     fade=fade||0.4;
@@ -62,17 +62,19 @@ export function initMotion(ctx){
       },Math.max(400,holdMs-450)));
     }
   }
-  async function fetchClip(name,layer,fade){
-    if(fetchedClips.has(name))return;
+  async function warm(name){
+    if(findClip(name))return true;
+    if(fetchedClips.has(name))return false;
     fetchedClips.add(name);
     try{
       const d=await (await fetch(httpBase()+"/motion/clipdata/"+encodeURIComponent(name)+"?t="+Date.now(),{cache:"no-store"})).json();
-      if(!d||!d.tracks){fetchedClips.delete(name);return}
+      if(!d||!d.tracks){fetchedClips.delete(name);return false}
       const c=THREE.AnimationClip.parse(d);
       c.name=name;
+      stripRoot(c);
       getClips().push(c);
-      motionPlay(name,layer,fade);
-    }catch(e){fetchedClips.delete(name)}
+      return true;
+    }catch(e){fetchedClips.delete(name);return false}
   }
   function sendMotion(kind,val){
     fetch(httpBase()+"/motion/"+(kind==="gaze"?"gaze":"play"),{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(kind==="gaze"?{target:val.trim()}:{clip:val.trim()})}).catch(()=>{});
@@ -91,6 +93,7 @@ export function initMotion(ctx){
     mws.onerror=()=>{try{mws.close()}catch(e){}};
   }
   function flushPending(){if(pendingMotion){const p=pendingMotion;pendingMotion=null;motionPlay(...p)}}
-  fetchClip(HOME,"base",0.35);
+  warm(HOME).then(ok=>{if(ok)motionPlay(HOME,"base",0.35)});
+  ["talking_on_phone","agree","look_over_shoulder","acknowledging","waist_side_stretch","wave_hello","surprised"].forEach(n=>{if(n!==HOME)warm(n)});
   return {motionPlay,sendMotion,connect,flushPending,findClip,linked,state};
 }
