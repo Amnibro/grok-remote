@@ -10,6 +10,7 @@ export function initMotion(ctx){
     if(curBase==="talking_on_phone")return SOFT.has(clip);
     return true;
   }
+  function keepIdle(clip){return HEAD.has(clip)}
   fetch("/static/clip_index.json",{cache:"no-store"}).then(r=>r.json()).then(j=>{clipIx=j.clips||{}}).catch(()=>{});
   function warmPool(){
     fetch(httpBase()+"/motion/alive",{cache:"no-store"}).then(r=>r.json()).then(j=>{
@@ -127,7 +128,10 @@ export function initMotion(ctx){
       const holdMs=Math.max(700,Math.min(8000,((c.duration||1.2)-a.time)/ts*1000));
       a.setEffectiveWeight(1).fadeIn(Math.min(0.35,fade)).play();
       const idle=getActIdle();
-      if(idle){idle.timeScale=0;idle.fadeOut(0.28)}
+      if(idle){
+        if(keepIdle(name)){idle.paused=false;if(idle.timeScale===0)idle.timeScale=0.94+Math.random()*0.14;idle.enabled=true;idle.setEffectiveWeight(1)}
+        else{idle.timeScale=0;idle.fadeOut(0.28)}
+      }
       actGesture=a;
       state.gestureHold=performance.now()+holdMs;
       state.lastGesture=name;
