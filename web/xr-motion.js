@@ -59,7 +59,7 @@ export function initMotion(ctx){
     if(actGesture===a)actGesture=null;
     if(pendingBase)queueBase(pendingBase[0],pendingBase[1]);
     const idl=getActIdle();
-    if(idl){idl.paused=false;idl.enabled=true;idl.setEffectiveWeight(1);idl.fadeIn(0.45)}
+    if(idl){idl.paused=false;if(idl.timeScale===0)idl.timeScale=0.94+Math.random()*0.14;idl.enabled=true;idl.setEffectiveWeight(1);idl.fadeIn(0.45)}
   }
   function stopGestures(keep){
     for(const [act,tid] of [...gestureOut]){
@@ -87,7 +87,7 @@ export function initMotion(ctx){
       pendingBase=null;
       if(getActIdle()===a){
         a.paused=false;a.enabled=true;a.setEffectiveWeight(1);
-        if(fade>=1.05&&c.duration>1)a.timeScale=0.94+Math.random()*0.14;
+        if(a.timeScale===0||(fade>=1.05&&c.duration>1))a.timeScale=0.94+Math.random()*0.14;
         a.fadeIn(Math.max(0.4,fade));
         return;
       }
@@ -101,6 +101,7 @@ export function initMotion(ctx){
       const prev=getActIdle();
       if(prev&&prev!==a){
         prev.paused=false;
+        if(prev.timeScale===0)prev.timeScale=0.94;
         const fadeS=Math.max(fade,0.85);
         prev.crossFadeTo(a,fadeS,false);
         const dying=prev;
@@ -118,7 +119,7 @@ export function initMotion(ctx){
       const holdMs=Math.max(700,Math.min(8000,((c.duration||1.2)-a.time)/ts*1000));
       a.setEffectiveWeight(1).fadeIn(Math.min(0.35,fade)).play();
       const idle=getActIdle();
-      if(idle){idle.paused=true;idle.fadeOut(0.28)}
+      if(idle){idle.timeScale=0;idle.fadeOut(0.28)}
       actGesture=a;
       state.gestureHold=performance.now()+holdMs;
       state.lastGesture=name;

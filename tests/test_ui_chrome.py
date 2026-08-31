@@ -331,7 +331,7 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "FAM =" in srv or "FAM=" in srv.replace(" ","")
     assert "fadeS*1000+120" in js.replace(" ","")
     assert "getActIdle()===a" in js.replace(" ","")
-    assert "idle.paused=true" in js.replace(" ","")
+    assert "idle.timeScale=0" in js.replace(" ","")
     assert "idl.paused=false" in js.replace(" ","")
     assert "idle after gesture" in srv
     assert "since = 0.0" in alive or "since=0.0" in alive.replace(" ","")
