@@ -1,3 +1,6 @@
+## 2026-08-31 idle chain drops bounce and kiss; travel bases snap HOME
+- excited_bounce and blow_kiss out of LIFE. dance/kiss emotes stay. travelSkip on base uses HOME.
+
 ## 2026-08-31 idle chain drops 5s wave and lively clap
 - wave_hello and standing_clap out of LIFE. greet/clap emotes stay. extra_life skips both.
 

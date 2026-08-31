@@ -454,6 +454,13 @@ def test_idle_chain_uses_seamless_mixamo():
     em=srv[srv.find("EMOTES"):srv.find("state =")]
     assert '"clap": "standing_clap"' in em
     assert '"wave": "wave_hello"' in em
+    life=srv[srv.find("LIFE ="):srv.find("LIFE_W")]
+    assert "excited_bounce" not in life
+    assert "blow_kiss" not in life
+    extra=srv[srv.find("def extra_life"):srv.find("def fade_pad")]
+    assert "excited_bounce" in extra
+    assert "blow_kiss" in extra
+    assert "travelSkip(name)||!canLoop(name)" in js.replace(" ","")
 if __name__=="__main__":
     test_pair_in_upper_right_menus()
     test_sess_filters_core_only_single_line()
