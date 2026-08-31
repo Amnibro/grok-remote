@@ -44,7 +44,10 @@ export function initMotion(ctx){
     if(layer==="base"){
       if(getActIdle()===a)return;
       a.enabled=true;
-      a.reset().setLoop(THREE.LoopRepeat,Infinity).setEffectiveWeight(1).play();
+      a.reset().setLoop(THREE.LoopRepeat,Infinity).setEffectiveWeight(1);
+      a.timeScale=0.88+Math.random()*0.28;
+      if(c.duration>0.5)a.time=Math.random()*c.duration;
+      a.play();
       const prev=getActIdle();
       if(prev&&prev!==a){
         prev.crossFadeTo(a,Math.max(fade,0.85),false);
@@ -108,6 +111,6 @@ export function initMotion(ctx){
   }
   function flushPending(){if(pendingMotion){const p=pendingMotion;pendingMotion=null;motionPlay(...p)}}
   warm(HOME).then(ok=>{if(ok)motionPlay(HOME,"base",0.35)});
-  ["talking_on_phone","guitar_playing","agree","look_over_shoulder","waist_side_stretch","wave_hello","surprised","dismissing_gesture","point_ahead","salute","module_check","sun_salute","bow_apology","excited_bounce","machinamachina_spark"].forEach(n=>warm(n));
+  ["talking_on_phone","guitar_playing","agree","look_over_shoulder","waist_side_stretch","wave_hello","surprised","dismissing_gesture","point_ahead","salute","module_check","sun_salute","bow_apology","excited_bounce","machinamachina_spark","chin_think","blow_kiss","female_walk"].forEach(n=>warm(n));
   return {motionPlay,sendMotion,connect,flushPending,findClip,linked,state};
 }
