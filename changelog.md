@@ -1,3 +1,7 @@
+## 2026-08-31 pause idle under Mixamo gestures
+- Idle kept advancing at weight 0 during a wave, so fade-in landed on a later pose than she left. Gesture now pauses the idle; restore unpauses the same frame.
+- Server BASE plays during gesture_until queue as follow_base. No clients resets alive_loop since. Dance/twerk/shuffle skip. Life beats jitter timeScale 0.92-1.08.
+
 ## 2026-08-31 idle pop, same-base weight 0, family skip
 - Idle crossfade was 1.1s but the outgoing clip was stop()'d at 950ms. Dying stop now waits fadeS*1000+120.
 - pendingBase of the same idle hit getActIdle()===a and left weight 0. Same-action idle now fadeIn.
