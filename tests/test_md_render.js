@@ -53,7 +53,7 @@ t("dollar_in_code_fence","```py\nx = $5\n```",[["has","$5"],["no","rawmath"]]);
 t("dollar_in_code_span","use `$5` here",[["has","<code>$5</code>"],["no","rawmath"]]);
 t("ws_image_stays_literal","see ![chart](chart.png)",[["has","![chart](chart.png)"],["no","<img"]]);
 t("remote_image","![x](https://a.io/b.png)",[["has",'src="https://a.io/b.png"']]);
-t("ws_file_link_not_special","grab [the csv](results.csv)",[["no","/api/files"],["has","[the csv](results.csv)"]]);
+t("ws_file_link_not_special","grab [the csv](results.csv)",[["no","/api/files"],["has","path-link"],["has","results.csv"],["no","[the csv](results.csv)"]]);
 t("no_traversal_scheme","![x](javascript:alert(1))",[["no","<img"]]);
 t("dotdot_not_linked","[x](../../etc/passwd)",[["no","href"]]);
 t("empty",""  ,[["no","undefined"]]);

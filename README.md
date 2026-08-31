@@ -37,6 +37,14 @@ python motion_service.py
 
 ## Install
 
+**Windows desktop app** (Tauri + WebView2) — wraps a running hub or starts one. Needs `grok` on PATH.
+
+- Product page: [amni-scient.com/grok-remote](https://amni-scient.com/grok-remote.html)
+- Portable: [GrokRemote.exe](https://github.com/Amnibro/grok-remote/releases/latest/download/GrokRemote.exe)
+- Setup: [Grok Remote x64 setup](https://github.com/Amnibro/grok-remote/releases/latest/download/Grok.Remote_1.4.4_x64-setup.exe)
+
+**Hub plugin** (phone + browser UI on `:2421`):
+
 ```bash
 grok plugin install Amnibro/grok-remote --trust
 grok plugin enable grok-remote
@@ -45,7 +53,7 @@ grok plugin enable grok-remote
 Pin a release:
 
 ```bash
-grok plugin install Amnibro/grok-remote@v1.3.0 --trust
+grok plugin install Amnibro/grok-remote@v1.9.21 --trust
 ```
 
 In the TUI, reload plugins if needed (`/plugins` → `r`), then:
@@ -55,6 +63,8 @@ In the TUI, reload plugins if needed (`/plugins` → `r`), then:
 ```
 
 Open the printed URL on your phone (same Wi‑Fi), e.g. `http://192.168.x.x:2421/?auto=1`.
+
+**Linux / macOS:** unpack the [source tarball](https://github.com/Amnibro/grok-remote/releases/latest), run `./start.sh` (Python 3.10+), open the printed URL.
 
 ---
 
@@ -133,7 +143,7 @@ Blur titles, paths, and IDs for safe sharing. Desktop: hold **Alt** to peek. Pho
 | **Skills** | Agent + disk skill palette |
 | **Themes** | Grok greyscale default + Scient + retro gallery |
 | **Spoiler** | Privacy blur for screenshots |
-| **Desktop app** | Optional Electron cockpit + IDE + Grok Review |
+| **Desktop app** | Optional Tauri window (`GrokRemote.exe`) wrapping the same hub as the phone |
 
 ---
 
@@ -152,15 +162,17 @@ cd path\to\grok-remote
 .\start.ps1 -Cwd path\to\your\project
 ```
 
-### Desktop app (Electron)
+### Desktop app (Windows)
+
+Download [GrokRemote.exe](https://github.com/Amnibro/grok-remote/releases/latest/download/GrokRemote.exe) or build:
 
 ```powershell
-cd desktop
+cd desktop-tauri
 npm install
-npm start
+npm run build
 ```
 
-Details: [desktop/README.md](./desktop/README.md)
+Details: [desktop-tauri/README.md](./desktop-tauri/README.md)
 
 ---
 

@@ -2,6 +2,8 @@
 
 Window shell for the :2421 UI. Electron sources are in `../archive/electron-desktop/`.
 
+**Download:** [GrokRemote.exe](https://github.com/Amnibro/grok-remote/releases/latest/download/GrokRemote.exe) · [product page](https://amni-scient.com/grok-remote.html)
+
 Build: `npm install` then `npm run build`.
 
 Run: `dist\GrokRemote.exe` or `src-tauri\target\release\grok-remote-desktop.exe`.

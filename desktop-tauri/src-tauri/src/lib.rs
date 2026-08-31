@@ -8,8 +8,8 @@ use std::time::Duration;
 fn port_up(port: u16) -> bool {
     TcpStream::connect(("127.0.0.1", port)).is_ok()
 }
-const UI_BUILD_MARKER: &str =
-    r#"<meta name="grok-remote-ui-build" content="2026-08-26-dual-layout"/>"#;
+    const UI_BUILD_MARKER: &str =
+    r#"<meta name="grok-remote-ui-build" content="2026-08-31-sess-list"/>"#;
 fn home() -> PathBuf {
     PathBuf::from(
         std::env::var("USERPROFILE")

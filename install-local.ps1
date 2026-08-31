@@ -28,5 +28,7 @@ Write-Host "Enable grok-remote"
 Write-Host ""
 Write-Host "Done. Restart Grok TUI or press r in /plugins to reload." -ForegroundColor Green
 Write-Host "Then run:  /remote" -ForegroundColor Cyan
+Write-Host "Windows desktop app:  https://github.com/Amnibro/grok-remote/releases/latest/download/GrokRemote.exe" -ForegroundColor Cyan
+Write-Host "  product page:       https://amni-scient.com/grok-remote.html" -ForegroundColor DarkGray
 Write-Host "Optional auto-start:  /remote-autostart on" -ForegroundColor Cyan
 Write-Host "  or:  powershell -File `"$dst\scripts\install-autostart.ps1`" -Cwd `"$PWD`"" -ForegroundColor DarkGray

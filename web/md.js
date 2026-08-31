@@ -40,8 +40,12 @@ function inl(s){
  const wspath=u=>unent(u).replace(/^\.\//,"").replace(/^workspace\//,"");
  s=s.replace(/!\[([^\]]*)\]\(\s*([^)\s]+)[^)]*\)/g,(m,a,u)=>
   /^(https?:|data:image\/)/.test(u)?'<img src="'+u+'" alt="'+a+'" loading="lazy">':m);
- s=s.replace(/\[([^\]]*)\]\(\s*([^)\s]+)[^)]*\)/g,(m,a,u)=>
-  /^(https?:|mailto:|#|\/)/.test(u)?'<a class="md-a" href="'+u+'" target="_blank" rel="noopener">'+(a||u)+"</a>":m);
+ s=s.replace(/(^|[^!])\[([^\]]*)\]\(\s*([^)\s]+)[^)]*\)/g,(m,pre,a,u)=>{
+  if(/^(https?:|mailto:|#|\/)/.test(u))return pre+'<a class="md-a" href="'+u+'" target="_blank" rel="noopener">'+(a||u)+"</a>";
+  if(wsrel(unent(u))||/\.\w{2,12}$/.test(unent(u)))return pre+'<a class="path-link" href="#" draggable="false" data-path="'+esc(wspath(u))+'" title="Ctrl+click to open">'+(a||u)+"</a>";
+  return m;
+ });
+ s=s.replace(/(^|[\s(>])((?:[A-Za-z]:\\|\\\\|\.\/|\.\.\/)[^\s<&|*?"<>]{2,240}\.\w{2,12})/g,(m,p,path)=>p+'<a class="path-link" href="#" draggable="false" data-path="'+path+'" title="Ctrl+click to open">'+path+"</a>");
  s=s.replace(/(^|[\s(])((?:https?:\/\/|www\.)[^\s<)]*[^\s<).,;:!?'"])/g,(m,p,u)=>p+'<a class="md-a" href="'+(u.indexOf("www.")===0?"https://"+u:u)+'" target="_blank" rel="noopener">'+u+"</a>");
  s=s.replace(/\*\*\*(?=\S)([\s\S]*?\S)\*\*\*/g,"<strong><em>$1</em></strong>");
  s=s.replace(/\*\*(?=\S)([\s\S]*?\S)\*\*/g,"<strong>$1</strong>");

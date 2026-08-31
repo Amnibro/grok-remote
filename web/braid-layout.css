@@ -258,8 +258,24 @@ background:var(--braid-hover)!important;color:var(--tx)!important;box-shadow:var
 }
 html[data-layout="braid"] #chatStage{
 background:var(--bg)!important;width:auto!important;max-width:100%!important;min-width:0!important;
-display:flex!important;flex-direction:column!important;flex:1 1 auto!important;
+flex-direction:column!important;flex:1 1 auto!important;
 position:relative!important;z-index:1!important;overflow:hidden!important;box-sizing:border-box!important
+}
+/* Phone used to keep #chatStage in the flex column even when it was not the
+   active page (display:flex!important). Setup + sessions + chat then split
+   the viewport in half. Only occupy height when the stage is actually on. */
+@media (max-width:899px){
+html[data-layout="braid"] #chatStage:not(.on){display:none!important;flex:none!important}
+html[data-layout="braid"] #chatStage.on{display:flex!important;flex:1 1 auto!important;min-height:0!important;height:auto!important}
+html[data-layout="braid"] #picker.panel.on{flex:1 1 auto!important;min-height:0!important;height:auto!important}
+html[data-layout="braid"] #setup.panel.on{
+flex:1 1 auto!important;min-height:0!important;max-width:100%!important;
+margin:0!important;border-radius:0!important
+}
+html[data-layout="braid"] body.phone-like #app,
+html[data-layout="braid"] body.phone-landscape #app{
+display:flex!important;flex-direction:column!important;height:100%!important;min-height:0!important
+}
 }
 html[data-layout="braid"] .chat-top{
 background:color-mix(in srgb,var(--panel) 88%,transparent)!important;
@@ -276,7 +292,11 @@ box-shadow:0 0 0 3px color-mix(in srgb,var(--acc) 12%,transparent)!important
 }
 html[data-layout="braid"] main#feed{
 padding:14px var(--braid-chat-pad) 10px!important;max-width:none!important;margin:0!important;
-width:100%!important;box-sizing:border-box;box-shadow:none!important;flex:1!important;min-height:0!important
+width:100%!important;box-sizing:border-box;box-shadow:none!important;flex:1!important;min-height:0!important;
+display:flex!important;flex-direction:column!important
+}
+html[data-layout="braid"] main#feed::before{
+content:"";flex:1 0 0;min-height:0;pointer-events:none
 }
 html[data-layout="braid"] .row{margin:6px 0!important;gap:3px;width:100%;max-width:100%}
 html[data-layout="braid"] .row.me{align-items:flex-end}
@@ -344,7 +364,17 @@ html[data-layout="braid"] .attach-bar,
 html[data-layout="braid"] .queue,
 html[data-layout="braid"] .msg-mode-row,
 html[data-layout="braid"] .footer-meta{max-width:none;width:100%}
-html[data-layout="braid"] .foot-status{margin-top:4px!important;padding-top:2px!important}
+html[data-layout="braid"] .foot-status{margin-top:2px!important;padding-top:0!important;border:0!important}
+html[data-layout="braid"] .status-debug.on .livebar .lb-sep-git,
+html[data-layout="braid"] .status-debug.on .livebar .lb-sep-cost,
+html[data-layout="braid"] .status-debug.on .livebar .lb-sep-sess,
+html[data-layout="braid"] .status-debug.on .livebar .lb-git,
+html[data-layout="braid"] .status-debug.on .livebar .lb-cost,
+html[data-layout="braid"] .status-debug.on .livebar .lb-sess,
+html[data-layout="braid"] .status-debug.on .livebar .lb-link,
+html[data-layout="braid"] .status-debug.on .livebar .lb-sep,
+html[data-layout="braid"] .status-debug.on #chatMeta{display:inline!important}
+html[data-layout="braid"] .status-debug.on .livebar{flex-wrap:wrap!important;overflow:visible!important}
 html[data-layout="braid"] .livebar{
 gap:4px 6px!important;font-size:11px!important;flex-wrap:nowrap!important;overflow:hidden
 }
@@ -540,6 +570,19 @@ html[data-layout="braid"] body.electron #chatStage{
 grid-area:main!important;min-width:0!important;max-width:100%!important;width:auto!important;
 overflow:hidden!important;z-index:1!important;position:relative!important
 }
+html[data-layout="braid"] .work-line{
+overflow:visible!important;justify-content:flex-start!important;
+padding:0 var(--braid-chat-pad)!important
+}
+html[data-layout="braid"] .work-line .send-spin{
+box-sizing:border-box!important;width:12px!important;height:12px!important;overflow:visible!important;flex:none!important
+}
+html[data-layout="braid"] .chat-mid{
+flex:1!important;min-height:0!important;min-width:0!important
+}
+html[data-layout="braid"] .agent-rail[data-open="1"]{
+width:min(300px,34vw)!important
+}
 html[data-layout="braid"] body.desktop footer,
 html[data-layout="braid"] body.electron footer,
 html[data-layout="braid"] body.desktop footer#foot,
@@ -552,7 +595,8 @@ html[data-layout="braid"] body.electron header{display:none!important}
 html[data-layout="braid"] body.desktop #chatStage main#feed,
 html[data-layout="braid"] body.electron #chatStage main#feed{
 padding:16px var(--braid-chat-pad) 12px!important;max-width:none!important;margin:0!important;
-width:100%!important;min-width:0!important;box-sizing:border-box!important
+width:100%!important;min-width:0!important;box-sizing:border-box!important;
+display:flex!important;flex-direction:column!important;height:100%!important
 }
 html[data-layout="braid"] body.desktop .bub,
 html[data-layout="braid"] body.electron .bub{max-width:min(100%,920px)!important}
@@ -612,7 +656,8 @@ grid-template-areas:"side main" "side foot" "ide ide"!important
 }
 html[data-layout="braid"] body.desktop #chatStage main#feed,
 html[data-layout="braid"] body.electron #chatStage main#feed{
-padding:18px var(--braid-chat-pad) 14px!important
+padding:18px var(--braid-chat-pad) 14px!important;
+display:flex!important;flex-direction:column!important
 }
 }
 @media (min-width:1600px){
