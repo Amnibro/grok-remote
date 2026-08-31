@@ -1,3 +1,6 @@
+## 2026-08-31 idle chain drops overlay Mixamo before a base swap; squat stays standing
+- Base swaps fadeOut the overlay gesture. squat maps to waist_side_stretch.
+
 ## 2026-08-31 same-clip rephase does not fadeIn from weight 0; walk/run/jog stay standing
 - Same-idle rephase re-rolls timeScale and nudges time, no fadeIn. walk/run/jog map to standing takes.
 
