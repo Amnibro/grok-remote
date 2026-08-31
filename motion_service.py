@@ -7,7 +7,7 @@ def custom_clips():
     return [f[:-5] for f in os.listdir(CLIP_DIR) if f.endswith(".json")]
 CLIPS = ["idle", "agree", "headshake", "walk", "run", "sad_pose", "sneak_pose"]
 BASE = {"idle", "walk", "run", "jogging", "female_walk", "sitting", "guitar_playing", "standing_w_briefcase_idle", "sitting_talking", "talking_on_phone"}
-EMOTES = {"excited": "joyful_jump", "bounce": "joyful_jump", "yes": "agree", "nod": "agree", "wave": "wave_hello", "hello": "wave_hello", "hi": "wave_hello", "greet": "standing_greeting", "no": "dismissing_gesture", "sad": "sad_pose", "sneaky": "crawling", "apology": "praying", "sorry": "defeated", "bow": "praying", "kiss": "beckoning", "point": "point_ahead", "salute": "salute", "squat": "crouch_idle_loop", "lie": "sitting", "laydown": "sitting", "rest": "sitting", "clap": "standing_clap", "phone": "talking_on_phone", "talk": "sitting_talking", "guitar": "guitar_playing", "dance": "dance_loop", "angry": "angry", "surprised": "surprised", "come": "beckoning", "go": "dismissing_gesture", "walk": "walk", "run": "run", "jog": "jogging", "jump": "joyful_jump", "punch": "punch_jab", "idle": "standing_w_briefcase_idle"}
+EMOTES = {"excited": "joyful_jump", "bounce": "joyful_jump", "yes": "agree", "nod": "agree", "wave": "wave_hello", "hello": "wave_hello", "hi": "wave_hello", "greet": "standing_greeting", "no": "dismissing_gesture", "sad": "sad_pose", "sneaky": "crawling", "apology": "praying", "sorry": "defeated", "bow": "praying", "kiss": "beckoning", "point": "point_ahead", "salute": "salute", "squat": "squat_down", "lie": "sitting", "laydown": "sitting", "rest": "sitting", "clap": "standing_clap", "phone": "talking_on_phone", "talk": "sitting_talking", "guitar": "guitar_playing", "dance": "dance_loop", "angry": "angry", "surprised": "surprised", "come": "beckoning", "go": "dismissing_gesture", "walk": "walk", "run": "run", "jog": "jogging", "jump": "joyful_jump", "punch": "punch_jab", "idle": "standing_w_briefcase_idle"}
 state = {"base": "standing_w_briefcase_idle", "gesture": None, "gaze": None, "seq": 0, "gesture_at": 0.0}
 clients = set()
 def cors(r):
@@ -120,13 +120,26 @@ async def clip_data(req):
         return cors(web.json_response(json.load(f)))
 async def opt(req):
     return cors(web.Response())
-IDLES = ["standing_w_briefcase_idle"]
-LIFE = ["look_over_shoulder", "acknowledging"]
+HOME = "standing_w_briefcase_idle"
+IDLES = ["standing_w_briefcase_idle", "talking_on_phone"]
+IDLE_W = {"standing_w_briefcase_idle": 5, "talking_on_phone": 1}
+LIFE = ["look_over_shoulder", "agree", "acknowledging", "waist_side_stretch", "surprised"]
+LIFE_W = [3, 3, 2, 2, 1]
+def weighted(names, weights):
+    use = [(n, weights[i] if i < len(weights) else 1) for i, n in enumerate(names)]
+    tot = sum(w for _, w in use) or 1
+    x = random.random() * tot
+    acc = 0.0
+    for n, w in use:
+        acc += w
+        if x <= acc:
+            return n
+    return use[-1][0]
 async def alive_loop(app):
-    nxt = random.uniform(70, 150)
+    nxt = random.uniform(22, 42)
     since = 0.0
     while True:
-        nap = random.uniform(18, 40)
+        nap = random.uniform(12, 28)
         await asyncio.sleep(nap)
         if not clients:
             continue
@@ -134,23 +147,29 @@ async def alive_loop(app):
         g = random.choices(["user", "user", "user", "left", "right", "down"], k=1)[0]
         await bcast({"type": "gaze", "target": g, "seq": state["seq"]})
         since += nap
-        if since < nxt or state.get("base") not in IDLES:
+        if since < nxt:
             continue
         since = 0.0
-        nxt = random.uniform(70, 150)
+        nxt = random.uniform(22, 42)
+        if time.time() < state.get("gesture_until", 0):
+            continue
+        if state.get("base") not in IDLES:
+            continue
         quiet = time.time() - state.get("gesture_at", 0)
-        if quiet > 150 and random.random() < 0.5 and time.time() >= state.get("gesture_until", 0):
+        if quiet > 8 and random.random() < 0.62:
             fresh = [c for c in LIFE if time.time() - recent.get(c, 0) > REPEAT_WINDOW]
+            w = [LIFE_W[LIFE.index(c)] for c in fresh]
             if fresh:
-                await fire(random.choice(fresh), "gesture", 0.6, "life beat")
+                await fire(weighted(fresh, w), "gesture", 0.55, "life beat")
                 continue
+        if state.get("base") != HOME and random.random() < 0.7:
+            await fire(HOME, "base", 1.1, "idle home")
+            continue
         alts = [c for c in IDLES if c != state.get("base")]
         if not alts:
             continue
-        pick = random.choice(alts)
-        state["base"] = pick
-        state["seq"] += 1
-        await bcast({"type": "play", "clip": pick, "layer": "base", "fade": 1.2, "seq": state["seq"]})
+        pick = weighted(alts, [IDLE_W.get(c, 1) for c in alts])
+        await fire(pick, "base", 1.1, "idle chain")
 async def start_bg(app):
     app["alive"] = asyncio.create_task(alive_loop(app))
     app["drain"] = asyncio.create_task(drain_loop(app))
