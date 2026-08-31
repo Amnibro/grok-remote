@@ -1,3 +1,6 @@
+## 2026-08-31 idle chain drops full-body agree
+- agree out of LIFE. yes/nod emotes stay. extra_life skips agree.
+
 ## 2026-08-31 idle chain drops bounce and kiss; travel bases snap HOME
 - excited_bounce and blow_kiss out of LIFE. dance/kiss emotes stay. travelSkip on base uses HOME.
 
