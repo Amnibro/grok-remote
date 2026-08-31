@@ -1272,7 +1272,8 @@ renderer.setAnimationLoop(()=>{
         if(Object.prototype.hasOwnProperty.call(GZ,g)){
           let yaw=GZ[g];
           if(g==="user"){
-            const wp=new THREE.Vector3();camera.getWorldPosition(wp);
+            const cam=renderer.xr.isPresenting?renderer.xr.getCamera():camera;
+            const wp=new THREE.Vector3();cam.getWorldPosition(wp);
             const lp=rig.worldToLocal(wp);
             yaw=Math.max(-0.4,Math.min(0.4,Math.atan2(lp.x,Math.max(0.2,lp.z))));
           }
