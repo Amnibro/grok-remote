@@ -309,8 +309,8 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "IDLE_DWELL" in srv
     assert "/motion/alive" in srv
     assert "LIFE_HEAD" in srv
-    head=srv[srv.find("LIFE_HEAD"):srv.find("ARM_LEFT")]
-    soft=srv[srv.find("LIFE_SOFT"):srv.find("LIFE_HEAD")]
+    head=srv[srv.find("LIFE_HEAD ="):srv.find("ARM_LEFT")]
+    soft=srv[srv.find("LIFE_SOFT ="):srv.find("LIFE_HEAD =")]
     assert "look_over_shoulder" not in head
     assert "look_over_shoulder" not in soft
     assert "module_check" in head
@@ -479,6 +479,8 @@ def test_idle_chain_uses_seamless_mixamo():
     assert '"chin_think": "module_check"' in srv
     assert '"interact": "point_ahead"' in srv
     assert "clip in ARM_HOME" in srv
+    assert "min(pool, key=lambda c: recent.get(c, 0.0))" in srv or "min(pool,key=lambda c:recent.get(c,0.0))" in srv.replace(" ","")
+    assert "LIFE_HEAD if b == \"guitar_playing\"" in srv or "LIFE_HEAD if b==\"guitar_playing\"" in srv.replace(" ","")
 if __name__=="__main__":
     test_pair_in_upper_right_menus()
     test_sess_filters_core_only_single_line()

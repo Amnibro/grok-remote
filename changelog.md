@@ -1,3 +1,6 @@
+## 2026-08-31 guitar and phone remap arm emotes to head takes
+- play() maps blocked arm takes to the least-recent LIFE_HEAD/LIFE_SOFT clip.
+
 ## 2026-08-31 briefcase remaps left-arm emotes instead of skipping
 - ARM_HOME maps left-arm takes to look/point/module_check/salute on briefcase.
 
