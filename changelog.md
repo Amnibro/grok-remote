@@ -1,3 +1,6 @@
+## 2026-08-31 idle chain drops 4s surprise; sad is a bow
+- surprised out of LIFE. sad maps to bow_apology. extra_life skips surprised/sad_pose/defeated.
+
 ## 2026-08-31 gaze eases out; client skips leftover travel Mixamo
 - Additive gaze lerps to 0 instead of snapping. travelSkip on non-base plays.
 

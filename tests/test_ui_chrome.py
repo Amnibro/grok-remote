@@ -437,11 +437,17 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "setTimeout(()=>{try{g.stop()" in js.replace(" ","")
     assert "c.duration>4" in js.replace(" ","")
     assert "c.duration*0.12" in js.replace(" ","")
-    assert "LIFE_W = [2, 2, 2, 1," in srv
+    assert "LIFE_W = [2, 2, 2, 2," in srv
     assert "function travelSkip(" in js
     assert "travelSkip(name)||!clientPropOk" in js.replace(" ","")
     assert "want=!holding&&motionState.gazeTarget" in html.replace(" ","")
     assert "want?yaw:0" in html.replace(" ","")
+    life=srv[srv.find("LIFE ="):srv.find("LIFE_W")]
+    assert "surprised" not in life
+    assert '"sad": "bow_apology"' in srv[srv.find("EMOTES"):srv.find("state =")]
+    extra=srv[srv.find("def extra_life"):srv.find("def fade_pad")]
+    assert "surprised" in extra
+    assert "sad_pose" in extra
 if __name__=="__main__":
     test_pair_in_upper_right_menus()
     test_sess_filters_core_only_single_line()
