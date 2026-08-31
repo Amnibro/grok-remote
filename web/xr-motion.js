@@ -56,9 +56,10 @@ export function initMotion(ctx){
     if(layer==="base"){
       pendingBase=null;
       if(getActIdle()===a){
-        a.enabled=true;a.setEffectiveWeight(1);a.fadeIn(Math.max(0.4,fade));
+        a.paused=false;a.enabled=true;a.setEffectiveWeight(1);a.fadeIn(Math.max(0.4,fade));
         return;
       }
+      a.paused=false;
       a.enabled=true;
       a.reset().setLoop(THREE.LoopRepeat,Infinity).setEffectiveWeight(1);
       a.timeScale=0.88+Math.random()*0.28;
@@ -79,9 +80,10 @@ export function initMotion(ctx){
       a.reset().setLoop(THREE.LoopOnce,1);
       a.clampWhenFinished=true;
       const holdMs=Math.max(700,Math.min(8000,(c.duration||1.2)*1000));
+      a.timeScale=0.92+Math.random()*0.16;
       a.setEffectiveWeight(1).fadeIn(Math.min(0.35,fade)).play();
       const idle=getActIdle();
-      if(idle)idle.fadeOut(0.28);
+      if(idle){idle.paused=true;idle.fadeOut(0.28)}
       actGesture=a;
       state.gestureHold=performance.now()+holdMs;
       state.lastGesture=name;
@@ -96,7 +98,7 @@ export function initMotion(ctx){
         const pb=pendingBase;pendingBase=null;
         if(pb){motionPlay(pb[0],"base",pb[1]);return}
         const idl=getActIdle();
-        if(idl){idl.enabled=true;idl.setEffectiveWeight(1);idl.fadeIn(0.45)}
+        if(idl){idl.paused=false;idl.enabled=true;idl.setEffectiveWeight(1);idl.fadeIn(0.45)}
       },Math.max(400,holdMs-450)));
     }
   }

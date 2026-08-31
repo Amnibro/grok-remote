@@ -72,10 +72,14 @@ async def play(req):
         return cors(web.json_response({"ok": False, "err": "unknown clip", "clips": CLIPS + custom_clips()}, status=400))
     TRAVEL = {"start_walking", "walk_strafe_left", "jumping_down", "jump_loop", "jump_land", "crouch_to_stand", "crouch_turn_to_stand", "standing_up", "situp_to_idle", "sitting_enter", "sitting_exit", "roll", "crawling", "push_loop", "swim_fwd_loop", "sprint_loop", "driving_loop", "punch_enter", "spell_simple_enter", "spell_simple_exit"}
     layer = d.get("layer") or ("base" if clip in BASE else "gesture")
-    if clip in TRAVEL or any(x in clip for x in ("sit", "lay", "crouch", "plank", "walk", "run", "jog", "sprint")):
+    if clip in TRAVEL or any(x in clip for x in ("sit", "lay", "crouch", "plank", "walk", "run", "jog", "sprint", "dance", "twerk", "shuffle")):
         return cors(web.json_response({"ok": True, "clip": clip, "layer": "skipped", "note": "ground/travel clips leave the standing stage - stay standing"}))
     fade = d.get("fade", 0.4)
     now = time.time()
+    if layer == "base" and now < state.get("gesture_until", 0) and not d.get("force"):
+        state["follow_base"] = clip
+        state["follow_at"] = state.get("gesture_until", now)
+        return cors(web.json_response({"ok": True, "clip": clip, "layer": "queued", "note": "idle after gesture"}))
     if layer == "gesture":
         if not d.get("force") and now - recent.get(clip, 0) < REPEAT_WINDOW:
             return cors(web.json_response({"ok": True, "clip": clip, "layer": "skipped", "note": "just played %.0fs ago - repeating it reads as a twitch" % (now - recent[clip])}))
@@ -178,6 +182,7 @@ async def alive_loop(app):
         nap = random.uniform(12, 28)
         await asyncio.sleep(nap)
         if not clients:
+            since = 0.0
             continue
         since += nap
         busy = time.time() < state.get("gesture_until", 0)
