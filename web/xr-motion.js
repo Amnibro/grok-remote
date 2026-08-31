@@ -4,6 +4,12 @@ export function initMotion(ctx){
   const gestureOut=new Map(),fetchedClips=new Set(),warming=new Map();
   let mws=null,pendingPlays=[],actGesture=null,clipIx={};
   fetch("/static/clip_index.json",{cache:"no-store"}).then(r=>r.json()).then(j=>{clipIx=j.clips||{}}).catch(()=>{});
+  function warmPool(){
+    fetch(httpBase()+"/motion/alive",{cache:"no-store"}).then(r=>r.json()).then(j=>{
+      const names=[HOME,...(j.idles||[]),...(j.life||[]),...(j.life_soft||[])];
+      [...new Set(names)].forEach(n=>{if(n)warm(n)});
+    }).catch(()=>{});
+  }
   const httpBase=()=>"http"+(location.protocol==="https:"?"s":"")+"://"+location.hostname+":2423";
   const wsBase=()=>location.protocol.replace("http","ws")+"//"+location.hostname+":2423";
   const linked=()=>!!(mws&&mws.readyState===1);
@@ -63,7 +69,7 @@ export function initMotion(ctx){
       const holdMs=Math.max(700,Math.min(8000,(c.duration||1.2)*1000));
       a.setEffectiveWeight(1).fadeIn(Math.min(0.35,fade)).play();
       const idle=getActIdle();
-      if(idle)idle.setEffectiveWeight(0);
+      if(idle)idle.fadeOut(0.28);
       actGesture=a;
       state.gestureHold=performance.now()+holdMs;
       state.lastGesture=name;
@@ -109,13 +115,14 @@ export function initMotion(ctx){
       const hud=panels.hud();
       if(d.type==="play"){motionPlay(d.clip,d.layer,d.fade||0.4);if(hud){hud[d.layer==="base"?"base":"gesture"]=d.clip;hud.seq=d.seq||hud.seq}}
       if(d.type==="state"&&d.base){motionPlay(d.base,"base",0.5);if(hud)hud.base=d.base}
-      if(d.type==="gaze"){state.gazeTarget=d.target;if(hud){hud.gaze=d.target;hud.seq=d.seq||hud.seq}}
+      if(d.type==="gaze"){state.gazeTarget=d.target;state.gazeUntil=performance.now()+5500;if(hud){hud.gaze=d.target;hud.seq=d.seq||hud.seq}}
     };
     mws.onclose=()=>setTimeout(connect,3000);
     mws.onerror=()=>{try{mws.close()}catch(e){}};
   }
   function flushPending(){const q=pendingPlays.splice(0);for(const p of q)motionPlay(...p)}
   warm(HOME).then(ok=>{if(ok)motionPlay(HOME,"base",0.35)});
-  ["talking_on_phone","guitar_playing","agree","look_over_shoulder","waist_side_stretch","wave_hello","surprised","dismissing_gesture","point_ahead","salute","module_check","sun_salute","bow_apology","excited_bounce","machinamachina_spark","chin_think","blow_kiss","female_walk"].forEach(n=>warm(n));
+  ["talking_on_phone","guitar_playing","agree","look_over_shoulder","waist_side_stretch","hand_on_heart","surprised","dismissing_gesture","point_ahead","salute","module_check","sun_salute","bow_apology","excited_bounce","machinamachina_spark","chin_think","blow_kiss","standing_clap"].forEach(n=>warm(n));
+  warmPool();
   return {motionPlay,sendMotion,connect,flushPending,findClip,linked,state};
 }

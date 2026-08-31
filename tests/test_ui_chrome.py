@@ -286,6 +286,29 @@ def test_agent_bar_and_session_rail_stay_put():
     assert "function turnHasAgentReply" in html
     assert "underReply" in html
     assert "title(id)" in html[html.find("function paintAgentJobs"):html.find("async function hydrateWork")]
+def test_idle_chain_uses_seamless_mixamo():
+    srv=(ROOT/"motion_service.py").read_text(encoding="utf-8")
+    idles=srv[srv.find("IDLES"):srv.find("IDLE_W")]
+    life=srv[srv.find("LIFE"):srv.find("LIFE_W")]
+    extra=srv[srv.find("def extra_life"):srv.find("def weighted")]
+    alive=srv[srv.find("async def alive_loop"):]
+    assert "talking_on_phone" in idles
+    assert "guitar_playing" in idles
+    assert "point_ahead" in life
+    assert "hand_on_heart" in life
+    assert "standing_clap" in life
+    assert "female_walk" not in life
+    assert "kneel" in extra
+    assert "acknowledging" in extra
+    assert "pick_chain" in srv
+    assert "IDLE_DWELL" in srv
+    assert "/motion/alive" in srv
+    js=(ROOT/"web"/"xr-motion.js").read_text(encoding="utf-8")
+    assert "warmPool" in js
+    assert "idle.fadeOut(0.28)" in js.replace(" ","")
+    assert "startswith(\"look\")" in alive or "startswith('look')" in alive
+    html=(ROOT/"web"/"xr.html").read_text(encoding="utf-8")
+    assert "!holding&&motionState.gazeTarget" in html.replace(" ","")
 if __name__=="__main__":
     test_pair_in_upper_right_menus()
     test_sess_filters_core_only_single_line()
@@ -297,4 +320,5 @@ if __name__=="__main__":
     test_agent_restart_reattaches_active_session()
     test_archive_skin_supports_braid_and_legacy()
     test_agent_bar_and_session_rail_stay_put()
+    test_idle_chain_uses_seamless_mixamo()
     print("ok")

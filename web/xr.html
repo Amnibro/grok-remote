@@ -1203,11 +1203,14 @@ function perform(t,dt,lvl,overlay){
     lookT=t+2;
   }
   if(motionState.gazeTarget){
-    const GZ={user:[0,0],left:[0.5,0],right:[-0.5,0],up:[0,0.2],down:[0,-0.16],away:[0.6,0.05]};
-    const g=GZ[String(motionState.gazeTarget).toLowerCase()]||GZ.user;
-    lookToYaw=g[0];lookToPit=g[1];lookT=t+6;
-    if(!motionState.gazeUntil)motionState.gazeUntil=t+6;
-    if(t>motionState.gazeUntil){motionState.gazeTarget=null;motionState.gazeUntil=0}
+    const now=performance.now();
+    if(!motionState.gazeUntil)motionState.gazeUntil=now+5500;
+    if(now>=motionState.gazeUntil){motionState.gazeTarget=null;motionState.gazeUntil=0}
+    else{
+      const GZ={user:[0,0],left:[0.5,0],right:[-0.5,0],up:[0,0.2],down:[0,-0.16],away:[0.6,0.05]};
+      const g=GZ[String(motionState.gazeTarget).toLowerCase()]||GZ.user;
+      lookToYaw=g[0];lookToPit=g[1];lookT=t+6;
+    }
   }
   let hy=gy*0.85+lookYaw*(0.35-li*0.3),hp=gp*0.7+lookPit+breath*0.4;
   if(t<reactUntil&&reactKind==="ack"){hp+=0.10;hy*=0.2}
@@ -1266,7 +1269,8 @@ renderer.setAnimationLoop(()=>{
       const head=skeleton.bones.find(b=>/^mixamorigHead$|^head$/i.test(b.name));
       const hips=skeleton.bones.find(b=>/hips$/i.test(b.name));
       if(hips){hips.position.x=0;hips.position.z=0}
-      if(head&&motionState.gazeTarget){
+      const holding=performance.now()<(motionState.gestureHold||0);
+      if(head&&!holding&&motionState.gazeTarget&&(!motionState.gazeUntil||performance.now()<motionState.gazeUntil)){
         const GZ={user:0,left:0.38,right:-0.38,up:0,down:0,away:0.42};
         const g=String(motionState.gazeTarget).toLowerCase();
         if(Object.prototype.hasOwnProperty.call(GZ,g)){
@@ -1279,8 +1283,10 @@ renderer.setAnimationLoop(()=>{
           }
           const pit=g==="up"?0.18:g==="down"?-0.14:0;
           head.quaternion.multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(pit,yaw,0)));
+          const neck=skeleton.bones.find(b=>/neck$/i.test(b.name));
+          if(neck)neck.quaternion.multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(pit*0.4,yaw*0.45,0)));
         }
-      }
+      }else if(motionState.gazeUntil&&performance.now()>=motionState.gazeUntil){motionState.gazeTarget=null;motionState.gazeUntil=0}
     }
     if(skelRoot)skelRoot.updateMatrixWorld(true);
     if(modelRoot)modelRoot.updateMatrixWorld(true);
@@ -1291,11 +1297,11 @@ renderer.setAnimationLoop(()=>{
     else if(skeleton)skeleton.update();
   }
   if(prevOn)applyOrbit();
-  if(renderer.xr.isPresenting){
+  if(renderer.xr.isPresenting&&performance.now()>=(motionState.gestureHold||0)){
     const cam=renderer.xr.getCamera();
     const p=new THREE.Vector3();cam.getWorldPosition(p);
     const a=Math.atan2(p.x-rig.position.x,p.z-rig.position.z);
-    rig.rotation.y+=(a-rig.rotation.y)*Math.min(1,dt*3);
+    rig.rotation.y+=(a-rig.rotation.y)*Math.min(1,dt*0.7);
   }
   renderer.render(scene,camera);
 });
