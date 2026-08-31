@@ -7,7 +7,7 @@ def custom_clips():
     return [f[:-5] for f in os.listdir(CLIP_DIR) if f.endswith(".json")]
 CLIPS = ["idle", "agree", "headshake", "walk", "run", "sad_pose", "sneak_pose"]
 BASE = {"guitar_playing", "standing_w_briefcase_idle", "talking_on_phone"}
-EMOTES = {"excited": "joyful_jump", "bounce": "joyful_jump", "yes": "agree", "nod": "agree", "wave": "wave_hello", "hello": "wave_hello", "hi": "wave_hello", "greet": "standing_greeting", "no": "dismissing_gesture", "sad": "sad_pose", "sneaky": "crawling", "apology": "bow_apology", "sorry": "bow_apology", "bow": "bow_apology", "kiss": "blow_kiss", "point": "point_ahead", "salute": "salute", "squat": "squat_down", "clap": "standing_clap", "phone": "talking_on_phone", "talk": "chin_think", "guitar": "guitar_playing", "dance": "dance_loop", "angry": "angry", "surprised": "surprised", "come": "beckoning", "go": "dismissing_gesture", "walk": "walk", "run": "run", "jog": "jogging", "jump": "joyful_jump", "punch": "punch_jab", "idle": "standing_w_briefcase_idle"}
+EMOTES = {"excited": "excited_bounce", "bounce": "excited_bounce", "yes": "agree", "nod": "agree", "wave": "wave_hello", "hello": "wave_hello", "hi": "wave_hello", "greet": "standing_greeting", "no": "dismissing_gesture", "sad": "sad_pose", "sneaky": "crawling", "apology": "bow_apology", "sorry": "bow_apology", "bow": "bow_apology", "kiss": "blow_kiss", "point": "point_ahead", "salute": "salute", "squat": "squat_down", "clap": "standing_clap", "phone": "talking_on_phone", "talk": "chin_think", "guitar": "guitar_playing", "dance": "dance_loop", "angry": "angry", "surprised": "surprised", "come": "beckoning", "go": "dismissing_gesture", "walk": "walk", "run": "run", "jog": "jogging", "jump": "excited_bounce", "punch": "punch_jab", "idle": "standing_w_briefcase_idle"}
 state = {"base": "standing_w_briefcase_idle", "gesture": None, "gaze": None, "seq": 0, "gesture_at": 0.0}
 clients = set()
 def cors(r):
@@ -74,7 +74,7 @@ async def play(req):
         return cors(web.json_response({"ok": False, "err": "unknown clip", "clips": CLIPS + custom_clips()}, status=400))
     TRAVEL = {"start_walking", "walk_strafe_left", "jumping_down", "jump_loop", "jump_land", "crouch_to_stand", "crouch_turn_to_stand", "standing_up", "situp_to_idle", "sitting_enter", "sitting_exit", "roll", "crawling", "push_loop", "swim_fwd_loop", "sprint_loop", "driving_loop", "punch_enter", "spell_simple_enter", "spell_simple_exit"}
     layer = d.get("layer") or ("base" if clip in BASE else "gesture")
-    if clip in TRAVEL or any(x in clip for x in ("sit", "lay", "crouch", "plank", "walk", "run", "jog", "sprint", "dance", "twerk", "shuffle", "kneel", "pray", "squat", "angry")):
+    if clip in TRAVEL or any(x in clip for x in ("sit", "lay", "crouch", "plank", "walk", "run", "jog", "sprint", "dance", "twerk", "shuffle", "kneel", "pray", "squat", "angry", "jump")):
         return cors(web.json_response({"ok": True, "clip": clip, "layer": "skipped", "note": "ground/travel clips leave the standing stage - stay standing"}))
     fade = d.get("fade", 0.4)
     now = time.time()
@@ -264,12 +264,8 @@ async def alive_loop(app):
                 continue
             pick = pick_chain(cur)
             if pick == cur:
-                if cur == HOME:
-                    await fire(HOME, "base", 1.15, "idle rephase")
-                    did = True
-                else:
-                    nxt = random.uniform(8, 16)
-                    continue
+                await fire(cur, "base", 1.15, "idle rephase")
+                did = True
             else:
                 await fire(pick, "base", 1.1, "idle home" if pick == HOME else "idle chain")
                 did = True

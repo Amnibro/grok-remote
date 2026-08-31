@@ -342,6 +342,12 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "prev.paused=false" in js.replace(" ","")
     assert "(c.duration||1.2)-a.time)/ts" in js.replace(" ","")
     assert "idle rephase" in srv
+    assert "await fire(cur," in srv or "await fire(cur ," in srv
+    em=srv[srv.find("EMOTES"):srv.find("state =")]
+    assert '"excited": "excited_bounce"' in em
+    assert '"jump": "excited_bounce"' in em
+    assert "a.timeScale=0.94" in js.replace(" ","")
+    assert '"jump"' in srv[srv.find("if clip in TRAVEL"):srv.find("if clip in TRAVEL")+480]
     assert "fade>=1.05" in js.replace(" ","")
     assert "state.get(\"base\") != clip" in srv or "state.get('base')!=clip" in srv.replace(" ","")
     assert "function endGesture(" in js
