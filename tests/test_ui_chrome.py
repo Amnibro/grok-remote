@@ -306,6 +306,9 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "kneel" in extra
     assert "acknowledging" in extra
     assert "pick_chain" in srv
+    pc=srv[srv.find("def pick_chain"):srv.find("async def get_alive")]
+    assert "c != HOME and c != cur and c != prev" in pc
+    assert "random.random() < 0.28" in pc
     assert "IDLE_DWELL" in srv
     assert "/motion/alive" in srv
     assert "LIFE_HEAD" in srv

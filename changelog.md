@@ -1,3 +1,6 @@
+## 2026-08-31 guitar can chain into phone without dumping through briefcase
+- pick_chain hops guitar↔phone 28% of the time instead of always returning HOME.
+
 ## 2026-08-31 clap on briefcase is a wave; guitar chains more; love is heart
 - ARM_HOME maps standing_clap to wave_hello. love/heart map to hand_on_heart. guitar IDLE_W is 2.
 

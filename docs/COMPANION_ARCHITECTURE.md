@@ -1126,7 +1126,7 @@ Every UAL clip named `*_loop` is a one-shot segment despite the name; playing it
 snaps 70-129° at the wrap, once per cycle. All 33 seamless clips in the library are
 Mixamo-baked (~0.04°).
 
-`IDLES` is now `["standing_w_briefcase_idle", "talking_on_phone"]` — both seamless, both long.
+`IDLES` is `["standing_w_briefcase_idle", "talking_on_phone", "guitar_playing"]` — all Mixamo, seam ~0°. After a prop idle, `pick_chain` hops to the other unused prop 28% of the time, else HOME. `IDLE_DWELL` is 16s briefcase / 16s phone / 14s guitar. Additive gaze is skipped while `gestureHold` is live so Mixamo head motion is not overwritten.
 The idle-drift feature had been making her *worse* since it was added, twitching every 2.5 s
 whenever it drifted to `idle_loop`.
 
