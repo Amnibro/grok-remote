@@ -300,7 +300,7 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "point_ahead" in life
     assert "hand_on_heart" in life
     assert "standing_clap" not in life
-    assert "wave_hello" not in life
+    assert "wave_hello" in life
     assert "interact" in life
     assert "female_walk" not in life
     assert "kneel" in extra
