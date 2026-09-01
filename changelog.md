@@ -1,3 +1,6 @@
+## 2026-08-31 briefcase dwell 16s; remaps ignore REPEAT_WINDOW
+- Briefcase IDLE_DWELL is 16s. Remapped guitar/phone takes prefer a fresh HEAD/SOFT clip and skip the twitch gate.
+
 ## 2026-08-31 queued gestures remap like play(); chain leaves home more
 - drain_loop applies ARM_HOME and head/soft remap. pick_chain stay-home 0.36.
 

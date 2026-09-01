@@ -73,7 +73,9 @@ async def drain_loop(app):
             pool = LIFE_HEAD if b == "guitar_playing" else (LIFE_SOFT if b == "talking_on_phone" else None)
             if not pool:
                 continue
-            clip = min(pool, key=lambda c: recent.get(c, 0.0))
+            now = time.time()
+            fresh = [c for c in pool if now - recent.get(c, 0) >= REPEAT_WINDOW]
+            clip = min(fresh or pool, key=lambda c: recent.get(c, 0.0))
         await fire(clip, layer, fade, "queued")
 async def play(req):
     d = await req.json()
@@ -87,8 +89,10 @@ async def play(req):
     layer = d.get("layer") or ("base" if clip in BASE else "gesture")
     if clip in TRAVEL or any(x in clip for x in ("sit", "lay", "crouch", "plank", "walk", "run", "jog", "sprint", "dance", "twerk", "shuffle", "kneel", "pray", "squat", "angry", "jump", "jab_cross", "beckon", "punch")):
         return cors(web.json_response({"ok": True, "clip": clip, "layer": "skipped", "note": "ground/travel clips leave the standing stage - stay standing"}))
+    remapped = False
     if state.get("base") == HOME and clip in ARM_HOME:
         clip = ARM_HOME[clip]
+        remapped = True
     fade = d.get("fade", 0.4)
     now = time.time()
     if layer == "base" and now < state.get("gesture_until", 0) + fade_pad() and not d.get("force"):
@@ -100,9 +104,11 @@ async def play(req):
         pool = LIFE_HEAD if b == "guitar_playing" else (LIFE_SOFT if b == "talking_on_phone" else None)
         if not pool:
             return cors(web.json_response({"ok": True, "clip": clip, "layer": "skipped", "note": "prop idle keeps the arms, head-only moves"}))
-        clip = min(pool, key=lambda c: recent.get(c, 0.0))
+        fresh = [c for c in pool if now - recent.get(c, 0) >= REPEAT_WINDOW]
+        clip = min(fresh or pool, key=lambda c: recent.get(c, 0.0))
+        remapped = True
     if layer == "gesture":
-        if not d.get("force") and now - recent.get(clip, 0) < REPEAT_WINDOW:
+        if not remapped and not d.get("force") and now - recent.get(clip, 0) < REPEAT_WINDOW:
             return cors(web.json_response({"ok": True, "clip": clip, "layer": "skipped", "note": "just played %.0fs ago - repeating it reads as a twitch" % (now - recent[clip])}))
         if now < state.get("gesture_until", 0) + fade_pad():
             if any(q[0] == clip for q in pending):
@@ -148,7 +154,7 @@ async def opt(req):
 HOME = "standing_w_briefcase_idle"
 IDLES = ["standing_w_briefcase_idle", "talking_on_phone", "guitar_playing"]
 IDLE_W = {"standing_w_briefcase_idle": 6, "talking_on_phone": 1, "guitar_playing": 1}
-IDLE_DWELL = {"standing_w_briefcase_idle": 24.0, "talking_on_phone": 16.0, "guitar_playing": 14.0}
+IDLE_DWELL = {"standing_w_briefcase_idle": 16.0, "talking_on_phone": 16.0, "guitar_playing": 14.0}
 LIFE = ["look_over_shoulder", "waist_side_stretch", "dismissing_gesture", "point_ahead", "salute", "module_check", "sun_salute", "bow_apology", "machinamachina_spark", "chin_think", "hand_on_heart", "interact"]
 LIFE_W = [2, 2, 2, 2, 2, 2, 1, 1, 2, 2, 2, 1]
 LIFE_SOFT = ["module_check", "machinamachina_spark", "chin_think"]

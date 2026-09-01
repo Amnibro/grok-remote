@@ -363,7 +363,7 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "state.get(\"base\") != clip" in srv or "state.get('base')!=clip" in srv.replace(" ","")
     assert "function endGesture(" in js
     assert 'addEventListener("finished"' in js
-    assert "24.0" in srv[srv.find("IDLE_DWELL"):srv.find("LIFE =")]
+    assert '"standing_w_briefcase_idle": 16.0' in srv[srv.find("IDLE_DWELL"):srv.find("LIFE =")]
     assert '"kneel"' in srv[srv.find("if clip in TRAVEL"):srv.find("if clip in TRAVEL")+420]
     assert "gestureHold=performance.now()+480" in js.replace(" ","")
     assert '"angry"' in srv[srv.find("if clip in TRAVEL"):srv.find("if clip in TRAVEL")+450]
@@ -479,11 +479,12 @@ def test_idle_chain_uses_seamless_mixamo():
     assert '"chin_think": "module_check"' in srv
     assert '"interact": "point_ahead"' in srv
     assert "clip in ARM_HOME" in srv
-    assert "min(pool, key=lambda c: recent.get(c, 0.0))" in srv or "min(pool,key=lambda c:recent.get(c,0.0))" in srv.replace(" ","")
+    assert "min(fresh or pool, key=lambda c: recent.get(c, 0.0))" in srv or "min(freshorpool,key=lambda c:recent.get(c,0.0))" in srv.replace(" ","")
     assert "LIFE_HEAD if b == \"guitar_playing\"" in srv or "LIFE_HEAD if b==\"guitar_playing\"" in srv.replace(" ","")
     drain=srv[srv.find("async def drain_loop"):srv.find("async def play")]
     assert "ARM_HOME" in drain
-    assert "min(pool, key=lambda c: recent.get(c, 0.0))" in drain or "min(pool,key=lambda c:recent.get(c,0.0))" in drain.replace(" ","")
+    assert "min(fresh or pool, key=lambda c: recent.get(c, 0.0))" in srv or "min(freshorpool,key=lambda c:recent.get(c,0.0))" in srv.replace(" ","")
+    assert "not remapped and not d.get(\"force\")" in srv or "not remapped and not d.get('force')" in srv
 if __name__=="__main__":
     test_pair_in_upper_right_menus()
     test_sess_filters_core_only_single_line()
