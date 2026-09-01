@@ -1,3 +1,6 @@
+## 2026-08-31 wave and salute are separate families; chain more after a beat
+- FAM splits wave/salute/dismiss/bow. Follow-after-life is 0.58.
+
 ## 2026-08-31 look_over_shoulder is rarer; overlay beats wake sooner
 - look LIFE_W is 1. keep_idle life beats set nxt 8-16s.
 
