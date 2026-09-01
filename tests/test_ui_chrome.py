@@ -496,6 +496,9 @@ def test_idle_chain_uses_seamless_mixamo():
     assert '"wave_hello": "wave"' in srv
     assert '"salute": "salute"' in srv
     assert '"dismissing_gesture": "dismiss"' in srv
+    assert "function holdGaze(" in js
+    assert "holdGaze(name)||!keepIdle(name)" in js.replace(" ","")
+    assert '"surprised": "machinamachina_spark"' in srv[srv.find("ARM_HOME"):srv.find("FAM")]
 if __name__=="__main__":
     test_pair_in_upper_right_menus()
     test_sess_filters_core_only_single_line()
