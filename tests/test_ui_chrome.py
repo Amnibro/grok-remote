@@ -438,7 +438,7 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "setTimeout(()=>{try{g.stop()" in js.replace(" ","")
     assert "c.duration>4" in js.replace(" ","")
     assert "c.duration*0.12" in js.replace(" ","")
-    assert "LIFE_W = [2, 2, 2, 2," in srv
+    assert "LIFE_W = [1, 2, 2, 2," in srv
     assert "function travelSkip(" in js
     assert "travelSkip(name)||!clientPropOk" in js.replace(" ","")
     assert "want=!holding&&motionState.gazeTarget" in html.replace(" ","")
@@ -491,6 +491,8 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "ARM_RIGHT" in srv
     assert "RIGHT=new Set" in js
     assert "curBase===HOME&&RIGHT.has" in js.replace(" ","")
+    assert "life_clip" in srv
+    assert "keep_idle(life_clip)" in srv
 if __name__=="__main__":
     test_pair_in_upper_right_menus()
     test_sess_filters_core_only_single_line()
