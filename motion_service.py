@@ -7,7 +7,7 @@ def custom_clips():
     return [f[:-5] for f in os.listdir(CLIP_DIR) if f.endswith(".json")]
 CLIPS = ["idle", "agree", "headshake", "walk", "run", "sad_pose", "sneak_pose"]
 BASE = {"guitar_playing", "standing_w_briefcase_idle", "talking_on_phone"}
-EMOTES = {"excited": "excited_bounce", "bounce": "excited_bounce", "yes": "agree", "nod": "agree", "wave": "wave_hello", "hello": "wave_hello", "hi": "wave_hello", "greet": "wave_hello", "no": "dismissing_gesture", "sad": "bow_apology", "sneaky": "look_over_shoulder", "apology": "bow_apology", "sorry": "bow_apology", "bow": "bow_apology", "thanks": "bow_apology", "thank": "bow_apology", "kiss": "blow_kiss", "point": "point_ahead", "salute": "salute", "squat": "waist_side_stretch", "clap": "standing_clap", "phone": "talking_on_phone", "talk": "chin_think", "think": "chin_think", "guitar": "guitar_playing", "dance": "excited_bounce", "angry": "dismissing_gesture", "surprised": "surprised", "come": "interact", "go": "dismissing_gesture", "walk": "look_over_shoulder", "run": "point_ahead", "jog": "waist_side_stretch", "jump": "excited_bounce", "punch": "dismissing_gesture", "idle": "standing_w_briefcase_idle"}
+EMOTES = {"excited": "excited_bounce", "bounce": "excited_bounce", "yes": "agree", "nod": "agree", "wave": "wave_hello", "hello": "wave_hello", "hi": "wave_hello", "greet": "wave_hello", "no": "dismissing_gesture", "sad": "bow_apology", "sneaky": "look_over_shoulder", "apology": "bow_apology", "sorry": "bow_apology", "bow": "bow_apology", "thanks": "bow_apology", "thank": "bow_apology", "kiss": "blow_kiss", "point": "point_ahead", "salute": "salute", "squat": "waist_side_stretch", "clap": "standing_clap", "love": "hand_on_heart", "heart": "hand_on_heart", "phone": "talking_on_phone", "talk": "chin_think", "think": "chin_think", "guitar": "guitar_playing", "dance": "excited_bounce", "angry": "dismissing_gesture", "surprised": "surprised", "come": "interact", "go": "dismissing_gesture", "walk": "look_over_shoulder", "run": "point_ahead", "jog": "waist_side_stretch", "jump": "excited_bounce", "punch": "dismissing_gesture", "idle": "standing_w_briefcase_idle"}
 state = {"base": "standing_w_briefcase_idle", "gesture": None, "gaze": None, "seq": 0, "gesture_at": 0.0}
 clients = set()
 def cors(r):
@@ -153,14 +153,14 @@ async def opt(req):
     return cors(web.Response())
 HOME = "standing_w_briefcase_idle"
 IDLES = ["standing_w_briefcase_idle", "talking_on_phone", "guitar_playing"]
-IDLE_W = {"standing_w_briefcase_idle": 6, "talking_on_phone": 1, "guitar_playing": 1}
+IDLE_W = {"standing_w_briefcase_idle": 6, "talking_on_phone": 1, "guitar_playing": 2}
 IDLE_DWELL = {"standing_w_briefcase_idle": 16.0, "talking_on_phone": 16.0, "guitar_playing": 14.0}
 LIFE = ["look_over_shoulder", "waist_side_stretch", "dismissing_gesture", "point_ahead", "salute", "module_check", "sun_salute", "bow_apology", "machinamachina_spark", "chin_think", "hand_on_heart", "interact", "wave_hello"]
-LIFE_W = [1, 2, 2, 2, 1, 1, 1, 1, 2, 2, 2, 1, 1]
+LIFE_W = [1, 2, 2, 2, 1, 1, 1, 1, 1, 2, 1, 1, 1]
 LIFE_SOFT = ["module_check", "machinamachina_spark", "chin_think"]
 LIFE_HEAD = ["module_check", "machinamachina_spark"]
 ARM_LEFT = {"waist_side_stretch", "sun_salute", "chin_think", "interact"}
-ARM_HOME = {"waist_side_stretch": "look_over_shoulder", "sun_salute": "salute", "chin_think": "module_check", "interact": "point_ahead", "agree": "module_check", "surprised": "machinamachina_spark"}
+ARM_HOME = {"waist_side_stretch": "look_over_shoulder", "sun_salute": "salute", "chin_think": "module_check", "interact": "point_ahead", "agree": "module_check", "surprised": "machinamachina_spark", "standing_clap": "wave_hello"}
 ARM_RIGHT = {"look_over_shoulder", "dismissing_gesture", "point_ahead", "salute", "wave_hello", "hand_on_heart", "bow_apology"}
 FAM = {"look_over_shoulder": "look", "agree": "nod", "chin_think": "nod", "salute": "salute", "sun_salute": "sun", "standing_clap": "clap", "wave_hello": "wave", "waist_side_stretch": "stretch", "point_ahead": "point", "dismissing_gesture": "dismiss", "module_check": "check", "machinamachina_spark": "spark", "surprised": "soft", "hand_on_heart": "heart", "bow_apology": "bow", "blow_kiss": "kiss", "excited_bounce": "bounce", "interact": "reach"}
 def extra_life():

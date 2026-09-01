@@ -1,3 +1,6 @@
+## 2026-08-31 clap on briefcase is a wave; guitar chains more; love is heart
+- ARM_HOME maps standing_clap to wave_hello. love/heart map to hand_on_heart. guitar IDLE_W is 2.
+
 ## 2026-08-31 thanks is a bow; salute/module rarer; rephase at 24s
 - thanks/thank map to bow_apology. salute and module_check LIFE_W are 1. Rephase throttle is 24s.
 
