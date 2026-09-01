@@ -1,3 +1,6 @@
+## 2026-08-31 look_over_shoulder holds gaze; think maps to chin_think
+- holdGaze includes look_over_shoulder and hand_on_heart. think maps to chin_think.
+
 ## 2026-08-31 gaze stays on during briefcase waves
 - holdGaze is head/chin only. ARM_HOME maps surprised to spark.
 

@@ -11,7 +11,7 @@ export function initMotion(ctx){
     if(curBase===HOME)return !LEFT.has(clip)&&clip!=="agree"&&clip!=="surprised";
     return true;
   }
-  function holdGaze(clip){return HEAD.has(clip)||(clip==="chin_think"&&curBase==="talking_on_phone")}
+  function holdGaze(clip){return HEAD.has(clip)||clip==="look_over_shoulder"||clip==="hand_on_heart"||(clip==="chin_think"&&curBase==="talking_on_phone")}
   function keepIdle(clip){return holdGaze(clip)||(curBase===HOME&&RIGHT.has(clip))}
   function travelSkip(n){return /(sit|lay|crouch|plank|walk|run|jog|sprint|dance|twerk|shuffle|kneel|pray|squat|angry|jump|jab_cross|beckon|punch)/i.test(n||"")}
   fetch("/static/clip_index.json",{cache:"no-store"}).then(r=>r.json()).then(j=>{clipIx=j.clips||{}}).catch(()=>{});
