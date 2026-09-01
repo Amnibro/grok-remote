@@ -1,3 +1,6 @@
+## 2026-08-31 wave_hello returns to briefcase idle life
+- HOME LIFE includes wave_hello at weight 1 now that keepIdle overlays it.
+
 ## 2026-08-31 briefcase keeps the case through right-arm Mixamo
 - keepIdle overlays ARM_RIGHT on HOME. fade_pad is 0 for keep_idle.
 
