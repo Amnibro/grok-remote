@@ -292,7 +292,7 @@ def test_agent_bar_and_session_rail_stay_put():
 def test_idle_chain_uses_seamless_mixamo():
     srv=(ROOT/"motion_service.py").read_text(encoding="utf-8")
     idles=srv[srv.find("IDLES"):srv.find("IDLE_W")]
-    life=srv[srv.find("LIFE"):srv.find("LIFE_W")]
+    life=srv[srv.find("LIFE ="):srv.find("LIFE_W")]
     extra=srv[srv.find("def extra_life"):srv.find("def weighted")]
     alive=srv[srv.find("async def alive_loop"):]
     assert "talking_on_phone" in idles
@@ -346,7 +346,7 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "idle after gesture" in srv
     assert "since = 0.0" in alive or "since=0.0" in alive.replace(" ","")
     assert '"dance"' in srv[srv.find("if clip in TRAVEL"):srv.find("if clip in TRAVEL")+360]
-    assert "random.random() < 0.45" in srv
+    assert "random.random() < 0.36" in srv
     assert "pick == cur" in srv or "pick==cur" in srv.replace(" ","")
     assert "0.62 if state.get(\"base\") == HOME" in srv
     assert "!getActIdle()" in js.replace(" ","")
@@ -481,6 +481,9 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "clip in ARM_HOME" in srv
     assert "min(pool, key=lambda c: recent.get(c, 0.0))" in srv or "min(pool,key=lambda c:recent.get(c,0.0))" in srv.replace(" ","")
     assert "LIFE_HEAD if b == \"guitar_playing\"" in srv or "LIFE_HEAD if b==\"guitar_playing\"" in srv.replace(" ","")
+    drain=srv[srv.find("async def drain_loop"):srv.find("async def play")]
+    assert "ARM_HOME" in drain
+    assert "min(pool, key=lambda c: recent.get(c, 0.0))" in drain or "min(pool,key=lambda c:recent.get(c,0.0))" in drain.replace(" ","")
 if __name__=="__main__":
     test_pair_in_upper_right_menus()
     test_sess_filters_core_only_single_line()

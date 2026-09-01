@@ -66,8 +66,14 @@ async def drain_loop(app):
         await asyncio.sleep(0.25)
         if not pending or time.time() < state.get("gesture_until", 0) + fade_pad():continue
         clip, layer, fade = pending.pop(0)
+        if state.get("base") == HOME and clip in ARM_HOME:
+            clip = ARM_HOME[clip]
         if layer == "gesture" and not prop_ok(clip):
-            continue
+            b = state.get("base")
+            pool = LIFE_HEAD if b == "guitar_playing" else (LIFE_SOFT if b == "talking_on_phone" else None)
+            if not pool:
+                continue
+            clip = min(pool, key=lambda c: recent.get(c, 0.0))
         await fire(clip, layer, fade, "queued")
 async def play(req):
     d = await req.json()
@@ -202,7 +208,7 @@ def pick_chain(cur):
     if cur != HOME:
         state["last_prop"] = cur
         return HOME
-    if random.random() < 0.45:
+    if random.random() < 0.36:
         return HOME
     alts = [c for c in IDLES if c != HOME and c != state.get("last_prop")]
     if not alts:
