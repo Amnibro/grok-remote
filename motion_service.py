@@ -161,6 +161,7 @@ LIFE_SOFT = ["module_check", "machinamachina_spark", "chin_think"]
 LIFE_HEAD = ["module_check", "machinamachina_spark"]
 ARM_LEFT = {"waist_side_stretch", "sun_salute", "chin_think", "interact"}
 ARM_HOME = {"waist_side_stretch": "look_over_shoulder", "sun_salute": "salute", "chin_think": "module_check", "interact": "point_ahead", "agree": "module_check"}
+ARM_RIGHT = {"look_over_shoulder", "dismissing_gesture", "point_ahead", "salute", "wave_hello", "hand_on_heart", "bow_apology"}
 FAM = {"look_over_shoulder": "look", "agree": "nod", "chin_think": "nod", "salute": "arm_up", "sun_salute": "arm_up", "standing_clap": "arm_up", "wave_hello": "arm_up", "waist_side_stretch": "stretch", "point_ahead": "point", "dismissing_gesture": "point", "module_check": "check", "machinamachina_spark": "spark", "surprised": "soft", "hand_on_heart": "heart", "bow_apology": "heart", "blow_kiss": "heart", "excited_bounce": "bounce", "interact": "reach"}
 def extra_life():
     p = os.path.join(os.path.dirname(os.path.abspath(__file__)), "web", "clip_index.json")
@@ -184,13 +185,14 @@ def extra_life():
         LIFE.append(name)
         LIFE_W.append(1)
 extra_life()
+def keep_idle(clip):
+    if clip in LIFE_HEAD:
+        return True
+    if clip == "chin_think" and state.get("base") == "talking_on_phone":
+        return True
+    return state.get("base") == HOME and clip in ARM_RIGHT
 def fade_pad():
-    g = state.get("gesture")
-    if g in LIFE_HEAD:
-        return 0.0
-    if g == "chin_think" and state.get("base") == "talking_on_phone":
-        return 0.0
-    return FADE_PAD
+    return 0.0 if keep_idle(state.get("gesture")) else FADE_PAD
 def prop_ok(clip):
     b = state.get("base")
     if b == "guitar_playing":

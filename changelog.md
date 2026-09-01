@@ -1,3 +1,6 @@
+## 2026-08-31 briefcase keeps the case through right-arm Mixamo
+- keepIdle overlays ARM_RIGHT on HOME. fade_pad is 0 for keep_idle.
+
 ## 2026-08-31 briefcase yes/nod is a head check, not full-body agree
 - ARM_HOME maps agree to module_check. Client refuses agree on HOME.
 
