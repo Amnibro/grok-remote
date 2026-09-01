@@ -415,8 +415,9 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "baseHold" in js
     assert "baseHold-performance.now()" in js.replace(" ","")
     assert "if(layer===\"base\"&&performance.now()<baseHold)" in js.replace(" ","")
-    assert "g in LIFE_HEAD" in srv[srv.find("def fade_pad"):srv.find("def prop_ok")]
-    assert "chin_think" in srv[srv.find("def fade_pad"):srv.find("def prop_ok")]
+    assert "def keep_idle(" in srv
+    assert "clip in ARM_RIGHT" in srv[srv.find("def keep_idle"):srv.find("def fade_pad")]
+    assert "return 0.0 if keep_idle" in srv or "return 0.0 if keep_idle" in srv.replace(" ","")
     assert "clip===\"chin_think\"&&curBase===\"talking_on_phone\"" in js.replace(" ","")
     em=srv[srv.find("EMOTES"):srv.find("state =")]
     assert '"dance": "excited_bounce"' in em
@@ -487,6 +488,9 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "not remapped and not d.get(\"force\")" in srv or "not remapped and not d.get('force')" in srv
     assert '"agree": "module_check"' in srv[srv.find("ARM_HOME"):srv.find("FAM")]
     assert "clip!==\"agree\"" in js.replace(" ","")
+    assert "ARM_RIGHT" in srv
+    assert "RIGHT=new Set" in js
+    assert "curBase===HOME&&RIGHT.has" in js.replace(" ","")
 if __name__=="__main__":
     test_pair_in_upper_right_menus()
     test_sess_filters_core_only_single_line()
