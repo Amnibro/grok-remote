@@ -1,3 +1,6 @@
+## 2026-08-31 briefcase yes/nod is a head check, not full-body agree
+- ARM_HOME maps agree to module_check. Client refuses agree on HOME.
+
 ## 2026-08-31 briefcase dwell 16s; remaps ignore REPEAT_WINDOW
 - Briefcase IDLE_DWELL is 16s. Remapped guitar/phone takes prefer a fresh HEAD/SOFT clip and skip the twitch gate.
 

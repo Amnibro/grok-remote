@@ -485,6 +485,8 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "ARM_HOME" in drain
     assert "min(fresh or pool, key=lambda c: recent.get(c, 0.0))" in srv or "min(freshorpool,key=lambda c:recent.get(c,0.0))" in srv.replace(" ","")
     assert "not remapped and not d.get(\"force\")" in srv or "not remapped and not d.get('force')" in srv
+    assert '"agree": "module_check"' in srv[srv.find("ARM_HOME"):srv.find("FAM")]
+    assert "clip!==\"agree\"" in js.replace(" ","")
 if __name__=="__main__":
     test_pair_in_upper_right_menus()
     test_sess_filters_core_only_single_line()

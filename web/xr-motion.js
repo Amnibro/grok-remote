@@ -8,7 +8,7 @@ export function initMotion(ctx){
   function clientPropOk(clip){
     if(curBase==="guitar_playing")return HEAD.has(clip);
     if(curBase==="talking_on_phone")return SOFT.has(clip);
-    if(curBase===HOME)return !LEFT.has(clip);
+    if(curBase===HOME)return !LEFT.has(clip)&&clip!=="agree";
     return true;
   }
   function keepIdle(clip){return HEAD.has(clip)||(clip==="chin_think"&&curBase==="talking_on_phone")}
