@@ -499,6 +499,9 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "function holdGaze(" in js
     assert "holdGaze(name)||!keepIdle(name)" in js.replace(" ","")
     assert '"surprised": "machinamachina_spark"' in srv[srv.find("ARM_HOME"):srv.find("FAM")]
+    assert "clip===\"look_over_shoulder\"" in js.replace(" ","")
+    assert "clip===\"hand_on_heart\"" in js.replace(" ","")
+    assert '"think": "chin_think"' in srv[srv.find("EMOTES"):srv.find("state =")]
 if __name__=="__main__":
     test_pair_in_upper_right_menus()
     test_sess_filters_core_only_single_line()
