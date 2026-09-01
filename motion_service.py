@@ -156,7 +156,7 @@ IDLES = ["standing_w_briefcase_idle", "talking_on_phone", "guitar_playing"]
 IDLE_W = {"standing_w_briefcase_idle": 6, "talking_on_phone": 1, "guitar_playing": 1}
 IDLE_DWELL = {"standing_w_briefcase_idle": 16.0, "talking_on_phone": 16.0, "guitar_playing": 14.0}
 LIFE = ["look_over_shoulder", "waist_side_stretch", "dismissing_gesture", "point_ahead", "salute", "module_check", "sun_salute", "bow_apology", "machinamachina_spark", "chin_think", "hand_on_heart", "interact", "wave_hello"]
-LIFE_W = [2, 2, 2, 2, 2, 2, 1, 1, 2, 2, 2, 1, 1]
+LIFE_W = [1, 2, 2, 2, 2, 2, 1, 1, 2, 2, 2, 1, 1]
 LIFE_SOFT = ["module_check", "machinamachina_spark", "chin_think"]
 LIFE_HEAD = ["module_check", "machinamachina_spark"]
 ARM_LEFT = {"waist_side_stretch", "sun_salute", "chin_think", "interact"}
@@ -274,6 +274,7 @@ async def alive_loop(app):
         quiet = time.time() - state.get("gesture_at", 0)
         pool = LIFE_HEAD if state.get("base") == "guitar_playing" else (LIFE_SOFT if state.get("base") != HOME else [c for c in LIFE if c not in ARM_LEFT])
         did = False
+        life_clip = None
         if quiet > 8 and random.random() < (0.62 if state.get("base") == HOME else 0.55):
             lasts = sorted(recent, key=recent.get, reverse=True)[:2]
             last_fam = FAM.get(state.get("gesture") or "")
@@ -289,6 +290,7 @@ async def alive_loop(app):
             w = [LIFE_W[LIFE.index(c)] if c in LIFE else 1 for c in fresh]
             if fresh:
                 clip = weighted(fresh, w)
+                life_clip = clip
                 await fire(clip, "gesture", 0.55, "life beat")
                 if fade_pad() > 0 and not str(clip).startswith("look"):
                     await bcast({"type": "gaze", "target": "user", "seq": state["seq"]})
@@ -318,7 +320,7 @@ async def alive_loop(app):
             else:
                 await fire(pick, "base", 1.1, "idle home" if pick == HOME else "idle chain")
                 did = True
-        nxt = random.uniform(14, 26) if did else random.uniform(22, 42)
+        nxt = random.uniform(8, 16) if did and life_clip and keep_idle(life_clip) else (random.uniform(14, 26) if did else random.uniform(22, 42))
 async def start_bg(app):
     app["alive"] = asyncio.create_task(alive_loop(app))
     app["drain"] = asyncio.create_task(drain_loop(app))

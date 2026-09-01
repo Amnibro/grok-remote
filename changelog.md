@@ -1,3 +1,6 @@
+## 2026-08-31 look_over_shoulder is rarer; overlay beats wake sooner
+- look LIFE_W is 1. keep_idle life beats set nxt 8-16s.
+
 ## 2026-08-31 wave_hello returns to briefcase idle life
 - HOME LIFE includes wave_hello at weight 1 now that keepIdle overlays it.
 
