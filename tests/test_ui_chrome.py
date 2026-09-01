@@ -410,7 +410,7 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "if(keepIdle(name))" in js.replace(" ","")
     assert '"module_check": "check"' in srv
     assert '"machinamachina_spark": "spark"' in srv
-    assert "random.random() < 0.48" in srv
+    assert "random.random() < 0.58" in srv
     assert "0.62 if state.get(\"base\") == HOME else 0.55" in srv or "0.62 if state.get('base')==HOME else 0.55" in srv.replace(" ","")
     assert "baseHold" in js
     assert "baseHold-performance.now()" in js.replace(" ","")
@@ -493,6 +493,9 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "curBase===HOME&&RIGHT.has" in js.replace(" ","")
     assert "life_clip" in srv
     assert "keep_idle(life_clip)" in srv
+    assert '"wave_hello": "wave"' in srv
+    assert '"salute": "salute"' in srv
+    assert '"dismissing_gesture": "dismiss"' in srv
 if __name__=="__main__":
     test_pair_in_upper_right_menus()
     test_sess_filters_core_only_single_line()
