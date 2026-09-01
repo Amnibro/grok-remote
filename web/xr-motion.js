@@ -8,10 +8,11 @@ export function initMotion(ctx){
   function clientPropOk(clip){
     if(curBase==="guitar_playing")return HEAD.has(clip);
     if(curBase==="talking_on_phone")return SOFT.has(clip);
-    if(curBase===HOME)return !LEFT.has(clip)&&clip!=="agree";
+    if(curBase===HOME)return !LEFT.has(clip)&&clip!=="agree"&&clip!=="surprised";
     return true;
   }
-  function keepIdle(clip){return HEAD.has(clip)||(clip==="chin_think"&&curBase==="talking_on_phone")||(curBase===HOME&&RIGHT.has(clip))}
+  function holdGaze(clip){return HEAD.has(clip)||(clip==="chin_think"&&curBase==="talking_on_phone")}
+  function keepIdle(clip){return holdGaze(clip)||(curBase===HOME&&RIGHT.has(clip))}
   function travelSkip(n){return /(sit|lay|crouch|plank|walk|run|jog|sprint|dance|twerk|shuffle|kneel|pray|squat|angry|jump|jab_cross|beckon|punch)/i.test(n||"")}
   fetch("/static/clip_index.json",{cache:"no-store"}).then(r=>r.json()).then(j=>{clipIx=j.clips||{}}).catch(()=>{});
   function warmPool(){
@@ -62,8 +63,9 @@ export function initMotion(ctx){
   function endGesture(a){
     if(actGesture!==a)return;
     if(gestureOut.has(a)){clearTimeout(gestureOut.get(a));gestureOut.delete(a)}
-    state.gestureHold=performance.now()+480;
-    if(!keepIdle(state.lastGesture||""))baseHold=performance.now()+480;
+    const last=state.lastGesture||"";
+    if(!keepIdle(last)||holdGaze(last))state.gestureHold=performance.now()+480;
+    if(!keepIdle(last))baseHold=performance.now()+480;
     try{a.fadeOut(0.45)}catch(e){}
     setTimeout(()=>{try{a.stop();a.enabled=false}catch(e){}},480);
     if(actGesture===a)actGesture=null;
@@ -147,7 +149,7 @@ export function initMotion(ctx){
         else{idle.timeScale=0;idle.fadeOut(0.28)}
       }
       actGesture=a;
-      state.gestureHold=performance.now()+holdMs;
+      if(holdGaze(name)||!keepIdle(name))state.gestureHold=performance.now()+holdMs;
       if(!keepIdle(name))baseHold=performance.now()+holdMs;
       state.lastGesture=name;
       document.title=document.title.replace(/ \| .*$/,"")+" | "+name;

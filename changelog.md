@@ -1,3 +1,6 @@
+## 2026-08-31 gaze stays on during briefcase waves
+- holdGaze is head/chin only. ARM_HOME maps surprised to spark.
+
 ## 2026-08-31 wave and salute are separate families; chain more after a beat
 - FAM splits wave/salute/dismiss/bow. Follow-after-life is 0.58.
 
