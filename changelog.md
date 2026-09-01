@@ -1,3 +1,6 @@
+## 2026-08-31 thanks is a bow; salute/module rarer; rephase at 24s
+- thanks/thank map to bow_apology. salute and module_check LIFE_W are 1. Rephase throttle is 24s.
+
 ## 2026-08-31 look_over_shoulder holds gaze; think maps to chin_think
 - holdGaze includes look_over_shoulder and hand_on_heart. think maps to chin_think.
 

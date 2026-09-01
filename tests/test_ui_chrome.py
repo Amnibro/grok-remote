@@ -438,7 +438,7 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "setTimeout(()=>{try{g.stop()" in js.replace(" ","")
     assert "c.duration>4" in js.replace(" ","")
     assert "c.duration*0.12" in js.replace(" ","")
-    assert "LIFE_W = [1, 2, 2, 2," in srv
+    assert "LIFE_W = [1, 2, 2, 2, 1, 1," in srv
     assert "function travelSkip(" in js
     assert "travelSkip(name)||!clientPropOk" in js.replace(" ","")
     assert "want=!holding&&motionState.gazeTarget" in html.replace(" ","")
@@ -502,6 +502,10 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "clip===\"look_over_shoulder\"" in js.replace(" ","")
     assert "clip===\"hand_on_heart\"" in js.replace(" ","")
     assert '"think": "chin_think"' in srv[srv.find("EMOTES"):srv.find("state =")]
+    em=srv[srv.find("EMOTES"):srv.find("state =")]
+    assert '"thanks": "bow_apology"' in em
+    assert '"thank": "bow_apology"' in em
+    assert "rephase_at\", 0) < 24" in srv or "rephase_at', 0)<24" in srv.replace(" ","")
 if __name__=="__main__":
     test_pair_in_upper_right_menus()
     test_sess_filters_core_only_single_line()
