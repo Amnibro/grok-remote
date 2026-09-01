@@ -1,3 +1,6 @@
+## 2026-08-31 queued gestures remap like play(); chain leaves home more
+- drain_loop applies ARM_HOME and head/soft remap. pick_chain stay-home 0.36.
+
 ## 2026-08-31 guitar and phone remap arm emotes to head takes
 - play() maps blocked arm takes to the least-recent LIFE_HEAD/LIFE_SOFT clip.
 
