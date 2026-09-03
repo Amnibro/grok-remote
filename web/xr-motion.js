@@ -112,10 +112,8 @@ export function initMotion(ctx){
       pendingBase=null;
       if(getActIdle()===a){
         a.paused=false;a.enabled=true;a.setEffectiveWeight(1);
-        if(a.timeScale===0||(fade>=1.05&&c.duration>1)){
-          a.timeScale=0.94+Math.random()*0.14;
-          if(c.duration>1)a.time=(a.time+Math.random()*Math.min(2,c.duration*0.15))%Math.max(0.01,c.duration);
-        }
+        a.timeScale=0.94+Math.random()*0.14;
+        if(c.duration>1)a.time=(a.time+Math.random()*Math.min(2,c.duration*0.15))%Math.max(0.01,c.duration);
         return;
       }
       if(actGesture){
