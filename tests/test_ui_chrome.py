@@ -313,7 +313,7 @@ def test_idle_chain_uses_seamless_mixamo():
     pc=srv[srv.find("def pick_chain"):srv.find("async def get_alive")]
     assert "c != HOME and c != cur]" in pc
     assert "c != prev" not in pc
-    assert "random.random() < 0.50" in pc
+    assert "random.random() < 0.70" in pc
     assert "random.random() < 0.34" in pc
     assert "return cur" in pc
     assert "if keep_idle(clip):" in srv[srv.find("async def fire"):srv.find("async def drain_loop")]
@@ -468,7 +468,7 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "clip===\"blow_kiss\"" in js.replace(" ","")
     assert "blow_kiss" in srv[srv.find("ARM_RIGHT"):srv.find("FAM")]
     assert "curBase===\"talking_on_phone\"&&SOFT.has(clip)" in js.replace(" ","")
-    assert "talking_on_phone\" and clip in ARM_LEFT" in srv[srv.find("def keep_idle"):srv.find("def fade_pad")]
+    assert "talking_on_phone\" and clip in LIFE_SOFT" in srv[srv.find("def keep_idle"):srv.find("def fade_pad")]
     em=srv[srv.find("EMOTES"):srv.find("state =")]
     assert '"dance": "excited_bounce"' in em
     assert '"angry": "dismissing_gesture"' in em

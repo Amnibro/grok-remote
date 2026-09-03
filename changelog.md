@@ -1,3 +1,5 @@
+## 2026-09-03 guitar hops to phone more than it dumps the briefcase
+- prop hop is 0.70 after 0.34 stay (~34/46/20). Phone keep_idle follows LIFE_SOFT.
 ## 2026-09-03 HOME chains into guitar or phone instead of re-parking
 - HOME pick_chain stay is 0.18 then guitar/phone (~18/41/41).
 ## 2026-09-03 briefcase life can blow_kiss without dropping the idle
