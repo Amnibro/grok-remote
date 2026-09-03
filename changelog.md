@@ -1,3 +1,5 @@
+## 2026-09-03 HOME stays less so briefcase life chains into a prop
+- HOME stay is 0.12 (~12/44/44 guitar/phone).
 ## 2026-09-03 idle hops roll the outgoing cycle so the crossfade is not stuck
 - Crossfade always rolls the outgoing idle timeScale.
 ## 2026-09-03 overlay end nudges idle phase so the cycle does not sit on one beat
