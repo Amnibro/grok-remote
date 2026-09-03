@@ -160,7 +160,7 @@ IDLE_W = {"standing_w_briefcase_idle": 3, "talking_on_phone": 2, "guitar_playing
 IDLE_DWELL = {"standing_w_briefcase_idle": 16.0, "talking_on_phone": 16.0, "guitar_playing": 14.0}
 LIFE = ["look_over_shoulder", "waist_side_stretch", "dismissing_gesture", "point_ahead", "salute", "module_check", "sun_salute", "bow_apology", "machinamachina_spark", "chin_think", "hand_on_heart", "interact", "wave_hello"]
 LIFE_W = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
-LIFE_SOFT = ["module_check", "machinamachina_spark", "chin_think"]
+LIFE_SOFT = ["module_check", "machinamachina_spark", "chin_think", "waist_side_stretch", "sun_salute", "interact"]
 LIFE_HEAD = ["module_check", "machinamachina_spark"]
 ARM_LEFT = {"waist_side_stretch", "sun_salute", "chin_think", "interact"}
 ARM_HOME = {"waist_side_stretch": "look_over_shoulder", "sun_salute": "salute", "chin_think": "module_check", "interact": "point_ahead", "agree": "module_check", "surprised": "machinamachina_spark", "standing_clap": "wave_hello"}
@@ -191,7 +191,7 @@ extra_life()
 def keep_idle(clip):
     if clip in LIFE_HEAD:
         return True
-    if clip == "chin_think" and state.get("base") == "talking_on_phone":
+    if state.get("base") == "talking_on_phone" and clip in ARM_LEFT:
         return True
     return state.get("base") == HOME and clip in ARM_RIGHT
 def fade_pad():

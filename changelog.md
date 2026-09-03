@@ -5,6 +5,9 @@
 - server.py: stderr WARN when `--cwd` resolves to the hub's own folder.
 - Live fix without restart: `POST /api/fs/root {"cwd":...}` repoints state + config; the rail repaints on the next sessions poll.
 
+## 2026-09-01 phone idle overlays left-arm Mixamo so life is not three head clips
+- LIFE_SOFT adds waist/sun_salute/interact. keep_idle overlays ARM_LEFT on talking_on_phone.
+
 ## 2026-09-01 idle chain uses IDLE_W instead of a stay-home coin
 - pick_chain weights briefcase/phone/guitar (3/2/2) from HOME and skips last_prop. Stay-home is no longer a 0.36 coin that ignored IDLE_W.
 
