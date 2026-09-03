@@ -375,7 +375,7 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "pool = [c for c in IDLES if c != skip]" in srv
     assert '"standing_w_briefcase_idle": 3' in srv[srv.find("IDLE_W"):srv.find("IDLE_DWELL")]
     assert "pick == cur" in srv or "pick==cur" in srv.replace(" ","")
-    assert "quiet >= 5 and random.random() < 0.70" in srv
+    assert "quiet >= 5 and random.random() < 0.80" in srv
     assert "!getActIdle()" in js.replace(" ","")
     assert "prev.paused=false" in js.replace(" ","")
     assert "(c.duration||1.2)-a.time)/ts" in js.replace(" ","")
@@ -443,7 +443,7 @@ def test_idle_chain_uses_seamless_mixamo():
     assert '"module_check": "check"' in srv
     assert '"machinamachina_spark": "spark"' in srv
     assert "random.random() < 0.92" in srv
-    assert "quiet >= 5 and random.random() < 0.70" in srv
+    assert "quiet >= 5 and random.random() < 0.80" in srv
     assert "baseHold" in js
     assert "baseHold-performance.now()" in js.replace(" ","")
     assert "if(layer===\"base\"&&performance.now()<baseHold)" in js.replace(" ","")
