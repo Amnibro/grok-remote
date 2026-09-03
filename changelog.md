@@ -1,3 +1,5 @@
+## 2026-09-03 cold start and briefcase recover wake life in 5-12s
+- XR connect, empty-client reset, and idle recover nxt is 5-12s.
 ## 2026-09-03 same-clip idle rephase always rolls timeScale
 - Same-clip base play always rolls timeScale and nudges time. fade>=1.05 gate is gone.
 ## 2026-09-03 idle hop wakes the next life beat in 5-12s
