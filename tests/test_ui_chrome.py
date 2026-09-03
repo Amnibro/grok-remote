@@ -542,6 +542,7 @@ def test_idle_chain_uses_seamless_mixamo():
     assert '"thanks": "bow_apology"' in em
     assert '"thank": "bow_apology"' in em
     assert "rephase_at\", 0) < 24" in srv or "rephase_at', 0)<24" in srv.replace(" ","")
+    assert "uniform(5, 12)" in srv[srv.find("rephase_at"):srv.find("idle rephase")]
     assert '"standing_clap": "wave_hello"' in srv[srv.find("ARM_HOME"):srv.find("FAM")]
     em=srv[srv.find("EMOTES"):srv.find("state =")]
     assert '"love": "hand_on_heart"' in em
