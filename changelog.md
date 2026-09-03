@@ -5,6 +5,9 @@
 - server.py: stderr WARN when `--cwd` resolves to the hub's own folder.
 - Live fix without restart: `POST /api/fs/root {"cwd":...}` repoints state + config; the rail repaints on the next sessions poll.
 
+## 2026-09-01 life can fire after a 2.6s overlay instead of waiting past 8s
+- quiet > 5 so an 8s nxt still lands a life beat. Overlay holds are 2.6s.
+
 ## 2026-09-01 keepIdle overlays do not fadeIn from zero
 - keepIdle plays at weight 1 with no fadeIn. Full-body takes still fadeIn.
 
