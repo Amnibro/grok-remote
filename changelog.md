@@ -1,3 +1,5 @@
+## 2026-09-03 XR warms guitar_life and fills the guitar overlay set from alive
+- Alive sends guitar_life. warmPool fills GUITAR and SOFT from the server and warms those clips.
 ## 2026-09-03 a stay rephases after 4s so life beats do not eat the roll
 - rephase throttle is 4s so a stay after overlay can still roll idle timeScale.
 ## 2026-09-03 guitar hops to phone more than it dumps the briefcase

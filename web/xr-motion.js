@@ -17,7 +17,11 @@ export function initMotion(ctx){
   fetch("/static/clip_index.json",{cache:"no-store"}).then(r=>r.json()).then(j=>{clipIx=j.clips||{}}).catch(()=>{});
   function warmPool(){
     fetch(httpBase()+"/motion/alive",{cache:"no-store"}).then(r=>r.json()).then(j=>{
-      const names=[HOME,...(j.idles||[]),...(j.life||[]),...(j.life_soft||[]),...(j.life_head||[])];
+      const g=j.guitar_life||[];
+      if(g.length){GUITAR.clear();g.forEach(n=>GUITAR.add(n))}
+      const s=j.life_soft||[];
+      if(s.length){SOFT.clear();s.forEach(n=>SOFT.add(n))}
+      const names=[HOME,...(j.idles||[]),...(j.life||[]),...(j.life_soft||[]),...(j.life_head||[]),...g];
       [...new Set(names)].forEach(n=>{if(n)warm(n)});
     }).catch(()=>{});
   }
