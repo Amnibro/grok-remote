@@ -429,7 +429,7 @@ def test_idle_chain_uses_seamless_mixamo():
     assert '"module_check": "check"' in srv
     assert '"machinamachina_spark": "spark"' in srv
     assert "random.random() < 0.58" in srv
-    assert "0.70 if state.get(\"base\") == \"guitar_playing\" else 0.55" in srv or "0.70 if state.get('base')==\"guitar_playing\" else 0.55" in srv.replace(" ","")
+    assert "0.62 if state.get(\"base\") == HOME else 0.70" in srv or "0.62 if state.get('base')==HOME else 0.70" in srv.replace(" ","")
     assert "baseHold" in js
     assert "baseHold-performance.now()" in js.replace(" ","")
     assert "if(layer===\"base\"&&performance.now()<baseHold)" in js.replace(" ","")
