@@ -5,6 +5,9 @@
 - server.py: stderr WARN when `--cwd` resolves to the hub's own folder.
 - Live fix without restart: `POST /api/fs/root {"cwd":...}` repoints state + config; the rail repaints on the next sessions poll.
 
+## 2026-09-01 guitar can rephase twice on the same idle
+- rephase throttle is 12s, matching IDLE_DWELL.
+
 ## 2026-09-01 a throttled rephase retries life in 5-12s
 - rephase throttle nxt is 5-12s.
 
