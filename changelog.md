@@ -5,6 +5,9 @@
 - server.py: stderr WARN when `--cwd` resolves to the hub's own folder.
 - Live fix without restart: `POST /api/fs/root {"cwd":...}` repoints state + config; the rail repaints on the next sessions poll.
 
+## 2026-09-01 guitar life can chin_think without dropping the guitar
+- Guitar life pool is LIFE_HEAD plus chin_think. holdGaze includes chin_think.
+
 ## 2026-09-01 missed-did nxt is 5-12s not 8-16s
 - not-did nxt fallback is uniform(5, 12).
 

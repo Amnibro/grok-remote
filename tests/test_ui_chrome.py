@@ -459,7 +459,9 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "def keep_idle(" in srv
     assert "clip in ARM_RIGHT" in srv[srv.find("def keep_idle"):srv.find("def fade_pad")]
     assert "return 0.0 if keep_idle" in srv or "return 0.0 if keep_idle" in srv.replace(" ","")
-    assert "clip===\"chin_think\"&&curBase===\"talking_on_phone\"" in js.replace(" ","")
+    assert "clip===\"chin_think\"}" in js.replace(" ","") or "clip===\"chin_think\")" in js.replace(" ","")
+    assert 'LIFE_HEAD + ["chin_think"]' in srv
+    assert "guitar_playing\" and clip == \"chin_think\"" in srv
     assert "curBase===\"talking_on_phone\"&&SOFT.has(clip)" in js.replace(" ","")
     assert "talking_on_phone\" and clip in ARM_LEFT" in srv[srv.find("def keep_idle"):srv.find("def fade_pad")]
     em=srv[srv.find("EMOTES"):srv.find("state =")]

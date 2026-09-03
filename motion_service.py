@@ -191,6 +191,8 @@ extra_life()
 def keep_idle(clip):
     if clip in LIFE_HEAD:
         return True
+    if state.get("base") == "guitar_playing" and clip == "chin_think":
+        return True
     if state.get("base") == "talking_on_phone" and clip in ARM_LEFT:
         return True
     return state.get("base") == HOME and clip in ARM_RIGHT
@@ -199,7 +201,7 @@ def fade_pad():
 def prop_ok(clip):
     b = state.get("base")
     if b == "guitar_playing":
-        return clip in LIFE_HEAD
+        return clip in LIFE_HEAD or clip == "chin_think"
     if b == "talking_on_phone":
         return clip in LIFE_SOFT
     if b == HOME and clip in ARM_LEFT:
@@ -278,7 +280,7 @@ async def alive_loop(app):
                 nxt = random.uniform(6, 12)
             continue
         quiet = time.time() - state.get("gesture_at", 0)
-        pool = LIFE_HEAD if state.get("base") == "guitar_playing" else (LIFE_SOFT if state.get("base") != HOME else [c for c in LIFE if c not in ARM_LEFT])
+        pool = (LIFE_HEAD + ["chin_think"]) if state.get("base") == "guitar_playing" else (LIFE_SOFT if state.get("base") != HOME else [c for c in LIFE if c not in ARM_LEFT])
         did = False
         life_clip = None
         if quiet >= 5:
