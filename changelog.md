@@ -5,6 +5,9 @@
 - server.py: stderr WARN when `--cwd` resolves to the hub's own folder.
 - Live fix without restart: `POST /api/fs/root {"cwd":...}` repoints state + config; the rail repaints on the next sessions poll.
 
+## 2026-09-01 guitar can rephase instead of always dumping home
+- pick_chain stays on the current prop 22% so guitar rephases. Guitar life-beat chance is 0.70.
+
 ## 2026-09-01 phone idle overlays left-arm Mixamo so life is not three head clips
 - LIFE_SOFT adds waist/sun_salute/interact. keep_idle overlays ARM_LEFT on talking_on_phone.
 

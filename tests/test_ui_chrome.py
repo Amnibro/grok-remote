@@ -313,6 +313,8 @@ def test_idle_chain_uses_seamless_mixamo():
     pc=srv[srv.find("def pick_chain"):srv.find("async def get_alive")]
     assert "c != HOME and c != cur and c != prev" in pc
     assert "random.random() < 0.28" in pc
+    assert "random.random() < 0.22" in pc
+    assert "return cur" in pc
     assert "if keep_idle(clip):" in srv[srv.find("async def fire"):srv.find("async def drain_loop")]
     assert "dur = min(dur, 2.6)" in srv
     js=(ROOT/"web"/"xr-motion.js").read_text(encoding="utf-8")
@@ -427,7 +429,7 @@ def test_idle_chain_uses_seamless_mixamo():
     assert '"module_check": "check"' in srv
     assert '"machinamachina_spark": "spark"' in srv
     assert "random.random() < 0.58" in srv
-    assert "0.62 if state.get(\"base\") == HOME else 0.55" in srv or "0.62 if state.get('base')==HOME else 0.55" in srv.replace(" ","")
+    assert "0.70 if state.get(\"base\") == \"guitar_playing\" else 0.55" in srv or "0.70 if state.get('base')==\"guitar_playing\" else 0.55" in srv.replace(" ","")
     assert "baseHold" in js
     assert "baseHold-performance.now()" in js.replace(" ","")
     assert "if(layer===\"base\"&&performance.now()<baseHold)" in js.replace(" ","")

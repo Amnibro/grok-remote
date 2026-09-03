@@ -219,6 +219,8 @@ def pick_chain(cur):
     if cur != HOME:
         prev = state.get("last_prop")
         state["last_prop"] = cur
+        if random.random() < 0.22:
+            return cur
         if random.random() < 0.28:
             alts = [c for c in IDLES if c != HOME and c != cur and c != prev]
             if alts:
@@ -280,7 +282,7 @@ async def alive_loop(app):
         pool = LIFE_HEAD if state.get("base") == "guitar_playing" else (LIFE_SOFT if state.get("base") != HOME else [c for c in LIFE if c not in ARM_LEFT])
         did = False
         life_clip = None
-        if quiet > 8 and random.random() < (0.62 if state.get("base") == HOME else 0.55):
+        if quiet > 8 and random.random() < (0.62 if state.get("base") == HOME else (0.70 if state.get("base") == "guitar_playing" else 0.55)):
             lasts = sorted(recent, key=recent.get, reverse=True)[:2]
             last_fam = FAM.get(state.get("gesture") or "")
             def ok(c, fam=True, rec=True):
