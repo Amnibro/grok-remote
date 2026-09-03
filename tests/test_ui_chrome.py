@@ -391,6 +391,8 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "getActIdle()===a" in js.replace(" ","")
     assert "idle.timeScale=0" in js.replace(" ","")
     assert "idl.paused=false" in js.replace(" ","")
+    assert "idl.paused=false;idl.timeScale=0.94+Math.random()*0.14" in js.replace(" ","")
+    assert "if(idl.timeScale===0)idl.timeScale" not in js.replace(" ","")
     assert "idle after gesture" in srv
     assert "since = 0.0" in alive or "since=0.0" in alive.replace(" ","")
     assert '"dance"' in srv[srv.find("if clip in TRAVEL"):srv.find("if clip in TRAVEL")+360]

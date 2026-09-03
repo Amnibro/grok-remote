@@ -82,7 +82,7 @@ export function initMotion(ctx){
     if(pendingBase)queueBase(pendingBase[0],pendingBase[1]);
     const idl=getActIdle();
     if(idl){
-      idl.paused=false;if(idl.timeScale===0)idl.timeScale=0.94+Math.random()*0.14;idl.enabled=true;idl.setEffectiveWeight(1);
+      idl.paused=false;idl.timeScale=0.94+Math.random()*0.14;idl.enabled=true;idl.setEffectiveWeight(1);
       if(!keepIdle(state.lastGesture||""))idl.fadeIn(0.45)
     }
   }
