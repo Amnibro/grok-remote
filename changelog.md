@@ -5,6 +5,9 @@
 - server.py: stderr WARN when `--cwd` resolves to the hub's own folder.
 - Live fix without restart: `POST /api/fs/root {"cwd":...}` repoints state + config; the rail repaints on the next sessions poll.
 
+## 2026-09-01 every life beat queues a chain when dwell is met
+- pick_chain always runs after a life beat. Dwell still gates the swap.
+
 ## 2026-09-01 quiet wakes overlay more often
 - Life-beat chance is 0.80.
 
