@@ -1,3 +1,5 @@
+## 2026-09-03 rephase and not-did hops wake the next life in 5-12s
+- final nxt after rephase or not-did chain is 5-12s.
 ## 2026-09-03 XR fills holdGaze from alive so Head overlays cannot drift
 - Alive sends hold_gaze. warmPool fills HEAD. Bow still leaves gaze on.
 ## 2026-09-03 cold start and briefcase recover wake life in 5-12s
