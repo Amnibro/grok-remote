@@ -406,6 +406,8 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "random.random() < 0.90" not in srv[srv.find("quiet = "):srv.find("lasts =")]
     assert "!getActIdle()" in js.replace(" ","")
     assert "prev.paused=false" in js.replace(" ","")
+    assert "prev.timeScale=0.94+Math.random()*0.14" in js.replace(" ","")
+    assert "if(prev.timeScale===0)prev.timeScale=0.94" not in js.replace(" ","")
     assert "(c.duration||1.2)-a.time)/ts" in js.replace(" ","")
     assert "idle rephase" in srv
     assert "await fire(cur," in srv or "await fire(cur ," in srv

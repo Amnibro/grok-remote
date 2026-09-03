@@ -1,3 +1,5 @@
+## 2026-09-03 idle hops roll the outgoing cycle so the crossfade is not stuck
+- Crossfade always rolls the outgoing idle timeScale.
 ## 2026-09-03 overlay end nudges idle phase so the cycle does not sit on one beat
 - Overlay end nudges idle.time by up to 15% of duration.
 ## 2026-09-03 keepIdle overlays nudge idle phase so the cycle does not sit on one beat
