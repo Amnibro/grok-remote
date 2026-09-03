@@ -5,6 +5,9 @@
 - server.py: stderr WARN when `--cwd` resolves to the hub's own folder.
 - Live fix without restart: `POST /api/fs/root {"cwd":...}` repoints state + config; the rail repaints on the next sessions poll.
 
+## 2026-09-01 a 5s overlay nap still lands a life beat
+- quiet >= 5 so nxt 5-12 still fires life.
+
 ## 2026-09-01 idle chain can leave a prop after 12s
 - IDLE_DWELL is 12s for briefcase, phone, and guitar.
 
