@@ -1,3 +1,5 @@
+## 2026-09-03 briefcase life can blow_kiss without dropping the idle
+- LIFE adds blow_kiss so HOME overlays via ARM_RIGHT. Phone stays off kiss. extra_life still skips it.
 ## 2026-09-03 guitar can hop to phone after a phone visit
 - hop skipped last_prop so guitar→phone then hop dumped briefcase. Hop picks the other prop even when last_prop is that prop.
 ## 2026-09-03 guitar life can blow_kiss without dropping the guitar
