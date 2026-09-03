@@ -5,6 +5,9 @@
 - server.py: stderr WARN when `--cwd` resolves to the hub's own folder.
 - Live fix without restart: `POST /api/fs/root {"cwd":...}` repoints state + config; the rail repaints on the next sessions poll.
 
+## 2026-09-01 HOME can pick guitar again without a phone visit
+- HOME pick_chain weights all three idles. last_prop still skips the other prop on a hop.
+
 ## 2026-09-01 rephase throttle matches 6s dwell
 - rephase throttle is 6s.
 
