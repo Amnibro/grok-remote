@@ -234,7 +234,7 @@ async def alive_loop(app):
     since = 0.0
     while True:
         now = time.time()
-        nap = random.uniform(12, 28)
+        nap = random.uniform(5, 12)
         if state.get("follow_base"):
             nap = min(nap, max(0.35, state.get("follow_at", now) - now))
         gu = state.get("gesture_until", 0) + fade_pad()
