@@ -1,3 +1,5 @@
+## 2026-09-03 arm overlays look at the user; Head takes still hold gaze
+- Life beats not in HOLD_GAZE look at user. Head movers still skip.
 ## 2026-09-03 guitar overlays can return after 12s instead of 16s
 - REPEAT_WINDOW is 12s. Small pools still use 8s.
 ## 2026-09-03 rephase and not-did hops wake the next life in 5-12s

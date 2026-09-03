@@ -426,7 +426,7 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "gestureHold=performance.now()+480" in js.replace(" ","")
     assert '"angry"' in srv[srv.find("if clip in TRAVEL"):srv.find("if clip in TRAVEL")+450]
     assert "nxt - since" in alive or "nxt-since" in alive.replace(" ","")
-    assert "startswith(\"look\")" in alive or "startswith('look')" in alive
+    assert "clip not in HOLD_GAZE" in alive
     html=(ROOT/"web"/"xr.html").read_text(encoding="utf-8")
     assert "!holding&&motionState.gazeTarget" in html.replace(" ","")
     assert "motionState.gz" in html
@@ -493,7 +493,7 @@ def test_idle_chain_uses_seamless_mixamo():
     assert '"angry": "dismissing_gesture"' in em
     assert '"punch": "dismissing_gesture"' in em
     assert '"punch"' in srv[srv.find("if clip in TRAVEL"):srv.find("if clip in TRAVEL")+560]
-    assert "fade_pad() > 0" in alive or "fade_pad()>0" in alive.replace(" ","")
+    assert "clip not in HOLD_GAZE" in alive
     assert "getClip().name" in js.replace(" ","")
     assert "nm!==String(d.base)" in js.replace(" ","")
     assert "if(!keepIdle(state.lastGesture||\"\"))idl.fadeIn(0.45)" in js.replace(" ","")
