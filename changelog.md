@@ -5,6 +5,9 @@
 - server.py: stderr WARN when `--cwd` resolves to the hub's own folder.
 - Live fix without restart: `POST /api/fs/root {"cwd":...}` repoints state + config; the rail repaints on the next sessions poll.
 
+## 2026-09-01 overlay beats almost always queue the next idle
+- Follow-after-life is 0.92.
+
 ## 2026-09-01 HOME idle chain weights guitar and phone even with briefcase
 - IDLE_W is 3/3/3.
 
