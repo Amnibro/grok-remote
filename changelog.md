@@ -5,6 +5,9 @@
 - server.py: stderr WARN when `--cwd` resolves to the hub's own folder.
 - Live fix without restart: `POST /api/fs/root {"cwd":...}` repoints state + config; the rail repaints on the next sessions poll.
 
+## 2026-09-01 alive_loop nap matches the 5-12s life cadence
+- Default nap is uniform(5, 12).
+
 ## 2026-09-01 guitar stay hop and HOME split evenly
 - pick_chain prop hop is 0.50 after 0.34 stay (~34/33/33).
 
