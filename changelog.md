@@ -5,6 +5,9 @@
 - server.py: stderr WARN when `--cwd` resolves to the hub's own folder.
 - Live fix without restart: `POST /api/fs/root {"cwd":...}` repoints state + config; the rail repaints on the next sessions poll.
 
+## 2026-09-01 guitar's three life takes use the 16s repeat window
+- 8s win is only for pools of 2 or fewer. Guitar LIFE_HEAD (3) uses REPEAT_WINDOW 16s.
+
 ## 2026-09-01 idle swaps crossfade in 0.7s
 - idle chain fire fade is 0.7. XR fadeS min is 0.5.
 
