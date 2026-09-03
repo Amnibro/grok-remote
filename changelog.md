@@ -1,3 +1,5 @@
+## 2026-09-03 a stay rephases after 4s so life beats do not eat the roll
+- rephase throttle is 4s so a stay after overlay can still roll idle timeScale.
 ## 2026-09-03 guitar hops to phone more than it dumps the briefcase
 - prop hop is 0.70 after 0.34 stay (~34/46/20). Phone keep_idle follows LIFE_SOFT.
 ## 2026-09-03 HOME chains into guitar or phone instead of re-parking

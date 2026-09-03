@@ -309,7 +309,7 @@ async def alive_loop(app):
                 did = True
                 nxtb = pick_chain(state.get("base"))
                 stay = nxtb == state.get("base")
-                if (not stay) or time.time() - state.get("rephase_at", 0) >= 6:
+                if (not stay) or time.time() - state.get("rephase_at", 0) >= 4:
                     if stay:
                         state["rephase_at"] = time.time()
                     state["follow_base"] = nxtb
@@ -323,7 +323,7 @@ async def alive_loop(app):
                 continue
             pick = pick_chain(cur)
             if pick == cur:
-                if time.time() - state.get("rephase_at", 0) < 6:
+                if time.time() - state.get("rephase_at", 0) < 4:
                     nxt = random.uniform(5, 12)
                     continue
                 state["rephase_at"] = time.time()
