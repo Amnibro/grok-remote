@@ -5,6 +5,9 @@
 - server.py: stderr WARN when `--cwd` resolves to the hub's own folder.
 - Live fix without restart: `POST /api/fs/root {"cwd":...}` repoints state + config; the rail repaints on the next sessions poll.
 
+## 2026-09-01 briefcase can follow guitar before 12s dwell
+- follow after life swaps whenever pick_chain leaves the current idle. not-did still uses 12s dwell.
+
 ## 2026-09-01 every life beat queues a chain when dwell is met
 - pick_chain always runs after a life beat. Dwell still gates the swap.
 
