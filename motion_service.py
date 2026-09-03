@@ -303,7 +303,10 @@ async def alive_loop(app):
                     await bcast({"type": "gaze", "target": "user", "seq": state["seq"]})
                 did = True
                 nxtb = pick_chain(state.get("base"))
-                if nxtb != state.get("base"):
+                stay = nxtb == state.get("base")
+                if (not stay) or time.time() - state.get("rephase_at", 0) >= 6:
+                    if stay:
+                        state["rephase_at"] = time.time()
                     state["follow_base"] = nxtb
                     state["follow_at"] = state.get("gesture_until", time.time()) + fade_pad()
         if not did:
