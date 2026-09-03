@@ -57,7 +57,10 @@ async def fire(clip, layer, fade, note=""):
         else:state["base"] = clip
     else:
         state.update(gesture=clip, gesture_at=time.time())
-        state["gesture_until"] = time.time() + clip_dur(clip)
+        dur = clip_dur(clip)
+        if keep_idle(clip):
+            dur = min(dur, 2.6)
+        state["gesture_until"] = time.time() + dur
         recent[clip] = time.time()
     await bcast({"type": "play", "clip": clip, "layer": layer, "fade": fade, "seq": state["seq"]})
     return {"ok": True, "clip": clip, "layer": layer, "note": note}

@@ -6,7 +6,7 @@ def test_pair_in_upper_right_menus():
     assert 'id="btnPairPhoneMore"' in html
     assert "function openPairPhone(" in html
     assert "async function openAppUrl(" in html
-    assert 'openAppUrl("/pair",{sameWindowFallback:true})' in html
+    assert 'openAppUrl(dest,{sameWindowFallback:true})' in html
     assert 'id="btnHealthMore"' in html
     orbit=html[html.find('id="orbitMenu"'):html.find('id="setup"')]
     assert 'id="btnPairPhone"' in orbit
@@ -199,12 +199,12 @@ def test_agent_bar_and_session_rail_stay_put():
     assert "placeAgentView(row)" in html
     assert "clearAgentRail()" in html
     assert ".agent-rail" in skin
-    assert "2026-08-31-settings-menu" in html
+    assert "2026-09-01-pub-priv" in html
     assert "else showPage(\"setup\",true)" not in html[html.find("const doAuto="):html.find("const forceTour=")]
     assert "const linking=connecting||!!(ws&&(ws.readyState===0||ws.readyState===1))" in html
     assert "#chatStage:not(.on){display:none!important" in html
     assert "#chatStage:not(.on){display:none!important" in braid
-    assert 'src="/static/chat-runtime.js?v=2026-08-31-settings-menu"' in html
+    assert 'src="/static/chat-runtime.js?v=2026-09-01-pub-priv"' in html
     assert "braid-layout.css?v=1.8.28" in html
     assert "grok-archive-skin.css?v=19" in html
     assert "function stampMsgRow" in html
@@ -264,10 +264,14 @@ def test_agent_bar_and_session_rail_stay_put():
     assert "sess-dot" in html[html.find("function sessTitleHtml"):html.find("function sessMetaHtml")]
     assert "open-mark" not in html[html.find("function sessTitleHtml"):html.find("function sessMetaHtml")]
     assert "open-mark" not in html[html.find("function paintSessionCurrent"):html.find("function setSelectedSession")]
-    assert "2026-08-31-settings-menu" in html
+    assert "2026-09-01-pub-priv" in html
     assert 'id="moreMenuStatus"' not in html
     assert "menu.style.maxHeight" in html[html.find("function placeFixedMenu"):html.find("function protectMath")]
     assert "placeFixedMenu(m,a)" in html[html.find("function showMoreLayer"):html.find("function bindMoreLayers")]
+    assert "function sessionNew" in html
+    assert 'fetch("/api/session/new"' in html
+    assert "await waitAgentAttach(sendSid,2500)" in html
+    assert "staleBusy" in html[html.find("async function drainMsgQueue"):html.find("function nextId")]
     assert "#sessList:not([data-ready" not in html
     assert "#sessList:not([data-ready" not in braid
     assert "function revealSessList" in html
@@ -309,6 +313,11 @@ def test_idle_chain_uses_seamless_mixamo():
     pc=srv[srv.find("def pick_chain"):srv.find("async def get_alive")]
     assert "c != HOME and c != cur and c != prev" in pc
     assert "random.random() < 0.28" in pc
+    assert "if keep_idle(clip):" in srv[srv.find("async def fire"):srv.find("async def drain_loop")]
+    assert "dur = min(dur, 2.6)" in srv
+    js=(ROOT/"web"/"xr-motion.js").read_text(encoding="utf-8")
+    assert "keepIdle(name)&&(c.duration||1.2)>2.8" in js.replace(" ","")
+    assert "keepIdle(name)?2800:8000" in js.replace(" ","")
     assert "IDLE_DWELL" in srv
     assert "/motion/alive" in srv
     assert "LIFE_HEAD" in srv
