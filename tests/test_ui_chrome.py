@@ -314,7 +314,7 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "c != HOME and c != cur]" in pc
     assert "c != prev" not in pc
     assert "random.random() < 0.70" in pc
-    assert "random.random() < 0.34" in pc
+    assert "random.random() < 0.26" in pc
     assert "return cur" in pc
     assert "if keep_idle(clip):" in srv[srv.find("async def fire"):srv.find("async def drain_loop")]
     assert "dur = min(dur, 2.6)" in srv

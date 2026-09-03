@@ -1,3 +1,5 @@
+## 2026-09-03 guitar stays less so it hops to phone more
+- prop stay is 0.26 after a life beat (~26/52/22 stay/hop/HOME).
 ## 2026-09-03 HEAD boots with the full holdGaze list so first overlays cannot fight IK
 - HEAD seeds the six HOLD_GAZE clips. holdGaze is HEAD.has. warmPool warms hold_gaze and arm_left.
 ## 2026-09-03 arm overlays look at the user; Head takes still hold gaze
