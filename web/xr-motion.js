@@ -25,6 +25,8 @@ export function initMotion(ctx){
       if(r.length){RIGHT.clear();r.forEach(n=>RIGHT.add(n))}
       const l=j.arm_left||[];
       if(l.length){LEFT.clear();l.forEach(n=>LEFT.add(n))}
+      const h=j.hold_gaze||[];
+      if(h.length){HEAD.clear();h.forEach(n=>HEAD.add(n))}
       const names=[HOME,...(j.idles||[]),...(j.life||[]),...(j.life_soft||[]),...(j.life_head||[]),...g,...r];
       [...new Set(names)].forEach(n=>{if(n)warm(n)});
     }).catch(()=>{});

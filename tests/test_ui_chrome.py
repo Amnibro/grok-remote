@@ -356,6 +356,11 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "guitar_life" in srv[srv.find("async def get_alive"):srv.find("async def alive_loop")]
     assert "arm_right" in srv[srv.find("async def get_alive"):srv.find("async def alive_loop")]
     assert "arm_left" in srv[srv.find("async def get_alive"):srv.find("async def alive_loop")]
+    assert "hold_gaze" in srv[srv.find("async def get_alive"):srv.find("async def alive_loop")]
+    assert "HOLD_GAZE" in srv
+    assert "j.hold_gaze" in js
+    assert "HEAD.clear()" in js.replace(" ","")
+    assert "bow_apology" not in srv[srv.find("HOLD_GAZE"):srv.find("FAM")]
     assert "j.guitar_life" in js
     assert "j.arm_right" in js
     assert "GUITAR.clear()" in js.replace(" ","")

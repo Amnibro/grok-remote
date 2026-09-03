@@ -1,3 +1,5 @@
+## 2026-09-03 XR fills holdGaze from alive so Head overlays cannot drift
+- Alive sends hold_gaze. warmPool fills HEAD. Bow still leaves gaze on.
 ## 2026-09-03 cold start and briefcase recover wake life in 5-12s
 - XR connect, empty-client reset, and idle recover nxt is 5-12s.
 ## 2026-09-03 same-clip idle rephase always rolls timeScale

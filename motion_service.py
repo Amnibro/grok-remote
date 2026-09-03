@@ -166,6 +166,7 @@ GUITAR_LIFE = LIFE_HEAD + ["chin_think", "hand_on_heart", "blow_kiss"]
 ARM_LEFT = {"waist_side_stretch", "sun_salute", "chin_think", "interact"}
 ARM_HOME = {"waist_side_stretch": "look_over_shoulder", "sun_salute": "salute", "chin_think": "module_check", "interact": "point_ahead", "agree": "module_check", "surprised": "machinamachina_spark", "standing_clap": "wave_hello"}
 ARM_RIGHT = {"look_over_shoulder", "dismissing_gesture", "point_ahead", "salute", "wave_hello", "hand_on_heart", "bow_apology", "blow_kiss"}
+HOLD_GAZE = ["module_check", "machinamachina_spark", "look_over_shoulder", "hand_on_heart", "chin_think", "blow_kiss"]
 FAM = {"look_over_shoulder": "look", "agree": "nod", "chin_think": "nod", "salute": "salute", "sun_salute": "sun", "standing_clap": "clap", "wave_hello": "wave", "waist_side_stretch": "stretch", "point_ahead": "point", "dismissing_gesture": "dismiss", "module_check": "check", "machinamachina_spark": "spark", "surprised": "soft", "hand_on_heart": "heart", "bow_apology": "bow", "blow_kiss": "kiss", "excited_bounce": "bounce", "interact": "reach"}
 def extra_life():
     p = os.path.join(os.path.dirname(os.path.abspath(__file__)), "web", "clip_index.json")
@@ -233,7 +234,7 @@ def pick_chain(cur):
     alts = [c for c in IDLES if c != HOME]
     return weighted(alts, [IDLE_W.get(c, 1) for c in alts])
 async def get_alive(req):
-    return cors(web.json_response({"home": HOME, "idles": IDLES, "life": LIFE, "life_soft": LIFE_SOFT, "life_head": LIFE_HEAD, "guitar_life": GUITAR_LIFE, "arm_right": list(ARM_RIGHT), "arm_left": list(ARM_LEFT), "idle_w": IDLE_W}))
+    return cors(web.json_response({"home": HOME, "idles": IDLES, "life": LIFE, "life_soft": LIFE_SOFT, "life_head": LIFE_HEAD, "guitar_life": GUITAR_LIFE, "arm_right": list(ARM_RIGHT), "arm_left": list(ARM_LEFT), "hold_gaze": HOLD_GAZE, "idle_w": IDLE_W}))
 async def alive_loop(app):
     nxt = random.uniform(5, 12)
     since = 0.0
