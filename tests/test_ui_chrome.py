@@ -341,6 +341,7 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "idle recover" in alive
     assert "uniform(6, 12)" in alive[alive.find('"idle recover"'):alive.find("quiet =")]
     assert "dwell0 >= need0" in alive
+    assert "uniform(5, 12)" in alive[alive.find("if dwell < need"):alive.find("pick = pick_chain")]
     em=srv[srv.find("EMOTES"):srv.find("state =")]
     assert '"talk": "chin_think"' in em
     assert "sitting_talking" not in em

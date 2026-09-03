@@ -316,7 +316,7 @@ async def alive_loop(app):
             dwell = time.time() - state.get("base_at", 0)
             need = IDLE_DWELL.get(cur, 20)
             if dwell < need:
-                nxt = random.uniform(8, 16)
+                nxt = random.uniform(5, 12)
                 continue
             pick = pick_chain(cur)
             if pick == cur:
