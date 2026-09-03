@@ -5,6 +5,9 @@
 - server.py: stderr WARN when `--cwd` resolves to the hub's own folder.
 - Live fix without restart: `POST /api/fs/root {"cwd":...}` repoints state + config; the rail repaints on the next sessions poll.
 
+## 2026-09-01 quiet wakes overlay more often
+- Life-beat chance is 0.80.
+
 ## 2026-09-01 guitar stays to rephase more often than hopping
 - pick_chain prop stay is 0.34.
 
