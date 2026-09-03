@@ -5,6 +5,9 @@
 - server.py: stderr WARN when `--cwd` resolves to the hub's own folder.
 - Live fix without restart: `POST /api/fs/root {"cwd":...}` repoints state + config; the rail repaints on the next sessions poll.
 
+## 2026-09-01 briefcase life no longer doubles dismiss and point
+- LIFE_W is all 1s so dismiss/point stop eating ~36% of HOME beats. Phone chin_think is even with module/spark.
+
 ## 2026-09-01 keep-idle overlays stop parking the chain for a 5s wave
 - Overlay gesture_until caps at 2.6s when keep_idle. XR speeds long keepIdle clips so a wave finishes in that window.
 

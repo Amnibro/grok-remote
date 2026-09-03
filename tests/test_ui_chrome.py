@@ -450,7 +450,7 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "setTimeout(()=>{try{g.stop()" in js.replace(" ","")
     assert "c.duration>4" in js.replace(" ","")
     assert "c.duration*0.12" in js.replace(" ","")
-    assert "LIFE_W = [1, 2, 2, 2, 1, 1, 1, 1, 1, 2, 1, 1, 1]" in srv
+    assert "LIFE_W = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]" in srv
     assert "function travelSkip(" in js
     assert "travelSkip(name)||!clientPropOk" in js.replace(" ","")
     assert "want=!holding&&motionState.gazeTarget" in html.replace(" ","")
