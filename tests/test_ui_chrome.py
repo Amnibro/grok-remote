@@ -472,6 +472,7 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "function keepIdle(" in js
     assert "if(keepIdle(name))" in js.replace(" ","")
     assert "if(keepIdle(name))a.setEffectiveWeight(1).play()" in js.replace(" ","")
+    assert "if(keepIdle(name)){idle.paused=false;idle.timeScale=0.94+Math.random()*0.14" in js.replace(" ","")
     assert '"module_check": "check"' in srv
     assert '"machinamachina_spark": "spark"' in srv
     assert "if random.random() < 0.92" not in srv[srv.find("life beat"):srv.find("if not did")]

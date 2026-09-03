@@ -1,3 +1,5 @@
+## 2026-09-03 keepIdle overlays re-roll idle timeScale so the cycle does not freeze
+- Overlay start always rolls idle timeScale.
 ## 2026-09-03 gaze ease matches the 2.8s hold so look-around can start
 - lookT is t+2.8 matching gazeUntil.
 ## 2026-09-03 user gaze lasts 2.8s so random look-around can run between overlays
