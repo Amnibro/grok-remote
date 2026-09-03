@@ -4,14 +4,14 @@ export function initMotion(ctx){
   const gestureOut=new Map(),fetchedClips=new Set(),warming=new Map();
   const HOME="standing_w_briefcase_idle";
   let mws=null,pendingPlays=[],actGesture=null,pendingBase=null,clipIx={},mixerHooked=false,pbTimer=null,curBase=HOME,baseHold=0;
-  const HEAD=new Set(["module_check","machinamachina_spark"]),GUITAR=new Set(["module_check","machinamachina_spark","bow_apology","chin_think","hand_on_heart","blow_kiss"]),SOFT=new Set(["module_check","machinamachina_spark","chin_think","waist_side_stretch","sun_salute","interact","bow_apology"]),LEFT=new Set(["waist_side_stretch","sun_salute","chin_think","interact"]),RIGHT=new Set(["look_over_shoulder","dismissing_gesture","point_ahead","salute","wave_hello","hand_on_heart","bow_apology","blow_kiss"]);
+  const HEAD=new Set(["module_check","machinamachina_spark","look_over_shoulder","hand_on_heart","chin_think","blow_kiss"]),GUITAR=new Set(["module_check","machinamachina_spark","bow_apology","chin_think","hand_on_heart","blow_kiss"]),SOFT=new Set(["module_check","machinamachina_spark","chin_think","waist_side_stretch","sun_salute","interact","bow_apology"]),LEFT=new Set(["waist_side_stretch","sun_salute","chin_think","interact"]),RIGHT=new Set(["look_over_shoulder","dismissing_gesture","point_ahead","salute","wave_hello","hand_on_heart","bow_apology","blow_kiss"]);
   function clientPropOk(clip){
     if(curBase==="guitar_playing")return GUITAR.has(clip);
     if(curBase==="talking_on_phone")return SOFT.has(clip);
     if(curBase===HOME)return !LEFT.has(clip)&&clip!=="agree"&&clip!=="surprised"&&clip!=="standing_clap";
     return true;
   }
-  function holdGaze(clip){return HEAD.has(clip)||clip==="look_over_shoulder"||clip==="hand_on_heart"||clip==="chin_think"||clip==="blow_kiss"}
+  function holdGaze(clip){return HEAD.has(clip)}
   function keepIdle(clip){return holdGaze(clip)||(curBase===HOME&&RIGHT.has(clip))||(curBase==="talking_on_phone"&&SOFT.has(clip))||(curBase==="guitar_playing"&&GUITAR.has(clip))}
   function travelSkip(n){return /(sit|lay|crouch|plank|walk|run|jog|sprint|dance|twerk|shuffle|kneel|pray|squat|angry|jump|jab_cross|beckon|punch)/i.test(n||"")}
   fetch("/static/clip_index.json",{cache:"no-store"}).then(r=>r.json()).then(j=>{clipIx=j.clips||{}}).catch(()=>{});
@@ -27,7 +27,7 @@ export function initMotion(ctx){
       if(l.length){LEFT.clear();l.forEach(n=>LEFT.add(n))}
       const h=j.hold_gaze||[];
       if(h.length){HEAD.clear();h.forEach(n=>HEAD.add(n))}
-      const names=[HOME,...(j.idles||[]),...(j.life||[]),...(j.life_soft||[]),...(j.life_head||[]),...g,...r];
+      const names=[HOME,...(j.idles||[]),...(j.life||[]),...(j.life_soft||[]),...(j.life_head||[]),...g,...r,...l,...h];
       [...new Set(names)].forEach(n=>{if(n)warm(n)});
     }).catch(()=>{});
   }

@@ -481,10 +481,10 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "def keep_idle(" in srv
     assert "clip in ARM_RIGHT" in srv[srv.find("def keep_idle"):srv.find("def fade_pad")]
     assert "return 0.0 if keep_idle" in srv or "return 0.0 if keep_idle" in srv.replace(" ","")
-    assert "clip===\"chin_think\"" in js.replace(" ","")
+    assert "chin_think" in js[js.find("HEAD=new Set"):js.find("GUITAR=new Set")]
     assert 'LIFE_HEAD + ["chin_think", "hand_on_heart", "blow_kiss"]' in srv
     assert "clip in GUITAR_LIFE" in srv[srv.find("def keep_idle"):srv.find("def fade_pad")]
-    assert "clip===\"blow_kiss\"" in js.replace(" ","")
+    assert "blow_kiss" in js[js.find("HEAD=new Set"):js.find("GUITAR=new Set")]
     assert "blow_kiss" in srv[srv.find("ARM_RIGHT"):srv.find("FAM")]
     assert "curBase===\"talking_on_phone\"&&SOFT.has(clip)" in js.replace(" ","")
     assert "talking_on_phone\" and clip in LIFE_SOFT" in srv[srv.find("def keep_idle"):srv.find("def fade_pad")]
@@ -570,8 +570,10 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "function holdGaze(" in js
     assert "holdGaze(name)||!keepIdle(name)" in js.replace(" ","")
     assert '"surprised": "machinamachina_spark"' in srv[srv.find("ARM_HOME"):srv.find("FAM")]
-    assert "clip===\"look_over_shoulder\"" in js.replace(" ","")
-    assert "clip===\"hand_on_heart\"" in js.replace(" ","")
+    assert "look_over_shoulder" in js[js.find("HEAD=new Set"):js.find("GUITAR=new Set")]
+    assert "hand_on_heart" in js[js.find("HEAD=new Set"):js.find("GUITAR=new Set")]
+    assert "function holdGaze(clip){return HEAD.has(clip)}" in js.replace(" ","") or "functionholdGaze(clip){returnHEAD.has(clip)}" in js.replace(" ","")
+    assert "...h]" in js or ",...h]" in js.replace(" ","")
     assert '"think": "chin_think"' in srv[srv.find("EMOTES"):srv.find("state =")]
     em=srv[srv.find("EMOTES"):srv.find("state =")]
     assert '"thanks": "bow_apology"' in em
