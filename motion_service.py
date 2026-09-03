@@ -320,7 +320,7 @@ async def alive_loop(app):
                 continue
             pick = pick_chain(cur)
             if pick == cur:
-                if time.time() - state.get("rephase_at", 0) < 24:
+                if time.time() - state.get("rephase_at", 0) < 12:
                     nxt = random.uniform(5, 12)
                     continue
                 state["rephase_at"] = time.time()
