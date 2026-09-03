@@ -265,7 +265,7 @@ async def alive_loop(app):
                 state.pop("follow_at", None)
                 if nb:
                     await fire(nb, "base", 0.7, "idle chain")
-                nxt = random.uniform(6, 12)
+                nxt = random.uniform(5, 12)
                 since = 0.0
                 continue
         if busy:

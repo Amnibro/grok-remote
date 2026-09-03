@@ -367,7 +367,7 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "pendingBase" in js
     assert "actGesture!==a" in js.replace(" ","")
     assert "lasts" in alive
-    assert "uniform(6, 12)" in alive[alive.find('"idle chain"'):alive.find("if busy")]
+    assert "uniform(5, 12)" in alive[alive.find('"idle chain"'):alive.find("if busy")]
     assert "nxt = random.uniform(6, 12)" in alive[:alive.find("while True")]
     assert "nxt = random.uniform(6, 12)" in alive[alive.find("if not clients"):alive.find("since += ")]
     assert "nap = random.uniform(5, 12)" in alive[alive.find("while True"):alive.find("if state.get(\"follow_base\")")]
