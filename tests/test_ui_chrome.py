@@ -460,8 +460,8 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "clip in ARM_RIGHT" in srv[srv.find("def keep_idle"):srv.find("def fade_pad")]
     assert "return 0.0 if keep_idle" in srv or "return 0.0 if keep_idle" in srv.replace(" ","")
     assert "clip===\"chin_think\"}" in js.replace(" ","") or "clip===\"chin_think\")" in js.replace(" ","")
-    assert 'LIFE_HEAD + ["chin_think"]' in srv
-    assert "guitar_playing\" and clip == \"chin_think\"" in srv
+    assert 'LIFE_HEAD + ["chin_think", "hand_on_heart"]' in srv
+    assert "chin_think\", \"hand_on_heart\"" in srv[srv.find("def keep_idle"):srv.find("def fade_pad")]
     assert "curBase===\"talking_on_phone\"&&SOFT.has(clip)" in js.replace(" ","")
     assert "talking_on_phone\" and clip in ARM_LEFT" in srv[srv.find("def keep_idle"):srv.find("def fade_pad")]
     em=srv[srv.find("EMOTES"):srv.find("state =")]
@@ -526,7 +526,7 @@ def test_idle_chain_uses_seamless_mixamo():
     assert '"interact": "point_ahead"' in srv
     assert "clip in ARM_HOME" in srv
     assert "min(fresh or pool, key=lambda c: recent.get(c, 0.0))" in srv or "min(freshorpool,key=lambda c:recent.get(c,0.0))" in srv.replace(" ","")
-    assert '(LIFE_HEAD + ["chin_think"]) if b == "guitar_playing"' in srv
+    assert "GUITAR_LIFE if b == \"guitar_playing\"" in srv
     drain=srv[srv.find("async def drain_loop"):srv.find("async def play")]
     assert "ARM_HOME" in drain
     assert "min(fresh or pool, key=lambda c: recent.get(c, 0.0))" in srv or "min(freshorpool,key=lambda c:recent.get(c,0.0))" in srv.replace(" ","")
