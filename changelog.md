@@ -1,3 +1,5 @@
+## 2026-09-03 life skips only the last take so the six-clip guitar pool rotates
+- lasts is min(1, pool-1). 16s window still blocks twitch.
 ## 2026-09-03 XR warms guitar_life and fills the guitar overlay set from alive
 - Alive sends guitar_life. warmPool fills GUITAR and SOFT from the server and warms those clips.
 ## 2026-09-03 a stay rephases after 4s so life beats do not eat the roll

@@ -366,7 +366,7 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "nxt = random.uniform(6, 12)" in alive[:alive.find("while True")]
     assert "nxt = random.uniform(6, 12)" in alive[alive.find("if not clients"):alive.find("since += ")]
     assert "nap = random.uniform(5, 12)" in alive[alive.find("while True"):alive.find("if state.get(\"follow_base\")")]
-    assert "min(2, len(pool) - 1)" in srv
+    assert "min(1, len(pool) - 1)" in srv
     assert "win = 8.0 if len(pool) <= 2 else REPEAT_WINDOW" in srv
     assert alive.find("follow_base") < alive.find("if since < nxt")
     assert "since += time.time() - t0" in alive or "since+=time.time()-t0" in alive.replace(" ","")
