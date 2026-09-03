@@ -134,7 +134,7 @@ export function initMotion(ctx){
       const prev=getActIdle();
       if(prev&&prev!==a){
         prev.paused=false;
-        if(prev.timeScale===0)prev.timeScale=0.94;
+        prev.timeScale=0.94+Math.random()*0.14;
         const fadeS=Math.max(fade,0.5);
         prev.crossFadeTo(a,fadeS,false);
         const dying=prev;
