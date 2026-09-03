@@ -73,7 +73,7 @@ async def drain_loop(app):
             clip = ARM_HOME[clip]
         if layer == "gesture" and not prop_ok(clip):
             b = state.get("base")
-            pool = (LIFE_HEAD + ["chin_think"]) if b == "guitar_playing" else (LIFE_SOFT if b == "talking_on_phone" else None)
+            pool = GUITAR_LIFE if b == "guitar_playing" else (LIFE_SOFT if b == "talking_on_phone" else None)
             if not pool:
                 continue
             now = time.time()
@@ -104,7 +104,7 @@ async def play(req):
         return cors(web.json_response({"ok": True, "clip": clip, "layer": "queued", "note": "idle after gesture"}))
     if layer == "gesture" and not d.get("force") and not prop_ok(clip):
         b = state.get("base")
-        pool = (LIFE_HEAD + ["chin_think"]) if b == "guitar_playing" else (LIFE_SOFT if b == "talking_on_phone" else None)
+        pool = GUITAR_LIFE if b == "guitar_playing" else (LIFE_SOFT if b == "talking_on_phone" else None)
         if not pool:
             return cors(web.json_response({"ok": True, "clip": clip, "layer": "skipped", "note": "prop idle keeps the arms, head-only moves"}))
         fresh = [c for c in pool if now - recent.get(c, 0) >= REPEAT_WINDOW]
@@ -162,6 +162,7 @@ LIFE = ["look_over_shoulder", "waist_side_stretch", "dismissing_gesture", "point
 LIFE_W = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
 LIFE_SOFT = ["module_check", "machinamachina_spark", "chin_think", "waist_side_stretch", "sun_salute", "interact", "bow_apology"]
 LIFE_HEAD = ["module_check", "machinamachina_spark", "bow_apology"]
+GUITAR_LIFE = LIFE_HEAD + ["chin_think", "hand_on_heart"]
 ARM_LEFT = {"waist_side_stretch", "sun_salute", "chin_think", "interact"}
 ARM_HOME = {"waist_side_stretch": "look_over_shoulder", "sun_salute": "salute", "chin_think": "module_check", "interact": "point_ahead", "agree": "module_check", "surprised": "machinamachina_spark", "standing_clap": "wave_hello"}
 ARM_RIGHT = {"look_over_shoulder", "dismissing_gesture", "point_ahead", "salute", "wave_hello", "hand_on_heart", "bow_apology"}
@@ -191,7 +192,7 @@ extra_life()
 def keep_idle(clip):
     if clip in LIFE_HEAD:
         return True
-    if state.get("base") == "guitar_playing" and clip == "chin_think":
+    if state.get("base") == "guitar_playing" and clip in ("chin_think", "hand_on_heart"):
         return True
     if state.get("base") == "talking_on_phone" and clip in ARM_LEFT:
         return True
@@ -201,7 +202,7 @@ def fade_pad():
 def prop_ok(clip):
     b = state.get("base")
     if b == "guitar_playing":
-        return clip in LIFE_HEAD or clip == "chin_think"
+        return clip in GUITAR_LIFE
     if b == "talking_on_phone":
         return clip in LIFE_SOFT
     if b == HOME and clip in ARM_LEFT:
@@ -280,7 +281,7 @@ async def alive_loop(app):
                 nxt = random.uniform(6, 12)
             continue
         quiet = time.time() - state.get("gesture_at", 0)
-        pool = (LIFE_HEAD + ["chin_think"]) if state.get("base") == "guitar_playing" else (LIFE_SOFT if state.get("base") != HOME else [c for c in LIFE if c not in ARM_LEFT])
+        pool = GUITAR_LIFE if state.get("base") == "guitar_playing" else (LIFE_SOFT if state.get("base") != HOME else [c for c in LIFE if c not in ARM_LEFT])
         did = False
         life_clip = None
         if quiet >= 5:
