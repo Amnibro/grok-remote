@@ -162,10 +162,10 @@ LIFE = ["look_over_shoulder", "waist_side_stretch", "dismissing_gesture", "point
 LIFE_W = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
 LIFE_SOFT = ["module_check", "machinamachina_spark", "chin_think", "waist_side_stretch", "sun_salute", "interact", "bow_apology"]
 LIFE_HEAD = ["module_check", "machinamachina_spark", "bow_apology"]
-GUITAR_LIFE = LIFE_HEAD + ["chin_think", "hand_on_heart"]
+GUITAR_LIFE = LIFE_HEAD + ["chin_think", "hand_on_heart", "blow_kiss"]
 ARM_LEFT = {"waist_side_stretch", "sun_salute", "chin_think", "interact"}
 ARM_HOME = {"waist_side_stretch": "look_over_shoulder", "sun_salute": "salute", "chin_think": "module_check", "interact": "point_ahead", "agree": "module_check", "surprised": "machinamachina_spark", "standing_clap": "wave_hello"}
-ARM_RIGHT = {"look_over_shoulder", "dismissing_gesture", "point_ahead", "salute", "wave_hello", "hand_on_heart", "bow_apology"}
+ARM_RIGHT = {"look_over_shoulder", "dismissing_gesture", "point_ahead", "salute", "wave_hello", "hand_on_heart", "bow_apology", "blow_kiss"}
 FAM = {"look_over_shoulder": "look", "agree": "nod", "chin_think": "nod", "salute": "salute", "sun_salute": "sun", "standing_clap": "clap", "wave_hello": "wave", "waist_side_stretch": "stretch", "point_ahead": "point", "dismissing_gesture": "dismiss", "module_check": "check", "machinamachina_spark": "spark", "surprised": "soft", "hand_on_heart": "heart", "bow_apology": "bow", "blow_kiss": "kiss", "excited_bounce": "bounce", "interact": "reach"}
 def extra_life():
     p = os.path.join(os.path.dirname(os.path.abspath(__file__)), "web", "clip_index.json")
@@ -192,7 +192,7 @@ extra_life()
 def keep_idle(clip):
     if clip in LIFE_HEAD:
         return True
-    if state.get("base") == "guitar_playing" and clip in ("chin_think", "hand_on_heart"):
+    if state.get("base") == "guitar_playing" and clip in GUITAR_LIFE:
         return True
     if state.get("base") == "talking_on_phone" and clip in ARM_LEFT:
         return True
