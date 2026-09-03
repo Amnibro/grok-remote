@@ -203,7 +203,7 @@ export function initMotion(ctx){
         if(!idl||nm!==String(d.base).toLowerCase())motionPlay(d.base,"base",0.5);
         if(hud)hud.base=d.base
       }
-      if(d.type==="gaze"){state.gazeTarget=d.target;state.gazeUntil=performance.now()+5500;if(hud){hud.gaze=d.target;hud.seq=d.seq||hud.seq}}
+      if(d.type==="gaze"){state.gazeTarget=d.target;state.gazeUntil=performance.now()+2800;if(hud){hud.gaze=d.target;hud.seq=d.seq||hud.seq}}
     };
     mws.onclose=()=>setTimeout(connect,3000);
     mws.onerror=()=>{try{mws.close()}catch(e){}};
