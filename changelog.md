@@ -1,3 +1,13 @@
+## 2026-09-03 desktop launch rooted the hub in the repo; rail went empty, chats filed under "Ai"
+- GrokRemote.exe -> scripts/ensure-running.ps1 without -Cwd -> `$PWD` fallback = the repo root the exe set as its working dir -> hub `--cwd <repo>`. The client's home is then the repo, every real chat (Documentsi) lands in the parent-folder "Ai" app bucket, Chats scope shows nothing, and new chats are minted in the repo's session store.
+- ensure-running.ps1: `-Cwd` param, `$PWD` is ignored when it is the plugin root or scripts dir, then Documentsi, then USERPROFILE. `-PrintCwd` prints the resolved workspace and exits (also bypasses the healthy-port early exit) so the rule is testable: tests/test_ensure_running_cwd.py.
+- desktop-tauri lib.rs spawn_stack: passes `-Cwd` on the ensure-running branch and sets GROK_PROJECT_DIR for the child.
+- server.py: stderr WARN when `--cwd` resolves to the hub's own folder.
+- Live fix without restart: `POST /api/fs/root {"cwd":...}` repoints state + config; the rail repaints on the next sessions poll.
+
+## 2026-09-01 keep-idle overlays stop parking the chain for a 5s wave
+- Overlay gesture_until caps at 2.6s when keep_idle. XR speeds long keepIdle clips so a wave finishes in that window.
+
 ## 2026-08-31 guitar can chain into phone without dumping through briefcase
 - pick_chain hops guitar↔phone 28% of the time instead of always returning HOME.
 
