@@ -275,7 +275,7 @@ async def alive_loop(app):
         if state.get("base") not in IDLES:
             if time.time() - state.get("base_at", 0) > 8:
                 await fire(HOME, "base", 1.1, "idle recover")
-                nxt = random.uniform(14, 26)
+                nxt = random.uniform(6, 12)
             else:
                 nxt = random.uniform(6, 12)
             continue
