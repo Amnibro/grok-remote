@@ -235,7 +235,7 @@ def pick_chain(cur):
 async def get_alive(req):
     return cors(web.json_response({"home": HOME, "idles": IDLES, "life": LIFE, "life_soft": LIFE_SOFT, "life_head": LIFE_HEAD, "guitar_life": GUITAR_LIFE, "arm_right": list(ARM_RIGHT), "arm_left": list(ARM_LEFT), "idle_w": IDLE_W}))
 async def alive_loop(app):
-    nxt = random.uniform(6, 12)
+    nxt = random.uniform(5, 12)
     since = 0.0
     while True:
         now = time.time()
@@ -252,7 +252,7 @@ async def alive_loop(app):
         await asyncio.sleep(nap)
         if not clients:
             since = 0.0
-            nxt = random.uniform(6, 12)
+            nxt = random.uniform(5, 12)
             continue
         since += time.time() - t0
         now = time.time()
@@ -278,9 +278,9 @@ async def alive_loop(app):
         if state.get("base") not in IDLES:
             if time.time() - state.get("base_at", 0) > 8:
                 await fire(HOME, "base", 0.7, "idle recover")
-                nxt = random.uniform(6, 12)
+                nxt = random.uniform(5, 12)
             else:
-                nxt = random.uniform(6, 12)
+                nxt = random.uniform(5, 12)
             continue
         quiet = time.time() - state.get("gesture_at", 0)
         pool = GUITAR_LIFE if state.get("base") == "guitar_playing" else (LIFE_SOFT if state.get("base") != HOME else [c for c in LIFE if c not in ARM_LEFT])

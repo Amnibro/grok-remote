@@ -340,7 +340,7 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "def prop_ok(" in srv
     assert "prop idle keeps the arms" in srv
     assert "idle recover" in alive
-    assert "uniform(6, 12)" in alive[alive.find('"idle recover"'):alive.find("quiet =")]
+    assert "uniform(5, 12)" in alive[alive.find('"idle recover"'):alive.find("quiet =")]
     assert "dwell0 >= need0" not in alive[alive.find("nxtb = pick_chain"):alive.find("if not did")]
     assert "stay = nxtb == state.get(\"base\")" in alive[alive.find("nxtb = pick_chain"):alive.find("if not did")]
     assert "if stay:" in alive[alive.find("nxtb = pick_chain"):alive.find("if not did")]
@@ -368,8 +368,8 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "actGesture!==a" in js.replace(" ","")
     assert "lasts" in alive
     assert "uniform(5, 12)" in alive[alive.find('"idle chain"'):alive.find("if busy")]
-    assert "nxt = random.uniform(6, 12)" in alive[:alive.find("while True")]
-    assert "nxt = random.uniform(6, 12)" in alive[alive.find("if not clients"):alive.find("since += ")]
+    assert "nxt = random.uniform(5, 12)" in alive[:alive.find("while True")]
+    assert "nxt = random.uniform(5, 12)" in alive[alive.find("if not clients"):alive.find("since += ")]
     assert "nap = random.uniform(5, 12)" in alive[alive.find("while True"):alive.find("if state.get(\"follow_base\")")]
     assert "min(1, len(pool) - 1)" in srv
     assert "win = 8.0 if len(pool) <= 2 else REPEAT_WINDOW" in srv
