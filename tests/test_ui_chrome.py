@@ -313,7 +313,7 @@ def test_idle_chain_uses_seamless_mixamo():
     pc=srv[srv.find("def pick_chain"):srv.find("async def get_alive")]
     assert "c != HOME and c != cur and c != prev" in pc
     assert "random.random() < 0.40" in pc
-    assert "random.random() < 0.22" in pc
+    assert "random.random() < 0.34" in pc
     assert "return cur" in pc
     assert "if keep_idle(clip):" in srv[srv.find("async def fire"):srv.find("async def drain_loop")]
     assert "dur = min(dur, 2.6)" in srv
