@@ -333,6 +333,7 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "waist_side_stretch" in soft
     assert "sun_salute" in soft
     assert "interact" in soft
+    assert "bow_apology" in soft
     assert "agree" not in soft
     assert "look_over_shoulder" in life
     assert "def prop_ok(" in srv
@@ -445,7 +446,7 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "clip in ARM_RIGHT" in srv[srv.find("def keep_idle"):srv.find("def fade_pad")]
     assert "return 0.0 if keep_idle" in srv or "return 0.0 if keep_idle" in srv.replace(" ","")
     assert "clip===\"chin_think\"&&curBase===\"talking_on_phone\"" in js.replace(" ","")
-    assert "curBase===\"talking_on_phone\"&&LEFT.has(clip)" in js.replace(" ","")
+    assert "curBase===\"talking_on_phone\"&&SOFT.has(clip)" in js.replace(" ","")
     assert "talking_on_phone\" and clip in ARM_LEFT" in srv[srv.find("def keep_idle"):srv.find("def fade_pad")]
     em=srv[srv.find("EMOTES"):srv.find("state =")]
     assert '"dance": "excited_bounce"' in em

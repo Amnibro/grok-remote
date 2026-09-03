@@ -5,6 +5,9 @@
 - server.py: stderr WARN when `--cwd` resolves to the hub's own folder.
 - Live fix without restart: `POST /api/fs/root {"cwd":...}` repoints state + config; the rail repaints on the next sessions poll.
 
+## 2026-09-01 phone life can bow without dropping the phone
+- LIFE_SOFT includes bow_apology. Phone keepIdle uses SOFT.
+
 ## 2026-09-01 guitar life can bow without dropping the guitar
 - LIFE_HEAD includes bow_apology. XR GUITAR set overlays it; holdGaze stays Head-only.
 
