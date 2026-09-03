@@ -1,3 +1,5 @@
+## 2026-09-03 user gaze lasts 2.8s so random look-around can run between overlays
+- gazeUntil is 2.8s matching the overlay cap.
 ## 2026-09-03 guitar stays less so it hops to phone more
 - prop stay is 0.26 after a life beat (~26/52/22 stay/hop/HOME).
 ## 2026-09-03 HEAD boots with the full holdGaze list so first overlays cannot fight IK

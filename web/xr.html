@@ -1204,7 +1204,7 @@ function perform(t,dt,lvl,overlay){
   }
   if(motionState.gazeTarget){
     const now=performance.now();
-    if(!motionState.gazeUntil)motionState.gazeUntil=now+5500;
+    if(!motionState.gazeUntil)motionState.gazeUntil=now+2800;
     if(now>=motionState.gazeUntil){motionState.gazeTarget=null;motionState.gazeUntil=0}
     else{
       const GZ={user:[0,0],left:[0.5,0],right:[-0.5,0],up:[0,0.2],down:[0,-0.16],away:[0.6,0.05]};
