@@ -358,7 +358,8 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "idle after gesture" in srv
     assert "since = 0.0" in alive or "since=0.0" in alive.replace(" ","")
     assert '"dance"' in srv[srv.find("if clip in TRAVEL"):srv.find("if clip in TRAVEL")+360]
-    assert "random.random() < 0.36" in srv
+    assert "pool = [c for c in IDLES if c != skip]" in srv
+    assert '"standing_w_briefcase_idle": 3' in srv[srv.find("IDLE_W"):srv.find("IDLE_DWELL")]
     assert "pick == cur" in srv or "pick==cur" in srv.replace(" ","")
     assert "0.62 if state.get(\"base\") == HOME" in srv
     assert "!getActIdle()" in js.replace(" ","")
