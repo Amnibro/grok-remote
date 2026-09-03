@@ -431,6 +431,7 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "!holding&&motionState.gazeTarget" in html.replace(" ","")
     assert "gazeUntil=performance.now()+2800" in js.replace(" ","")
     assert "gazeUntil=now+2800" in html.replace(" ","")
+    assert "lookT=t+2.8" in html.replace(" ","")
     assert "motionState.gz" in html
     assert "sitting_talking" not in html[html.find("You are in the room"):html.find("You are in the room")+800]
     assert "Stay standing" in html
