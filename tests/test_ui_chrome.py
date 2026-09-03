@@ -430,7 +430,7 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "if(keepIdle(name))" in js.replace(" ","")
     assert '"module_check": "check"' in srv
     assert '"machinamachina_spark": "spark"' in srv
-    assert "random.random() < 0.58" in srv
+    assert "random.random() < 0.84" in srv
     assert "quiet > 8 and random.random() < 0.70" in srv
     assert "baseHold" in js
     assert "baseHold-performance.now()" in js.replace(" ","")
