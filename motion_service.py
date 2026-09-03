@@ -232,7 +232,7 @@ def pick_chain(cur):
 async def get_alive(req):
     return cors(web.json_response({"home": HOME, "idles": IDLES, "life": LIFE, "life_soft": LIFE_SOFT, "life_head": LIFE_HEAD, "idle_w": IDLE_W}))
 async def alive_loop(app):
-    nxt = random.uniform(22, 42)
+    nxt = random.uniform(6, 12)
     since = 0.0
     while True:
         now = time.time()
@@ -249,6 +249,7 @@ async def alive_loop(app):
         await asyncio.sleep(nap)
         if not clients:
             since = 0.0
+            nxt = random.uniform(6, 12)
             continue
         since += time.time() - t0
         now = time.time()
@@ -328,7 +329,7 @@ async def alive_loop(app):
             else:
                 await fire(pick, "base", 1.1, "idle home" if pick == HOME else "idle chain")
                 did = True
-        nxt = random.uniform(5, 12) if did and life_clip and keep_idle(life_clip) else (random.uniform(14, 26) if did else random.uniform(22, 42))
+        nxt = random.uniform(5, 12) if did and life_clip and keep_idle(life_clip) else (random.uniform(14, 26) if did else random.uniform(8, 16))
 async def start_bg(app):
     app["alive"] = asyncio.create_task(alive_loop(app))
     app["drain"] = asyncio.create_task(drain_loop(app))
