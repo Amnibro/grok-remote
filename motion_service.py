@@ -272,7 +272,7 @@ async def alive_loop(app):
         if busy:
             continue
         if since < nxt:
-            g = random.choices(["user", "user", "user", "left", "right", "down", "up", "away"], k=1)[0]
+            g = random.choices(["user", "left", "right", "down", "up", "away", "left", "right"], k=1)[0]
             await bcast({"type": "gaze", "target": g, "seq": state["seq"]})
             continue
         since = 0.0

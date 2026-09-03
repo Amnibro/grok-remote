@@ -1,3 +1,5 @@
+## 2026-09-03 idle gaze looks around more than it stares
+- Idle gaze is user 1/8, left/right 4/8, up/down/away 3/8.
 ## 2026-09-03 idle hops nudge outgoing phase so the crossfade is not one beat
 - Outgoing idle.time nudges by up to 15% of duration on hop.
 ## 2026-09-03 HOME stays less so briefcase life chains into a prop
