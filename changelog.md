@@ -1,3 +1,5 @@
+## 2026-09-03 guitar life can blow_kiss without dropping the guitar
+- blow_kiss is three right-arm tracks plus head. GUITAR_LIFE adds it. keep_idle uses GUITAR_LIFE. ARM_RIGHT overlays kiss on briefcase. Phone stays off kiss. LIFE still skips it.
 ## 2026-09-03 desktop launch rooted the hub in the repo; rail went empty, chats filed under "Ai"
 - GrokRemote.exe -> scripts/ensure-running.ps1 without -Cwd -> `$PWD` fallback = the repo root the exe set as its working dir -> hub `--cwd <repo>`. The client's home is then the repo, every real chat (Documentsi) lands in the parent-folder "Ai" app bucket, Chats scope shows nothing, and new chats are minted in the repo's session store.
 - ensure-running.ps1: `-Cwd` param, `$PWD` is ignored when it is the plugin root or scripts dir, then Documentsi, then USERPROFILE. `-PrintCwd` prints the resolved workspace and exits (also bypasses the healthy-port early exit) so the rule is testable: tests/test_ensure_running_cwd.py.

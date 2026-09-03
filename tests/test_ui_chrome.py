@@ -459,9 +459,11 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "def keep_idle(" in srv
     assert "clip in ARM_RIGHT" in srv[srv.find("def keep_idle"):srv.find("def fade_pad")]
     assert "return 0.0 if keep_idle" in srv or "return 0.0 if keep_idle" in srv.replace(" ","")
-    assert "clip===\"chin_think\"}" in js.replace(" ","") or "clip===\"chin_think\")" in js.replace(" ","")
-    assert 'LIFE_HEAD + ["chin_think", "hand_on_heart"]' in srv
-    assert "chin_think\", \"hand_on_heart\"" in srv[srv.find("def keep_idle"):srv.find("def fade_pad")]
+    assert "clip===\"chin_think\"" in js.replace(" ","")
+    assert 'LIFE_HEAD + ["chin_think", "hand_on_heart", "blow_kiss"]' in srv
+    assert "clip in GUITAR_LIFE" in srv[srv.find("def keep_idle"):srv.find("def fade_pad")]
+    assert "clip===\"blow_kiss\"" in js.replace(" ","")
+    assert "blow_kiss" in srv[srv.find("ARM_RIGHT"):srv.find("FAM")]
     assert "curBase===\"talking_on_phone\"&&SOFT.has(clip)" in js.replace(" ","")
     assert "talking_on_phone\" and clip in ARM_LEFT" in srv[srv.find("def keep_idle"):srv.find("def fade_pad")]
     em=srv[srv.find("EMOTES"):srv.find("state =")]
