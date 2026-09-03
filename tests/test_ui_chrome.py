@@ -405,7 +405,11 @@ def test_idle_chain_uses_seamless_mixamo():
     assert '"jump": "excited_bounce"' in em
     assert "a.timeScale=0.94" in js.replace(" ","")
     assert '"jump"' in srv[srv.find("if clip in TRAVEL"):srv.find("if clip in TRAVEL")+480]
-    assert "fade>=1.05" in js.replace(" ","")
+    assert "fade>=1.05" not in js.replace(" ","")
+    assert "getActIdle()===a" in js.replace(" ","")
+    jsIdle=js.replace(" ","")
+    aBlk=jsIdle[jsIdle.find("getActIdle()===a"):jsIdle.find("if(actGesture)")]
+    assert "a.timeScale=0.94+Math.random()*0.14" in aBlk
     assert "state.get(\"base\") != clip" in srv or "state.get('base')!=clip" in srv.replace(" ","")
     assert "function endGesture(" in js
     assert 'addEventListener("finished"' in js
