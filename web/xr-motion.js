@@ -82,7 +82,7 @@ export function initMotion(ctx){
     if(pendingBase)queueBase(pendingBase[0],pendingBase[1]);
     const idl=getActIdle();
     if(idl){
-      idl.paused=false;idl.timeScale=0.94+Math.random()*0.14;idl.enabled=true;idl.setEffectiveWeight(1);
+      idl.paused=false;idl.timeScale=0.94+Math.random()*0.14;const ic=idl.getClip&&idl.getClip();if(ic&&ic.duration>1)idl.time=(idl.time+Math.random()*Math.min(2,ic.duration*0.15))%Math.max(0.01,ic.duration);idl.enabled=true;idl.setEffectiveWeight(1);
       if(!keepIdle(state.lastGesture||""))idl.fadeIn(0.45)
     }
   }
