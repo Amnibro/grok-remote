@@ -5,6 +5,9 @@
 - server.py: stderr WARN when `--cwd` resolves to the hub's own folder.
 - Live fix without restart: `POST /api/fs/root {"cwd":...}` repoints state + config; the rail repaints on the next sessions poll.
 
+## 2026-09-01 phone life beats as often as guitar now that SOFT has six takes
+- Prop idles fire life at 0.70. HOME stays 0.62. Phone is no longer the 0.55 leftover.
+
 ## 2026-09-01 guitar can rephase instead of always dumping home
 - pick_chain stays on the current prop 22% so guitar rephases. Guitar life-beat chance is 0.70.
 
