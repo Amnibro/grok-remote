@@ -226,9 +226,7 @@ def pick_chain(cur):
             if alts:
                 return weighted(alts, [IDLE_W.get(c, 1) for c in alts])
         return HOME
-    skip = state.get("last_prop")
-    pool = [c for c in IDLES if c != skip] or list(IDLES)
-    return weighted(pool, [IDLE_W.get(c, 1) for c in pool])
+    return weighted(IDLES, [IDLE_W.get(c, 1) for c in IDLES])
 async def get_alive(req):
     return cors(web.json_response({"home": HOME, "idles": IDLES, "life": LIFE, "life_soft": LIFE_SOFT, "life_head": LIFE_HEAD, "idle_w": IDLE_W}))
 async def alive_loop(app):
