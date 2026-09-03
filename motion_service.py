@@ -157,7 +157,7 @@ async def opt(req):
 HOME = "standing_w_briefcase_idle"
 IDLES = ["standing_w_briefcase_idle", "talking_on_phone", "guitar_playing"]
 IDLE_W = {"standing_w_briefcase_idle": 3, "talking_on_phone": 2, "guitar_playing": 2}
-IDLE_DWELL = {"standing_w_briefcase_idle": 16.0, "talking_on_phone": 16.0, "guitar_playing": 14.0}
+IDLE_DWELL = {"standing_w_briefcase_idle": 12.0, "talking_on_phone": 12.0, "guitar_playing": 12.0}
 LIFE = ["look_over_shoulder", "waist_side_stretch", "dismissing_gesture", "point_ahead", "salute", "module_check", "sun_salute", "bow_apology", "machinamachina_spark", "chin_think", "hand_on_heart", "interact", "wave_hello"]
 LIFE_W = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
 LIFE_SOFT = ["module_check", "machinamachina_spark", "chin_think", "waist_side_stretch", "sun_salute", "interact"]
