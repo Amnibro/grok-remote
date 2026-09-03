@@ -353,6 +353,10 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "sitting" not in base
     js=(ROOT/"web"/"xr-motion.js").read_text(encoding="utf-8")
     assert "warmPool" in js
+    assert "guitar_life" in srv[srv.find("async def get_alive"):srv.find("async def alive_loop")]
+    assert "j.guitar_life" in js
+    assert "GUITAR.clear()" in js.replace(" ","")
+    assert "SOFT.clear()" in js.replace(" ","")
     assert "idle.fadeOut(0.28)" in js.replace(" ","")
     assert "c.duration>4" in js.replace(" ","")
     assert "pendingBase" in js
