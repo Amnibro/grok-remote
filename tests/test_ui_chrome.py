@@ -352,6 +352,8 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "pendingBase" in js
     assert "actGesture!==a" in js.replace(" ","")
     assert "lasts" in alive
+    assert "nxt = random.uniform(6, 12)" in alive[:alive.find("while True")]
+    assert "nxt = random.uniform(6, 12)" in alive[alive.find("if not clients"):alive.find("since += ")]
     assert "min(2, len(pool) - 1)" in srv
     assert "win = 8.0 if len(pool) <= 3 else REPEAT_WINDOW" in srv
     assert alive.find("follow_base") < alive.find("if since < nxt")

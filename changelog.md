@@ -5,6 +5,9 @@
 - server.py: stderr WARN when `--cwd` resolves to the hub's own folder.
 - Live fix without restart: `POST /api/fs/root {"cwd":...}` repoints state + config; the rail repaints on the next sessions poll.
 
+## 2026-09-01 first life lands in 6-12s after /xr connects
+- Cold start nxt is 6-12s. Empty-client reset is 6-12s.
+
 ## 2026-09-01 phone life can bow without dropping the phone
 - LIFE_SOFT includes bow_apology. Phone keepIdle uses SOFT.
 
