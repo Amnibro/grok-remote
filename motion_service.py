@@ -282,7 +282,7 @@ async def alive_loop(app):
         pool = LIFE_HEAD if state.get("base") == "guitar_playing" else (LIFE_SOFT if state.get("base") != HOME else [c for c in LIFE if c not in ARM_LEFT])
         did = False
         life_clip = None
-        if quiet > 5 and random.random() < 0.70:
+        if quiet >= 5 and random.random() < 0.70:
             lasts = sorted(recent, key=recent.get, reverse=True)[:max(0, min(2, len(pool) - 1))]
             last_fam = FAM.get(state.get("gesture") or "")
             win = 8.0 if len(pool) <= 3 else REPEAT_WINDOW
