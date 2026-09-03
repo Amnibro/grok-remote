@@ -383,6 +383,8 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "since += time.time() - t0" in alive or "since+=time.time()-t0" in alive.replace(" ","")
     assert '"walk"' in srv[srv.find("if clip in TRAVEL"):srv.find("if clip in TRAVEL")+280]
     assert '"up"' in alive[alive.find("random.choices"):alive.find("random.choices")+180]
+    assert '"user", "user", "user"' not in alive[alive.find("random.choices"):alive.find("random.choices")+180]
+    assert '"left", "right"' in alive[alive.find("random.choices"):alive.find("random.choices")+180]
     assert "last_prop" in srv
     assert "FAM =" in srv or "FAM=" in srv.replace(" ","")
     assert "fadeS*1000+120" in js.replace(" ","")
