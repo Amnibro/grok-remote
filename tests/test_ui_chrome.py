@@ -547,7 +547,8 @@ def test_idle_chain_uses_seamless_mixamo():
     em=srv[srv.find("EMOTES"):srv.find("state =")]
     assert '"love": "hand_on_heart"' in em
     assert '"heart": "hand_on_heart"' in em
-    assert '"guitar_playing": 2' in srv[srv.find("IDLE_W"):srv.find("IDLE_DWELL")]
+    assert '"guitar_playing": 3' in srv[srv.find("IDLE_W"):srv.find("IDLE_DWELL")]
+    assert '"talking_on_phone": 3' in srv[srv.find("IDLE_W"):srv.find("IDLE_DWELL")]
     assert "standing_clap" in js[js.find("curBase===HOME"):js.find("function holdGaze")]
 if __name__=="__main__":
     test_pair_in_upper_right_menus()
