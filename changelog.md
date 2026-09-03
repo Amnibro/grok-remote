@@ -5,6 +5,9 @@
 - server.py: stderr WARN when `--cwd` resolves to the hub's own folder.
 - Live fix without restart: `POST /api/fs/root {"cwd":...}` repoints state + config; the rail repaints on the next sessions poll.
 
+## 2026-09-01 life beats queue an idle chain instead of eating it
+- Follow-after-life is 0.84 so 0.70 life rolls still chain when dwell is met.
+
 ## 2026-09-01 briefcase life beats as often as the props
 - Life-beat chance is 0.70 on every idle, including HOME.
 

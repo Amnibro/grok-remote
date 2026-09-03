@@ -303,7 +303,7 @@ async def alive_loop(app):
                 if fade_pad() > 0 and not str(clip).startswith("look"):
                     await bcast({"type": "gaze", "target": "user", "seq": state["seq"]})
                 did = True
-                if random.random() < 0.58:
+                if random.random() < 0.84:
                     nxtb = pick_chain(state.get("base"))
                     dwell0 = time.time() - state.get("base_at", 0)
                     need0 = IDLE_DWELL.get(state.get("base"), 20)
