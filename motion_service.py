@@ -194,7 +194,7 @@ def keep_idle(clip):
         return True
     if state.get("base") == "guitar_playing" and clip in GUITAR_LIFE:
         return True
-    if state.get("base") == "talking_on_phone" and clip in ARM_LEFT:
+    if state.get("base") == "talking_on_phone" and clip in LIFE_SOFT:
         return True
     return state.get("base") == HOME and clip in ARM_RIGHT
 def fade_pad():
@@ -223,7 +223,7 @@ def pick_chain(cur):
         state["last_prop"] = cur
         if random.random() < 0.34:
             return cur
-        if random.random() < 0.50:
+        if random.random() < 0.70:
             alts = [c for c in IDLES if c != HOME and c != cur]
             if alts:
                 return weighted(alts, [IDLE_W.get(c, 1) for c in alts])
