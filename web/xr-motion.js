@@ -127,7 +127,7 @@ export function initMotion(ctx){
       if(prev&&prev!==a){
         prev.paused=false;
         if(prev.timeScale===0)prev.timeScale=0.94;
-        const fadeS=Math.max(fade,0.85);
+        const fadeS=Math.max(fade,0.5);
         prev.crossFadeTo(a,fadeS,false);
         const dying=prev;
         setTimeout(()=>{if(dying!==getActIdle()){try{dying.stop();dying.enabled=false}catch(e){}}},fadeS*1000+120);
