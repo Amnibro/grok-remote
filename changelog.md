@@ -1,3 +1,5 @@
+## 2026-09-03 idle hop wakes the next life beat in 5-12s
+- follow_base after a chain swap nxt is 5-12s.
 ## 2026-09-03 XR fills briefcase RIGHT/LEFT overlay sets from alive
 - Alive sends arm_right and arm_left. warmPool fills RIGHT/LEFT and warms those clips.
 ## 2026-09-03 life skips only the last take so the six-clip guitar pool rotates
