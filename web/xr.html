@@ -1209,7 +1209,7 @@ function perform(t,dt,lvl,overlay){
     else{
       const GZ={user:[0,0],left:[0.5,0],right:[-0.5,0],up:[0,0.2],down:[0,-0.16],away:[0.6,0.05]};
       const g=GZ[String(motionState.gazeTarget).toLowerCase()]||GZ.user;
-      lookToYaw=g[0];lookToPit=g[1];lookT=t+6;
+      lookToYaw=g[0];lookToPit=g[1];lookT=t+2.8;
     }
   }
   let hy=gy*0.85+lookYaw*(0.35-li*0.3),hp=gp*0.7+lookPit+breath*0.4;
