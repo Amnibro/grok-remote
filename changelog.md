@@ -1,3 +1,5 @@
+## 2026-09-03 guitar can hop to phone after a phone visit
+- hop skipped last_prop so guitar→phone then hop dumped briefcase. Hop picks the other prop even when last_prop is that prop.
 ## 2026-09-03 guitar life can blow_kiss without dropping the guitar
 - blow_kiss is three right-arm tracks plus head. GUITAR_LIFE adds it. keep_idle uses GUITAR_LIFE. ARM_RIGHT overlays kiss on briefcase. Phone stays off kiss. LIFE still skips it.
 ## 2026-09-03 desktop launch rooted the hub in the repo; rail went empty, chats filed under "Ai"
