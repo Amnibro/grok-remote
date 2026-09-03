@@ -428,6 +428,7 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "life_soft" in js
     assert "function keepIdle(" in js
     assert "if(keepIdle(name))" in js.replace(" ","")
+    assert "if(keepIdle(name))a.setEffectiveWeight(1).play()" in js.replace(" ","")
     assert '"module_check": "check"' in srv
     assert '"machinamachina_spark": "spark"' in srv
     assert "random.random() < 0.84" in srv
