@@ -228,7 +228,10 @@ def pick_chain(cur):
             if alts:
                 return weighted(alts, [IDLE_W.get(c, 1) for c in alts])
         return HOME
-    return weighted(IDLES, [IDLE_W.get(c, 1) for c in IDLES])
+    if random.random() < 0.18:
+        return cur
+    alts = [c for c in IDLES if c != HOME]
+    return weighted(alts, [IDLE_W.get(c, 1) for c in alts])
 async def get_alive(req):
     return cors(web.json_response({"home": HOME, "idles": IDLES, "life": LIFE, "life_soft": LIFE_SOFT, "life_head": LIFE_HEAD, "idle_w": IDLE_W}))
 async def alive_loop(app):

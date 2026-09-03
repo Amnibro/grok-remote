@@ -1,3 +1,5 @@
+## 2026-09-03 HOME chains into guitar or phone instead of re-parking
+- HOME pick_chain stay is 0.18 then guitar/phone (~18/41/41).
 ## 2026-09-03 briefcase life can blow_kiss without dropping the idle
 - LIFE adds blow_kiss so HOME overlays via ARM_RIGHT. Phone stays off kiss. extra_life still skips it.
 ## 2026-09-03 guitar can hop to phone after a phone visit
