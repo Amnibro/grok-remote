@@ -21,7 +21,11 @@ export function initMotion(ctx){
       if(g.length){GUITAR.clear();g.forEach(n=>GUITAR.add(n))}
       const s=j.life_soft||[];
       if(s.length){SOFT.clear();s.forEach(n=>SOFT.add(n))}
-      const names=[HOME,...(j.idles||[]),...(j.life||[]),...(j.life_soft||[]),...(j.life_head||[]),...g];
+      const r=j.arm_right||[];
+      if(r.length){RIGHT.clear();r.forEach(n=>RIGHT.add(n))}
+      const l=j.arm_left||[];
+      if(l.length){LEFT.clear();l.forEach(n=>LEFT.add(n))}
+      const names=[HOME,...(j.idles||[]),...(j.life||[]),...(j.life_soft||[]),...(j.life_head||[]),...g,...r];
       [...new Set(names)].forEach(n=>{if(n)warm(n)});
     }).catch(()=>{});
   }
