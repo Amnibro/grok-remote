@@ -486,7 +486,7 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "setTimeout(()=>{try{g.stop()" in js.replace(" ","")
     assert "c.duration>4" in js.replace(" ","")
     assert "c.duration*0.12" in js.replace(" ","")
-    assert "LIFE_W = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]" in srv
+    assert "LIFE_W = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]" in srv
     assert "function travelSkip(" in js
     assert "travelSkip(name)||!clientPropOk" in js.replace(" ","")
     assert "want=!holding&&motionState.gazeTarget" in html.replace(" ","")
@@ -505,7 +505,7 @@ def test_idle_chain_uses_seamless_mixamo():
     assert '"wave": "wave_hello"' in em
     life=srv[srv.find("LIFE ="):srv.find("LIFE_W")]
     assert "excited_bounce" not in life
-    assert "blow_kiss" not in life
+    assert "blow_kiss" in life
     extra=srv[srv.find("def extra_life"):srv.find("def fade_pad")]
     assert "excited_bounce" in extra
     assert "blow_kiss" in extra
