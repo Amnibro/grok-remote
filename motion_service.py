@@ -321,7 +321,7 @@ async def alive_loop(app):
             pick = pick_chain(cur)
             if pick == cur:
                 if time.time() - state.get("rephase_at", 0) < 24:
-                    nxt = random.uniform(8, 16)
+                    nxt = random.uniform(5, 12)
                     continue
                 state["rephase_at"] = time.time()
                 await fire(cur, "base", 1.15, "idle rephase")
