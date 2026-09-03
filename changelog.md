@@ -5,6 +5,9 @@
 - server.py: stderr WARN when `--cwd` resolves to the hub's own folder.
 - Live fix without restart: `POST /api/fs/root {"cwd":...}` repoints state + config; the rail repaints on the next sessions poll.
 
+## 2026-09-01 idle chain uses IDLE_W instead of a stay-home coin
+- pick_chain weights briefcase/phone/guitar (3/2/2) from HOME and skips last_prop. Stay-home is no longer a 0.36 coin that ignored IDLE_W.
+
 ## 2026-09-01 briefcase life no longer doubles dismiss and point
 - LIFE_W is all 1s so dismiss/point stop eating ~36% of HOME beats. Phone chin_think is even with module/spark.
 

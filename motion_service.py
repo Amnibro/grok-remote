@@ -156,7 +156,7 @@ async def opt(req):
     return cors(web.Response())
 HOME = "standing_w_briefcase_idle"
 IDLES = ["standing_w_briefcase_idle", "talking_on_phone", "guitar_playing"]
-IDLE_W = {"standing_w_briefcase_idle": 6, "talking_on_phone": 1, "guitar_playing": 2}
+IDLE_W = {"standing_w_briefcase_idle": 3, "talking_on_phone": 2, "guitar_playing": 2}
 IDLE_DWELL = {"standing_w_briefcase_idle": 16.0, "talking_on_phone": 16.0, "guitar_playing": 14.0}
 LIFE = ["look_over_shoulder", "waist_side_stretch", "dismissing_gesture", "point_ahead", "salute", "module_check", "sun_salute", "bow_apology", "machinamachina_spark", "chin_think", "hand_on_heart", "interact", "wave_hello"]
 LIFE_W = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
@@ -224,12 +224,9 @@ def pick_chain(cur):
             if alts:
                 return weighted(alts, [IDLE_W.get(c, 1) for c in alts])
         return HOME
-    if random.random() < 0.36:
-        return HOME
-    alts = [c for c in IDLES if c != HOME and c != state.get("last_prop")]
-    if not alts:
-        alts = [c for c in IDLES if c != HOME]
-    return weighted(alts, [IDLE_W.get(c, 1) for c in alts]) if alts else HOME
+    skip = state.get("last_prop")
+    pool = [c for c in IDLES if c != skip] or list(IDLES)
+    return weighted(pool, [IDLE_W.get(c, 1) for c in pool])
 async def get_alive(req):
     return cors(web.json_response({"home": HOME, "idles": IDLES, "life": LIFE, "life_soft": LIFE_SOFT, "life_head": LIFE_HEAD, "idle_w": IDLE_W}))
 async def alive_loop(app):
