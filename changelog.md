@@ -5,6 +5,9 @@
 - server.py: stderr WARN when `--cwd` resolves to the hub's own folder.
 - Live fix without restart: `POST /api/fs/root {"cwd":...}` repoints state + config; the rail repaints on the next sessions poll.
 
+## 2026-09-01 rephase and direct chain wake life in 6-12s
+- did without keep_idle life sets nxt 6-12s.
+
 ## 2026-09-01 travel recover wakes life in 6-12s
 - idle recover nxt is 6-12s after snapping HOME.
 
