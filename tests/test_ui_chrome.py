@@ -379,7 +379,8 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "return weighted(IDLES, [IDLE_W.get(c, 1) for c in IDLES])" in srv
     assert '"standing_w_briefcase_idle": 3' in srv[srv.find("IDLE_W"):srv.find("IDLE_DWELL")]
     assert "pick == cur" in srv or "pick==cur" in srv.replace(" ","")
-    assert "quiet >= 5 and random.random() < 0.90" in srv
+    assert "if quiet >= 5:" in srv
+    assert "random.random() < 0.90" not in srv[srv.find("quiet = "):srv.find("lasts =")]
     assert "!getActIdle()" in js.replace(" ","")
     assert "prev.paused=false" in js.replace(" ","")
     assert "(c.duration||1.2)-a.time)/ts" in js.replace(" ","")
@@ -448,7 +449,8 @@ def test_idle_chain_uses_seamless_mixamo():
     assert '"machinamachina_spark": "spark"' in srv
     assert "if random.random() < 0.92" not in srv[srv.find("life beat"):srv.find("if not did")]
     assert "nxtb = pick_chain" in srv[srv.find("did = True"):srv.find("if not did")]
-    assert "quiet >= 5 and random.random() < 0.90" in srv
+    assert "if quiet >= 5:" in srv
+    assert "random.random() < 0.90" not in srv[srv.find("quiet = "):srv.find("lasts =")]
     assert "baseHold" in js
     assert "baseHold-performance.now()" in js.replace(" ","")
     assert "if(layer===\"base\"&&performance.now()<baseHold)" in js.replace(" ","")
