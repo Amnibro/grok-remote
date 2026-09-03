@@ -378,6 +378,7 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "nap = random.uniform(5, 12)" in alive[alive.find("while True"):alive.find("if state.get(\"follow_base\")")]
     assert "min(1, len(pool) - 1)" in srv
     assert "win = 8.0 if len(pool) <= 2 else REPEAT_WINDOW" in srv
+    assert "REPEAT_WINDOW = 12.0" in srv
     assert alive.find("follow_base") < alive.find("if since < nxt")
     assert "since += time.time() - t0" in alive or "since+=time.time()-t0" in alive.replace(" ","")
     assert '"walk"' in srv[srv.find("if clip in TRAVEL"):srv.find("if clip in TRAVEL")+280]

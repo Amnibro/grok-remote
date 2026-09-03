@@ -35,7 +35,7 @@ async def pose_ws(req):
     return w
 DUR_CACHE = {}
 DEFAULT_DUR = 2.2
-REPEAT_WINDOW = 16.0
+REPEAT_WINDOW = 12.0
 QUEUE_MAX = 3
 FADE_PAD = 0.55
 def clip_dur(name):
