@@ -1,3 +1,5 @@
+## 2026-09-03 idle hops nudge outgoing phase so the crossfade is not one beat
+- Outgoing idle.time nudges by up to 15% of duration on hop.
 ## 2026-09-03 HOME stays less so briefcase life chains into a prop
 - HOME stay is 0.12 (~12/44/44 guitar/phone).
 ## 2026-09-03 idle hops roll the outgoing cycle so the crossfade is not stuck
