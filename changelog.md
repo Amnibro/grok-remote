@@ -1,3 +1,5 @@
+## 2026-09-03 keepIdle overlays nudge idle phase so the cycle does not sit on one beat
+- Overlay start nudges idle.time by up to 15% of duration.
 ## 2026-09-03 overlay end re-rolls idle timeScale so the cycle does not stay stuck
 - Overlay end always rolls idle timeScale.
 ## 2026-09-03 keepIdle overlays re-roll idle timeScale so the cycle does not freeze

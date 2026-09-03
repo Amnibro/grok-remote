@@ -155,7 +155,7 @@ export function initMotion(ctx){
       else a.setEffectiveWeight(1).fadeIn(Math.min(0.35,fade)).play();
       const idle=getActIdle();
       if(idle){
-        if(keepIdle(name)){idle.paused=false;idle.timeScale=0.94+Math.random()*0.14;idle.enabled=true;idle.setEffectiveWeight(1)}
+        if(keepIdle(name)){idle.paused=false;idle.timeScale=0.94+Math.random()*0.14;const ic=idle.getClip&&idle.getClip();if(ic&&ic.duration>1)idle.time=(idle.time+Math.random()*Math.min(2,ic.duration*0.15))%Math.max(0.01,ic.duration);idle.enabled=true;idle.setEffectiveWeight(1)}
         else{idle.timeScale=0;idle.fadeOut(0.28)}
       }
       actGesture=a;
