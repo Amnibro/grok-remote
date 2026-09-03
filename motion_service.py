@@ -286,7 +286,7 @@ async def alive_loop(app):
         if quiet >= 5 and random.random() < 0.80:
             lasts = sorted(recent, key=recent.get, reverse=True)[:max(0, min(2, len(pool) - 1))]
             last_fam = FAM.get(state.get("gesture") or "")
-            win = 8.0 if len(pool) <= 3 else REPEAT_WINDOW
+            win = 8.0 if len(pool) <= 2 else REPEAT_WINDOW
             def ok(c, fam=True, rec=True):
                 if c == state.get("gesture") or (rec and c in lasts) or (rec and time.time() - recent.get(c, 0) <= win):
                     return False
