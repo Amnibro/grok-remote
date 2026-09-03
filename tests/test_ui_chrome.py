@@ -328,6 +328,7 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "look_over_shoulder" not in head
     assert "look_over_shoulder" not in soft
     assert "module_check" in head
+    assert "bow_apology" in head
     assert "chin_think" in soft
     assert "waist_side_stretch" in soft
     assert "sun_salute" in soft
@@ -419,6 +420,8 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "xrP" in html
     assert "function clientPropOk(" in js
     assert "const HEAD=new Set" in js
+    assert "GUITAR=new Set" in js
+    assert "curBase===\"guitar_playing\"&&GUITAR.has(clip)" in js.replace(" ","")
     assert "SOFT=new Set" in js
     assert "layer!==\"base\"&&(travelSkip(name)||!clientPropOk" in js.replace(" ","")
     assert "const HOME=" in js[:js.find("curBase")]
