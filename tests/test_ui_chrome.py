@@ -311,7 +311,8 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "acknowledging" in extra
     assert "pick_chain" in srv
     pc=srv[srv.find("def pick_chain"):srv.find("async def get_alive")]
-    assert "c != HOME and c != cur and c != prev" in pc
+    assert "c != HOME and c != cur]" in pc
+    assert "c != prev" not in pc
     assert "random.random() < 0.50" in pc
     assert "random.random() < 0.34" in pc
     assert "return cur" in pc
