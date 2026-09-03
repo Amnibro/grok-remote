@@ -328,7 +328,7 @@ async def alive_loop(app):
             else:
                 await fire(pick, "base", 1.1, "idle home" if pick == HOME else "idle chain")
                 did = True
-        nxt = random.uniform(8, 16) if did and life_clip and keep_idle(life_clip) else (random.uniform(14, 26) if did else random.uniform(22, 42))
+        nxt = random.uniform(5, 12) if did and life_clip and keep_idle(life_clip) else (random.uniform(14, 26) if did else random.uniform(22, 42))
 async def start_bg(app):
     app["alive"] = asyncio.create_task(alive_loop(app))
     app["drain"] = asyncio.create_task(drain_loop(app))

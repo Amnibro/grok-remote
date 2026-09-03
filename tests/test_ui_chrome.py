@@ -516,6 +516,7 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "curBase===HOME&&RIGHT.has" in js.replace(" ","")
     assert "life_clip" in srv
     assert "keep_idle(life_clip)" in srv
+    assert "uniform(5, 12) if did and life_clip and keep_idle" in srv
     assert '"wave_hello": "wave"' in srv
     assert '"salute": "salute"' in srv
     assert '"dismissing_gesture": "dismiss"' in srv
