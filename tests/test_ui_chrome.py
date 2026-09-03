@@ -526,7 +526,7 @@ def test_idle_chain_uses_seamless_mixamo():
     assert '"interact": "point_ahead"' in srv
     assert "clip in ARM_HOME" in srv
     assert "min(fresh or pool, key=lambda c: recent.get(c, 0.0))" in srv or "min(freshorpool,key=lambda c:recent.get(c,0.0))" in srv.replace(" ","")
-    assert "LIFE_HEAD if b == \"guitar_playing\"" in srv or "LIFE_HEAD if b==\"guitar_playing\"" in srv.replace(" ","")
+    assert '(LIFE_HEAD + ["chin_think"]) if b == "guitar_playing"' in srv
     drain=srv[srv.find("async def drain_loop"):srv.find("async def play")]
     assert "ARM_HOME" in drain
     assert "min(fresh or pool, key=lambda c: recent.get(c, 0.0))" in srv or "min(freshorpool,key=lambda c:recent.get(c,0.0))" in srv.replace(" ","")

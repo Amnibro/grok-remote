@@ -73,7 +73,7 @@ async def drain_loop(app):
             clip = ARM_HOME[clip]
         if layer == "gesture" and not prop_ok(clip):
             b = state.get("base")
-            pool = LIFE_HEAD if b == "guitar_playing" else (LIFE_SOFT if b == "talking_on_phone" else None)
+            pool = (LIFE_HEAD + ["chin_think"]) if b == "guitar_playing" else (LIFE_SOFT if b == "talking_on_phone" else None)
             if not pool:
                 continue
             now = time.time()
@@ -104,7 +104,7 @@ async def play(req):
         return cors(web.json_response({"ok": True, "clip": clip, "layer": "queued", "note": "idle after gesture"}))
     if layer == "gesture" and not d.get("force") and not prop_ok(clip):
         b = state.get("base")
-        pool = LIFE_HEAD if b == "guitar_playing" else (LIFE_SOFT if b == "talking_on_phone" else None)
+        pool = (LIFE_HEAD + ["chin_think"]) if b == "guitar_playing" else (LIFE_SOFT if b == "talking_on_phone" else None)
         if not pool:
             return cors(web.json_response({"ok": True, "clip": clip, "layer": "skipped", "note": "prop idle keeps the arms, head-only moves"}))
         fresh = [c for c in pool if now - recent.get(c, 0) >= REPEAT_WINDOW]
