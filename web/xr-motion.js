@@ -151,7 +151,7 @@ export function initMotion(ctx){
       let ts=0.92+Math.random()*0.16;
       if(keepIdle(name)&&(c.duration||1.2)>2.8)ts=Math.max(ts,(c.duration||1.2)/2.6);
       a.timeScale=ts;
-      if(c.duration>0.4)a.time=Math.random()*Math.min(0.15,c.duration*0.1);
+      if(c.duration>0.4)a.time=Math.random()*Math.min(0.45,c.duration*0.2);
       const holdMs=Math.max(700,Math.min(keepIdle(name)?2800:8000,((c.duration||1.2)-a.time)/ts*1000));
       if(keepIdle(name))a.setEffectiveWeight(1).play();
       else a.setEffectiveWeight(1).fadeIn(Math.min(0.35,fade)).play();

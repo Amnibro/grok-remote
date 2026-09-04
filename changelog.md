@@ -1,3 +1,5 @@
+## 2026-09-03 life overlays start later in the take so wave is not the same first frames
+- Overlay start is up to 0.45s or 20% of duration.
 ## 2026-09-03 guitar hops to phone more than it dumps the briefcase
 - prop hop is 0.82 after 0.26 stay (~26/61/13).
 ## 2026-09-03 idle gaze looks around more than it stares
