@@ -393,7 +393,7 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "getActIdle()===a" in js.replace(" ","")
     assert "idle.timeScale=0" in js.replace(" ","")
     assert "idl.paused=false" in js.replace(" ","")
-    assert "idl.paused=false;idl.timeScale=0.94+Math.random()*0.14" in js.replace(" ","")
+    assert "idl.paused=false;idl.timeScale=0.86+Math.random()*0.28" in js.replace(" ","")
     assert "idl.time=(idl.time+" in js.replace(" ","")
     assert "if(idl.timeScale===0)idl.timeScale" not in js.replace(" ","")
     assert "idle after gesture" in srv
@@ -408,7 +408,7 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "random.random() < 0.90" not in srv[srv.find("quiet = "):srv.find("lasts =")]
     assert "!getActIdle()" in js.replace(" ","")
     assert "prev.paused=false" in js.replace(" ","")
-    assert "prev.timeScale=0.94+Math.random()*0.14" in js.replace(" ","")
+    assert "prev.timeScale=0.86+Math.random()*0.28" in js.replace(" ","")
     assert "prev.time=(prev.time+" in js.replace(" ","")
     assert "oc.duration*0.15" in js.replace(" ","")
     assert "if(prev.timeScale===0)prev.timeScale=0.94" not in js.replace(" ","")
@@ -418,13 +418,13 @@ def test_idle_chain_uses_seamless_mixamo():
     em=srv[srv.find("EMOTES"):srv.find("state =")]
     assert '"excited": "excited_bounce"' in em
     assert '"jump": "excited_bounce"' in em
-    assert "a.timeScale=0.94" in js.replace(" ","")
+    assert "a.timeScale=0.86" in js.replace(" ","")
     assert '"jump"' in srv[srv.find("if clip in TRAVEL"):srv.find("if clip in TRAVEL")+480]
     assert "fade>=1.05" not in js.replace(" ","")
     assert "getActIdle()===a" in js.replace(" ","")
     jsIdle=js.replace(" ","")
     aBlk=jsIdle[jsIdle.find("getActIdle()===a"):jsIdle.find("if(actGesture)")]
-    assert "a.timeScale=0.94+Math.random()*0.14" in aBlk
+    assert "a.timeScale=0.86+Math.random()*0.28" in aBlk
     assert "state.get(\"base\") != clip" in srv or "state.get('base')!=clip" in srv.replace(" ","")
     assert "function endGesture(" in js
     assert 'addEventListener("finished"' in js
@@ -481,7 +481,7 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "function keepIdle(" in js
     assert "if(keepIdle(name))" in js.replace(" ","")
     assert "if(keepIdle(name))a.setEffectiveWeight(1).play()" in js.replace(" ","")
-    assert "if(keepIdle(name)){idle.paused=false;idle.timeScale=0.94+Math.random()*0.14" in js.replace(" ","")
+    assert "if(keepIdle(name)){idle.paused=false;idle.timeScale=0.86+Math.random()*0.28" in js.replace(" ","")
     assert "idle.time=(idle.time+" in js.replace(" ","")
     assert "ic.duration*0.15" in js.replace(" ","")
     assert "Math.min(6,ic.duration*0.15)" in js.replace(" ","")
