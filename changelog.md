@@ -1,3 +1,10 @@
+## 2026-09-04 HOME prefers the other prop 0.92 of the time
+- HOME hops prefer the other prop 0.92 of the time.
+## 2026-09-04 /xr side rails: one row per turn, her live session by default
+- The right rail appended a row per streamed chunk and per tool update with raw JSON, and the left list let two-line titles overlap and showed every automation chat. `web/xr-hud.js` rewritten around a coalescer: chat chunks fold into one bubble per speaker turn, thinking into one muted row per burst, tool_call + updates into one row keyed by toolCallId with a status chip and a plain one-line summary (path, command, or query). Setup/recap prompts show as a small `setup` row, situation notes as `she noticed`.
+- The brain now hands every raw stream event to the HUD (`onEvent`) instead of the lossy title strings, so live and history paint through the same code. Pure helpers (`makeCoalescer`, `toolSummary`, `toolLabel`) tested in tests/test_xr_hud.mjs.
+- Left list: single-line ellipsis rows, `auto` sessions and repeated-title clusters hidden, capped at 14, her live session marked ● and always present. The feed follows her live session unless you click another chat; a `viewing: … · back to her` bar returns.
+
 ## 2026-09-04 prop stay is 0.12 after hop went to 0.95
 - Stay is 0.12 (~12/84/4 stay/hop/HOME).
 ## 2026-09-04 prop hop is 0.95 after the 0.16 stay
