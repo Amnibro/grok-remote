@@ -1,3 +1,5 @@
+## 2026-09-03 HOME prefers the other prop 0.82 of the time
+- HOME hops prefer the other prop 0.82 of the time.
 ## 2026-09-03 salute gets the short-take weight
 - Life weight gate is clip_dur <= 2.9 so salute matches dismiss/heart/kiss on HOME.
 ## 2026-09-03 prop stay is 0.16 after hop went to 0.88
