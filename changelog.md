@@ -1,3 +1,5 @@
+## 2026-09-03 life overlays play at a wider speed so wave is not the same take
+- Overlay timeScale is 0.86-1.14. Long keepIdle takes still cap at 2.6s.
 ## 2026-09-03 phone rephase can jump 6s through the talking cycle
 - Idle time nudge cap is 6s (still 15% of duration).
 ## 2026-09-03 hopping onto phone can join mid-call instead of the first 2.5s
