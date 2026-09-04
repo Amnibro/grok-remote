@@ -310,11 +310,10 @@ async def alive_loop(app):
                 did = True
                 nxtb = pick_chain(state.get("base"))
                 stay = nxtb == state.get("base")
-                if (not stay) or time.time() - state.get("rephase_at", 0) >= 4:
-                    if stay:
-                        state["rephase_at"] = time.time()
-                    state["follow_base"] = nxtb
-                    state["follow_at"] = state.get("gesture_until", time.time()) + fade_pad()
+                if stay:
+                    state["rephase_at"] = time.time()
+                state["follow_base"] = nxtb
+                state["follow_at"] = state.get("gesture_until", time.time()) + fade_pad()
         if not did:
             cur = state.get("base")
             dwell = time.time() - state.get("base_at", 0)
@@ -324,9 +323,6 @@ async def alive_loop(app):
                 continue
             pick = pick_chain(cur)
             if pick == cur:
-                if time.time() - state.get("rephase_at", 0) < 4:
-                    nxt = random.uniform(5, 12)
-                    continue
                 state["rephase_at"] = time.time()
                 await fire(cur, "base", random.uniform(0.5, 0.9), "idle rephase")
                 did = True

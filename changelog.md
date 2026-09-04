@@ -1,3 +1,5 @@
+## 2026-09-04 a stay always rephases so the 4s throttle does not eat the roll
+- Stay always queues follow_base rephase. The 4s throttle is gone.
 ## 2026-09-03 HOME prefers the other prop 0.88 of the time
 - HOME hops prefer the other prop 0.88 of the time.
 ## 2026-09-03 companion senses v1: she notices you (toward Cortana)
