@@ -299,7 +299,7 @@ async def alive_loop(app):
                 fresh = [c for c in pool if ok(c, rec=False)]
             if not fresh:
                 fresh = [c for c in pool if ok(c, fam=False, rec=False)]
-            w = [LIFE_W[LIFE.index(c)] if c in LIFE else 1 for c in fresh]
+            w = [2 if clip_dur(c) < 2.2 else 1 for c in fresh]
             if fresh:
                 clip = weighted(fresh, w)
                 life_clip = clip
