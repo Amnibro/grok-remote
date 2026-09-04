@@ -1,3 +1,5 @@
+## 2026-09-03 play remap uses the 10s window life already uses
+- REPEAT_WINDOW is 10s. Life win is REPEAT_WINDOW except pools of 2 stay 8s.
 ## 2026-09-03 life waits for IDLE_DWELL so some wakes chain without an overlay
 - Life gate is IDLE_DWELL (6s). Wakes at 5-6s hop or rephase.
 ## 2026-09-03 phone and briefcase life use the 10s window too

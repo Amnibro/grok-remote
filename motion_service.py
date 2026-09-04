@@ -35,7 +35,7 @@ async def pose_ws(req):
     return w
 DUR_CACHE = {}
 DEFAULT_DUR = 2.2
-REPEAT_WINDOW = 12.0
+REPEAT_WINDOW = 10.0
 QUEUE_MAX = 3
 FADE_PAD = 0.55
 def clip_dur(name):
@@ -289,7 +289,7 @@ async def alive_loop(app):
         life_clip = None
         if quiet >= IDLE_DWELL.get(state.get("base"), 6.0):
             last_fam = FAM.get(state.get("gesture") or "")
-            win = 8.0 if len(pool) <= 2 else 10.0
+            win = 8.0 if len(pool) <= 2 else REPEAT_WINDOW
             def ok(c, fam=True, rec=True):
                 if c == state.get("gesture") or (rec and time.time() - recent.get(c, 0) <= win):
                     return False
