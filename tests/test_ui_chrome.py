@@ -296,7 +296,7 @@ def test_agent_bar_and_session_rail_stay_put():
 def test_idle_chain_uses_seamless_mixamo():
     srv=(ROOT/"motion_service.py").read_text(encoding="utf-8")
     idles=srv[srv.find("IDLES"):srv.find("IDLE_W")]
-    life=srv[srv.find("LIFE ="):srv.find("LIFE_W")]
+    life=srv[srv.find("LIFE ="):srv.find("LIFE_HEAD =")]
     extra=srv[srv.find("def extra_life"):srv.find("def weighted")]
     alive=srv[srv.find("async def alive_loop"):]
     assert "talking_on_phone" in idles
@@ -534,13 +534,13 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "Math.min(0.45,c.duration*0.2)" in js.replace(" ","")
     assert "ts=0.86+Math.random()*0.28" in js.replace(" ","")
     assert "a.timeScale=0.86+Math.random()*0.28" in js.replace(" ","")
-    assert "LIFE_W = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]" in srv
+    assert "LIFE_W" not in srv
     assert "2 if clip_dur(c) <= 4.0 else 1" in srv
     assert "function travelSkip(" in js
     assert "gestureSkip(name)||!clientPropOk" in js.replace(" ","")
     assert "want=!holding&&motionState.gazeTarget" in html.replace(" ","")
     assert "want?yaw:0" in html.replace(" ","")
-    life=srv[srv.find("LIFE ="):srv.find("LIFE_W")]
+    life=srv[srv.find("LIFE ="):srv.find("LIFE_HEAD =")]
     assert "surprised" not in life
     assert '"sad": "bow_apology"' in srv[srv.find("EMOTES"):srv.find("state =")]
     extra=srv[srv.find("def extra_life"):srv.find("def fade_pad")]
@@ -552,14 +552,14 @@ def test_idle_chain_uses_seamless_mixamo():
     em=srv[srv.find("EMOTES"):srv.find("state =")]
     assert '"clap": "standing_clap"' in em
     assert '"wave": "wave_hello"' in em
-    life=srv[srv.find("LIFE ="):srv.find("LIFE_W")]
+    life=srv[srv.find("LIFE ="):srv.find("LIFE_HEAD =")]
     assert "excited_bounce" not in life
     assert "blow_kiss" in life
     extra=srv[srv.find("def extra_life"):srv.find("def fade_pad")]
     assert "excited_bounce" in extra
     assert "blow_kiss" in extra
     assert "travelSkip(name)||!canLoop(name)" in js.replace(" ","")
-    life=srv[srv.find("LIFE ="):srv.find("LIFE_W")]
+    life=srv[srv.find("LIFE ="):srv.find("LIFE_HEAD =")]
     assert "agree" not in life
     extra=srv[srv.find("def extra_life"):srv.find("def fade_pad")]
     assert "agree" in extra
