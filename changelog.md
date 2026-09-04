@@ -1,3 +1,5 @@
+## 2026-09-04 HOME stay is 0.30 so briefcase can chain after hop 0.97
+- HOME stay is 0.30 (~30/35/35 guitar/phone).
 ## 2026-09-04 HOME prefers the other prop 0.95 of the time
 - HOME hops prefer the other prop 0.95 of the time.
 ## 2026-09-04 prop hop is 0.97 after the 0.12 stay
