@@ -1,3 +1,5 @@
+## 2026-09-04 prop stay is 0.12 after hop went to 0.95
+- Stay is 0.12 (~12/84/4 stay/hop/HOME).
 ## 2026-09-04 prop hop is 0.95 after the 0.16 stay
 - Hop is 0.95 (~16/80/4 stay/hop/HOME).
 ## 2026-09-04 a stay always rephases so the 4s throttle does not eat the roll
