@@ -1,3 +1,5 @@
+## 2026-09-03 hopping onto guitar uses the wider idle speed band
+- Incoming hop timeScale is 0.86-1.14 matching overlays.
 ## 2026-09-03 life overlays play at a wider speed so wave is not the same take
 - Overlay timeScale is 0.86-1.14. Long keepIdle takes still cap at 2.6s.
 ## 2026-09-03 phone rephase can jump 6s through the talking cycle
