@@ -1,3 +1,12 @@
+## 2026-09-03 companion senses v1: she notices you (toward Cortana)
+- Every companion action used to start with a typed line or a held mic. New `web/xr-senses.js`: presence via camera frame differencing (arrive/return/leave), hands-free ears with name detection (addressed -> ask(), otherwise overheard memory), environment poll of `GET /api/companion/env` (foreground window, agent work state, clock), a percept log, instant reflexes (gaze/gesture per percept type), and a budgeted deliberate layer: notable percepts become a one-paragraph situation note and she answers in one or two sentences or `[[quiet]]`. 45s min gap, 12/hour, never while speaking/thinking, never when you are away except arrival.
+- `companion_env.py` + `/api/companion/env`: Win32 foreground window title/exe, seconds since last input, work-board summary (running jobs, latest tool, open asks, just finished).
+- `/xr`: SENSES button (persists in localStorage `xr_senses`, `?senses=1` autostarts), `ask(text,{silent})` for reactions, `window.__senses` for scripted tests. Verified live: situation note -> she replied unprompted with salute + gaze in 11.2s; `[[quiet]]` is stripped before TTS.
+- Fixed a pre-existing missing brace in the HUD init line that made the whole `/xr` module fail to parse (page stuck on `waking`).
+- Tests: tests/test_xr_senses.mjs, tests/test_companion_env.py. Roadmap: docs/companion-roadmap.md.
+
+## 2026-09-03 HOME stay is 0.22 so briefcase can chain after hop 0.92
+- HOME stay is 0.22 (~22/39/39 guitar/phone).
 ## 2026-09-03 life beat fade is 0 when keepIdle so the 0.55 is not a lie
 - Life fire uses 0.0 if keep_idle else FADE_PAD.
 ## 2026-09-03 life pick skips FAM so unique ids do not empty the pool
