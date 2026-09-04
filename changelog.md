@@ -1,3 +1,5 @@
+## 2026-09-03 look and point get the short-take weight
+- Life weight gate is clip_dur <= 4.0 so look and point match salute/dismiss on HOME. Wave 5.1s stays 1.
 ## 2026-09-03 HOME prefers the other prop 0.82 of the time
 - HOME hops prefer the other prop 0.82 of the time.
 ## 2026-09-03 salute gets the short-take weight
