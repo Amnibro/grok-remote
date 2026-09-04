@@ -1,3 +1,5 @@
+## 2026-09-04 HOME stay is 0.42 so briefcase can chain two overlays
+- HOME stay is 0.42 (~42/29/29 guitar/phone).
 ## 2026-09-04 prop stay is 0.06 after hop went to 0.99
 - Stay is 0.06 (~6/93/1 stay/hop/HOME).
 ## 2026-09-04 IDLE_DWELL is 8s so 4-8s wakes hop without an overlay
