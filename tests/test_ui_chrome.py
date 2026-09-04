@@ -372,12 +372,12 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "c.duration>4" in js.replace(" ","")
     assert "pendingBase" in js
     assert "actGesture!==a" in js.replace(" ","")
-    assert "lasts" in alive
+    assert "c in lasts" not in srv
     assert "uniform(5, 12)" in alive[alive.find('"idle chain"'):alive.find("if busy")]
     assert "nxt = random.uniform(5, 12)" in alive[:alive.find("while True")]
     assert "nxt = random.uniform(5, 12)" in alive[alive.find("if not clients"):alive.find("since += ")]
     assert "nap = random.uniform(5, 12)" in alive[alive.find("while True"):alive.find("if state.get(\"follow_base\")")]
-    assert "min(1, len(pool) - 1)" in srv
+    assert "min(1, len(pool) - 1)" not in srv
     assert "win = 8.0 if len(pool) <= 2 else REPEAT_WINDOW" in srv
     assert "REPEAT_WINDOW = 12.0" in srv
     assert alive.find("follow_base") < alive.find("if since < nxt")
@@ -406,7 +406,7 @@ def test_idle_chain_uses_seamless_mixamo():
     assert '"standing_w_briefcase_idle": 3' in srv[srv.find("IDLE_W"):srv.find("IDLE_DWELL")]
     assert "pick == cur" in srv or "pick==cur" in srv.replace(" ","")
     assert "if quiet >= 5:" in srv
-    assert "random.random() < 0.90" not in srv[srv.find("quiet = "):srv.find("lasts =")]
+    assert "random.random() < 0.90" not in srv[srv.find("quiet = "):srv.find("def ok")]
     assert "!getActIdle()" in js.replace(" ","")
     assert "prev.paused=false" in js.replace(" ","")
     assert "prev.timeScale=0.86+Math.random()*0.28" in js.replace(" ","")
@@ -492,7 +492,7 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "if random.random() < 0.92" not in srv[srv.find("life beat"):srv.find("if not did")]
     assert "nxtb = pick_chain" in srv[srv.find("did = True"):srv.find("if not did")]
     assert "if quiet >= 5:" in srv
-    assert "random.random() < 0.90" not in srv[srv.find("quiet = "):srv.find("lasts =")]
+    assert "random.random() < 0.90" not in srv[srv.find("quiet = "):srv.find("def ok")]
     assert "baseHold" in js
     assert "baseHold-performance.now()" in js.replace(" ","")
     assert "if(layer===\"base\"&&performance.now()<baseHold)" in js.replace(" ","")

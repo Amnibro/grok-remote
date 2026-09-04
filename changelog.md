@@ -1,3 +1,5 @@
+## 2026-09-03 life recency is the 12s window only so the six-clip pool rotates
+- Recency is current gesture plus the 12s window. lasts extra skip is gone.
 ## 2026-09-03 idle hops crossfade 0.5-0.9s so every swap is not 0.7s
 - Chain, rephase, recover, and home hops use uniform(0.5, 0.9).
 ## 2026-09-03 guitar stays less so the 0.82 hop actually fires
