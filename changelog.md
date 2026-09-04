@@ -1,3 +1,5 @@
+## 2026-09-03 prop hop is 0.88 after the 0.20 stay
+- Hop is 0.88 (~20/70/10 stay/hop/HOME).
 ## 2026-09-03 dismissing_gesture gets the short-take weight
 - Life weight gate is clip_dur <= 2.3 so dismiss matches chin/bow/heart/kiss.
 ## 2026-09-03 play remap uses the 10s window life already uses
