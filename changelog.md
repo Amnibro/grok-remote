@@ -1,3 +1,5 @@
+## 2026-09-04 FAM dict is gone so unique ids do not sit unused
+- FAM is gone.
 ## 2026-09-04 LIFE_W is gone so clip_dur is the only life weight
 - LIFE_W is gone. Life weights are clip_dur only.
 ## 2026-09-04 HOME stay is 0.42 so briefcase can chain two overlays

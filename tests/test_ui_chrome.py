@@ -360,7 +360,7 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "HOLD_GAZE" in srv
     assert "j.hold_gaze" in js
     assert "HEAD.clear()" in js.replace(" ","")
-    assert "bow_apology" in srv[srv.find("HOLD_GAZE"):srv.find("FAM")]
+    assert "bow_apology" in srv[srv.find("HOLD_GAZE"):srv.find("def extra_life")]
     assert "bow_apology" in js[js.find("HEAD=new Set"):js.find("GUITAR=new Set")]
     assert "j.guitar_life" in js
     assert "j.arm_right" in js
@@ -389,7 +389,7 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "last_prop" in srv
     assert "c != lp" in pc
     assert "prefer and random.random() < 0.99" in pc
-    assert "FAM =" in srv or "FAM=" in srv.replace(" ","")
+    assert "FAM" not in srv
     assert "last_fam" not in srv
     assert "fam=False" not in srv
     assert "fadeS*1000+120" in js.replace(" ","")
@@ -491,8 +491,7 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "ic.duration*0.15" in js.replace(" ","")
     assert "Math.min(6,ic.duration*0.15)" in js.replace(" ","")
     assert "Math.min(6,c.duration*0.15)" in js.replace(" ","")
-    assert '"module_check": "check"' in srv
-    assert '"machinamachina_spark": "spark"' in srv
+
     assert "if random.random() < 0.92" not in srv[srv.find("life beat"):srv.find("if not did")]
     assert "0.0 if keep_idle(clip) else FADE_PAD" in srv
     assert "nxtb = pick_chain" in srv[srv.find("did = True"):srv.find("if not did")]
@@ -508,7 +507,7 @@ def test_idle_chain_uses_seamless_mixamo():
     assert 'LIFE_HEAD + ["chin_think", "hand_on_heart", "blow_kiss"]' in srv
     assert "clip in GUITAR_LIFE" in srv[srv.find("def keep_idle"):srv.find("def fade_pad")]
     assert "blow_kiss" in js[js.find("HEAD=new Set"):js.find("GUITAR=new Set")]
-    assert "blow_kiss" in srv[srv.find("ARM_RIGHT"):srv.find("FAM")]
+    assert "blow_kiss" in srv[srv.find("ARM_RIGHT"):srv.find("def extra_life")]
     assert "curBase===\"talking_on_phone\"&&SOFT.has(clip)" in js.replace(" ","")
     assert "talking_on_phone\" and clip in LIFE_SOFT" in srv[srv.find("def keep_idle"):srv.find("def fade_pad")]
     em=srv[srv.find("EMOTES"):srv.find("state =")]
@@ -568,8 +567,8 @@ def test_idle_chain_uses_seamless_mixamo():
     assert '"nod": "agree"' in em
     assert "ARM_LEFT" in srv
     assert "c not in ARM_LEFT" in srv
-    assert "waist_side_stretch" in srv[srv.find("ARM_LEFT"):srv.find("FAM")]
-    assert "chin_think" in srv[srv.find("ARM_LEFT"):srv.find("FAM")]
+    assert "waist_side_stretch" in srv[srv.find("ARM_LEFT"):srv.find("def extra_life")]
+    assert "chin_think" in srv[srv.find("ARM_LEFT"):srv.find("def extra_life")]
     assert "clip in ARM_LEFT" in srv[srv.find("def prop_ok"):srv.find("def weighted")]
     assert "LEFT=new Set" in js
     assert "curBase===HOME)return!LEFT.has" in js.replace(" ","")
@@ -583,7 +582,7 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "ARM_HOME" in drain
     assert "min(fresh or pool, key=lambda c: recent.get(c, 0.0))" in srv or "min(freshorpool,key=lambda c:recent.get(c,0.0))" in srv.replace(" ","")
     assert "not remapped and not d.get(\"force\")" in srv or "not remapped and not d.get('force')" in srv
-    assert '"agree": "module_check"' in srv[srv.find("ARM_HOME"):srv.find("FAM")]
+    assert '"agree": "module_check"' in srv[srv.find("ARM_HOME"):srv.find("def extra_life")]
     assert "clip!==\"agree\"" in js.replace(" ","")
     assert "ARM_RIGHT" in srv
     assert "RIGHT=new Set" in js
@@ -592,12 +591,10 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "life_clip" in srv
     assert "if did and life_clip and keep_idle" not in srv
     assert "if did else random.uniform" not in srv
-    assert '"wave_hello": "wave"' in srv
-    assert '"salute": "salute"' in srv
-    assert '"dismissing_gesture": "dismiss"' in srv
+
     assert "function holdGaze(" in js
     assert "holdGaze(name)||!keepIdle(name)" in js.replace(" ","")
-    assert '"surprised": "machinamachina_spark"' in srv[srv.find("ARM_HOME"):srv.find("FAM")]
+    assert '"surprised": "machinamachina_spark"' in srv[srv.find("ARM_HOME"):srv.find("def extra_life")]
     assert "look_over_shoulder" in js[js.find("HEAD=new Set"):js.find("GUITAR=new Set")]
     assert "hand_on_heart" in js[js.find("HEAD=new Set"):js.find("GUITAR=new Set")]
     assert "function holdGaze(clip){return HEAD.has(clip)}" in js.replace(" ","") or "functionholdGaze(clip){returnHEAD.has(clip)}" in js.replace(" ","")
@@ -609,7 +606,7 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "rephase_at\", 0) < 4" not in srv and "rephase_at', 0)<4" not in srv.replace(" ","")
     assert "rephase_at\", 0) >= 4" not in srv and "rephase_at', 0)>=4" not in srv.replace(" ","")
     assert "uniform(4, 11)" in srv[srv.find("rephase_at"):srv.find("idle rephase")]
-    assert '"standing_clap": "wave_hello"' in srv[srv.find("ARM_HOME"):srv.find("FAM")]
+    assert '"standing_clap": "wave_hello"' in srv[srv.find("ARM_HOME"):srv.find("def extra_life")]
     em=srv[srv.find("EMOTES"):srv.find("state =")]
     assert '"love": "hand_on_heart"' in em
     assert '"heart": "hand_on_heart"' in em
