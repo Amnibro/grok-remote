@@ -292,17 +292,14 @@ async def alive_loop(app):
         did = False
         life_clip = None
         if quiet >= IDLE_DWELL.get(state.get("base"), 6.0):
-            last_fam = FAM.get(state.get("gesture") or "")
             win = REPEAT_WINDOW
-            def ok(c, fam=True, rec=True):
+            def ok(c, rec=True):
                 if c == state.get("gesture") or (rec and time.time() - recent.get(c, 0) <= win):
                     return False
-                return not (fam and last_fam and FAM.get(c) == last_fam)
+                return True
             fresh = [c for c in pool if ok(c)]
             if not fresh:
                 fresh = [c for c in pool if ok(c, rec=False)]
-            if not fresh:
-                fresh = [c for c in pool if ok(c, fam=False, rec=False)]
             w = [2 if clip_dur(c) <= 4.0 else 1 for c in fresh]
             if fresh:
                 clip = weighted(fresh, w)

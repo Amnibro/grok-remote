@@ -390,6 +390,8 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "c != lp" in pc
     assert "random.random() < 0.82" in pc
     assert "FAM =" in srv or "FAM=" in srv.replace(" ","")
+    assert "last_fam" not in srv
+    assert "fam=False" not in srv
     assert "fadeS*1000+120" in js.replace(" ","")
     assert "fadeS=Math.max(fade,0.5)" in js.replace(" ","")
     assert 'fire(nb, "base", random.uniform(0.5, 0.9), "idle chain")' in srv
