@@ -148,7 +148,7 @@ export function initMotion(ctx){
       a.enabled=true;
       a.reset().setLoop(THREE.LoopOnce,1);
       a.clampWhenFinished=true;
-      let ts=0.92+Math.random()*0.16;
+      let ts=0.86+Math.random()*0.28;
       if(keepIdle(name)&&(c.duration||1.2)>2.8)ts=Math.max(ts,(c.duration||1.2)/2.6);
       a.timeScale=ts;
       if(c.duration>0.4)a.time=Math.random()*Math.min(0.45,c.duration*0.2);
