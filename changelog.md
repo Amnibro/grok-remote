@@ -1,3 +1,5 @@
+## 2026-09-04 HOME stay is 0.62 so briefcase can chain after hop 0.99
+- HOME stay is 0.62 (~62/19/19 guitar/phone).
 ## 2026-09-04 idle wakes 4-18s so life still has room after 11s dwell
 - Wakes are 4-18s so 4-11s hop/rephase and 11-18s fire life.
 ## 2026-09-04 HOME stay is 0.58 so briefcase can chain two overlays
