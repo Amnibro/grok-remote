@@ -1,3 +1,5 @@
+## 2026-09-03 chin_think gets the short-take weight
+- Life weight gate is clip_dur <= 2.2 so chin_think matches bow/heart/kiss.
 ## 2026-09-03 guitar's six-clip pool uses a 10s window
 - Pools of 3-6 use 10s. Pools of 2 still 8s. HOME stays 12s.
 ## 2026-09-03 short life takes fire twice as often as long waves
