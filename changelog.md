@@ -1,3 +1,11 @@
+## 2026-09-04 HOME stay is 0.34 so briefcase can chain two overlays
+- HOME stay is 0.34 (~34/33/33 guitar/phone).
+## 2026-09-04 she stops hovering, and gets a hologram shell instead of loose dots
+- **The hover was the dissolve band, not the rig.** `fade=smoothstep(0.12,0.55,p.y)` erased every point below 12 cm and only reached full brightness at mid-thigh. That band was tuned while the hips bug held her a metre low; standing correctly it deleted her feet and tapered her legs, which read as hovering in the splits. Band now runs -0.045 to 0.075, so only the last few centimetres dissolve into the pad.
+- **Hologram surface pass.** `buildSurface` clones each SkinnedMesh into the holder sharing geometry and skeleton, bound with an identity matrix, and draws it with a fresnel-rim + scanline ShaderMaterial (three's skinning chunks, FrontSide, depthWrite on, polygon offset so it does not fight the dots). She gets a silhouette, and because the shell writes depth the far side of her body stops showing through the near side. `?surface=0` disables it, `window.__surface(false)` toggles live.
+- Verified by rendering to an offscreen canvas and saving through /api/xr/see: full-body shot shows both boots planted on the pad, head-to-toe silhouette, no gap; head close-up shows a readable face with no floating teeth or eyeballs. 15 surface meshes, model bounds y -0.009 to 1.696.
+- Probe note: /xr re-aims its camera every frame, so scripted `camera.position` cannot frame a screenshot. Render the scene with your own `WebGLRenderer` + camera, `toDataURL`, POST to `/api/xr/see`, and read the jpg off disk.
+
 ## 2026-09-04 HOME prefers the other prop 0.97 of the time
 - HOME hops prefer the other prop 0.97 of the time.
 ## 2026-09-04 prop stay is 0.10 after hop went to 0.97
