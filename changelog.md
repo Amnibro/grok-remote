@@ -1,3 +1,5 @@
+## 2026-09-03 phone rephase can jump 6s through the talking cycle
+- Idle time nudge cap is 6s (still 15% of duration).
 ## 2026-09-03 hopping onto phone can join mid-call instead of the first 2.5s
 - Long idle hop start is min(8, duration*0.35).
 ## 2026-09-03 life overlays start later in the take so wave is not the same first frames

@@ -82,7 +82,7 @@ export function initMotion(ctx){
     if(pendingBase)queueBase(pendingBase[0],pendingBase[1]);
     const idl=getActIdle();
     if(idl){
-      idl.paused=false;idl.timeScale=0.94+Math.random()*0.14;const ic=idl.getClip&&idl.getClip();if(ic&&ic.duration>1)idl.time=(idl.time+Math.random()*Math.min(2,ic.duration*0.15))%Math.max(0.01,ic.duration);idl.enabled=true;idl.setEffectiveWeight(1);
+      idl.paused=false;idl.timeScale=0.94+Math.random()*0.14;const ic=idl.getClip&&idl.getClip();if(ic&&ic.duration>1)idl.time=(idl.time+Math.random()*Math.min(6,ic.duration*0.15))%Math.max(0.01,ic.duration);idl.enabled=true;idl.setEffectiveWeight(1);
       if(!keepIdle(state.lastGesture||""))idl.fadeIn(0.45)
     }
   }
@@ -115,7 +115,7 @@ export function initMotion(ctx){
       if(getActIdle()===a){
         a.paused=false;a.enabled=true;a.setEffectiveWeight(1);
         a.timeScale=0.94+Math.random()*0.14;
-        if(c.duration>1)a.time=(a.time+Math.random()*Math.min(2,c.duration*0.15))%Math.max(0.01,c.duration);
+        if(c.duration>1)a.time=(a.time+Math.random()*Math.min(6,c.duration*0.15))%Math.max(0.01,c.duration);
         return;
       }
       if(actGesture){
@@ -136,7 +136,7 @@ export function initMotion(ctx){
         prev.paused=false;
         prev.timeScale=0.94+Math.random()*0.14;
         const oc=prev.getClip&&prev.getClip();
-        if(oc&&oc.duration>1)prev.time=(prev.time+Math.random()*Math.min(2,oc.duration*0.15))%Math.max(0.01,oc.duration);
+        if(oc&&oc.duration>1)prev.time=(prev.time+Math.random()*Math.min(6,oc.duration*0.15))%Math.max(0.01,oc.duration);
         const fadeS=Math.max(fade,0.5);
         prev.crossFadeTo(a,fadeS,false);
         const dying=prev;
@@ -157,7 +157,7 @@ export function initMotion(ctx){
       else a.setEffectiveWeight(1).fadeIn(Math.min(0.35,fade)).play();
       const idle=getActIdle();
       if(idle){
-        if(keepIdle(name)){idle.paused=false;idle.timeScale=0.94+Math.random()*0.14;const ic=idle.getClip&&idle.getClip();if(ic&&ic.duration>1)idle.time=(idle.time+Math.random()*Math.min(2,ic.duration*0.15))%Math.max(0.01,ic.duration);idle.enabled=true;idle.setEffectiveWeight(1)}
+        if(keepIdle(name)){idle.paused=false;idle.timeScale=0.94+Math.random()*0.14;const ic=idle.getClip&&idle.getClip();if(ic&&ic.duration>1)idle.time=(idle.time+Math.random()*Math.min(6,ic.duration*0.15))%Math.max(0.01,ic.duration);idle.enabled=true;idle.setEffectiveWeight(1)}
         else{idle.timeScale=0;idle.fadeOut(0.28)}
       }
       actGesture=a;
