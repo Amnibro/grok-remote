@@ -360,7 +360,8 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "HOLD_GAZE" in srv
     assert "j.hold_gaze" in js
     assert "HEAD.clear()" in js.replace(" ","")
-    assert "bow_apology" not in srv[srv.find("HOLD_GAZE"):srv.find("FAM")]
+    assert "bow_apology" in srv[srv.find("HOLD_GAZE"):srv.find("FAM")]
+    assert "bow_apology" in js[js.find("HEAD=new Set"):js.find("GUITAR=new Set")]
     assert "j.guitar_life" in js
     assert "j.arm_right" in js
     assert "GUITAR.clear()" in js.replace(" ","")

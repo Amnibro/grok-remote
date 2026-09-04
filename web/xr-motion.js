@@ -4,7 +4,7 @@ export function initMotion(ctx){
   const gestureOut=new Map(),fetchedClips=new Set(),warming=new Map();
   const HOME="standing_w_briefcase_idle";
   let mws=null,pendingPlays=[],actGesture=null,pendingBase=null,clipIx={},mixerHooked=false,pbTimer=null,curBase=HOME,baseHold=0;
-  const HEAD=new Set(["module_check","machinamachina_spark","look_over_shoulder","hand_on_heart","chin_think","blow_kiss"]),GUITAR=new Set(["module_check","machinamachina_spark","bow_apology","chin_think","hand_on_heart","blow_kiss"]),SOFT=new Set(["module_check","machinamachina_spark","chin_think","waist_side_stretch","sun_salute","interact","bow_apology"]),LEFT=new Set(["waist_side_stretch","sun_salute","chin_think","interact"]),RIGHT=new Set(["look_over_shoulder","dismissing_gesture","point_ahead","salute","wave_hello","hand_on_heart","bow_apology","blow_kiss"]);
+  const HEAD=new Set(["module_check","machinamachina_spark","look_over_shoulder","hand_on_heart","chin_think","blow_kiss","bow_apology"]),GUITAR=new Set(["module_check","machinamachina_spark","bow_apology","chin_think","hand_on_heart","blow_kiss"]),SOFT=new Set(["module_check","machinamachina_spark","chin_think","waist_side_stretch","sun_salute","interact","bow_apology"]),LEFT=new Set(["waist_side_stretch","sun_salute","chin_think","interact"]),RIGHT=new Set(["look_over_shoulder","dismissing_gesture","point_ahead","salute","wave_hello","hand_on_heart","bow_apology","blow_kiss"]);
   function clientPropOk(clip){
     if(curBase==="guitar_playing")return GUITAR.has(clip);
     if(curBase==="talking_on_phone")return SOFT.has(clip);
