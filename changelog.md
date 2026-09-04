@@ -1,3 +1,5 @@
+## 2026-09-03 guitar stays less so the 0.82 hop actually fires
+- prop stay is 0.20 (~20/66/14 stay/hop/HOME).
 ## 2026-09-03 bow holds gaze so IK does not fight the spine take
 - HOLD_GAZE includes bow_apology. HEAD seeds it. Bow no longer snaps gaze.
 ## 2026-09-03 stay rephase and overlay idle use the wider speed band
