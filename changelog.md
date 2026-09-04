@@ -1,3 +1,5 @@
+## 2026-09-03 prop hop is 0.92 after the 0.16 stay
+- Hop is 0.92 (~16/77/7 stay/hop/HOME).
 ## 2026-09-03 look and point get the short-take weight
 - Life weight gate is clip_dur <= 4.0 so look and point match salute/dismiss on HOME. Wave 5.1s stays 1.
 ## 2026-09-03 HOME prefers the other prop 0.82 of the time
