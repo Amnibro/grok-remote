@@ -288,11 +288,10 @@ async def alive_loop(app):
         did = False
         life_clip = None
         if quiet >= 5:
-            lasts = sorted(recent, key=recent.get, reverse=True)[:max(0, min(1, len(pool) - 1))]
             last_fam = FAM.get(state.get("gesture") or "")
             win = 8.0 if len(pool) <= 2 else REPEAT_WINDOW
             def ok(c, fam=True, rec=True):
-                if c == state.get("gesture") or (rec and c in lasts) or (rec and time.time() - recent.get(c, 0) <= win):
+                if c == state.get("gesture") or (rec and time.time() - recent.get(c, 0) <= win):
                     return False
                 return not (fam and last_fam and FAM.get(c) == last_fam)
             fresh = [c for c in pool if ok(c)]
