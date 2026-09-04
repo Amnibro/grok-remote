@@ -1,3 +1,5 @@
+## 2026-09-04 prop hop is 0.95 after the 0.16 stay
+- Hop is 0.95 (~16/80/4 stay/hop/HOME).
 ## 2026-09-04 a stay always rephases so the 4s throttle does not eat the roll
 - Stay always queues follow_base rephase. The 4s throttle is gone.
 ## 2026-09-03 HOME prefers the other prop 0.88 of the time
