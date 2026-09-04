@@ -1,3 +1,5 @@
+## 2026-09-03 dismissing_gesture gets the short-take weight
+- Life weight gate is clip_dur <= 2.3 so dismiss matches chin/bow/heart/kiss.
 ## 2026-09-03 play remap uses the 10s window life already uses
 - REPEAT_WINDOW is 10s. Life win is REPEAT_WINDOW except pools of 2 stay 8s.
 ## 2026-09-03 life waits for IDLE_DWELL so some wakes chain without an overlay
