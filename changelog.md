@@ -1,3 +1,5 @@
+## 2026-09-04 idle wakes 4-16s so life still has room after 10s dwell
+- Wakes are 4-16s so 4-10s hop/rephase and 10-16s fire life.
 ## 2026-09-04 IDLE_DWELL is 10s so 4-10s wakes hop without an overlay
 - Dwell is 10s so 4-10s hop/rephase and 10-14s still fire life.
 ## 2026-09-04 prop stay is 0.04 after hop went to 0.99
