@@ -1,3 +1,5 @@
+## 2026-09-04 IDLE_DWELL is 8s so 4-8s wakes hop without an overlay
+- Dwell is 8s so 4-8s hop/rephase and 8-11s still fire life.
 ## 2026-09-04 HOME stay is 0.38 so briefcase can chain after hop 0.99
 - HOME stay is 0.38 (~38/31/31 guitar/phone).
 ## 2026-09-04 HOME prefers the other prop 0.99 of the time
