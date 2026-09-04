@@ -1,3 +1,10 @@
+## 2026-09-04 prop hop is 0.97 after the 0.12 stay
+- Hop is 0.97 (~12/85/3 stay/hop/HOME).
+## 2026-09-04 her mouth and eye interiors no longer render through her face
+- A pointcloud cannot occlude, so the mouth bag, throat, and eye sockets sampled like skin and showed straight through the front of her head as teeth and eyeballs floating in a skull. The old guard only dropped whole small meshes sitting in an axis-aligned head box, which missed every interior surface that shares the main head mesh.
+- `samplePoints` now rejects any sample inside a 13.5 cm sphere at the head bone whose face normal points back toward the head centre, and resamples it onto the outer shell. Bind-space head centre comes from `skeleton.boneInverses`, so it does not care which axis is up.
+- Measured on a fresh load: 5509 interior samples rejected, 7473 points left inside the head sphere, 0 of them inward-facing, worst dot 0.12 at the threshold. Test: tests/test_interior_cull.mjs.
+
 ## 2026-09-04 HOME stay is 0.26 so briefcase can chain after hop 0.95
 - HOME stay is 0.26 (~26/37/37 guitar/phone). extra_life still empty.
 ## 2026-09-04 she stands on the disc instead of sinking through it
