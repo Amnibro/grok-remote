@@ -387,6 +387,8 @@ def test_idle_chain_uses_seamless_mixamo():
     assert '"user", "user", "user"' not in alive[alive.find("random.choices"):alive.find("random.choices")+180]
     assert '"left", "right"' in alive[alive.find("random.choices"):alive.find("random.choices")+180]
     assert "last_prop" in srv
+    assert "c != lp" in pc
+    assert "random.random() < 0.70" in pc
     assert "FAM =" in srv or "FAM=" in srv.replace(" ","")
     assert "fadeS*1000+120" in js.replace(" ","")
     assert "fadeS=Math.max(fade,0.5)" in js.replace(" ","")
