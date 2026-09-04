@@ -1,3 +1,12 @@
+## 2026-09-04 IDLE_DWELL is 7s so 4-7s wakes hop without an overlay
+- Dwell is 7s so 4-7s hop/rephase and 7-11s still fire life.
+## 2026-09-04 shell aligned with the dots, face sealed, real squat
+- **Mirror-overlap:** the first shell used three's default attached bind mode, which re-derives bindMatrixInverse from the mesh's own matrixWorld every frame and cancelled the holder transform, so the shell rendered rotated against the pointcloud. Clones now use DetachedBindMode with identity bind matrices, exactly the pointcloud's skinning path. Verified: points-only and shell-only renders overlay as one figure.
+- **Mouth through the face:** the shell was translucent, so the mouth bag and the far cheek drew through the front. Added a colorWrite-off depth prepass (renderOrder -2) per mesh and made the shell depthWrite:false with LessEqual, so only the nearest front-facing surface ever shows. Meshes the sampler already discards (teeth, tongue, eyes) are skipped via `SURF.keep`. Scanlines softened 0.14 -> 0.06, core alpha 0.16. Straight-on render: closed mouth, nose, eyes as surface, nothing inside.
+- **Splits lifting her legs:** three blockers. (1) the hips clamp rejected any vertical move over 0.5, and a crouch is 0.6, so hips stayed up while the legs folded; limit is 1.5 now. (2) xr-motion's `stripRoot` dropped Hips.position from GLB clips too; it keeps hips for GLB clips and still strips service clips (their hips are in another frame). (3) the client's travel-skip regex refused every crouch/kneel/squat/sit; gesture layer now only skips travel moves. `squat`/`squat_down`/`crouch`/`split` alias to GLB `crouch_to_stand` played in reverse with clampWhenFinished, then the normal gesture restore stands her back up.
+- Verified in-page: hips 1.017 -> 0.412 -> 1.011 over 3 s on `squat_down`, feet stay 0.05-0.12 above the pad at the bottom. `window.__dbg` now exposes mixer, motionMod, clips; `window.__motionPlay` / `window.__sendMotion` for scripted tests.
+- **Still blocked for HER own tags:** motion_service.py (the other live session's file) remaps squat/crouch/kneel/sit to a bow before the client sees them (play() refuse list, and the emote table). Lift those from the service and `[[motion:squat]]` will land as a real squat.
+
 ## 2026-09-04 HOME stay is 0.34 so briefcase can chain two overlays
 - HOME stay is 0.34 (~34/33/33 guitar/phone).
 ## 2026-09-04 she stops hovering, and gets a hologram shell instead of loose dots
