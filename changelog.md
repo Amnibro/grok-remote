@@ -1,3 +1,5 @@
+## 2026-09-04 IDLE_DWELL is 13s so 4-13s wakes hop without an overlay
+- Dwell is 13s so 4-13s hop/rephase and 13-20s still fire life.
 ## 2026-09-04 idle wakes 4-20s so life still has room after 12s dwell
 - Wakes are 4-20s so 4-12s hop/rephase and 12-20s fire life.
 ## 2026-09-04 HOME stay is 0.66 so briefcase can chain two overlays
