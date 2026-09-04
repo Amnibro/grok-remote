@@ -1,3 +1,5 @@
+## 2026-09-04 prop stay is 0.04 after hop went to 0.99
+- Stay is 0.04 (~4/95/1 stay/hop/HOME).
 ## 2026-09-04 HOME stay is 0.50 so briefcase can chain two overlays
 - HOME stay is 0.50 (~50/25/25 guitar/phone).
 ## 2026-09-04 idle wakes 4-14s so life still has room after 9s dwell

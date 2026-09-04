@@ -219,7 +219,7 @@ def weighted(names, weights):
 def pick_chain(cur):
     if cur != HOME:
         state["last_prop"] = cur
-        if random.random() < 0.06:
+        if random.random() < 0.04:
             return cur
         if random.random() < 0.99:
             alts = [c for c in IDLES if c != HOME and c != cur]
