@@ -1,3 +1,5 @@
+## 2026-09-03 life recency is REPEAT_WINDOW so the dead 8s branch is gone
+- Life win is REPEAT_WINDOW (10s). The 8s pool-of-2 branch is gone.
 ## 2026-09-03 prop hop is 0.92 after the 0.16 stay
 - Hop is 0.92 (~16/77/7 stay/hop/HOME).
 ## 2026-09-03 look and point get the short-take weight
