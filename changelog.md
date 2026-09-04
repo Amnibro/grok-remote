@@ -1,3 +1,5 @@
+## 2026-09-04 idle wakes 4-11s so more hops land without an overlay
+- Wakes are 4-11s so 4-6s hop/rephase and 6-11s still fire life.
 ## 2026-09-04 HOME stay is 0.30 so briefcase can chain after hop 0.97
 - HOME stay is 0.30 (~30/35/35 guitar/phone).
 ## 2026-09-04 HOME prefers the other prop 0.95 of the time
