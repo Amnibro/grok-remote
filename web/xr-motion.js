@@ -128,7 +128,7 @@ export function initMotion(ctx){
       a.enabled=true;
       a.reset().setLoop(THREE.LoopRepeat,Infinity).setEffectiveWeight(1);
       a.timeScale=0.94+Math.random()*0.14;
-      if(c.duration>4)a.time=Math.random()*Math.min(2.5,c.duration*0.12);
+      if(c.duration>4)a.time=Math.random()*Math.min(8,c.duration*0.35);
       else if(c.duration>0.5)a.time=Math.random()*c.duration*0.2;
       a.play();
       const prev=getActIdle();
