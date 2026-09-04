@@ -433,9 +433,9 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "state.get(\"base\") != clip" in srv or "state.get('base')!=clip" in srv.replace(" ","")
     assert "function endGesture(" in js
     assert 'addEventListener("finished"' in js
-    assert '"standing_w_briefcase_idle": 8.0' in srv[srv.find("IDLE_DWELL"):srv.find("LIFE =")]
-    assert '"talking_on_phone": 8.0' in srv[srv.find("IDLE_DWELL"):srv.find("LIFE =")]
-    assert '"guitar_playing": 8.0' in srv[srv.find("IDLE_DWELL"):srv.find("LIFE =")]
+    assert '"standing_w_briefcase_idle": 9.0' in srv[srv.find("IDLE_DWELL"):srv.find("LIFE =")]
+    assert '"talking_on_phone": 9.0' in srv[srv.find("IDLE_DWELL"):srv.find("LIFE =")]
+    assert '"guitar_playing": 9.0' in srv[srv.find("IDLE_DWELL"):srv.find("LIFE =")]
     assert '"kneel"' in srv[srv.find("if clip in TRAVEL"):srv.find("if clip in TRAVEL")+420]
     assert "gestureHold=performance.now()+480" in js.replace(" ","")
     assert '"angry"' in srv[srv.find("if clip in TRAVEL"):srv.find("if clip in TRAVEL")+450]

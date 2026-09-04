@@ -1,3 +1,5 @@
+## 2026-09-04 IDLE_DWELL is 9s so 4-9s wakes hop without an overlay
+- Dwell is 9s so 4-9s hop/rephase and 9-11s still fire life.
 ## 2026-09-04 HOME stay is 0.46 so briefcase can chain after hop 0.99
 - HOME stay is 0.46 (~46/27/27 guitar/phone).
 ## 2026-09-04 FAM dict is gone so unique ids do not sit unused
