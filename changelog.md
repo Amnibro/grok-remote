@@ -1,3 +1,5 @@
+## 2026-09-03 HOME prefers the other prop 0.88 of the time
+- HOME hops prefer the other prop 0.88 of the time.
 ## 2026-09-03 companion senses v1: she notices you (toward Cortana)
 - Every companion action used to start with a typed line or a held mic. New `web/xr-senses.js`: presence via camera frame differencing (arrive/return/leave), hands-free ears with name detection (addressed -> ask(), otherwise overheard memory), environment poll of `GET /api/companion/env` (foreground window, agent work state, clock), a percept log, instant reflexes (gaze/gesture per percept type), and a budgeted deliberate layer: notable percepts become a one-paragraph situation note and she answers in one or two sentences or `[[quiet]]`. 45s min gap, 12/hour, never while speaking/thinking, never when you are away except arrival.
 - `companion_env.py` + `/api/companion/env`: Win32 foreground window title/exe, seconds since last input, work-board summary (running jobs, latest tool, open asks, just finished).

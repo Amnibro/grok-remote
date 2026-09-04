@@ -234,7 +234,7 @@ def pick_chain(cur):
     alts = [c for c in IDLES if c != HOME]
     lp = state.get("last_prop")
     prefer = [c for c in alts if c != lp]
-    if prefer and random.random() < 0.82:
+    if prefer and random.random() < 0.88:
         alts = prefer
     return weighted(alts, [IDLE_W.get(c, 1) for c in alts])
 async def get_alive(req):
