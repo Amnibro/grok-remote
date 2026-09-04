@@ -159,7 +159,6 @@ IDLES = ["standing_w_briefcase_idle", "talking_on_phone", "guitar_playing"]
 IDLE_W = {"standing_w_briefcase_idle": 3, "talking_on_phone": 3, "guitar_playing": 3}
 IDLE_DWELL = {"standing_w_briefcase_idle": 8.0, "talking_on_phone": 8.0, "guitar_playing": 8.0}
 LIFE = ["look_over_shoulder", "waist_side_stretch", "dismissing_gesture", "point_ahead", "salute", "module_check", "sun_salute", "bow_apology", "machinamachina_spark", "chin_think", "hand_on_heart", "interact", "wave_hello", "blow_kiss"]
-LIFE_W = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
 LIFE_SOFT = ["module_check", "machinamachina_spark", "chin_think", "waist_side_stretch", "sun_salute", "interact", "bow_apology"]
 LIFE_HEAD = ["module_check", "machinamachina_spark", "bow_apology"]
 GUITAR_LIFE = LIFE_HEAD + ["chin_think", "hand_on_heart", "blow_kiss"]
@@ -188,7 +187,6 @@ def extra_life():
         if (m.get("energy") or 99) > 32 or (m.get("dur") or 0) > 6 or (m.get("dur") or 0) < 1.2:
             continue
         LIFE.append(name)
-        LIFE_W.append(1)
 extra_life()
 def keep_idle(clip):
     if clip in LIFE_HEAD:

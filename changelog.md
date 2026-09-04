@@ -1,3 +1,5 @@
+## 2026-09-04 LIFE_W is gone so clip_dur is the only life weight
+- LIFE_W is gone. Life weights are clip_dur only.
 ## 2026-09-04 HOME stay is 0.42 so briefcase can chain two overlays
 - HOME stay is 0.42 (~42/29/29 guitar/phone).
 ## 2026-09-04 prop stay is 0.06 after hop went to 0.99
