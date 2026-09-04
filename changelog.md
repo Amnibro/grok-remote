@@ -1,3 +1,5 @@
+## 2026-09-03 life pick skips FAM so unique ids do not empty the pool
+- Recency is gesture plus the window. FAM skip is gone.
 ## 2026-09-03 life recency is REPEAT_WINDOW so the dead 8s branch is gone
 - Life win is REPEAT_WINDOW (10s). The 8s pool-of-2 branch is gone.
 ## 2026-09-03 prop hop is 0.92 after the 0.16 stay
