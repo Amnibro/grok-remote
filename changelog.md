@@ -1,3 +1,5 @@
+## 2026-09-04 idle wakes 4-20s so life still has room after 12s dwell
+- Wakes are 4-20s so 4-12s hop/rephase and 12-20s fire life.
 ## 2026-09-04 HOME stay is 0.66 so briefcase can chain two overlays
 - HOME stay is 0.66 (~66/17/17 guitar/phone).
 ## 2026-09-04 IDLE_DWELL is 12s so 4-12s wakes hop without an overlay
