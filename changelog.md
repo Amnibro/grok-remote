@@ -1,3 +1,5 @@
+## 2026-09-04 HOME prefers the other prop 0.97 of the time
+- HOME hops prefer the other prop 0.97 of the time.
 ## 2026-09-04 prop stay is 0.10 after hop went to 0.97
 - Stay is 0.10 (~10/87/3 stay/hop/HOME).
 ## 2026-09-04 idle wakes 4-11s so more hops land without an overlay

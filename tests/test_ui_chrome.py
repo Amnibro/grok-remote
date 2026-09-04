@@ -388,7 +388,7 @@ def test_idle_chain_uses_seamless_mixamo():
     assert '"left", "right"' in alive[alive.find("random.choices"):alive.find("random.choices")+180]
     assert "last_prop" in srv
     assert "c != lp" in pc
-    assert "random.random() < 0.95" in pc
+    assert "prefer and random.random() < 0.97" in pc
     assert "FAM =" in srv or "FAM=" in srv.replace(" ","")
     assert "last_fam" not in srv
     assert "fam=False" not in srv
