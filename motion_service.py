@@ -232,6 +232,10 @@ def pick_chain(cur):
     if random.random() < 0.18:
         return cur
     alts = [c for c in IDLES if c != HOME]
+    lp = state.get("last_prop")
+    prefer = [c for c in alts if c != lp]
+    if prefer and random.random() < 0.70:
+        alts = prefer
     return weighted(alts, [IDLE_W.get(c, 1) for c in alts])
 async def get_alive(req):
     return cors(web.json_response({"home": HOME, "idles": IDLES, "life": LIFE, "life_soft": LIFE_SOFT, "life_head": LIFE_HEAD, "guitar_life": GUITAR_LIFE, "arm_right": list(ARM_RIGHT), "arm_left": list(ARM_LEFT), "hold_gaze": HOLD_GAZE, "idle_w": IDLE_W}))

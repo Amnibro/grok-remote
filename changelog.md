@@ -1,3 +1,5 @@
+## 2026-09-03 HOME hops away from last_prop so briefcase does not ping-pong guitar
+- HOME hops prefer the other prop 0.70 of the time.
 ## 2026-09-03 HOME stay is 0.18 so briefcase can chain two overlays
 - HOME stay is 0.18 (~18/41/41 guitar/phone).
 ## 2026-09-03 prop hop is 0.88 after the 0.20 stay
