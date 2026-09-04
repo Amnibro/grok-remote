@@ -1,3 +1,5 @@
+## 2026-09-03 salute gets the short-take weight
+- Life weight gate is clip_dur <= 2.9 so salute matches dismiss/heart/kiss on HOME.
 ## 2026-09-03 prop stay is 0.16 after hop went to 0.88
 - Stay is 0.16 (~16/74/10 stay/hop/HOME).
 ## 2026-09-03 sun_salute and waist get the short-take weight
