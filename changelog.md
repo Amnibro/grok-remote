@@ -1,3 +1,5 @@
+## 2026-09-04 prop hop is 0.99 after the 0.08 stay
+- Hop is 0.99 (~8/91/1 stay/hop/HOME).
 ## 2026-09-04 prop stay is 0.08 after hop went to 0.97
 - Stay is 0.08 (~8/89/3 stay/hop/HOME).
 ## 2026-09-04 IDLE_DWELL is 7s so 4-7s wakes hop without an overlay
