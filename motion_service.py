@@ -166,7 +166,7 @@ GUITAR_LIFE = LIFE_HEAD + ["chin_think", "hand_on_heart", "blow_kiss"]
 ARM_LEFT = {"waist_side_stretch", "sun_salute", "chin_think", "interact"}
 ARM_HOME = {"waist_side_stretch": "look_over_shoulder", "sun_salute": "salute", "chin_think": "module_check", "interact": "point_ahead", "agree": "module_check", "surprised": "machinamachina_spark", "standing_clap": "wave_hello"}
 ARM_RIGHT = {"look_over_shoulder", "dismissing_gesture", "point_ahead", "salute", "wave_hello", "hand_on_heart", "bow_apology", "blow_kiss"}
-HOLD_GAZE = ["module_check", "machinamachina_spark", "look_over_shoulder", "hand_on_heart", "chin_think", "blow_kiss"]
+HOLD_GAZE = ["module_check", "machinamachina_spark", "look_over_shoulder", "hand_on_heart", "chin_think", "blow_kiss", "bow_apology"]
 FAM = {"look_over_shoulder": "look", "agree": "nod", "chin_think": "nod", "salute": "salute", "sun_salute": "sun", "standing_clap": "clap", "wave_hello": "wave", "waist_side_stretch": "stretch", "point_ahead": "point", "dismissing_gesture": "dismiss", "module_check": "check", "machinamachina_spark": "spark", "surprised": "soft", "hand_on_heart": "heart", "bow_apology": "bow", "blow_kiss": "kiss", "excited_bounce": "bounce", "interact": "reach"}
 def extra_life():
     p = os.path.join(os.path.dirname(os.path.abspath(__file__)), "web", "clip_index.json")
