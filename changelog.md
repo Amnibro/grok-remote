@@ -1,3 +1,5 @@
+## 2026-09-03 hopping onto phone can join mid-call instead of the first 2.5s
+- Long idle hop start is min(8, duration*0.35).
 ## 2026-09-03 life overlays start later in the take so wave is not the same first frames
 - Overlay start is up to 0.45s or 20% of duration.
 ## 2026-09-03 guitar hops to phone more than it dumps the briefcase

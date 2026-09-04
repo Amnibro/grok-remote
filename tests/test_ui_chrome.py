@@ -521,7 +521,8 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "if(actGesture){" in js.replace(" ","")
     assert "setTimeout(()=>{try{g.stop()" in js.replace(" ","")
     assert "c.duration>4" in js.replace(" ","")
-    assert "c.duration*0.12" in js.replace(" ","")
+    assert "c.duration*0.35" in js.replace(" ","")
+    assert "Math.min(8,c.duration*0.35)" in js.replace(" ","")
     assert "Math.min(0.45,c.duration*0.2)" in js.replace(" ","")
     assert "LIFE_W = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]" in srv
     assert "function travelSkip(" in js
