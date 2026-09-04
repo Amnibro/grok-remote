@@ -390,7 +390,7 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "FAM =" in srv or "FAM=" in srv.replace(" ","")
     assert "fadeS*1000+120" in js.replace(" ","")
     assert "fadeS=Math.max(fade,0.5)" in js.replace(" ","")
-    assert 'fire(nb, "base", 0.7, "idle chain")' in srv
+    assert 'fire(nb, "base", random.uniform(0.5, 0.9), "idle chain")' in srv
     assert "getActIdle()===a" in js.replace(" ","")
     assert "idle.timeScale=0" in js.replace(" ","")
     assert "idl.paused=false" in js.replace(" ","")

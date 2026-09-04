@@ -1,3 +1,5 @@
+## 2026-09-03 idle hops crossfade 0.5-0.9s so every swap is not 0.7s
+- Chain, rephase, recover, and home hops use uniform(0.5, 0.9).
 ## 2026-09-03 guitar stays less so the 0.82 hop actually fires
 - prop stay is 0.20 (~20/66/14 stay/hop/HOME).
 ## 2026-09-03 bow holds gaze so IK does not fight the spine take
