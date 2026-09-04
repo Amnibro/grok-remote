@@ -1,3 +1,5 @@
+## 2026-09-03 sun_salute and waist get the short-take weight
+- Life weight gate is clip_dur <= 2.6 so sun and waist match module/spark/chin on phone.
 ## 2026-09-03 HOME hops away from last_prop so briefcase does not ping-pong guitar
 - HOME hops prefer the other prop 0.70 of the time.
 ## 2026-09-03 HOME stay is 0.18 so briefcase can chain two overlays
