@@ -1,3 +1,5 @@
+## 2026-09-03 short life takes fire twice as often as long waves
+- Life weights 2 if clip_dur < 2.2s else 1.
 ## 2026-09-03 life recency is the 12s window only so the six-clip pool rotates
 - Recency is current gesture plus the 12s window. lasts extra skip is gone.
 ## 2026-09-03 idle hops crossfade 0.5-0.9s so every swap is not 0.7s
