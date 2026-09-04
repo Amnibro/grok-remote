@@ -1,3 +1,5 @@
+## 2026-09-03 guitar's six-clip pool uses a 10s window
+- Pools of 3-6 use 10s. Pools of 2 still 8s. HOME stays 12s.
 ## 2026-09-03 short life takes fire twice as often as long waves
 - Life weights 2 if clip_dur < 2.2s else 1.
 ## 2026-09-03 life recency is the 12s window only so the six-clip pool rotates
