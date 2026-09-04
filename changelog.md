@@ -1,3 +1,5 @@
+## 2026-09-03 HOME stay is 0.18 so briefcase can chain two overlays
+- HOME stay is 0.18 (~18/41/41 guitar/phone).
 ## 2026-09-03 prop hop is 0.88 after the 0.20 stay
 - Hop is 0.88 (~20/70/10 stay/hop/HOME).
 ## 2026-09-03 dismissing_gesture gets the short-take weight
