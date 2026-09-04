@@ -289,7 +289,7 @@ async def alive_loop(app):
         life_clip = None
         if quiet >= 5:
             last_fam = FAM.get(state.get("gesture") or "")
-            win = 8.0 if len(pool) <= 2 else REPEAT_WINDOW
+            win = 8.0 if len(pool) <= 2 else (10.0 if len(pool) <= 6 else REPEAT_WINDOW)
             def ok(c, fam=True, rec=True):
                 if c == state.get("gesture") or (rec and time.time() - recent.get(c, 0) <= win):
                     return False
