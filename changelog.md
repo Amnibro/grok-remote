@@ -1,3 +1,5 @@
+## 2026-09-03 life waits for IDLE_DWELL so some wakes chain without an overlay
+- Life gate is IDLE_DWELL (6s). Wakes at 5-6s hop or rephase.
 ## 2026-09-03 phone and briefcase life use the 10s window too
 - Standing pools use 10s. Pools of 2 still 8s.
 ## 2026-09-03 chin_think gets the short-take weight

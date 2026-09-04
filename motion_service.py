@@ -287,7 +287,7 @@ async def alive_loop(app):
         pool = GUITAR_LIFE if state.get("base") == "guitar_playing" else (LIFE_SOFT if state.get("base") != HOME else [c for c in LIFE if c not in ARM_LEFT])
         did = False
         life_clip = None
-        if quiet >= 5:
+        if quiet >= IDLE_DWELL.get(state.get("base"), 6.0):
             last_fam = FAM.get(state.get("gesture") or "")
             win = 8.0 if len(pool) <= 2 else 10.0
             def ok(c, fam=True, rec=True):
