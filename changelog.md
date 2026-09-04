@@ -1,3 +1,5 @@
+## 2026-09-04 prop stay is 0.08 after hop went to 0.97
+- Stay is 0.08 (~8/89/3 stay/hop/HOME).
 ## 2026-09-04 IDLE_DWELL is 7s so 4-7s wakes hop without an overlay
 - Dwell is 7s so 4-7s hop/rephase and 7-11s still fire life.
 ## 2026-09-04 shell aligned with the dots, face sealed, real squat
