@@ -494,6 +494,7 @@ def test_idle_chain_uses_seamless_mixamo():
     assert '"module_check": "check"' in srv
     assert '"machinamachina_spark": "spark"' in srv
     assert "if random.random() < 0.92" not in srv[srv.find("life beat"):srv.find("if not did")]
+    assert "0.0 if keep_idle(clip) else FADE_PAD" in srv
     assert "nxtb = pick_chain" in srv[srv.find("did = True"):srv.find("if not did")]
     assert "if quiet >= IDLE_DWELL.get" in srv
     assert "random.random() < 0.90" not in srv[srv.find("quiet = "):srv.find("def ok")]
