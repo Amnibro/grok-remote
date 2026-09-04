@@ -1,3 +1,5 @@
+## 2026-09-04 HOME stay is 0.66 so briefcase can chain two overlays
+- HOME stay is 0.66 (~66/17/17 guitar/phone).
 ## 2026-09-04 IDLE_DWELL is 12s so 4-12s wakes hop without an overlay
 - Dwell is 12s so 4-12s hop/rephase and 12-18s still fire life.
 ## 2026-09-04 HOME stay is 0.62 so briefcase can chain after hop 0.99
