@@ -265,7 +265,7 @@ async def alive_loop(app):
                 nb = state.pop("follow_base", None)
                 state.pop("follow_at", None)
                 if nb:
-                    await fire(nb, "base", 0.7, "idle chain")
+                    await fire(nb, "base", random.uniform(0.5, 0.9), "idle chain")
                 nxt = random.uniform(5, 12)
                 since = 0.0
                 continue
@@ -278,7 +278,7 @@ async def alive_loop(app):
         since = 0.0
         if state.get("base") not in IDLES:
             if time.time() - state.get("base_at", 0) > 8:
-                await fire(HOME, "base", 0.7, "idle recover")
+                await fire(HOME, "base", random.uniform(0.5, 0.9), "idle recover")
                 nxt = random.uniform(5, 12)
             else:
                 nxt = random.uniform(5, 12)
@@ -328,10 +328,10 @@ async def alive_loop(app):
                     nxt = random.uniform(5, 12)
                     continue
                 state["rephase_at"] = time.time()
-                await fire(cur, "base", 0.7, "idle rephase")
+                await fire(cur, "base", random.uniform(0.5, 0.9), "idle rephase")
                 did = True
             else:
-                await fire(pick, "base", 0.7, "idle home" if pick == HOME else "idle chain")
+                await fire(pick, "base", random.uniform(0.5, 0.9), "idle home" if pick == HOME else "idle chain")
                 did = True
         nxt = random.uniform(5, 12)
 async def start_bg(app):
