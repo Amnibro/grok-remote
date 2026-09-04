@@ -1,3 +1,5 @@
+## 2026-09-03 phone and briefcase life use the 10s window too
+- Standing pools use 10s. Pools of 2 still 8s.
 ## 2026-09-03 chin_think gets the short-take weight
 - Life weight gate is clip_dur <= 2.2 so chin_think matches bow/heart/kiss.
 ## 2026-09-03 guitar's six-clip pool uses a 10s window
