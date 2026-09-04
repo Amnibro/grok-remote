@@ -1,3 +1,5 @@
+## 2026-09-03 life beat fade is 0 when keepIdle so the 0.55 is not a lie
+- Life fire uses 0.0 if keep_idle else FADE_PAD.
 ## 2026-09-03 life pick skips FAM so unique ids do not empty the pool
 - Recency is gesture plus the window. FAM skip is gone.
 ## 2026-09-03 life recency is REPEAT_WINDOW so the dead 8s branch is gone

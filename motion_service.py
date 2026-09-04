@@ -304,7 +304,7 @@ async def alive_loop(app):
             if fresh:
                 clip = weighted(fresh, w)
                 life_clip = clip
-                await fire(clip, "gesture", 0.55, "life beat")
+                await fire(clip, "gesture", 0.0 if keep_idle(clip) else FADE_PAD, "life beat")
                 if clip not in HOLD_GAZE:
                     await bcast({"type": "gaze", "target": "user", "seq": state["seq"]})
                 did = True
