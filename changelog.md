@@ -1,3 +1,10 @@
+## 2026-09-04 HOME stay is 0.26 so briefcase can chain after hop 0.95
+- HOME stay is 0.26 (~26/37/37 guitar/phone). extra_life still empty.
+## 2026-09-04 she stands on the disc instead of sinking through it
+- Her armature parent is rotated 90 deg about X, so the hips bone's LOCAL up axis is z. The per-frame clamp in xr.html was written for a y-up bone frame (`hips.position.x=0; hips.position.z=0`), so it pinned the wrong pair and zeroed the axis that actually carries her height. The baked Mixamo clips make it worse: their Hips.position tracks sit near the origin (z about 0.02) instead of the bind offset (z about -1.012), so every frame wrote her a full metre down through the pad.
+- The clamp now derives the bind-local hips position from `skeleton.boneInverses` once, picks the up axis from the largest component, pins the two lateral axes to bind, and rejects a vertical value that deviates more than 0.5 (centimetre-scale lab values, missing offsets). Real crouch/bob inside the limit still plays.
+- Measured after the fix: mesh floor at y 0.005-0.022 across briefcase, guitar, and phone bases and through wave/bow/salute/bounce. Height 1.70 m. Was 1.01 m below the pad. Test: tests/test_hips_clamp.mjs.
+
 ## 2026-09-04 HOME prefers the other prop 0.92 of the time
 - HOME hops prefer the other prop 0.92 of the time.
 ## 2026-09-04 /xr side rails: one row per turn, her live session by default
