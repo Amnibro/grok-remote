@@ -1,3 +1,5 @@
+## 2026-09-04 HOME prefers the other prop 0.99 of the time
+- HOME hops prefer the other prop 0.99 of the time.
 ## 2026-09-04 prop hop is 0.99 after the 0.08 stay
 - Hop is 0.99 (~8/91/1 stay/hop/HOME).
 ## 2026-09-04 prop stay is 0.08 after hop went to 0.97
