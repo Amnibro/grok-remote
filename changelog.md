@@ -1,3 +1,5 @@
+## 2026-09-04 HOME prefers the other prop 0.95 of the time
+- HOME hops prefer the other prop 0.95 of the time.
 ## 2026-09-04 prop hop is 0.97 after the 0.12 stay
 - Hop is 0.97 (~12/85/3 stay/hop/HOME).
 ## 2026-09-04 her mouth and eye interiors no longer render through her face
