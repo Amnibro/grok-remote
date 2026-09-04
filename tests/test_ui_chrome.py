@@ -417,7 +417,7 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "prev.time=(prev.time+" in js.replace(" ","")
     assert "oc.duration*0.15" in js.replace(" ","")
     assert "if(prev.timeScale===0)prev.timeScale=0.94" not in js.replace(" ","")
-    assert "(c.duration||1.2)-a.time)/ts" in js.replace(" ","")
+    assert "span/Math.abs(ts)*1000" in js.replace(" ","")
     assert "idle rephase" in srv
     assert "await fire(cur," in srv or "await fire(cur ," in srv
     em=srv[srv.find("EMOTES"):srv.find("state =")]
@@ -433,9 +433,9 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "state.get(\"base\") != clip" in srv or "state.get('base')!=clip" in srv.replace(" ","")
     assert "function endGesture(" in js
     assert 'addEventListener("finished"' in js
-    assert '"standing_w_briefcase_idle": 6.0' in srv[srv.find("IDLE_DWELL"):srv.find("LIFE =")]
-    assert '"talking_on_phone": 6.0' in srv[srv.find("IDLE_DWELL"):srv.find("LIFE =")]
-    assert '"guitar_playing": 6.0' in srv[srv.find("IDLE_DWELL"):srv.find("LIFE =")]
+    assert '"standing_w_briefcase_idle": 7.0' in srv[srv.find("IDLE_DWELL"):srv.find("LIFE =")]
+    assert '"talking_on_phone": 7.0' in srv[srv.find("IDLE_DWELL"):srv.find("LIFE =")]
+    assert '"guitar_playing": 7.0' in srv[srv.find("IDLE_DWELL"):srv.find("LIFE =")]
     assert '"kneel"' in srv[srv.find("if clip in TRAVEL"):srv.find("if clip in TRAVEL")+420]
     assert "gestureHold=performance.now()+480" in js.replace(" ","")
     assert '"angry"' in srv[srv.find("if clip in TRAVEL"):srv.find("if clip in TRAVEL")+450]
@@ -475,7 +475,7 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "GUITAR=new Set" in js
     assert "curBase===\"guitar_playing\"&&GUITAR.has(clip)" in js.replace(" ","")
     assert "SOFT=new Set" in js
-    assert "layer!==\"base\"&&(travelSkip(name)||!clientPropOk" in js.replace(" ","")
+    assert "layer!==\"base\"&&(gestureSkip(name)||!clientPropOk" in js.replace(" ","")
     assert "const HOME=" in js[:js.find("curBase")]
     assert "curBase=HOME" in js.replace(" ","")
     assert "if(d.layer===\"base\")curBase=d.clip" in js.replace(" ","")
@@ -537,7 +537,7 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "LIFE_W = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]" in srv
     assert "2 if clip_dur(c) <= 4.0 else 1" in srv
     assert "function travelSkip(" in js
-    assert "travelSkip(name)||!clientPropOk" in js.replace(" ","")
+    assert "gestureSkip(name)||!clientPropOk" in js.replace(" ","")
     assert "want=!holding&&motionState.gazeTarget" in html.replace(" ","")
     assert "want?yaw:0" in html.replace(" ","")
     life=srv[srv.find("LIFE ="):srv.find("LIFE_W")]
