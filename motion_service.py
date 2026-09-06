@@ -157,7 +157,7 @@ async def opt(req):
 HOME = "standing_w_briefcase_idle"
 IDLES = ["standing_w_briefcase_idle", "talking_on_phone", "guitar_playing"]
 IDLE_W = {"standing_w_briefcase_idle": 3, "talking_on_phone": 3, "guitar_playing": 3}
-IDLE_DWELL = {"standing_w_briefcase_idle": 92.0, "talking_on_phone": 92.0, "guitar_playing": 92.0}
+IDLE_DWELL = {"standing_w_briefcase_idle": 235.0, "talking_on_phone": 235.0, "guitar_playing": 235.0}
 LIFE = ["look_over_shoulder", "waist_side_stretch", "dismissing_gesture", "point_ahead", "salute", "module_check", "sun_salute", "bow_apology", "machinamachina_spark", "chin_think", "hand_on_heart", "interact", "wave_hello", "blow_kiss"]
 LIFE_SOFT = ["module_check", "machinamachina_spark", "chin_think", "waist_side_stretch", "sun_salute", "interact", "bow_apology"]
 LIFE_HEAD = ["module_check", "machinamachina_spark", "bow_apology"]
@@ -237,11 +237,11 @@ def pick_chain(cur):
 async def get_alive(req):
     return cors(web.json_response({"home": HOME, "idles": IDLES, "life": LIFE, "life_soft": LIFE_SOFT, "life_head": LIFE_HEAD, "guitar_life": GUITAR_LIFE, "arm_right": list(ARM_RIGHT), "arm_left": list(ARM_LEFT), "hold_gaze": HOLD_GAZE, "idle_w": IDLE_W}))
 async def alive_loop(app):
-    nxt = random.uniform(4, 178)
+    nxt = random.uniform(4, 464)
     since = 0.0
     while True:
         now = time.time()
-        nap = random.uniform(4, 178)
+        nap = random.uniform(4, 464)
         if state.get("follow_base"):
             nap = min(nap, max(0.35, state.get("follow_at", now) - now))
         gu = state.get("gesture_until", 0) + fade_pad()
@@ -254,7 +254,7 @@ async def alive_loop(app):
         await asyncio.sleep(nap)
         if not clients:
             since = 0.0
-            nxt = random.uniform(4, 178)
+            nxt = random.uniform(4, 464)
             continue
         since += time.time() - t0
         now = time.time()
@@ -267,7 +267,7 @@ async def alive_loop(app):
                 state.pop("follow_at", None)
                 if nb:
                     await fire(nb, "base", random.uniform(0.5, 0.9), "idle chain")
-                nxt = random.uniform(4, 178)
+                nxt = random.uniform(4, 464)
                 since = 0.0
                 continue
         if busy:
@@ -280,15 +280,15 @@ async def alive_loop(app):
         if state.get("base") not in IDLES:
             if time.time() - state.get("base_at", 0) > 8:
                 await fire(HOME, "base", random.uniform(0.5, 0.9), "idle recover")
-                nxt = random.uniform(4, 178)
+                nxt = random.uniform(4, 464)
             else:
-                nxt = random.uniform(4, 178)
+                nxt = random.uniform(4, 464)
             continue
         quiet = time.time() - state.get("gesture_at", 0)
         pool = GUITAR_LIFE if state.get("base") == "guitar_playing" else (LIFE_SOFT if state.get("base") != HOME else [c for c in LIFE if c not in ARM_LEFT])
         did = False
         life_clip = None
-        if quiet >= IDLE_DWELL.get(state.get("base"), 92.0):
+        if quiet >= IDLE_DWELL.get(state.get("base"), 235.0):
             win = REPEAT_WINDOW
             def ok(c, rec=True):
                 if c == state.get("gesture") or (rec and time.time() - recent.get(c, 0) <= win):
@@ -316,7 +316,7 @@ async def alive_loop(app):
             dwell = time.time() - state.get("base_at", 0)
             need = IDLE_DWELL.get(cur, 20)
             if dwell < need:
-                nxt = random.uniform(4, 178)
+                nxt = random.uniform(4, 464)
                 continue
             pick = pick_chain(cur)
             if pick == cur:
@@ -326,7 +326,7 @@ async def alive_loop(app):
             else:
                 await fire(pick, "base", random.uniform(0.5, 0.9), "idle home" if pick == HOME else "idle chain")
                 did = True
-        nxt = random.uniform(4, 178)
+        nxt = random.uniform(4, 464)
 async def start_bg(app):
     app["alive"] = asyncio.create_task(alive_loop(app))
     app["drain"] = asyncio.create_task(drain_loop(app))
