@@ -340,12 +340,12 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "def prop_ok(" in srv
     assert "prop idle keeps the arms" in srv
     assert "idle recover" in alive
-    assert "uniform(4, 488)" in alive[alive.find('"idle recover"'):alive.find("quiet =")]
+    assert "uniform(4, 490)" in alive[alive.find('"idle recover"'):alive.find("quiet =")]
     assert "dwell0 >= need0" not in alive[alive.find("nxtb = pick_chain"):alive.find("if not did")]
     assert "stay = nxtb == state.get(\"base\")" in alive[alive.find("nxtb = pick_chain"):alive.find("if not did")]
     assert "if stay:" in alive[alive.find("nxtb = pick_chain"):alive.find("if not did")]
     assert "dwell < need" in alive
-    assert "uniform(4, 488)" in alive[alive.find("if dwell < need"):alive.find("pick = pick_chain")]
+    assert "uniform(4, 490)" in alive[alive.find("if dwell < need"):alive.find("pick = pick_chain")]
     em=srv[srv.find("EMOTES"):srv.find("state =")]
     assert '"talk": "chin_think"' in em
     assert "sitting_talking" not in em
@@ -373,10 +373,10 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "pendingBase" in js
     assert "actGesture!==a" in js.replace(" ","")
     assert "c in lasts" not in srv
-    assert "uniform(4, 488)" in alive[alive.find('"idle chain"'):alive.find("if busy")]
-    assert "nxt = random.uniform(4, 488)" in alive[:alive.find("while True")]
-    assert "nxt = random.uniform(4, 488)" in alive[alive.find("if not clients"):alive.find("since += ")]
-    assert "nap = random.uniform(4, 488)" in alive[alive.find("while True"):alive.find("if state.get(\"follow_base\")")]
+    assert "uniform(4, 490)" in alive[alive.find('"idle chain"'):alive.find("if busy")]
+    assert "nxt = random.uniform(4, 490)" in alive[:alive.find("while True")]
+    assert "nxt = random.uniform(4, 490)" in alive[alive.find("if not clients"):alive.find("since += ")]
+    assert "nap = random.uniform(4, 490)" in alive[alive.find("while True"):alive.find("if state.get(\"follow_base\")")]
     assert "min(1, len(pool) - 1)" not in srv
     assert "win = REPEAT_WINDOW" in srv
     assert "REPEAT_WINDOW = 10.0" in srv
@@ -605,7 +605,7 @@ def test_idle_chain_uses_seamless_mixamo():
     assert '"thank": "bow_apology"' in em
     assert "rephase_at\", 0) < 4" not in srv and "rephase_at', 0)<4" not in srv.replace(" ","")
     assert "rephase_at\", 0) >= 4" not in srv and "rephase_at', 0)>=4" not in srv.replace(" ","")
-    assert "uniform(4, 488)" in srv[srv.find("rephase_at"):srv.find("idle rephase")]
+    assert "uniform(4, 490)" in srv[srv.find("rephase_at"):srv.find("idle rephase")]
     assert '"standing_clap": "wave_hello"' in srv[srv.find("ARM_HOME"):srv.find("def extra_life")]
     em=srv[srv.find("EMOTES"):srv.find("state =")]
     assert '"love": "hand_on_heart"' in em
