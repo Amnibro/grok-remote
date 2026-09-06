@@ -1,3 +1,5 @@
+## 2026-09-06 IDLE_DWELL is 239s so 4-239s wakes hop without an overlay
+- Dwell is 239s so 4-239s hop/rephase and 239-472s still fire life.
 ## 2026-09-06 idle wakes 4-472s so life still has room after 238s dwell
 - Wakes are 4-472s so 4-238s hop/rephase and 238-472s fire life.
 ## 2026-09-06 IDLE_DWELL is 238s so 4-238s wakes hop without an overlay
