@@ -157,7 +157,7 @@ async def opt(req):
 HOME = "standing_w_briefcase_idle"
 IDLES = ["standing_w_briefcase_idle", "talking_on_phone", "guitar_playing"]
 IDLE_W = {"standing_w_briefcase_idle": 3, "talking_on_phone": 3, "guitar_playing": 3}
-IDLE_DWELL = {"standing_w_briefcase_idle": 240.0, "talking_on_phone": 240.0, "guitar_playing": 240.0}
+IDLE_DWELL = {"standing_w_briefcase_idle": 241.0, "talking_on_phone": 241.0, "guitar_playing": 241.0}
 LIFE = ["look_over_shoulder", "waist_side_stretch", "dismissing_gesture", "point_ahead", "salute", "module_check", "sun_salute", "bow_apology", "machinamachina_spark", "chin_think", "hand_on_heart", "interact", "wave_hello", "blow_kiss"]
 LIFE_SOFT = ["module_check", "machinamachina_spark", "chin_think", "waist_side_stretch", "sun_salute", "interact", "bow_apology"]
 LIFE_HEAD = ["module_check", "machinamachina_spark", "bow_apology"]
@@ -288,7 +288,7 @@ async def alive_loop(app):
         pool = GUITAR_LIFE if state.get("base") == "guitar_playing" else (LIFE_SOFT if state.get("base") != HOME else [c for c in LIFE if c not in ARM_LEFT])
         did = False
         life_clip = None
-        if quiet >= IDLE_DWELL.get(state.get("base"), 240.0):
+        if quiet >= IDLE_DWELL.get(state.get("base"), 241.0):
             win = REPEAT_WINDOW
             def ok(c, rec=True):
                 if c == state.get("gesture") or (rec and time.time() - recent.get(c, 0) <= win):
