@@ -318,6 +318,15 @@ function injectHud(){
  const sel=$("voiceVoiceSel");
  if(sel){sel.value=cfg.voiceId;sel.onchange=()=>{cfg.voiceId=sel.value;saveCfg()}}
 }
+function isDesktopUi(){
+ try{
+  if(window.__TAURI__)return true;
+  if(/[?&]desktop=1/.test(location.search))return true;
+  const b=document.body;
+  if(b&&(b.classList.contains("desktop")||b.classList.contains("electron")))return true;
+ }catch(e){}
+ return false;
+}
 async function boot(){
  loadCfg();
  injectHud();
@@ -325,6 +334,13 @@ async function boot(){
  await detectXrCaps();
  refreshTtsStatus();
  const q=new URLSearchParams(location.search);
+ const desk=isDesktopUi();
+ if(desk){
+  if(cfg.mode==="xr"){cfg.mode="off";saveCfg()}
+  paintHud();
+  paintBtns();
+  return;
+ }
  if(q.get("xr")==="1"||q.get("ar")==="1"){setTimeout(()=>setMode("xr"),400);return}
  if(q.get("go")==="1"||q.get("voice")==="1"){setTimeout(()=>setMode("go"),400);return}
  if(xrCaps.uaWearable||xrCaps.smallScreen){

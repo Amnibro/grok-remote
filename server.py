@@ -19,6 +19,7 @@ HUB_MAX_CLIENTS=6
 HUB_MAX_LOADS=64
 LOAD_WAIT=10.0
 BROADCAST_SEND_TIMEOUT=5.0
+RPC_REPLY_TIMEOUT={"initialize":20.0,"session/new":25.0,"session/load":20.0,"_x.ai/sessions/list":15.0,"sessions/list":15.0}
 WORK_PUSH_MIN_GAP=0.4
 TEXT_EXT={".py",".js",".ts",".tsx",".jsx",".json",".md",".txt",".css",".html",".htm",".xml",".yml",".yaml",".toml",".ini",".cfg",".env",".sh",".ps1",".bat",".cmd",".rs",".go",".java",".c",".h",".cpp",".hpp",".cs",".rb",".php",".sql",".r",".swift",".kt",".vue",".svelte",".scss",".less",".svg",".gitignore",".dockerfile",".cmake",".gradle",".log",".diff",".patch",".csv"}
 def lan_ip():
@@ -679,43 +680,100 @@ def scan_skills(cwd):
  return out
 
 UI_KEY_COOKIE="grok_remote_key"
+def request_is_proxied(request):
+ try:h=request.headers
+ except Exception:return False
+ if h.get("CF-Connecting-IP") or h.get("CF-Ray") or h.get("True-Client-IP"):return True
+ if h.get("X-Forwarded-For") or h.get("X-Real-IP"):return True
+ proto=(h.get("X-Forwarded-Proto") or "").split(",")[0].strip().lower()
+ if proto=="https":return True
+ vis=(h.get("CF-Visitor") or "").lower()
+ if "https" in vis:return True
+ return False
+def request_is_loopback(request):
+ if request_is_proxied(request):return False
+ try:peer=request.remote or ""
+ except Exception:peer=""
+ return peer in ("127.0.0.1","::1","::ffff:127.0.0.1") or str(peer).startswith("127.")
+def request_is_https(request):
+ try:
+  if getattr(request,"secure",False):return True
+ except Exception:pass
+ try:
+  proto=(request.headers.get("X-Forwarded-Proto") or "").split(",")[0].strip().lower()
+  if proto=="https":return True
+  if "https" in (request.headers.get("CF-Visitor") or "").lower():return True
+ except Exception:pass
+ return False
+def request_is_public(request):
+ if request_is_loopback(request):return False
+ if request_is_proxied(request):return True
+ return request_is_https(request)
+def public_safe_cfg(cfg):
+ d=dict(cfg or {})
+ for k in ("lan_ip","tailscale_ip","tailscale_url","tailscale_dns","https_url","public_url","public_origin","away_url","ws_url","agent_host"):
+  d[k]=""
+ d["ui"]="/"
+ d["watch"]="/watch"
+ d["serve"]=False
+ return d
 def make_auth_middleware(token:str):
  from aiohttp import web
  def _loopback(request):
-  try:
-   peer=request.remote or ""
-  except Exception:peer=""
-  if peer in ("127.0.0.1","::1","::ffff:127.0.0.1"):return True
-  if str(peer).startswith("127."):return True
-  # X-Forwarded-For is not trusted for bypass — only the TCP peer.
-  return False
+  return request_is_loopback(request)
  @web.middleware
  async def auth_mw(request,handler):
   if not token:return await handler(request)
   if request.query.get("demo")=="1":return await handler(request)
-  if request.path in ("/health","/health/deep","/w"):return await handler(request)
+  if request.path in ("/health","/health/deep","/w","/api/pair/unlock"):return await handler(request)
   supplied=request.query.get("key") or request.cookies.get(UI_KEY_COOKIE) or request.headers.get("X-Grok-Remote-Key") or ""
   loop=_loopback(request)
   if not loop and supplied!=token:
    if request.path=="/ws":raise web.HTTPUnauthorized(text="unauthorized")
    acc=(request.headers.get("Accept") or "").lower()
    if "text/html" in acc and request.method=="GET":
-    local="http://127.0.0.1:%s/?key=%s&auto=1"%(request.url.port or 2421,token)
-    phone=("http://%s:%s/?key=%s&auto=1"%(lan_ip(),request.url.port or 2421,token))
-    html=("<!doctype html><meta charset=utf-8><meta name=viewport content=\"width=device-width,initial-scale=1\">"
-     "<title>Grok Remote — pair</title>"
-     "<body style=\"font-family:system-ui;max-width:36rem;margin:2rem auto;padding:0 1rem;line-height:1.5;background:#0b0d10;color:#e8eaed\">"
-     "<h1 style=\"font-size:1.25rem\">Pairing key required</h1>"
-     "<p>Open the <b>paired link</b> (has <code>?key=…</code>). Same Wi‑Fi as the PC.</p>"
-     "<p><a style=\"color:#7dd3fc\" href=\""+phone+"\">Open phone link</a></p>"
-     "<p style=\"word-break:break-all;font-size:12px;opacity:.85\">"+phone+"</p>"
-     "<p><a style=\"color:#a7f3d0\" href=\""+local+"\">Open on this PC (localhost)</a></p>"
-     "</body>")
+    tok=(request.query.get("t") or "").strip()
+    if tok:
+     html=("<!doctype html><meta charset=utf-8><meta name=viewport content=\"width=device-width,initial-scale=1\">"
+      "<title>Grok Remote — PIN</title>"
+      "<body style=\"font-family:system-ui;max-width:22rem;margin:2rem auto;padding:0 1rem;line-height:1.5;background:#0b0d10;color:#e8eaed\">"
+      "<h1 style=\"font-size:1.25rem\">Away PIN</h1>"
+      "<p>Enter the 6-digit PIN shown on the PC pair page. This link does not contain the pairing key.</p>"
+      "<p><input id=pin inputmode=numeric pattern=[0-9]* maxlength=6 autocomplete=one-time-code style=\"font-size:28px;width:8ch;letter-spacing:.2em;text-align:center;background:#14181d;color:#fff;border:1px solid #333;border-radius:10px;padding:8px\"></p>"
+      "<p><button id=go style=\"font-size:16px;padding:10px 22px;border-radius:12px;border:0;background:#22c55e;color:#04110a\">Unlock</button></p>"
+      "<p id=err style=\"color:#fca5a5;min-height:1.2em\"></p>"
+      "<script>(function(){var t="+json.dumps(tok)+";document.getElementById('go').onclick=function(){var pin=(document.getElementById('pin').value||'').trim();var err=document.getElementById('err');err.textContent='';"
+      "fetch('/api/pair/unlock',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({t:t,pin:pin})}).then(function(r){return r.json().then(function(j){return {ok:r.ok,j:j}})}).then(function(x){"
+      "if(x.ok)location.replace('/?auto=1');else err.textContent=(x.j&&x.j.error)||'bad pin';}).catch(function(){err.textContent='could not reach hub'});};"
+      "document.getElementById('pin').addEventListener('keydown',function(e){if(e.key==='Enter')document.getElementById('go').click()});})();</script>"
+      "</body>")
+    elif request_is_public(request):
+     html=("<!doctype html><meta charset=utf-8><meta name=viewport content=\"width=device-width,initial-scale=1\">"
+      "<title>Grok Remote — pair</title>"
+      "<body style=\"font-family:system-ui;max-width:36rem;margin:2rem auto;padding:0 1rem;line-height:1.5;background:#0b0d10;color:#e8eaed\">"
+      "<h1 style=\"font-size:1.25rem\">Pairing required</h1>"
+      "<p>Open the Internet code from the PC pair page, then enter the Away PIN. This public URL does not skip the key and does not show host identities.</p>"
+      "</body>")
+    else:
+     local="http://127.0.0.1:%s/?key=%s&auto=1"%(request.url.port or 2421,token)
+     phone=("http://%s:%s/?key=%s&auto=1"%(lan_ip(),request.url.port or 2421,token))
+     html=("<!doctype html><meta charset=utf-8><meta name=viewport content=\"width=device-width,initial-scale=1\">"
+      "<title>Grok Remote — pair</title>"
+      "<body style=\"font-family:system-ui;max-width:36rem;margin:2rem auto;padding:0 1rem;line-height:1.5;background:#0b0d10;color:#e8eaed\">"
+      "<h1 style=\"font-size:1.25rem\">Pairing key required</h1>"
+      "<p>Open the <b>paired link</b> (has <code>?key=…</code>). Same Wi‑Fi as the PC.</p>"
+      "<p><a style=\"color:#7dd3fc\" href=\""+phone+"\">Open phone link</a></p>"
+      "<p style=\"word-break:break-all;font-size:12px;opacity:.85\">"+phone+"</p>"
+      "<p><a style=\"color:#a7f3d0\" href=\""+local+"\">Open on this PC (localhost)</a></p>"
+      "</body>")
     return web.Response(text=html,status=401,content_type="text/html")
    return web.json_response({"error":"unauthorized · open the paired link from connect.url, or add ?key=<secret>"},status=401)
   resp=await handler(request)
   if request.path!="/ws" and (supplied==token or (loop and token)):
-   try:resp.set_cookie(UI_KEY_COOKIE,token,max_age=30*86400,httponly=True,samesite="Lax",path="/")
+   try:
+    kw={"max_age":30*86400,"httponly":True,"samesite":"Lax","path":"/"}
+    if request_is_https(request):kw["secure"]=True
+    resp.set_cookie(UI_KEY_COOKIE,token,**kw)
    except Exception:pass
   return resp
  return auth_mw
@@ -850,6 +908,8 @@ class AgentHub:
   self._work_dirty=False
   self._work_task=None
   self._last_sid=""
+  self._hung_agent=False
+  self._last_agent_spawn=0
  def _schedule_work_push(self):
   """A session/load replays the ENTIRE transcript over this socket, and every replayed tool_call
   used to fire its own _x.ai/work/changed. The client rebuilds the session rail on each one, so
@@ -894,19 +954,23 @@ class AgentHub:
    try:await asyncio.wait_for(ent["ev"].wait(),timeout)
    except Exception:pass
   return (self._loads.get(sid) or {}).get("res")
- def _maybe_spawn_agent(self):
+ def _maybe_spawn_agent(self,force=False):
   port=getattr(self,"agent_port",2419)
+  hung=bool(force or getattr(self,"_hung_agent",False))
   try:
-   if listen_pids_port(int(port),exclude_self=False):return
-  except Exception:pass
+   listening=bool(listen_pids_port(int(port),exclude_self=False))
+  except Exception:listening=False
+  if listening and not hung:return
   fn=getattr(self,"spawn_agent",None)
   if not fn:return
   now=time.time()
   if now-getattr(self,"_last_agent_spawn",0)<30:return
   self._last_agent_spawn=now
+  self._hung_agent=False
   try:
-   print("[hub] agent port dead — respawning grok agent serve",flush=True)
-   fn()
+   print("[hub] %s — respawning grok agent serve"%("agent hung (RPC timeout)" if hung else "agent port dead"),flush=True)
+   try:fn(force=True) if hung else fn()
+   except TypeError:fn()
   except Exception as e:print("[hub] agent respawn failed:",e,flush=True)
  def start_watch(self):
   if self._watch_task and not self._watch_task.done():return
@@ -923,9 +987,14 @@ class AgentHub:
   hb=0.0
   while True:
    try:
+    if getattr(self,"_hung_agent",False):
+     try:await self.close()
+     except Exception:pass
+     self._maybe_spawn_agent(force=True)
+     await self.ensure(retries=8,delay=0.35)
     down=self._agent is None or self._agent.closed
     # a dead upstream with clients waiting is an outage, not a curiosity - hurry
-    await asyncio.sleep(2 if (down and self.clients) else 10)
+    await asyncio.sleep(2 if ((down or getattr(self,"_hung_agent",False)) and self.clients) else 10)
     # A BACKGROUND TAB CANNOT KEEP ITS OWN LINK ALIVE. Chrome throttles setInterval to about
     # once a minute in a hidden tab, so the client's 4s keepalive stops firing, its own
     # "silent > 45s" check trips, and it closes the socket it was trying to protect. Inbound
@@ -943,6 +1012,16 @@ class AgentHub:
    except asyncio.CancelledError:return
    except Exception as e:
     print("[hub] watch:",e,flush=True)
+ def _rebind_client_pending(self,old,new):
+  n=0
+  for k,v in list(self.pending.items()):
+   if not v or v[0] is not old:continue
+   orig=v[1] if len(v)>1 else None
+   meta=dict(v[2]) if len(v)>2 and isinstance(v[2],dict) else {}
+   meta.pop("detached",None)
+   self.pending[k]=(new,orig,meta)
+   n+=1
+  return n
  async def _claim_cid(self,client,cid):
   cid=str(cid or "").strip()
   if not cid or len(cid)<4:return
@@ -951,18 +1030,14 @@ class AgentHub:
   old=self._by_cid.get(cid)
   self._by_cid[cid]=client
   if old is None or old is client:return
-  try:idle=time.time()-float(getattr(old,"_last_rx",0) or 0)
-  except Exception:idle=1e9
-  if idle<20 and not getattr(old,"closed",False):
-   return
+  n=self._rebind_client_pending(old,client)
   self.clients.discard(old)
   try:self._client_seq.remove(old)
   except ValueError:pass
-  self._detach_client_pending(old)
   try:
    if not getattr(old,"closed",True):await asyncio.wait_for(old.close(),1.0)
   except Exception:pass
-  print("[hub] replaced duplicate client %s · n=%d"%(cid[:16],len(self.clients)),flush=True)
+  print("[hub] replaced duplicate client %s · rebound %d RPC(s) · n=%d"%(cid[:16],n,len(self.clients)),flush=True)
  def _ws_loopback(self,c):
   try:
    req=getattr(c,"_req",None)
@@ -1206,7 +1281,10 @@ class AgentHub:
     tid=str(params.get("terminalId") or "")
     term=self._terms.get(tid)
     if not term:raise KeyError("unknown terminal")
-    await self._reply_agent(rid,await term.wait_exit())
+    async def _later():
+     try:await self._reply_agent(rid,await term.wait_exit())
+     except Exception as e:await self._reply_agent(rid,error={"code":-32000,"message":str(e)[:400]})
+    asyncio.create_task(_later())
     return True
    if method=="terminal/kill":
     tid=str(params.get("terminalId") or "")
@@ -1272,6 +1350,29 @@ class AgentHub:
    jobs=self.work.snapshot()
    await self._broadcast(json.dumps({"jsonrpc":"2.0","method":"_x.ai/work/changed","params":{"jobs":jobs}},separators=(",",":")))
   except Exception:pass
+ async def _send_client(self,client,data):
+  if client is None or getattr(client,"closed",True):return False
+  try:
+   await asyncio.wait_for(client.send_str(data),BROADCAST_SEND_TIMEOUT)
+   return True
+  except Exception:return False
+ async def _rpc_expire(self,nid,timeout,method):
+  try:await asyncio.sleep(float(timeout))
+  except Exception:return
+  ent=self.pending.pop(nid,None)
+  if not ent:return
+  client,orig,meta=ent if len(ent)==3 else (ent[0],ent[1],{})
+  print("[hub] rpc timeout · %s · %ss"%(method,int(timeout)),flush=True)
+  await self._reply_err(client,orig,"timeout: "+str(method),-32001)
+  sid=str((meta or {}).get("sid") or "")
+  if method=="session/load" and sid:
+   # Drop the lock. Leaving ev unset made every later session/load join the
+   # dead wait and reply "still in flight", so a new chat never got an agent
+   # and prompts for that sid sat behind a load nobody would finish.
+   self._load_finish(sid,keep=False)
+   print("[hub] session/load timeout · drop lock · sid=%s"%(sid[:8]),flush=True)
+  if method in ("session/new","session/load","_x.ai/sessions/list","sessions/list","initialize"):
+   self._hung_agent=True
  async def _from_agent(self,raw:str):
   try:obj=json.loads(raw)
   except Exception:
@@ -1318,9 +1419,7 @@ class AgentHub:
     print("[hub] session/load done · sid=%s · ok=%s"%(msid[:8],ok),flush=True)
    obj["id"]=orig
    data=json.dumps(obj,separators=(",",":"))
-   try:
-    if client is not None and not client.closed:await client.send_str(data)
-   except Exception:pass
+   await self._send_client(client,data)
    if meta.get("detached"):
     await self._broadcast(json.dumps({"jsonrpc":"2.0","method":"_x.ai/remote/rpc_done","params":{"id":orig,"ok":"error" not in obj,"detached":True}},separators=(",",":")))
    return
@@ -1363,12 +1462,11 @@ class AgentHub:
  def _drop_client_pending(self,client):
   self._detach_client_pending(client)
  async def _reply_err(self,client,orig,msg,code=-32000):
+  if client is None:return
   if orig is None:
-   try:await client.send_str(json.dumps({"jsonrpc":"2.0","method":"error","params":{"message":msg}}))
-   except Exception:pass
+   await self._send_client(client,json.dumps({"jsonrpc":"2.0","method":"error","params":{"message":msg}}))
    return
-  try:await client.send_str(json.dumps({"jsonrpc":"2.0","id":orig,"error":{"code":code,"message":msg}}))
-  except Exception:pass
+  await self._send_client(client,json.dumps({"jsonrpc":"2.0","id":orig,"error":{"code":code,"message":msg}}))
  async def handle_client(self,client):
   from aiohttp import WSMsgType
   await self._prune_clients(room=1)
@@ -1491,7 +1589,7 @@ class AgentHub:
     if wait_load:await self._load_wait(sid)
     self._nid+=1
     nid=self._nid
-    meta={"init":method=="initialize","method":method,"sid":sid}
+    meta={"init":method=="initialize","method":method,"sid":sid,"t":time.time()}
     self.pending[nid]=(client,orig,meta)
     payload["id"]=nid
     try:await asyncio.wait_for(self._agent.send_str(json.dumps(payload,separators=(",",":"))),8)
@@ -1499,6 +1597,11 @@ class AgentHub:
      self.pending.pop(nid,None)
      if method=="session/load" and sid:self._load_finish(sid,keep=False)
      await self._reply_err(client,orig,str(e))
+     return
+    lim=RPC_REPLY_TIMEOUT.get(method)
+    if lim:asyncio.create_task(self._rpc_expire(nid,lim,method))
+   if method=="session/new":
+    print("[hub] session/new · cwd=%s"%str((params or {}).get("cwd") or "")[:80],flush=True)
    if method=="session/prompt":
     print("[hub] prompt · sid=%s · wait_load=%s"%(sid[:8] if sid else "-",wait_load),flush=True)
     try:
@@ -1515,7 +1618,7 @@ class AgentHub:
    if method=="session/cancel" and sid:
     try:self.work.mark_cancel(sid)
     except Exception:pass
-   if method in ("session/load","session/prompt"):asyncio.create_task(_go())
+   if method in ("session/load","session/prompt","session/new"):asyncio.create_task(_go())
    else:await _go()
    return
   if orig is not None and not method:
@@ -1655,7 +1758,7 @@ async def main_async(a):
  hub.agent_port=a.agent_port
  loops=RemoteLoopManager(hub,LOOP_STORE)
  keyq=("?key=%s"%a.secret) if a.secret else ""
- cfg={"agent_host":agent_host,"agent_port":a.agent_port,"secret":"(held server-side)","cwd":state["cwd"],"ws_url":"ws://%s:%d/ws"%(lan,a.port),"ws_path":"/ws","ui":"http://%s:%d/%s"%(lan,a.port,keyq),"watch":"http://%s:%d/watch%s"%(lan,a.port,keyq),"lan_ip":lan,"proxy":True,"hub":True,"ide":True,"auth":bool(a.secret),"features":["fs","ide","review","multi-client-hub","skills-scan","git","project-context","stop-turn","todos","voice-tts","voice-go","xr-ar","watch-companion","msg-queue","remote-loop","effort","work-board","att-store"]}
+ cfg={"agent_host":agent_host,"agent_port":a.agent_port,"secret":"(held server-side)","cwd":state["cwd"],"ws_url":"ws://%s:%d/ws"%(lan,a.port),"ws_path":"/ws","ui":"http://%s:%d/%s"%(lan,a.port,keyq),"watch":"http://%s:%d/watch%s"%(lan,a.port,keyq),"lan_ip":lan,"proxy":True,"hub":True,"ide":True,"auth":bool(a.secret),"tailscale_ip":"","tailscale_url":"","https_url":"","away_url":"","serve":False,"public_url":"","public_origin":"","features":["fs","ide","review","multi-client-hub","skills-scan","git","project-context","stop-turn","todos","voice-tts","voice-go","xr-ar","watch-companion","msg-queue","remote-loop","effort","work-board","att-store","pwa","public-https","nostr-inbox"]}
  try:(ROOT/"runtime-config.json").write_text(json.dumps(cfg,indent=2),encoding="utf-8")
  except Exception:pass
  def root_path():
@@ -1759,9 +1862,43 @@ async def main_async(a):
    "<p style=\"margin:12px 0\"><button style=\"font-size:18px;padding:10px 22px;border-radius:12px;border:0;background:#22c55e;color:#04110a\">Pair</button></p>"
    +err+"</form></body>")
   return web.Response(text=html,content_type="text/html",headers={"Cache-Control":"no-store"})
- async def config(_):
+ def _apply_net_cfg(snap=None):
+  try:
+   from remote_auth import tailscale_snapshot
+   snap=snap if snap is not None else tailscale_snapshot(a.port)
+  except Exception:
+   snap={}
+  ts=str((snap or {}).get("ip") or "")
+  dns=str((snap or {}).get("dns") or "").strip()
+  serve=bool((snap or {}).get("serve"))
+  aq=("?key=%s&auto=1"%a.secret) if a.secret else "?auto=1"
+  ts_url=("http://%s:%d/%s"%(ts,a.port,aq)) if ts else ""
+  https_url=("https://%s/%s"%(dns,aq)) if dns and serve else ""
+  pub_url="";pub_origin=""
+  try:
+   from public_net import load_public_origin,public_url_for
+   p=load_public_origin(a.port)
+   if p:
+    pub_origin=p.get("origin") or ""
+    pub_url=public_url_for(a.secret,default_port=a.port,include_key=False)
+  except Exception:pass
+  cfg["tailscale_ip"]=ts
+  cfg["tailscale_url"]=ts_url
+  cfg["https_url"]=https_url
+  cfg["public_url"]=pub_url
+  cfg["public_origin"]=pub_origin
+  cfg["away_url"]=pub_url or https_url or ts_url
+  cfg["serve"]=serve
+  cfg["tailscale_dns"]=dns
+  return snap
+ async def config(request):
   cfg["cwd"]=state["cwd"];cfg["clients"]=len(hub.clients)
-  return web.json_response(cfg,headers={"Cache-Control":"no-store"})
+  try:
+   from remote_auth import tailscale_snapshot
+   _apply_net_cfg(tailscale_snapshot(a.port,wait=False))
+  except Exception:pass
+  out=public_safe_cfg(cfg) if request_is_public(request) else cfg
+  return web.json_response(out,headers={"Cache-Control":"no-store"})
  async def static(request):
   name=request.match_info.get("name","")
   name=unquote(str(name or "")).replace("\\","/").lstrip("/")
@@ -1775,14 +1912,16 @@ async def main_async(a):
   cc="no-cache" if name.endswith(".js") and (name.startswith("xr-") or name=="chat-runtime.js") else "public, max-age=86400"
   return web.FileResponse(p,headers={"Content-Type":ctype,"Cache-Control":cc})
  def _peer_loopback(request):
-  try:peer=request.remote or ""
-  except Exception:peer=""
-  return peer in ("127.0.0.1","::1","::ffff:127.0.0.1") or str(peer).startswith("127.")
- async def health(_):
+  return request_is_loopback(request)
+ async def health(request):
   ag=port_open(a.agent_port)
   hub_up=hub._agent is not None and not getattr(hub._agent,"closed",True)
-  return web.json_response({"ok":True,"ui":True,"ready":bool(hub_up and ag),"agent_ws_local":"ws://%s:%d/ws"%(agent_host,a.agent_port),"detail":"","cwd":state["cwd"],"hub_clients":len(hub.clients),"hub_up":hub_up,"hub_err":getattr(hub,"_last_err","") or "","init_cached":bool(getattr(hub,"_init_done",False)),"agent_listening":bool(ag)},headers={"Cache-Control":"no-store"})
- async def health_deep(_):
+  body={"ok":True,"ui":True,"ready":bool(hub_up and ag),"hub_up":hub_up,"agent_listening":bool(ag)}
+  if request_is_public(request):
+   return web.json_response(body,headers={"Cache-Control":"no-store"})
+  body.update({"agent_ws_local":"ws://%s:%d/ws"%(agent_host,a.agent_port),"detail":"","cwd":state["cwd"],"hub_clients":len(hub.clients),"hub_err":getattr(hub,"_last_err","") or "","init_cached":bool(getattr(hub,"_init_done",False))})
+  return web.json_response(body,headers={"Cache-Control":"no-store"})
+ async def health_deep(request):
   ok=False;detail=""
   try:
    async with ClientSession(timeout=ClientTimeout(total=6,connect=3)) as s:
@@ -1792,18 +1931,180 @@ async def main_async(a):
      ok=msg.type==WSMsgType.TEXT and "result" in json.loads(msg.data)
   except Exception as e:detail=re.sub(r"server-key=[^&'\s]+","server-key=***",str(e))[:200]
   hub_up=hub._agent is not None and not getattr(hub._agent,"closed",True)
-  return web.json_response({"ok":ok,"agent_ws_local":"ws://%s:%d/ws"%(agent_host,a.agent_port),"detail":detail,"cwd":state["cwd"],"hub_clients":len(hub.clients),"hub_up":hub_up,"hub_err":getattr(hub,"_last_err","") or "","init_cached":bool(getattr(hub,"_init_done",False))},headers={"Cache-Control":"no-store"})
+  body={"ok":ok,"hub_up":hub_up}
+  if request_is_public(request):
+   return web.json_response(body,headers={"Cache-Control":"no-store"})
+  body.update({"agent_ws_local":"ws://%s:%d/ws"%(agent_host,a.agent_port),"detail":detail,"cwd":state["cwd"],"hub_clients":len(hub.clients),"hub_err":getattr(hub,"_last_err","") or "","init_cached":bool(getattr(hub,"_init_done",False))})
+  return web.json_response(body,headers={"Cache-Control":"no-store"})
  async def pair(request):
   if not _peer_loopback(request):
    raise web.HTTPForbidden(text="pair is loopback-only")
   try:
    from pairing import addresses,page,ensure_segno
-   pub=getattr(a,"public_host","") or os.environ.get("GROK_REMOTE_PUBLIC_HOST","")
-   addrs=addresses(a.port,a.secret,public_host=pub)
-   html=page(addrs,cwd=state.get("cwd") or "",have_qr=ensure_segno(),port=a.port)
+   from remote_auth import tailscale_snapshot
+   from public_net import load_public_origin,named_public_raw,live_tunnel_url
+   pub=named_public_raw() or live_tunnel_url() or getattr(a,"public_host","") or os.environ.get("GROK_REMOTE_PUBLIC_HOST","")
+   net=tailscale_snapshot(a.port,ttl=8)
+   p=load_public_origin(a.port)
+   if p:net["public"]=p.get("origin") or ""
+   addrs=addresses(a.port,a.secret,public_host=pub,net=net)
+   pin="";npub=""
+   try:
+    from public_net import pair_pin
+    pin=pair_pin(a.secret)
+   except Exception:pass
+   try:
+    from nostr_bridge import status as nostr_status
+    npub=str((nostr_status() or {}).get("npub") or "")
+   except Exception:pass
+   html=page(addrs,cwd=state.get("cwd") or "",have_qr=ensure_segno(),port=a.port,net=net,pin=pin,npub=npub)
   except Exception as e:
    html="<!doctype html><meta charset=utf-8><title>Pair</title><p>Pairing unavailable: %s</p>"%str(e)[:240]
   return web.Response(text=html,content_type="text/html",headers={"Cache-Control":"no-store"})
+ async def pwa_manifest(_):
+  p=WEB/"manifest.webmanifest"
+  if not p.is_file():raise web.HTTPNotFound()
+  return web.FileResponse(p,headers={"Content-Type":"application/manifest+json","Cache-Control":"no-cache"})
+ async def pwa_sw(_):
+  p=WEB/"sw.js"
+  if not p.is_file():raise web.HTTPNotFound()
+  return web.FileResponse(p,headers={"Content-Type":"application/javascript; charset=utf-8","Cache-Control":"no-cache","Service-Worker-Allowed":"/"})
+ def _net_public(snap,include_key=False):
+  ts=str((snap or {}).get("ip") or "")
+  dns=str((snap or {}).get("dns") or "").strip()
+  serve=bool((snap or {}).get("serve"))
+  q=("?key=%s&auto=1"%a.secret) if include_key and a.secret else "?auto=1"
+  lan_url=("http://%s:%d/%s"%(lan,a.port,q)) if lan else ""
+  ts_url=("http://%s:%d/%s"%(ts,a.port,q)) if ts else ""
+  https_url=("https://%s/%s"%(dns,q)) if dns and serve else ""
+  pub_origin="";pub_url="";tun={}
+  try:
+   from public_net import load_public_origin,public_url_for,tunnel_status
+   p=load_public_origin(a.port)
+   if p:pub_origin=p.get("origin") or ""
+   if include_key:pub_url=public_url_for(a.secret,default_port=a.port,include_key=False)
+   elif pub_origin:pub_url=pub_origin+"/?auto=1"
+   tun=tunnel_status()
+  except Exception:pass
+  away=pub_url or https_url or ts_url
+  return {"ok":True,"lan_ip":lan,"port":a.port,"tailscale_ip":ts,"tailscale_dns":dns,"serve":serve,"https":bool(https_url or (pub_origin and pub_origin.startswith("https://"))),"lan_url":lan_url,"tailscale_url":ts_url,"https_url":https_url,"public_origin":pub_origin,"public_url":pub_url,"away_url":away,"tunnel":tun}
+ async def net_get(request):
+  if request_is_public(request):
+   return web.json_response({"ok":True,"https":True},headers={"Cache-Control":"no-store"})
+  try:
+   from remote_auth import tailscale_snapshot
+   snap=tailscale_snapshot(a.port)
+  except Exception:
+   snap={}
+  try:_apply_net_cfg(snap)
+  except Exception:pass
+  return web.json_response(_net_public(snap,include_key=_peer_loopback(request)),headers={"Cache-Control":"no-store"})
+ async def net_tailscale_serve(request):
+  if not _peer_loopback(request):
+   raise web.HTTPForbidden(text="tailscale serve is loopback-only")
+  try:
+   from remote_auth import enable_tailscale_serve
+   ok,err,snap=enable_tailscale_serve(a.port)
+  except Exception as e:
+   ok,err,snap=False,str(e)[:240],{}
+  try:_apply_net_cfg(snap)
+  except Exception:pass
+  body=_net_public(snap,include_key=True)
+  body["ok"]=bool(ok)
+  if err:body["error"]=err
+  return web.json_response(body,status=200 if ok else 500,headers={"Cache-Control":"no-store"})
+ async def net_public_set(request):
+  if not _peer_loopback(request):
+   raise web.HTTPForbidden(text="public url is loopback-only")
+  try:body=await request.json()
+  except Exception:body={}
+  raw=str((body or {}).get("url") or (body or {}).get("host") or "").strip()
+  try:
+   from public_net import parse_public_origin,patch_plugin_cfg,load_public_origin
+   if raw:
+    p=parse_public_origin(raw,default_port=a.port)
+    if not p:raise web.HTTPBadRequest(text="bad public url")
+    patch_plugin_cfg(public_url=p["origin"])
+   else:
+    patch_plugin_cfg(public_url="")
+  except web.HTTPException:raise
+  except Exception as e:
+   return web.json_response({"ok":False,"error":str(e)[:240]},status=500,headers={"Cache-Control":"no-store"})
+  try:_apply_net_cfg()
+  except Exception:pass
+  from remote_auth import tailscale_snapshot
+  return web.json_response(_net_public(tailscale_snapshot(a.port,wait=False),include_key=True),headers={"Cache-Control":"no-store"})
+ async def net_cloudflare_tunnel(request):
+  if not _peer_loopback(request):
+   raise web.HTTPForbidden(text="cloudflare tunnel is loopback-only")
+  try:body=await request.json()
+  except Exception:body={}
+  action=str((body or {}).get("action") or "start").strip().lower()
+  try:
+   from public_net import start_quick_tunnel,stop_quick_tunnel,tunnel_status
+   if action in ("stop","off"):
+    st=stop_quick_tunnel();ok=True;err=""
+   else:
+    loop=asyncio.get_event_loop()
+    ok,err,st=await loop.run_in_executor(None,lambda:start_quick_tunnel(a.port))
+  except Exception as e:
+   ok,err,st=False,str(e)[:240],{}
+  try:_apply_net_cfg()
+  except Exception:pass
+  from remote_auth import tailscale_snapshot
+  out=_net_public(tailscale_snapshot(a.port,wait=False),include_key=True)
+  out["ok"]=bool(ok)
+  if isinstance(st,dict):out["tunnel"]=st
+  if err:out["error"]=err
+  return web.json_response(out,status=200 if ok else 500,headers={"Cache-Control":"no-store"})
+ _unlock_hits={}
+ def _peer_ip(request):
+  try:h=request.headers
+  except Exception:h={}
+  ip=(h.get("CF-Connecting-IP") or (h.get("X-Forwarded-For") or "").split(",")[0].strip() or (getattr(request,"remote","") or ""))
+  return str(ip)[:80]
+ async def pair_unlock(request):
+  ip=_peer_ip(request) or "x"
+  now=time.time()
+  hits=[t for t in _unlock_hits.get(ip,[]) if now-t<600]
+  if len(hits)>=8:
+   return web.json_response({"ok":False,"error":"too many tries"},status=429,headers={"Cache-Control":"no-store"})
+  try:body=await request.json()
+  except Exception:body={}
+  tok=str((body or {}).get("t") or (body or {}).get("token") or "").strip()
+  pin=str((body or {}).get("pin") or "").strip()
+  hits.append(now);_unlock_hits[ip]=hits
+  try:
+   from public_net import pair_unlock_ok
+   ok=pair_unlock_ok(a.secret,tok,pin)
+  except Exception:
+   ok=False
+  if not ok:
+   return web.json_response({"ok":False,"error":"bad pin"},status=401,headers={"Cache-Control":"no-store"})
+  _unlock_hits[ip]=[]
+  resp=web.json_response({"ok":True},headers={"Cache-Control":"no-store"})
+  kw={"max_age":30*86400,"httponly":True,"samesite":"Lax","path":"/"}
+  if request_is_https(request):kw["secure"]=True
+  resp.set_cookie(UI_KEY_COOKIE,a.secret,**kw)
+  return resp
+ async def qr_get(request):
+  if not _peer_loopback(request):
+   raise web.HTTPForbidden(text="qr is loopback-only")
+  from pairing import qr_svg,addresses
+  from public_net import named_public_raw,live_tunnel_url
+  pub=named_public_raw() or live_tunnel_url() or ""
+  addrs=addresses(a.port,a.secret,public_host=pub)
+  url=(addrs[0].get("url") if addrs else "") or ""
+  svg=qr_svg(url) if url else ""
+  return web.Response(text=svg or "<svg xmlns='http://www.w3.org/2000/svg'></svg>",content_type="image/svg+xml",headers={"Cache-Control":"no-store"})
+ async def nostr_get(request):
+  if not _peer_loopback(request):
+   raise web.HTTPForbidden(text="nostr status is loopback-only")
+  try:
+   from nostr_bridge import inbox_status
+   return web.json_response(inbox_status(),headers={"Cache-Control":"no-store"})
+  except Exception as e:
+   return web.json_response({"ok":False,"error":str(e)[:200]},status=500,headers={"Cache-Control":"no-store"})
  async def fs_root(_):
   r=root_path()
   return web.json_response({"root":str(r),"exists":r.is_dir()})
@@ -2135,6 +2436,26 @@ async def main_async(a):
   except Exception as e:
    return web.json_response({"ok":False,"error":str(e)},status=502,headers={"Cache-Control":"no-store"})
   return web.json_response({"ok":True,"id":nid,"sessionId":sid},headers={"Cache-Control":"no-store"})
+ async def session_new_http(request):
+  try:body=await request.json()
+  except Exception:raise web.HTTPBadRequest(text="json required")
+  cwd=str(body.get("cwd") or body.get("path") or "").strip()
+  if not cwd:raise web.HTTPBadRequest(text="cwd required")
+  if not await hub.ensure(retries=8,delay=0.35):
+   return web.json_response({"ok":False,"error":"agent offline"},status=503,headers={"Cache-Control":"no-store"})
+  try:
+   obj=await hub.call_rpc("session/new",{"cwd":cwd,"mcpServers":body.get("mcpServers") if isinstance(body.get("mcpServers"),list) else []},timeout=45.0)
+  except Exception as e:
+   hub._hung_agent=True
+   return web.json_response({"ok":False,"error":str(e)[:240]},status=504,headers={"Cache-Control":"no-store"})
+  if not isinstance(obj,dict):
+   return web.json_response({"ok":False,"error":"bad agent reply"},status=502,headers={"Cache-Control":"no-store"})
+  if obj.get("error"):
+   err=obj.get("error")
+   msg=err.get("message") if isinstance(err,dict) else str(err)
+   return web.json_response({"ok":False,"error":str(msg)[:240]},status=502,headers={"Cache-Control":"no-store"})
+  res=obj.get("result") if isinstance(obj.get("result"),dict) else {}
+  return web.json_response({"ok":True,**res},headers={"Cache-Control":"no-store"})
  async def session_react_get(_):
   return web.json_response({"ok":True,"data":load_reacts()},headers={"Cache-Control":"no-store"})
  async def session_react_set(request):
@@ -2170,6 +2491,17 @@ async def main_async(a):
      return web.json_response({"available":True,**data},headers={"Cache-Control":"no-store"})
   except Exception:
    return web.json_response({"available":False},headers={"Cache-Control":"no-store"})
+ async def companion_env(_):
+  """What is in front of the user right now: foreground window, agent work state, clock. Loopback/authed only (auth_mw)."""
+  try:
+   import companion_env as ce
+   jobs=[]
+   try:jobs=hub.work.snapshot()
+   except Exception:pass
+   snap=await asyncio.get_event_loop().run_in_executor(None,ce.snapshot,jobs)
+   return web.json_response(snap,headers={"Cache-Control":"no-store"})
+  except Exception as e:
+   return web.json_response({"ok":False,"error":str(e)[:200]},status=500,headers={"Cache-Control":"no-store"})
  async def tts_proxy(request):
   key=xai_api_key()
   if not key:return web.json_response({"ok":False,"error":"XAI_API_KEY not set — browser fallback only"},status=503)
@@ -2273,6 +2605,14 @@ async def main_async(a):
   except Exception:pass
   agent_pids=[] if keep_agent else listen_pids(a.agent_port)
   self_pid=os.getpid()
+  try:
+   from public_net import stop_quick_tunnel
+   stop_quick_tunnel()
+  except Exception:pass
+  try:
+   from nostr_bridge import stop_inbox
+   stop_inbox()
+  except Exception:pass
   async def _shutdown():
    await asyncio.sleep(0.35)
    try:await hub.close()
@@ -2352,6 +2692,15 @@ async def main_async(a):
  app.router.add_get("/health",health)
  app.router.add_get("/health/deep",health_deep)
  app.router.add_get("/pair",pair)
+ app.router.add_get("/manifest.webmanifest",pwa_manifest)
+ app.router.add_get("/sw.js",pwa_sw)
+ app.router.add_get("/api/net",net_get)
+ app.router.add_post("/api/net/tailscale-serve",net_tailscale_serve)
+ app.router.add_post("/api/net/public",net_public_set)
+ app.router.add_post("/api/net/cloudflare-tunnel",net_cloudflare_tunnel)
+ app.router.add_post("/api/pair/unlock",pair_unlock)
+ app.router.add_get("/api/qr",qr_get)
+ app.router.add_get("/api/nostr",nostr_get)
  app.router.add_get("/ws",ws_proxy)
  app.router.add_get("/static/{name:.*}",static)
  app.router.add_get("/api/fs/root",fs_root)
@@ -2374,10 +2723,12 @@ async def main_async(a):
  app.router.add_post("/api/session/archived",session_archived_set)
  app.router.add_post("/api/session/rename",session_rename)
  app.router.add_post("/api/session/prompt",session_prompt_http)
+ app.router.add_post("/api/session/new",session_new_http)
  app.router.add_get("/api/session/react",session_react_get)
  app.router.add_post("/api/session/react",session_react_set)
  app.router.add_get("/api/voice/status",voice_status)
  app.router.add_get("/api/companion/state",companion_state)
+ app.router.add_get("/api/companion/env",companion_env)
  app.router.add_post("/api/tts",tts_proxy)
  app.router.add_get("/api/git/status",git_status)
  app.router.add_get("/api/git/diff",git_diff)
@@ -2670,17 +3021,46 @@ async def main_async(a):
   except Exception as e:
    print("[boot] agent ensure failed:",e,flush=True)
  if str(a.agent_host) in ("127.0.0.1","localhost","::1"):
-  hub.spawn_agent=lambda:start_agent_process(a.secret,a.agent_port,state["cwd"])
+  hub.spawn_agent=lambda force=False:start_agent_process(a.secret,a.agent_port,state["cwd"],force=force)
  try:
   loops.start_all()
   hub.start_watch()
   print("[loop] restored %d job(s)"%len(loops.jobs),flush=True)
   print("[hub] wireless watch · client heartbeat 12s · upstream keepalive",flush=True)
   try:
+   from nostr_bridge import start_inbox
+   async def _nostr_text(text,pub):
+    sid=str(getattr(hub,"_last_sid","") or "")
+    note="[nostr]\n"+str(text or "").strip()
+    if not note.strip():return
+    if not sid:
+     try:
+      r=await hub.call_rpc("session/new",{"cwd":state["cwd"]},timeout=25.0)
+      if isinstance(r,dict):sid=str((r.get("result") or r).get("sessionId") or r.get("sessionId") or "")
+      if sid:hub._last_sid=sid
+     except Exception as e:
+      print("[nostr] session/new failed:",e,flush=True);return
+    if sid:
+     try:await hub.inject_prompt(sid,note)
+     except Exception as e:print("[nostr] inject failed:",e,flush=True)
+   start_inbox(asyncio.get_event_loop(),_nostr_text)
+   print("[nostr] inbox listening",flush=True)
+  except Exception as e:
+   print("[nostr] skipped:",e,flush=True)
+  try:
+   _apply_net_cfg()
+  except Exception:pass
+  try:
    from pairing import addresses,banner,ensure_segno,utf8_stdout
-   utf8_stdout();banner(addresses(a.port,a.secret,public_host=getattr(a,"public_host","") or ""),a.port,have_qr=ensure_segno())
+   from public_net import named_public_raw,live_tunnel_url
+   utf8_stdout();banner(addresses(a.port,a.secret,public_host=named_public_raw() or live_tunnel_url() or getattr(a,"public_host","") or ""),a.port,have_qr=ensure_segno())
   except Exception as e:
    print("[pair] banner skipped:",e,flush=True)
+  try:
+   if cfg.get("public_url"):print("Internet (HTTPS)     %s"%cfg["public_url"],flush=True)
+   elif cfg.get("https_url"):print("HTTPS (PWA / away)   %s"%cfg["https_url"],flush=True)
+   elif cfg.get("tailscale_url"):print("Tailscale / Meshnet  %s"%cfg["tailscale_url"],flush=True)
+  except Exception:pass
   while True:await asyncio.sleep(3600)
  finally:
   for t in list(loops._tasks.values()):
@@ -2697,6 +3077,9 @@ def main():
  ap.add_argument("--claim-ports",action="store_true",help="kill other listeners on UI+agent ports before bind")
  ap.add_argument("--ensure-agent",action="store_true",help="start agent serve if not listening")
  a=ap.parse_args()
+ try:
+  if Path(a.cwd).resolve()==ROOT:print(f"WARN: --cwd is the hub's own folder ({ROOT}); real chats live elsewhere and the rail files them under the parent folder name. Pass --cwd <workspace> (ensure-running.ps1 -Cwd).",file=sys.stderr)
+ except Exception:pass
  if not a.secret:
   print("ERROR: --secret or GROK_AGENT_SECRET required",file=sys.stderr);sys.exit(2)
  if a.claim_ports or os.environ.get("GROK_REMOTE_CLAIM_PORTS")=="1":

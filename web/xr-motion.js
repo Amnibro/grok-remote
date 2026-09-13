@@ -14,6 +14,13 @@ export function initMotion(ctx){
   function holdGaze(clip){return HEAD.has(clip)}
   function keepIdle(clip){return holdGaze(clip)||(curBase===HOME&&RIGHT.has(clip))||(curBase==="talking_on_phone"&&SOFT.has(clip))||(curBase==="guitar_playing"&&GUITAR.has(clip))}
   function travelSkip(n){return /(sit|lay|crouch|plank|walk|run|jog|sprint|dance|twerk|shuffle|kneel|pray|squat|angry|jump|jab_cross|beckon|punch)/i.test(n||"")}
+  /* Gesture layer: crouch / kneel / squat / sit are allowed again. They were skipped while the
+     hips clamp pinned her pelvis, which turned every crouch into legs folding in mid-air.
+     Travel moves (walk, run, dance, jump) still stay off the pad. */
+  function gestureSkip(n){return /(lay|plank|walk|run|jog|sprint|dance|twerk|shuffle|angry|jump|jab_cross|beckon|punch)/i.test(n||"")}
+  /* A human squat is stand -> crouch. The library only ships crouch_to_stand, so the squat
+     words play that clip backwards and hold at the bottom. */
+  const SQUAT_ALIAS={squat:"crouch_to_stand",squat_down:"crouch_to_stand",crouch:"crouch_to_stand",crouch_down:"crouch_to_stand",kneel_down:"crouch_to_stand",split:"crouch_to_stand",splits:"crouch_to_stand"};
   fetch("/static/clip_index.json",{cache:"no-store"}).then(r=>r.json()).then(j=>{clipIx=j.clips||{}}).catch(()=>{});
   function warmPool(){
     fetch(httpBase()+"/motion/alive",{cache:"no-store"}).then(r=>r.json()).then(j=>{
@@ -35,9 +42,13 @@ export function initMotion(ctx){
   const wsBase=()=>location.protocol.replace("http","ws")+"//"+location.hostname+":2423";
   const linked=()=>!!(mws&&mws.readyState===1);
   function findClip(n){n=(n||"").toLowerCase();const cl=getClips();return cl.find(c=>c.name.toLowerCase()===n)||null}
-  function stripRoot(c){
+  /* GLB clips carry a correct Hips.position (z about -1.0 standing, -0.4 crouched); every
+     other position track is a constant bind offset and gets dropped. Service (lab / baked
+     JSON) clips have hips in a different frame and scale, so for those the hips go too, or a
+     squat becomes a metre-deep sink. */
+  function stripRoot(c,keepHips){
     if(!c||!c.tracks)return c;
-    c.tracks=c.tracks.filter(t=>!/\.position$/i.test(t.name||""));
+    c.tracks=c.tracks.filter(t=>!/\.position$/i.test(t.name||"")||(keepHips&&/Hips\.position$/i.test(t.name||"")));
     for(const tr of c.tracks){
       if(!tr||!/\.quaternion$/i.test(tr.name||"")||!tr.values)continue;
       const v=tr.values;
@@ -101,11 +112,16 @@ export function initMotion(ctx){
     if(!mixer){pendingPlays.push([name,layer,fade]);return}
     hookMixer();
     if(layer==="base"&&(travelSkip(name)||!canLoop(name)))name=HOME;
-    if(layer!=="base"&&(travelSkip(name)||!clientPropOk(name)))return;
+    let reverse=false;
+    if(layer!=="base"){
+      const al=SQUAT_ALIAS[String(name||"").toLowerCase()];
+      if(al&&findClip(al)){name=al;reverse=true}
+    }
+    if(layer!=="base"&&(gestureSkip(name)||!clientPropOk(name)))return;
     if(layer==="base"&&performance.now()<baseHold){queueBase(name,fade);return}
     const c=findClip(name);
     if(!c){warm(name).then(ok=>{if(ok)motionPlay(name,layer,fade)});return}
-    stripRoot(c);
+    stripRoot(c,!(c.userData&&c.userData.service));
     const a=mixer.clipAction(c);
     fade=fade||0.4;
     if(layer==="base"){
@@ -150,9 +166,11 @@ export function initMotion(ctx){
       a.clampWhenFinished=true;
       let ts=0.86+Math.random()*0.28;
       if(keepIdle(name)&&(c.duration||1.2)>2.8)ts=Math.max(ts,(c.duration||1.2)/2.6);
+      if(!reverse&&c.duration>0.4)a.time=Math.random()*Math.min(0.45,c.duration*0.2);
+      if(reverse){ts=-Math.abs(ts);a.time=Math.max(0.05,(c.duration||1.2)-0.02)}
       a.timeScale=ts;
-      if(c.duration>0.4)a.time=Math.random()*Math.min(0.45,c.duration*0.2);
-      const holdMs=Math.max(700,Math.min(keepIdle(name)?2800:8000,((c.duration||1.2)-a.time)/ts*1000));
+      const span=reverse?a.time:((c.duration||1.2)-a.time);
+      const holdMs=Math.max(700,Math.min(keepIdle(name)?2800:8000,span/Math.abs(ts)*1000+(reverse?1500:0)));
       if(keepIdle(name))a.setEffectiveWeight(1).play();
       else a.setEffectiveWeight(1).fadeIn(Math.min(0.35,fade)).play();
       const idle=getActIdle();
@@ -179,7 +197,8 @@ export function initMotion(ctx){
         if(!d||!d.tracks){fetchedClips.delete(name);return false}
         const c=THREE.AnimationClip.parse(d);
         c.name=name;
-        stripRoot(c);
+        c.userData=Object.assign(c.userData||{},{service:true});
+        stripRoot(c,false);
         getClips().push(c);
         return true;
       }catch(e){fetchedClips.delete(name);return false}

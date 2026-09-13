@@ -1,1 +1,1 @@
-{"default":{"identifier":"default","description":"Capability for the main window","local":true,"windows":["main"],"permissions":["core:default","opener:default"]}}
+{"default":{"identifier":"default","description":"Capability for the main window","remote":{"urls":["http://127.0.0.1:*","http://localhost:*","http://127.0.0.1:*/*","http://localhost:*/*"]},"local":true,"windows":["main"],"permissions":["core:default","opener:default","opener:allow-open-path"]}}

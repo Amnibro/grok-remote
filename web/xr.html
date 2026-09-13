@@ -19,7 +19,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--tx);font-family:
 #cap{display:none}
 #talk{pointer-events:auto;width:72px;height:72px;border-radius:50%;border:1px solid var(--line);background:var(--panel2);color:var(--acc);font-size:10px;letter-spacing:.08em;cursor:pointer;user-select:none;-webkit-user-select:none;touch-action:none;font-weight:700;z-index:12}
 #talk.rec{background:var(--acc);color:var(--bg);border-color:var(--acc);box-shadow:0 0 24px var(--acc-glow)}
-#state{display:none}
+#state{display:none;position:fixed;top:calc(10px + env(safe-area-inset-top));left:88px;z-index:12;font:700 11px/1.2 var(--font);letter-spacing:.1em;text-transform:uppercase;color:var(--mut);padding:6px 10px;border-radius:999px;border:1px solid var(--line);background:var(--panel2);pointer-events:none}
+#state.on{display:inline-flex}
 #exit{position:fixed;top:calc(10px + env(safe-area-inset-top));left:12px;z-index:12;display:none}
 #xrui{position:fixed;inset:0;pointer-events:none;z-index:8}
 #xrui button,#xrui input,#talk,#exit,#hud,.xr-rail{pointer-events:auto}
@@ -29,7 +30,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--tx);font-family:
 #feedChat,#feedWork{flex:1;overflow:auto;padding:8px;min-height:0}
 #feedChat{border-bottom:1px solid var(--line)}
 .xr-rail-h{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--mut);font-weight:650;padding:4px 6px}
-.xr-sess{display:block;width:100%;text-align:left;background:transparent;border:0;color:var(--tx);padding:8px 8px;border-radius:8px;cursor:pointer;font:12.5px var(--font);min-height:0}
+.xr-sess{display:block;width:100%;text-align:left;background:transparent;border:0;color:var(--tx);padding:7px 8px;border-radius:8px;cursor:pointer;font:12.5px/1.3 var(--font);min-height:0;flex:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.xr-sess.live{color:var(--acc)}
+.xr-viewing{display:block;width:100%;text-align:left;border:0;border-bottom:1px solid var(--line);background:var(--acc-dim);color:var(--tx);font:11px var(--font);padding:6px 8px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .xr-sess.on,.xr-sess:hover{background:var(--acc-dim)}
 .xr-ev{margin:0 0 8px;line-height:1.35}
 .xr-ev .k{font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--mut);font-weight:650}
@@ -37,6 +40,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--tx);font-family:
 .xr-ev-you .k{color:var(--you)}
 .xr-ev-think .k{color:var(--gold)}
 .xr-ev-read .k,.xr-ev-write .k,.xr-ev-tool .k{color:var(--acc)}
+.xr-ev-think .b{color:var(--mut);font-size:11.5px}
+.xr-ev-sys .k,.xr-ev-noticed .k{color:var(--mut)}.xr-ev-noticed .b{color:var(--mut);font-style:italic;font-size:11.5px}.xr-ev-sys .b{color:var(--mut);font-size:11px}
+.xr-ev-read .b,.xr-ev-write .b,.xr-ev-tool .b{color:var(--mut);font-size:11.5px;font-family:ui-monospace,Consolas,monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#feedRail .xr-ev .k .xr-chip{display:inline-block;width:auto;height:auto;min-width:0;min-height:0;line-height:1.5;margin:0 0 0 6px;padding:0 6px;border:0;border-radius:999px;font:600 9px/1.5 var(--font);letter-spacing:.04em;text-transform:none;vertical-align:1px;background:var(--acc-dim);color:var(--tx);box-shadow:none}.xr-chip-ok{color:var(--acc)}.xr-chip-bad{color:var(--bad)}.xr-chip-run{color:var(--gold)}
+.xr-ev .k{display:flex;align-items:center;gap:2px}
 #typeRow,#roomBar,#desk{display:none!important}
 #modelSel,#glbClear,input[type=file]{background:var(--panel2);color:var(--tx);border:1px solid var(--line);border-radius:8px;padding:5px 8px;max-width:240px;font-family:var(--font)}
 .xr-sheet{position:fixed;background:var(--glass);color:var(--tx);border:1px solid var(--line);border-radius:var(--radius);z-index:49;overflow-y:auto;font:12px var(--font)}
@@ -70,6 +78,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--tx);font-family:
   <div id="roomBar"></div>
   <div id="typeRow"><input id="typeBox" placeholder="say something…" autocomplete="off"/><button id="typeGo">Send</button></div>
   <button id="talk">HOLD·TALK</button>
+  <button id="senses" title="Let her notice you: camera presence, hands-free ears, what is on screen">SENSES</button>
 </div>
 <div id="desk"></div>
 </div>
@@ -198,7 +207,10 @@ void main(){
   p=pNow;
 #endif
   float grp=aRnd.w;vGrp=grp;
-  float fade=smoothstep(0.12,0.55,p.y);
+  // Dissolve band hugs the pad. It used to run 0.12-0.55, which was tuned while a hips
+  // bug held her a metre low; standing correctly that band erased everything below
+  // mid-thigh, so she read as hovering with her legs tapering into splits.
+  float fade=smoothstep(-0.045,0.075,p.y);
   if(grp>1.5){
     vec3 dir=normalize(vec3(p.x,0.0001,p.z)+vec3(0.0001));
     p+=dir*sin(uTime*0.35+aRnd.x*2.0)*0.012;
@@ -257,6 +269,90 @@ function buildHalo(n){
 }
 buildHalo(2800);
 
+/* ---------- hologram surface ----------
+   The pointcloud alone reads as a scan of a person. A lit shell behind it gives her a
+   silhouette and, because it writes depth, the far side of her body stops showing through
+   the near side. Fresnel rim + scanline is the Cortana read; the body stays mostly hollow so
+   the dots still carry the sparkle. */
+const SURF={mat:null,meshes:[],keep:null};
+function surfaceMaterial(){
+  return new THREE.ShaderMaterial({
+    uniforms:{uTime:uniforms.uTime,uForm:uniforms.uForm,uLevel:uniforms.uLevel,uListen:uniforms.uListen,uThink:uniforms.uThink,
+      uRim:{value:new THREE.Color(0.55,0.93,1.0)},uCore:{value:new THREE.Color(0.05,0.20,0.32)}},
+    vertexShader:`
+#include <common>
+#include <skinning_pars_vertex>
+varying vec3 vN;varying vec3 vV;varying float vY;
+void main(){
+  #include <beginnormal_vertex>
+  #include <skinbase_vertex>
+  #include <skinnormal_vertex>
+  #include <begin_vertex>
+  #include <skinning_vertex>
+  vec4 mv=modelViewMatrix*vec4(transformed,1.0);
+  vN=normalize(normalMatrix*objectNormal);
+  vV=normalize(-mv.xyz);
+  vY=(modelMatrix*vec4(transformed,1.0)).y;
+  gl_Position=projectionMatrix*mv;
+}`,
+    fragmentShader:`
+uniform float uTime,uForm,uLevel,uListen,uThink;
+uniform vec3 uRim,uCore;
+varying vec3 vN;varying vec3 vV;varying float vY;
+void main(){
+  float f=1.0-abs(dot(normalize(vN),normalize(vV)));
+  float rim=pow(clamp(f,0.0,1.0),2.1);
+  float scan=0.94+0.06*sin(vY*150.0-uTime*2.0);
+  vec3 col=mix(uCore,uRim,rim);
+  col=mix(col,vec3(0.62,0.52,1.0),uThink*0.35);
+  col=mix(col,vec3(0.70,0.95,1.0),uListen*0.22);
+  col+=uLevel*0.22*vec3(0.6,0.9,1.0);
+  float a=(0.16+0.72*rim)*scan;
+  a*=smoothstep(-0.045,0.075,vY);
+  a*=clamp(uForm,0.0,1.0);
+  if(a<0.004)discard;
+  gl_FragColor=vec4(col*scan,a);
+}`,
+    transparent:true,depthWrite:false,depthTest:true,depthFunc:THREE.LessEqualDepth,side:THREE.FrontSide,
+    polygonOffset:true,polygonOffsetFactor:1.4,polygonOffsetUnits:1.4
+  });
+}
+/* Depth prepass: writes the nearest front-facing surface only, so the translucent shell that
+   follows can never show the mouth bag, the far cheek, or the back of the head through the
+   face. Interior meshes the sampler already threw out (teeth, tongue, eyes) are skipped. */
+function surfaceDepthMaterial(){
+  return new THREE.MeshBasicMaterial({colorWrite:false,side:THREE.FrontSide,polygonOffset:true,polygonOffsetFactor:1.4,polygonOffsetUnits:1.4});
+}
+function buildSurface(gltf,holder){
+  if(Q.get("surface")==="0")return;
+  const mat=surfaceMaterial(),dmat=surfaceDepthMaterial();
+  const ident=new THREE.Matrix4();
+  /* Same skinning as the pointcloud: bones in world space, bind matrices identity, and the
+     holder applied once by modelMatrix. Attached bind mode would re-derive bindMatrixInverse
+     from this mesh's own matrixWorld every frame and cancel the holder, which is why the
+     first shell showed up rotated against the dots. */
+  const clone=(o,material,order)=>{
+    const m=new THREE.SkinnedMesh(o.geometry,material);
+    m.frustumCulled=false;
+    m.bindMode=THREE.DetachedBindMode||"detached";
+    m.bind(o.skeleton,ident);
+    m.bindMatrixInverse.identity();
+    m.matrixAutoUpdate=false;
+    m.matrix.identity();
+    m.renderOrder=order;
+    holder.add(m);
+    return m;
+  };
+  gltf.scene.traverse(o=>{
+    if(!o.isSkinnedMesh||!o.skeleton)return;
+    if(SURF.keep&&!SURF.keep.has(o))return;
+    SURF.meshes.push(clone(o,dmat,-2),clone(o,mat,-1));
+  });
+  SURF.mat=SURF.meshes.length?mat:null;
+  if(SURF.meshes.length)console.log("[companion] hologram surface on",SURF.meshes.length,"meshes");
+}
+window.__surface=(on)=>{SURF.meshes.forEach(m=>m.visible=on!==false);return SURF.meshes.length};
+
 /* ---------- skinned model -> pointcloud ---------- */
 let mixer=null,skeleton=null,gestureBones={head:null,neck:null,spineTop:null,armL:null,armR:null,foreL:null,foreR:null};
 let baseQuat={};
@@ -284,6 +380,7 @@ function samplePoints(gltf,count){
       return !(sz.length()<0.28&&ct.y>1.25&&Math.abs(ct.x)<0.22&&Math.abs(ct.z)<0.25);
     });
     if(keep.length)meshes=keep;
+    SURF.keep=new Set(meshes);
   }
   if(!meshes.length){
     skinned=false;
@@ -313,6 +410,17 @@ function samplePoints(gltf,count){
       if(ar>0){total+=ar;tris.push({m,a,b,c,cum:total})}
     }
   }
+  /* Interior surfaces (the mouth bag, the eye sockets, the back of the throat) sample just
+     like skin, and a pointcloud cannot occlude, so they render straight through her face and
+     read as teeth and eyeballs floating in a skull. Reject any sample inside the head whose
+     normal points back toward the head centre - an outward-facing shell keeps every visible
+     surface and drops the lining. */
+  let headC=null;const headR=0.135;
+  if(skinned&&skeleton){
+    const hi=skeleton.bones.findIndex(b=>/head$/i.test(b.name));
+    if(hi>=0)headC=new THREE.Vector3().setFromMatrixPosition(skeleton.boneInverses[hi].clone().invert());
+  }
+  let rejected=0;
   const p=new Float32Array(count*3),r=new Float32Array(count*4),cl=new Float32Array(count*3);
   const si=new Float32Array(count*4),sw=new Float32Array(count*4),nm=new Float32Array(count*3);
   const texCache=new Map();
@@ -387,7 +495,7 @@ function samplePoints(gltf,count){
         }
       }
     }
-    p[i*3]=px;p[i*3+1]=py;p[i*3+2]=pz;
+    let nX=0,nY=0,nZ=1;
     {
       const pa3=T.m.geometry.attributes.position;
       const ax=pa3.getX(T.a),ay=pa3.getY(T.a),az=pa3.getZ(T.a);
@@ -395,8 +503,17 @@ function samplePoints(gltf,count){
       const vx=pa3.getX(T.c)-ax,vy=pa3.getY(T.c)-ay,vz=pa3.getZ(T.c)-az;
       let nx=uy*vz-uz*vy,ny=uz*vx-ux*vz,nz=ux*vy-uy*vx;
       const nl=Math.hypot(nx,ny,nz)||1;
-      nm[i*3]=nx/nl;nm[i*3+1]=ny/nl;nm[i*3+2]=nz/nl;
+      nX=nx/nl;nY=ny/nl;nZ=nz/nl;
     }
+    if(headC){
+      const dx=px-headC.x,dy=py-headC.y,dz=pz-headC.z;
+      const dl=Math.hypot(dx,dy,dz);
+      if(dl<headR&&dl>1e-5&&(dx*nX+dy*nY+dz*nZ)/dl<0.12){
+        if(++rejected<count*8){i--;continue}
+      }
+    }
+    p[i*3]=px;p[i*3+1]=py;p[i*3+2]=pz;
+    nm[i*3]=nX;nm[i*3+1]=nY;nm[i*3+2]=nZ;
     if(skinned&&sia&&swa){
       const acc=new Map();
       const addC=(corner,ww)=>{for(let k=0;k<4;k++){const id=sia.getComponent(corner,k);acc.set(id,(acc.get(id)||0)+ww*swa.getComponent(corner,k))}};
@@ -425,6 +542,7 @@ function samplePoints(gltf,count){
     const j=0.88+Math.random()*0.24;
     cl[i*3]=cc[0]*j;cl[i*3+1]=cc[1]*j;cl[i*3+2]=cc[2]*j;
   }
+  if(rejected)console.log("[companion] interior samples rejected",rejected);
   if(!skinned&&Q.get("repose")!=="0")reposeStatic(p,count,region,meshStats,flex);
   if(skinned&&skeleton)hairInfo=hairFlex(skeleton.bones,p,count,si,sw,flex);
   let synth=false;
@@ -642,10 +760,11 @@ async function loadModel(){
         skinGeo=res.geo;
       }
       holder.add(pts);
+      if(!res.synth)buildSurface(gltf,holder);
       if(skelRoot)holder.add(skelRoot);
       say("");
       console.log("[companion] wearing",url,"bones "+(skeleton&&skeleton.bones.length)+" synth "+!!res.synth);
-      window.__dbg={rig,modelRoot,skeleton,uniforms,holder,scene,camera,THREE,gltf,physState};
+      window.__dbg={rig,modelRoot,skeleton,uniforms,holder,scene,camera,THREE,gltf,physState,get mixer(){return mixer},get motionMod(){return motionMod},get clips(){return clips}};
       modelRoot=gltf.scene;
       modelRoot.visible=false;
       scene.add(modelRoot);
@@ -806,6 +925,7 @@ const layerW={idle:1,talk:0};
 window.__xr={THREE,poseP,cloth:()=>({...clothInfo,lag:!!lagTex,w:uniforms.uCloth.value,hair:hairInfo}),lagStep:()=>lagTex&&lagStep(lagTex,1),lagInfo:()=>lagReport(lagTex),lagSlow:()=>lagReport(lagTex2),strands:()=>holoPts&&strandSpread(holoPts.geometry,lagTex,lagTex2,7),LAGTUNE,SLOWMUL,deformStats,resetDeformStats,strayRadius,CLOTH,clothTick,cpuSkin,getPhys:()=>physState,driveProbe,solidShot,selfSnap,micState:()=>({recOn,guard:!!micGuard}),startRec,restQ:()=>restQ,resetBraidSig:()=>{braidSig=""},look:()=>lookMod,localAvatarUrl,idbGet,errors:()=>errLog,noteErr,rig:()=>rigInfo,rigReport,composeStats:()=>composeStats,ik:()=>ikMod,reach:doReach,vision:()=>vision,captureView:()=>captureView("probe"),mods:()=>[...modsUp],brain:()=>brainMod,motion:()=>motionMod,voice:()=>voiceMod,voiceV,motionState,clips:()=>clips,state:()=>state};
 function motionPlay(name,layer,fade){motionMod?motionMod.motionPlay(name,layer,fade):motionBootQ.push([name,layer,fade])}
 function sendMotion(kind,val){motionMod?motionMod.sendMotion(kind,val):setTimeout(()=>motionMod&&motionMod.sendMotion(kind,val),600)}
+window.__motionPlay=motionPlay;window.__sendMotion=sendMotion;
 let composeClipImpl=null,composeStats=null;
 import("./static/xr-compose.js?t="+Date.now()).then(m=>{composeClipImpl=m.initCompose({THREE,getSkeleton:()=>skeleton,getRestQ:()=>restQ,getClips:()=>clips,setClips:c=>{clips=c},motionPlay,KEY,solidShot,onStats:(n,st)=>{composeStats={name:n,...st,at:Date.now()};vision.hold=Date.now()+20000}});modUp("compose")});
 function composeClip(spec){composeClipImpl&&composeClipImpl(spec)}
@@ -888,11 +1008,11 @@ function doReach(spec){
 }
 window.__reach=doReach;
 import("./static/xr-hud.js?t="+Date.now()).then(m=>{
-  window.__xrHud=m.initHud({KEY,getCwd:()=>{try{return window.__cwd||""}catch(e){return""}});
+  window.__xrHud=m.initHud({KEY,getCwd:()=>{try{return window.__cwd||""}catch(e){return""}}});
   modUp("hud");
 });
 import("./static/xr-brain.js?t="+Date.now()).then(m=>{
-  brainMod=m.initBrain({KEY,getState:()=>state,setState,setLinked:v=>{linked=v;setState(state)},say,speak,panels,composeClip,sendMotion,onReach:doReach,onSession:id=>{modUp("sid:"+String(id).slice(0,8));if(window.__xrHud)window.__xrHud.setLiveSid(id)},onFeed:(kind,title,body)=>{if(window.__xrHud)window.__xrHud.live(kind,title,body)}});
+  brainMod=m.initBrain({KEY,getState:()=>state,setState,setLinked:v=>{linked=v;setState(state)},say,speak,panels,composeClip,sendMotion,onReach:doReach,onSession:id=>{modUp("sid:"+String(id).slice(0,8));if(window.__xrHud)window.__xrHud.setLiveSid(id)},onFeed:(kind,title,body)=>{if(window.__xrHud)window.__xrHud.live(kind,title,body)},onEvent:u=>{if(window.__xrHud)window.__xrHud.paintEvent(u)}});
   modUp("brain");
   if(brainQ.length){brainQ.length=0;brainMod.connect()}
 });
@@ -930,15 +1050,14 @@ async function captureView(src){
   }catch(e){vision.err=String(e&&e.message||e);return false}
 }
 setInterval(()=>{const c=panels.cam();vision.on=!!(c.stream&&c.video&&c.video.videoWidth);if(vision.on&&Date.now()<vision.hold)return;if(vision.on&&Date.now()-vision.last>8000)captureView("loop")},4000);
-async function ask(text){
-  if(!brainMod||!brainMod.ready()){say("link is still waking — try again in a second");return}
+async function ask(text,opts){
+  opts=opts||{};
+  if(!brainMod||!brainMod.ready()){if(!opts.silent)say("link is still waking — try again in a second");return}
   brainMod.begin();
   const recap=window.__recapSent?null:(window.__recapSent=true,panels.recent());
-  panels.addConvo("you",text);
-  if(window.__xrHud)window.__xrHud.live("you","you",text);
-  bumpReact("ack",0.55);
+  if(opts.silent){panels.addConvo("move","noticed: "+String(opts.label||"something").slice(0,60))}
+  else{panels.addConvo("you",text);if(window.__xrHud)window.__xrHud.live("you","you",text);bumpReact("ack",0.55);say("…",text)}
   setState("think");
-  say("…",text);
   let out=text;
   if(!window.__bodyPrimed){
     window.__bodyPrimed=true;
@@ -977,9 +1096,25 @@ async function ask(text){
   const r=await brainMod.req("session/prompt",{sessionId:sid(),prompt:[{type:"text",text:out}]});
   brainMod.flushSentences(true);
   if(!voiceMod||voiceMod.idle())setState("idle");
-  return r;
+  const quiet=/\[\[\s*quiet\s*\]\]/i.test(brainMod.B.accum||"")||!(brainMod.B.accum||"").replace(/\[\[[^\]]*\]\]/g,"").trim();
+  if(opts.silent&&quiet)panels.addConvo("move","stayed quiet");
+  return opts.silent?{r,quiet}:r;
 }
 window.__ask=ask;
+/* ---------- senses: she notices you ---------- */
+let sensesMod=null;
+const sensesBtn=document.getElementById("senses");
+function paintSenses(S){if(!sensesBtn)return;const on=S&&S.on;sensesBtn.classList.toggle("on",!!on);sensesBtn.textContent=on?("SENSES"+(S.eyes?" 👁":"")+(S.ears?" 👂":"")+(!S.eyes&&!S.ears?" ·on":"")+(S.present===true?" ·you":"")):"SENSES";}
+import("./static/xr-senses.js?t="+Date.now()).then(m=>{
+  const q=new URLSearchParams(location.search);
+  const names=(q.get("names")||"").split(",").map(x=>x.trim()).filter(Boolean);
+  sensesMod=m.initSenses({KEY,panels,sendMotion,names,ask:t=>ask(t),react:(t,p)=>ask(t,{silent:true,label:p&&p.type}),speaking:()=>!!(voiceMod&&!voiceMod.idle()),thinking:()=>state==="think",log:t=>noteErr("senses",t),onState:paintSenses});
+  window.__senses=sensesMod;
+  modUp("senses");
+  const want=q.get("senses")==="1"||localStorage.getItem("xr_senses")==="1";
+  if(want)setTimeout(()=>sensesMod.start(),1500);
+});
+if(sensesBtn)sensesBtn.addEventListener("click",()=>{if(!sensesMod)return;const S=sensesMod.state();if(S.on){sensesMod.stop();localStorage.setItem("xr_senses","0")}else{localStorage.setItem("xr_senses","1");sensesMod.start()}});
 
 /* ---------- ears ---------- */
 const talk=document.getElementById("talk");
@@ -1066,6 +1201,7 @@ const land=document.getElementById("land"),hud=document.getElementById("hud"),ex
 let uiChrome=false;
 function enterUi(){
   land.style.display="none";hud.style.display="flex";exitB.style.display="block";
+  if(stateEl)stateEl.classList.add("on");
   ["sessRail","feedRail"].forEach(id=>{const n=document.getElementById(id);if(n)n.style.display="flex"});
   if(window.__xrHud&&window.__xrHud.start)window.__xrHud.start();
   uiChrome=true;
@@ -1273,7 +1409,7 @@ renderer.setAnimationLoop(()=>{
       if(!hipsBone||!hipsBone.parent)hipsBone=skeleton.bones.find(b=>/hips$/i.test(b.name));
       if(!neckBone||!neckBone.parent)neckBone=skeleton.bones.find(b=>/neck$/i.test(b.name));
       const head=headBone,hips=hipsBone;
-      if(hips){hips.position.x=0;hips.position.z=0}
+      if(hips){if(!hips.__bind&&skeleton){const bi=skeleton.bones.indexOf(hips);if(bi>=0){hips.parent.updateMatrixWorld(true);const bw=skeleton.boneInverses[bi].clone().invert();const bl=new THREE.Vector3().setFromMatrixPosition(hips.parent.matrixWorld.clone().invert().multiply(bw));const ax=[Math.abs(bl.x),Math.abs(bl.y),Math.abs(bl.z)];hips.__bind=bl;hips.__up=ax.indexOf(Math.max(...ax))}}const hb=hips.__bind;if(hb){const up=hips.__up,hp=hips.position;if(up!==0)hp.x=hb.x;if(up!==1)hp.y=hb.y;if(up!==2)hp.z=hb.z;const cur=up===0?hp.x:up===1?hp.y:hp.z,ref=up===0?hb.x:up===1?hb.y:hb.z;if(Math.abs(cur-ref)>1.5){if(up===0)hp.x=ref;else if(up===1)hp.y=ref;else hp.z=ref}}else{hips.position.x=0;hips.position.z=0}}
       const holding=performance.now()<(motionState.gestureHold||0);
       const want=!holding&&motionState.gazeTarget&&(!motionState.gazeUntil||performance.now()<motionState.gazeUntil);
       let yaw=0,pit=0;
@@ -1320,7 +1456,8 @@ renderer.setAnimationLoop(()=>{
 });
 applyOrbit();
 modUp("core");
-if(/[?&]auto=1/.test(location.search))setTimeout(()=>document.getElementById("btnPrev").click(),400);
+const desk=/[?&]desktop=1/.test(location.search)||!!window.__TAURI__;
+if(/[?&]auto=1/.test(location.search)&&!desk)setTimeout(()=>document.getElementById("btnPrev").click(),400);
 </script>
 </body>
 </html>

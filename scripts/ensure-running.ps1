@@ -2,7 +2,9 @@
 param(
   [switch]$Force,
   [switch]$IgnoreConfig,
-  [string]$Reason = "manual"
+  [string]$Reason = "manual",
+  [string]$Cwd = "",
+  [switch]$PrintCwd
 )
 $ErrorActionPreference = "Continue"
 $here = Split-Path -Parent $MyInvocation.MyCommand.Path
@@ -32,7 +34,7 @@ function PortOpen([int]$p) {
     return [bool]$ok
   } catch { return $false }
 }
-if (PortOpen $uiPort) {
+if ((PortOpen $uiPort) -and -not $PrintCwd) {
   try {
     $h = Invoke-RestMethod ("http://127.0.0.1:{0}/health" -f $uiPort) -TimeoutSec 6
     if ($h.ok) { Log ("ok ({0}): already healthy on {1}" -f $Reason, $uiPort); exit 0 }
@@ -54,13 +56,21 @@ if ($Reason -eq "session") {
     }
   } catch {}
 }
-$cwd = $cfg.cwd
+$cwd = if ($Cwd -and ("$Cwd".Trim() -ne "")) { $Cwd } else { $cfg.cwd }
 if (-not $cwd -or ("$cwd".Trim() -eq "")) {
+  # The plugin/repo root is never a workspace: the desktop exe launches this script with
+  # its own folder as $PWD, and a hub rooted there files every real chat under the parent
+  # folder name in the rail ("Ai" chip, empty Chats). Fall through to the user workspace.
+  $docsAi = Join-Path (Join-Path $env:USERPROFILE 'Documents') 'ai'
+  $pwdPath = if ($PWD) { $PWD.Path.TrimEnd([char]92) } else { "" }
+  $ownRoot = "$pluginRoot".TrimEnd([char]92)
   if ($cwdFromHook) { $cwd = $cwdFromHook }
   elseif ($env:GROK_PROJECT_DIR) { $cwd = $env:GROK_PROJECT_DIR }
-  elseif ($PWD) { $cwd = $PWD.Path }
+  elseif ($pwdPath -and ($pwdPath -ne $ownRoot) -and ($pwdPath -ne $here.TrimEnd([char]92))) { $cwd = $pwdPath }
+  elseif (Test-Path $docsAi) { $cwd = $docsAi }
   else { $cwd = $env:USERPROFILE }
 }
+if ($PrintCwd) { Write-Output $cwd; exit 0 }
 $start = Join-Path $pluginRoot "start.ps1"
 $sup = Join-Path $pluginRoot "scripts\supervise-ui.ps1"
 if (-not (Test-Path $start) -and -not (Test-Path $sup)) { Log "error: start.ps1 / supervise-ui.ps1 missing"; exit 0 }

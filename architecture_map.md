@@ -149,6 +149,37 @@
   markdown upgrades after the feed is visible.
 
 **Updated:** 2026-08-21 · Mixamo Rikku female body
+## Companion shell + squat plumbing (2026-09-04)
+- Shell clones MUST use `bindMode=DetachedBindMode` + identity bind; attached mode cancels the holder and the shell rotates against the dots. Two clones per mesh: depth prepass (colorWrite false, renderOrder -2) then the translucent shell (depthWrite false, renderOrder -1).
+- Hips position policy: GLB clips keep `Hips.position` (stripRoot keepHips), service clips lose it (`c.userData.service`). Renderer clamp pins lateral axes to bind and rejects vertical |dz|>1.5.
+- Gesture layer skip list = `gestureSkip` (travel only). `SQUAT_ALIAS` maps squat/crouch/split words to `crouch_to_stand` reversed (timeScale negative, time=duration). The motion service still remaps these names before broadcast; that table is the remaining gate.
+- Debug handles: `__dbg.mixer/motionMod/clips`, `__motionPlay(name,layer,fade)`, `__sendMotion(kind,val)`, `__surface(bool)`.
+
+## Companion look: dissolve + surface (2026-09-04)
+- Vertex fade `smoothstep(-0.045,0.075,p.y)` is the pad dissolve. Any change to her standing height must be checked against this band or she loses her legs.
+- `buildSurface(gltf,holder)` adds SkinnedMesh clones (shared geometry + skeleton, `bind(skeleton, identity)`, `matrixAutoUpdate=false`) under the same holder as the points, so they inherit the normalising transform. Material = ShaderMaterial with `#include <skinning_pars_vertex>` / `<skinnormal_vertex>` / `<skinning_vertex>`; three sets USE_SKINNING automatically for a SkinnedMesh. Flags: `?surface=0`, `window.__surface(bool)`.
+- Screenshot recipe for /xr (the page re-aims its own camera every frame): build a throwaway `WebGLRenderer({preserveDrawingBuffer:true})`, frame `Box3.setFromObject(holder)`, render `scene`, `toDataURL`, POST to `/api/xr/see` with an explicit `cwd`, then read the jpg.
+
+## Companion shell sampling (2026-09-04)
+- Points have no occlusion. Two guards keep interiors off the screen: the vertex shader's facing fade (`smoothstep(-0.32,0.06,facing)`) and, at sample time, an inward-normal reject inside a 0.135 head sphere centred on the bind-space head bone. Verify with: points inside the sphere whose `dot(normalize(p-headC), aNrm)` < 0.12 must be 0.
+- Camera probes on /xr are unreliable: the page re-aims the camera each frame, so a scripted `camera.position` lands wherever the auto-framing puts it. Verify shell changes numerically, screenshots second.
+
+## Companion floor contact (2026-09-04)
+- **The hips bone's local up axis is z on this rig** (armature parent rotX 90). Never assume y when touching `hips.position`.
+- Baked GLB clips carry Hips.position tracks WITHOUT the bind offset; the renderer clamp in xr.html restores bind on the two lateral axes and rejects vertical deviation > 0.5. `hips.__bind` / `hips.__up` are computed once from `skeleton.boneInverses`.
+- Floor check recipe: CPU-skin the point cloud (`aSkinIndex`/`aSkinWeight` + `skeleton.boneMatrices`), min y * holder.scale + holder.position.y should be ~0. Bones alone lie; the toe bone sits above the sole.
+
+## /xr side rails (2026-09-04)
+- `web/xr-hud.js`: `makeCoalescer().event(u)` turns raw session/update objects into turns {kind: you|her|think|tool|sys|noticed}; `paint()` reuses one DOM node per turn. Brain passes raw events via `onEvent`; `live(kind,title,body)` is legacy and only used for the user's own prompt (deduped against the stream echo).
+- Left list = /api/sessions filtered by /api/session/titles kind != auto, cluster-deduped, 14 max; `pinned` flag = user clicked a chat; `setLiveSid` always returns to her session unless pinned.
+
+## Companion senses + attention (2026-09-03)
+- `web/xr-senses.js` (served `/static/xr-senses.js`): senses -> percepts -> reflexes (`REFLEX` table, no LLM) -> deliberate (`DELIBERATE` set, `situation()` note, `makeBudget`). Pure exports unit-tested in `tests/test_xr_senses.mjs`.
+- Eyes: 64x36 frame diff at 2 Hz on the panels camera or a user-facing fallback stream; `present` flips on motion, `leave` after 120s quiet, `return` vs `arrive` by 10-min gap. Ears: continuous SpeechRecognition (secure context only), `addressed()` strips the name and routes to `ask()`; other speech is overheard memory (last 12).
+- Env: `companion_env.py` via `GET /api/companion/env` every 10s; diffs produce `focus_change`, `work_done`, `work_error`, `ask_open`, `long_silence`.
+- Page: `ask(text,{silent,label})` returns `{r,quiet}`; `[[quiet]]` never reaches TTS (flushSentences strips tags). SENSES button in `#hud`; `/xr` still gated by the UX toggle `grok_remote_ux.companion` and the landing screen (brain connects on Preview/AR entry).
+- Roadmap: `docs/companion-roadmap.md`.
+
 ## XR companion body (2026-08-21)
 - Female `/xr` loads `/static/rikku_mixamo.glb` first (Mixamo FBX → Blender 4.5 `tools/mixamo_fbx_to_glb.py` then `tools/bake_mixamo_clips.py`). 1.7m, 65 `mixamorig:*` bones, NLA clips in the GLB, quaternion JSON in `clips/` for `:2423`. Fallback `model.glb` then `Soldier.glb`.
 - Male still `Soldier.glb`. Query `?body=` overrides actor-id regex.
@@ -239,6 +270,7 @@
 |-------|----------|
 | Supervisor | `scripts/supervise-ui.ps1` — health loop, respawn UI on death |
 | Launch | Desktop **Grok Remote** → `ensure-running` (agent if needed + supervise) → `open-remote-ui` with `?key=` |
+| Workspace cwd | `ensure-running.ps1 -Cwd` (desktop passes it; 2026-09-03). Fallback order: config.cwd → hook cwd → GROK_PROJECT_DIR → `$PWD` unless it is the plugin root/scripts dir → Documentsi → USERPROFILE. A hub rooted in its own folder files every chat under the parent-folder chip ("Ai") and empties Chats; `POST /api/fs/root` repoints a live hub. Test: tests/test_ensure_running_cwd.py |
 | Setup UI | Phone 3-step card (copy / QR / open PC); advanced under `<details>` |
 | Chat open | v39: see **Chat load fast** |
 | Memory | `FEED_DOM_CAP=72`, thought stubs on history, poll 1.2s, no catch-up when tab hidden |

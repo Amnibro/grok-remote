@@ -9,7 +9,7 @@ fn port_up(port: u16) -> bool {
     TcpStream::connect(("127.0.0.1", port)).is_ok()
 }
     const UI_BUILD_MARKER: &str =
-    r#"<meta name="grok-remote-ui-build" content="2026-08-31-sess-list"/>"#;
+    r#"<meta name="grok-remote-ui-build" content="2026-09-12-text-idle"/>"#;
 fn home() -> PathBuf {
     PathBuf::from(
         std::env::var("USERPROFILE")
@@ -161,6 +161,8 @@ fn spawn_stack() {
             "-IgnoreConfig",
             "-Reason",
             "desktop",
+            "-Cwd",
+            &cwd,
         ]);
     } else {
         cmd.args([
@@ -180,6 +182,7 @@ fn spawn_stack() {
         ]);
     }
     cmd.current_dir(root);
+    cmd.env("GROK_PROJECT_DIR", &cwd);
     #[cfg(windows)]
     {
         cmd.creation_flags(0x08000000);

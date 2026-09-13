@@ -150,6 +150,22 @@ def test_archive_skin_supports_braid_and_legacy():
     assert ':2423/motion/state' not in html
     assert 'isDemoMode()&&expectSid.startsWith("demo-")' in html
     assert 'attachCwd&&!isDemoMode()' in html
+def test_text_chat_has_no_companion_idle_badge():
+    html=(ROOT/"web"/"index.html").read_text(encoding="utf-8")
+    assert "if(on)compStart()" not in html
+    assert "idle · " not in html
+    assert "function hideCompanionBadge" in html
+    apply=html[html.find("function applyCompanion"):html.find("function applyCollapseDefaults")]
+    assert "hideCompanionBadge" in apply
+    voice=(ROOT/"web"/"voice-mode.js").read_text(encoding="utf-8")
+    assert "function isDesktopUi" in voice
+    boot=voice[voice.find("async function boot"):voice.find("window.grokVoice")]
+    assert "if(desk)" in boot
+    assert 'if(cfg.mode==="xr"){cfg.mode="off"' in boot
+    xr=(ROOT/"web"/"xr.html").read_text(encoding="utf-8")
+    assert "&&!desk" in xr
+    assert "#state.on{display:inline-flex}" in xr
+    assert "stateEl.classList.add(\"on\")" in xr
 def test_agent_bar_and_session_rail_stay_put():
     html=(ROOT/"web"/"index.html").read_text(encoding="utf-8")
     skin=(ROOT/"web"/"grok-archive-skin.css").read_text(encoding="utf-8")
@@ -175,7 +191,8 @@ def test_agent_bar_and_session_rail_stay_put():
     assert 'html[data-variant="grok"] #picker.panel.on' in skin
     assert "function isPlaceholderSid" in html
     assert "missing:true" in html[html.find("async function paintDiskHistory"):html.find("async function loadOlderHistory")]
-    assert "if(!ok&&lastErr&&!/invalid params" in html
+    assert "markAgentAttach(attachId,false,true)" in html
+    assert "window.grokChat.fail(attachId)" in html
     assert "border-top: none !important" in skin
     assert ".thought-row .nm" in skin
     assert "font-style: italic" in skin
@@ -199,12 +216,12 @@ def test_agent_bar_and_session_rail_stay_put():
     assert "placeAgentView(row)" in html
     assert "clearAgentRail()" in html
     assert ".agent-rail" in skin
-    assert "2026-09-01-pub-priv" in html
+    assert "2026-09-12-text-idle" in html
     assert "else showPage(\"setup\",true)" not in html[html.find("const doAuto="):html.find("const forceTour=")]
     assert "const linking=connecting||!!(ws&&(ws.readyState===0||ws.readyState===1))" in html
     assert "#chatStage:not(.on){display:none!important" in html
     assert "#chatStage:not(.on){display:none!important" in braid
-    assert 'src="/static/chat-runtime.js?v=2026-09-01-pub-priv"' in html
+    assert 'src="/static/chat-runtime.js?v=2026-09-12-text-idle"' in html
     assert "braid-layout.css?v=1.8.28" in html
     assert "grok-archive-skin.css?v=19" in html
     assert "function stampMsgRow" in html
@@ -264,13 +281,22 @@ def test_agent_bar_and_session_rail_stay_put():
     assert "sess-dot" in html[html.find("function sessTitleHtml"):html.find("function sessMetaHtml")]
     assert "open-mark" not in html[html.find("function sessTitleHtml"):html.find("function sessMetaHtml")]
     assert "open-mark" not in html[html.find("function paintSessionCurrent"):html.find("function setSelectedSession")]
-    assert "2026-09-01-pub-priv" in html
+    assert "2026-09-12-text-idle" in html
     assert 'id="moreMenuStatus"' not in html
     assert "menu.style.maxHeight" in html[html.find("function placeFixedMenu"):html.find("function protectMath")]
     assert "placeFixedMenu(m,a)" in html[html.find("function showMoreLayer"):html.find("function bindMoreLayers")]
     assert "function sessionNew" in html
     assert 'fetch("/api/session/new"' in html
-    assert "await waitAgentAttach(sendSid,2500)" in html
+    assert "await waitAgentAttach(sendSid,20000)" in html
+    assert "queued · agent not on this chat yet" in html
+    assert "function requeueLastDispatch" in html
+    assert "function persistMsgQueue" in html
+    assert "session switched" in html[html.find("async function sessionNew"):html.find("async function newSession")]
+    assert "hideHorizon" in html[html.find("async function newSession"):html.find("let cmdSource")]
+    attach=html[html.find("const attachId=openId,attachGen=gen,attachCwd=sidCwd;"):html.find("async function sessionNew")]
+    assert "markAgentAttach(attachId,true)" in attach
+    assert "markAgentAttach(attachId,false,true)" in attach
+    assert "window.grokChat.fail(attachId)" in attach
     assert "staleBusy" in html[html.find("async function drainMsgQueue"):html.find("function nextId")]
     assert "#sessList:not([data-ready" not in html
     assert "#sessList:not([data-ready" not in braid

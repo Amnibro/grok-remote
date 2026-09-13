@@ -19,12 +19,15 @@ def test_pair_and_health_wired():
     assert 'session/load' in src
 def test_pairing_page():
     from pairing import addresses,page,url_for
-    addrs=addresses(2421,"abc",public_host="")
-    html=page(addrs,cwd="C:/tmp",have_qr=False,port=2421)
+    addrs=addresses(2421,"abc",public_host="",net={})
+    html=page(addrs,cwd="C:/tmp",have_qr=False,port=2421,net={})
     assert "Point your phone camera" in html
     assert "C:/tmp" in html
     assert "5A48B0" in html or "A88FE8" in html
+    assert "Add to Home Screen" in html
+    assert "Away from home" in html
     assert url_for("192.168.0.7",2421,"abc").endswith("?key=abc&auto=1")
+    assert url_for("host.ts.net",443,"abc",https=True).startswith("https://host.ts.net/")
 def test_qr_full_frame():
     from pairing import qr_svg,page
     svg=qr_svg("http://192.168.0.7:2421/?key=abc&auto=1")

@@ -1,0 +1,10 @@
+import {initPose} from "../web/xr-pose.js";
+const T={Quaternion:function(){this.setFromEuler=function(e){const c1=Math.cos(e._x/2),c2=Math.cos(e._y/2),c3=Math.cos(e._z/2),s1=Math.sin(e._x/2),s2=Math.sin(e._y/2),s3=Math.sin(e._z/2);this.x=s1*c2*c3+c1*s2*s3;this.y=c1*s2*c3-s1*c2*s3;this.z=c1*c2*s3+s1*s2*c3;this.w=c1*c2*c3-s1*s2*s3;return this}},Euler:function(){this.set=function(x,y,z){this._x=x;this._y=y;this._z=z;return this}},QuaternionKeyframeTrack:function(n,t,v){this.name=n;this.times=t;this.values=v},AnimationClip:function(n,d,tr){this.name=n;this.duration=d;this.tracks=tr}};
+const BONES=["Hips","Spine2","Neck","Head","LeftArm","RightArm","LeftForeArm","RightForeArm","LeftUpLeg","RightUpLeg","LeftLeg","RightLeg"];
+const P=initPose({THREE:T,getSkeleton:()=>({bones:BONES.map(name=>({name}))})});
+const idle=P.seamOf(P.makeBodyClip("idle",2.4,P.idlePose));
+const talk=P.seamOf(P.makeBodyClip("talk",1.2,P.talkPose));
+const ramp=P.seamOf(P.makeBodyClip("ramp",2,(n,t,d)=>n==="Head"?[t/d*0.6,0,0]:[0,0,0]));
+const nul=P.makeBodyClip("x",1,P.idlePose)===null?1:0;
+const P2=initPose({THREE:T,getSkeleton:()=>null});
+console.log(JSON.stringify({idleDeg:Math.round(idle.deg*1000),talkDeg:Math.round(talk.deg*1000),rampDeg:Math.round(ramp.deg*1000),tracks:idle.tracks,nullSafe:P2.makeBodyClip("x",1,P2.idlePose)===null?1:0}));

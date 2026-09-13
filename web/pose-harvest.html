@@ -1,0 +1,288 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Pose Harvest</title>
+<style>
+body{margin:0;background:#05080d;color:#cfe6ff;font:13px system-ui;overflow:hidden}
+#ui{position:fixed;top:10px;left:10px;background:#0b1420cc;padding:12px;border-radius:10px;width:300px;z-index:5}
+#ui div{margin:5px 0}
+input,button,select{background:#122033;color:#cfe6ff;border:1px solid #24405e;border-radius:6px;padding:4px 8px}
+button{cursor:pointer}
+#msg{color:#7fe0a8;min-height:32px;white-space:pre-wrap}
+#vid{position:fixed;right:10px;top:10px;width:260px;border-radius:8px;z-index:5;background:#000}
+#bar{height:6px;background:#122033;border-radius:3px;overflow:hidden}
+#bar i{display:block;height:100%;width:0;background:#4a8ac2}
+</style>
+<script type="importmap">{"imports":{"three":"./three.module.js","/utils/BufferGeometryUtils.js":"./BufferGeometryUtils.js"}}</script>
+</head><body>
+<video id="vid" playsinline muted></video>
+<div id="ui">
+  <b>POSE HARVEST · video → clip</b>
+  <div><input type="file" id="file" accept="video/*"></div>
+  <div>fps <input type="number" id="fps" value="20" min="5" max="30" style="width:52px"> smooth <input type="number" id="smooth" value="3" min="1" max="9" style="width:52px"></div>
+  <div><button id="run">harvest</button> <input id="cname" placeholder="clip name" size="12"> <button id="save">save</button> <button id="send">send to her</button></div>
+  <div id="bar"><i></i></div>
+  <div id="msg">pick a video with one clearly visible person</div>
+</div>
+<script type="module">
+import * as THREE from "three";
+import {GLTFLoader} from "./GLTFLoader.js";
+const errLog=[];
+function noteErr(src,msg){
+  const m=String(msg==null?"?":msg).replace(/\s+/g," ").slice(0,180);
+  const last=errLog[errLog.length-1];
+  if(last&&last.msg===m&&last.src===src){last.n++;return}
+  errLog.push({src,msg:m,n:1,ts:Date.now()});
+  if(errLog.length>30)errLog.shift();
+  const el=document.getElementById("msg");
+  if(el)el.textContent="ERR "+src+": "+m.slice(0,90);
+}
+addEventListener("error",e=>noteErr("js",(e.message||e.error||"error")+" @"+String(e.filename||"").split("/").pop()+":"+(e.lineno||0)));
+addEventListener("unhandledrejection",e=>noteErr("promise",e.reason&&e.reason.message||e.reason));
+const _ce=console.error.bind(console);
+console.error=(...a)=>{noteErr("console",a.map(x=>x&&x.message||x).join(" "));_ce(...a)};
+window.__errors=()=>errLog;
+const MS="http"+(location.protocol==="https:"?"s":"")+"://"+location.hostname+":2423";
+const msg=s=>document.getElementById("msg").textContent=s;
+const bar=v=>document.querySelector("#bar i").style.width=Math.round(v*100)+"%";
+const scene=new THREE.Scene();
+scene.background=new THREE.Color(0x05080d);
+const camera=new THREE.PerspectiveCamera(50,innerWidth/innerHeight,0.05,60);
+camera.position.set(0,1.4,3.1);
+camera.lookAt(0,1,0);
+const renderer=new THREE.WebGLRenderer({antialias:true});
+renderer.setSize(innerWidth,innerHeight);
+document.body.appendChild(renderer.domElement);
+scene.add(new THREE.GridHelper(4,16,0x1a3350,0x11223a));
+const AVATAR=(()=>{try{return localStorage.getItem("companionModel")||"rikku_mixamo.glb"}catch(e){return "rikku_mixamo.glb"}})();
+const gltf=await (async()=>{
+  for(const u of [AVATAR,"model.glb"]){
+    try{return await new GLTFLoader().loadAsync("./"+u+"?t="+Date.now())}catch(e){noteErr("load",u+": "+(e&&e.message||e))}
+  }
+  throw new Error("no avatar loaded");
+})();
+gltf.scene.traverse(o=>{if(o.isSkinnedMesh){o.material=new THREE.MeshBasicMaterial({color:0x4a8ac2,wireframe:true,transparent:true,opacity:0.4});o.frustumCulled=false}});
+scene.add(gltf.scene);
+scene.add(new THREE.SkeletonHelper(gltf.scene));
+const bones=[];
+gltf.scene.traverse(o=>{if(o.isBone)bones.push(o)});
+const byName=n=>bones.find(b=>b.name===n)||bones.find(b=>b.name.toLowerCase().endsWith(n.toLowerCase()));
+const rest=new Map(bones.map(b=>[b.name,b.quaternion.clone()]));
+gltf.scene.updateMatrixWorld(true);
+const CHAIN=[
+["LeftArm","LeftForeArm",11,13],["LeftForeArm","LeftHand",13,15],
+["RightArm","RightForeArm",12,14],["RightForeArm","RightHand",14,16],
+["LeftUpLeg","LeftLeg",23,25],["LeftLeg","LeftFoot",25,27],
+["RightUpLeg","RightLeg",24,26],["RightLeg","RightFoot",26,28]
+];
+const restDir=new Map();
+for(const [bn,cn] of CHAIN){
+  const b=byName(bn),c=byName(cn);
+  if(!b||!c)continue;
+  const pb=new THREE.Vector3(),pc=new THREE.Vector3();
+  b.getWorldPosition(pb);c.getWorldPosition(pc);
+  restDir.set(bn,pc.sub(pb).normalize());
+}
+const restWorld=new Map();
+for(const [bn] of CHAIN){const b=byName(bn);if(b){const q=new THREE.Quaternion();b.getWorldQuaternion(q);restWorld.set(bn,q)}}
+const lm2v=l=>new THREE.Vector3(l.x,-l.y,-l.z);
+const tq=new THREE.Quaternion(),pq=new THREE.Quaternion();
+function retarget(world){
+  if(!world||world.length<29)return null;
+  const out={};
+  for(const [bn,cn,i,j] of CHAIN){
+    const b=byName(bn);
+    if(!b||!restDir.has(bn))continue;
+    const a=lm2v(world[i]),c=lm2v(world[j]);
+    const dir=c.sub(a);
+    if(dir.lengthSq()<1e-8)continue;
+    dir.normalize();
+    tq.setFromUnitVectors(restDir.get(bn),dir);
+    const target=tq.clone().multiply(restWorld.get(bn));
+    b.parent?b.parent.getWorldQuaternion(pq):pq.identity();
+    b.quaternion.copy(pq.invert().multiply(target));
+    b.updateMatrixWorld(true);
+    out[b.name]=b.quaternion.toArray();
+  }
+  return out;
+}
+let frames=[],times=[];
+function buildClip(name){
+  if(frames.length<2)return null;
+  const tracks=[],names=new Set();
+  frames.forEach(f=>Object.keys(f).forEach(k=>names.add(k)));
+  for(const n of names){
+    const r=rest.get(n);
+    const vals=[];
+    let moved=false;
+    for(const f of frames){
+      const q=f[n]||(r?r.toArray():[0,0,0,1]);
+      if(r&&q.some((v,i)=>Math.abs(v-r.toArray()[i])>1e-3))moved=true;
+      vals.push(q[0],q[1],q[2],q[3]);
+    }
+    if(moved)tracks.push(new THREE.QuaternionKeyframeTrack(n+".quaternion",times,vals));
+  }
+  return tracks.length?new THREE.AnimationClip(name,-1,tracks):null;
+}
+function smoothFrames(win){
+  if(win<2||frames.length<win)return;
+  const keys=new Set();
+  frames.forEach(f=>Object.keys(f).forEach(k=>keys.add(k)));
+  const out=frames.map(()=>({}));
+  const qa=new THREE.Quaternion(),qb=new THREE.Quaternion();
+  for(const k of keys)
+    for(let i=0;i<frames.length;i++){
+      const lo=Math.max(0,i-(win>>1)),hi=Math.min(frames.length-1,i+(win>>1));
+      let n=0;
+      qa.set(0,0,0,1);
+      for(let j=lo;j<=hi;j++){
+        if(!frames[j][k])continue;
+        qb.fromArray(frames[j][k]);
+        n?qa.slerp(qb,1/(n+1)):qa.copy(qb);
+        n++;
+      }
+      if(n)out[i][k]=qa.toArray();
+    }
+  frames=out;
+}
+let landmarker=null,mpTs=0;
+const nextTs=()=>(mpTs+=40);
+async function ensureModel(){
+  if(landmarker)return landmarker;
+  msg("loading pose model…");
+  const {FilesetResolver,PoseLandmarker}=await import("./vendor/mp/vision_bundle.mjs");
+  const fs=await FilesetResolver.forVisionTasks("./vendor/mp");
+  landmarker=await PoseLandmarker.createFromOptions(fs,{baseOptions:{modelAssetPath:"./vendor/mp/pose_landmarker_lite.task"},runningMode:"VIDEO",numPoses:1});
+  msg("pose model ready");
+  return landmarker;
+}
+const vid=document.getElementById("file");
+const video=document.getElementById("vid");
+vid.onchange=()=>{
+  const f=vid.files&&vid.files[0];
+  if(!f)return;
+  video.src=URL.createObjectURL(f);
+  video.onloadedmetadata=()=>msg(f.name+" · "+video.duration.toFixed(1)+"s · "+video.videoWidth+"x"+video.videoHeight);
+};
+const seek=t=>new Promise(res=>{video.onseeked=()=>res();video.currentTime=t});
+document.getElementById("run").onclick=async()=>{
+  if(!video.src){msg("pick a video first");return}
+  const L=await ensureModel();
+  const fps=+document.getElementById("fps").value||20;
+  const n=Math.max(2,Math.floor(video.duration*fps));
+  frames=[];times=[];
+  let hit=0;
+  for(let i=0;i<n;i++){
+    const t=i/fps;
+    await seek(Math.min(t,video.duration-0.001));
+    let r=null;
+    try{r=L.detectForVideo(video,nextTs())}catch(e){}
+    const w=r&&r.worldLandmarks&&r.worldLandmarks[0];
+    const pose=w?retarget(w):null;
+    if(pose){hit++;frames.push(pose);times.push(t)}
+    if(i%10===0){bar(i/n);msg("harvesting "+i+"/"+n+" · "+hit+" poses")}
+  }
+  bar(1);
+  smoothFrames(+document.getElementById("smooth").value||3);
+  msg("harvested "+frames.length+"/"+n+" frames ("+(100*frames.length/n).toFixed(0)+"% detected)");
+};
+async function saveClip(){
+  const name=(document.getElementById("cname").value||"harvested").toLowerCase().replace(/[^a-z0-9_]/g,"");
+  const clip=buildClip(name);
+  if(!clip){msg("nothing to save - harvest first");return null}
+  const r=await fetch(MS+"/motion/clip",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({name,data:THREE.AnimationClip.toJSON(clip)})}).then(r=>r.json());
+  msg(r.ok?"saved "+name+" · "+clip.tracks.length+" tracks · "+clip.duration.toFixed(2)+"s":"save failed");
+  return r.ok?name:null;
+}
+document.getElementById("save").onclick=saveClip;
+document.getElementById("send").onclick=async()=>{
+  const name=await saveClip();
+  if(!name)return;
+  const r=await fetch(MS+"/motion/play",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({clip:name,layer:"gesture"})}).then(r=>r.json());
+  msg(r.ok?"she's doing "+name+"!":"play failed");
+};
+let mixer=null;
+document.addEventListener("keydown",e=>{
+  if(e.key!=="p")return;
+  const clip=buildClip("preview");
+  if(!clip)return;
+  mixer=new THREE.AnimationMixer(gltf.scene);
+  mixer.clipAction(clip).setLoop(THREE.LoopRepeat,Infinity).play();
+});
+let ST=null;
+async function stRig(W,H){
+  if(ST&&ST.W===W)return ST;
+  if(ST&&ST.r2){ST.r2.forceContextLoss();ST.r2.dispose()}
+  const src=await new GLTFLoader().loadAsync("./rikku_mixamo.glb?t="+Date.now());
+  const s2=new THREE.Scene();
+  s2.background=new THREE.Color(0x808080);
+  s2.add(new THREE.AmbientLight(0xffffff,2.2));
+  const dl=new THREE.DirectionalLight(0xffffff,1.4);
+  dl.position.set(1,3,2);
+  s2.add(dl,src.scene);
+  const c2=new THREE.PerspectiveCamera(38,W/H,0.05,60);
+  c2.position.set(0,1.05,3.3);
+  c2.lookAt(0,1.0,0);
+  const r2=new THREE.WebGLRenderer({antialias:true,preserveDrawingBuffer:true});
+  r2.setSize(W,H);
+  const sb=[];
+  src.scene.traverse(o=>{if(o.isBone)sb.push(o)});
+  ST={W,H,src,s2,c2,r2,sb,mx:new THREE.AnimationMixer(src.scene),act:null};
+  return ST;
+}
+function frameStat(cv){
+  const t=document.createElement("canvas");
+  t.width=32;t.height=32;
+  const g=t.getContext("2d");
+  g.drawImage(cv,0,0,32,32);
+  const d=g.getImageData(0,0,32,32).data;
+  let mn=255,mx=0,sum=0;
+  for(let i=0;i<d.length;i+=4){const v=(d[i]+d[i+1]+d[i+2])/3;sum+=v;if(v<mn)mn=v;if(v>mx)mx=v}
+  return {mean:Math.round(sum/(d.length/4)),min:Math.round(mn),max:Math.round(mx)};
+}
+async function selfTest(clipName,nFrames,size){
+  const L=await ensureModel();
+  const N=nFrames||24,W=(size||480),H=Math.round((size||480)*4/3);
+  const R=await stRig(W,H);
+  const clip=(R.src.animations||[]).find(c=>c.name===clipName)||(R.src.animations||[])[0];
+  if(!clip)return {err:"no clip"};
+  R.mx.stopAllAction();
+  R.act=R.mx.clipAction(clip);
+  R.act.play();
+  const pick=n=>R.sb.find(b=>b.name===n)||R.sb.find(b=>b.name.toLowerCase().endsWith(n.toLowerCase()));
+  const dirOf=(a,b)=>{const p=new THREE.Vector3(),q=new THREE.Vector3();const ba=pick(a),bb=pick(b);if(!ba||!bb)return null;ba.getWorldPosition(p);bb.getWorldPosition(q);return q.sub(p).normalize()};
+  const PAIRS=[["LeftArm","LeftForeArm"],["LeftForeArm","LeftHand"],["RightArm","RightForeArm"],["RightForeArm","RightHand"]];
+  let hits=0,stat=null,derr="";
+  const errs=[];
+  for(let i=0;i<N;i++){
+    R.mx.setTime(i/N*clip.duration);
+    R.src.scene.updateMatrixWorld(true);
+    R.r2.render(R.s2,R.c2);
+    if(!i)stat=frameStat(R.r2.domElement);
+    const truth=PAIRS.map(p=>dirOf(p[0],p[1]));
+    let res=null;
+    try{res=L.detectForVideo(R.r2.domElement,nextTs())}catch(e){if(!derr)derr=String(e&&e.message||e)}
+    const w=res&&res.worldLandmarks&&res.worldLandmarks[0];
+    if(!w)continue;
+    hits++;
+    retarget(w);
+    PAIRS.forEach((p,k)=>{
+      const got=dirOf2(p[0],p[1]);
+      if(got&&truth[k])errs.push(Math.acos(Math.max(-1,Math.min(1,got.dot(truth[k]))))*180/Math.PI);
+    });
+  }
+  errs.sort((a,b)=>a-b);
+  return {clip:clip.name,frames:N,detected:hits,rate:+(hits/N).toFixed(2),px:stat,derr:derr||"none",samples:errs.length,medianDeg:errs.length?+errs[errs.length>>1].toFixed(1):-1,p90Deg:errs.length?+errs[Math.floor(errs.length*0.9)].toFixed(1):-1};
+}
+function dirOf2(a,b){
+  const ba=byName(a),bb=byName(b);
+  if(!ba||!bb)return null;
+  const p=new THREE.Vector3(),q=new THREE.Vector3();
+  ba.getWorldPosition(p);bb.getWorldPosition(q);
+  return q.sub(p).normalize();
+}
+window.__harvest={retarget,buildClip,ensureModel,byName,restDir,selfTest,frames:()=>frames,setFrames:(f,t)=>{frames=f;times=t}};
+const clock=new THREE.Clock();
+renderer.setAnimationLoop(()=>{mixer&&mixer.update(clock.getDelta());renderer.render(scene,camera)});
+addEventListener("resize",()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
+document.title="harvest ok "+bones.length;
+</script>
+</body></html>

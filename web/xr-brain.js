@@ -1,5 +1,5 @@
 export function initBrain(ctx){
-  const {KEY,getState,setState,setLinked,say,speak,panels,composeClip,sendMotion,onReach,onSession,onFeed}=ctx;
+  const {KEY,getState,setState,setLinked,say,speak,panels,composeClip,sendMotion,onReach,onSession,onFeed,onEvent}=ctx;
   const B={sid:null,accum:"",spokenUpto:0,lastChunk:"",lastSpoken:""};
   const pending=new Map();
   let ws=null,wsid=0;
@@ -30,12 +30,12 @@ export function initBrain(ctx){
       if(d.method!=="session/update")return;
       if(d.params&&d.params.sessionId&&B.sid&&d.params.sessionId!==B.sid)return;
       const u=d.params&&d.params.update||{},k=u.sessionUpdate,c=u.content;
+      if(onEvent)try{onEvent(u)}catch(e){}
       let txt="";
       if(Array.isArray(c))txt=c.map(b=>b&&b.text||"").join("");
       else if(c&&c.text)txt=c.text;
       if(k==="agent_thought_chunk"){
         if(getState()!=="speak")setState("think");
-        if(txt&&onFeed)onFeed("think","thinking",txt);
       }
       if(k==="tool_call"||k==="tool_call_update"){
         const title=u.title||u.kind||u.toolName||"tool";
@@ -44,7 +44,6 @@ export function initBrain(ctx){
         const tl=String(title).toLowerCase();
         if(/read|fetch|search|grep|glob|list/.test(tl))kind="read";
         else if(/write|edit|apply|patch|create|delete/.test(tl))kind="write";
-        if(onFeed)onFeed(kind,title+(st?" · "+st:""),"");
       }
       if(k==="agent_message_chunk"&&txt){
         if(txt===B.lastChunk){B.lastChunk="";return}
@@ -68,7 +67,7 @@ export function initBrain(ctx){
         kind==="compose"?composeClip(mm[2]):kind==="reach"?(onReach&&onReach(mm[2])):sendMotion(kind,mm[2]);
       }
       const clean=s.replace(/\[\[[^\]]*(\]\])?/g," ").replace(/\]\]/g," ").replace(/[*_#`>|-]+/g," ").replace(/\s+/g," ").trim();
-      if(clean.length>1&&clean!==B.lastSpoken){B.lastSpoken=clean;speak(clean);panels.addConvo("her",clean);if(onFeed)onFeed("her","grok",clean)}
+      if(clean.length>1&&clean!==B.lastSpoken){B.lastSpoken=clean;speak(clean);panels.addConvo("her",clean)}
       B.spokenUpto+=s.length;
     }
   }

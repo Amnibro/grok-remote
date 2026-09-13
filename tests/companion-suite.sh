@@ -318,10 +318,8 @@ LABSEAM=$(CDP_PORT=$PORT CDP_PAGE="motion-lab" node "$PLUG/tests/xr-live.mjs" '(
 has "lab flags an open loop" "$LABSEAM" 'HITCHES hard'
 has "lab confirms a closed loop" "$LABSEAM" 'loops clean'
 
-BADGE=$(CDP_PORT=$PORT CDP_PAGE="2421/?key" node "$PLUG/tests/xr-live.mjs" '(async()=>{await compPoll();const b=document.getElementById("compBadge");const r=b.getBoundingClientRect();return JSON.stringify({rendered:r.width>0&&r.height>0,w:Math.round(r.width),txt:document.getElementById("compTxt").textContent,href:b.getAttribute("href")})})()')
-has "hub companion badge renders" "$BADGE" '"rendered":true'
-gt "hub badge has real width" "$BADGE" "w" 40
-has "hub companion badge links to /xr" "$BADGE" '"href":"/xr'
+BADGE=$(CDP_PORT=$PORT CDP_PAGE="2421/?key" node "$PLUG/tests/xr-live.mjs" '(async()=>{try{if(typeof compPoll==="function")await compPoll()}catch(e){}const b=document.getElementById("compBadge");const vis=b&&b.style&&b.style.display!=="none"&&b.getBoundingClientRect().width>0;return JSON.stringify({rendered:!!vis})})()')
+has "hub chat has no companion idle badge" "$BADGE" '"rendered":false'
 grep -q "function stripBody" "$PLUG/web/watch.html" && ok "watch page has stripBody" || no "watch page has stripBody"
 
 echo

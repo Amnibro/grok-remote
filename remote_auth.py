@@ -110,10 +110,114 @@ def public_status(data,lan_ip="",port=2421,tailscale_ip=None):
   }
  }
 def detect_tailscale():
+ snap=tailscale_snapshot()
+ return snap.get("ip") or None
+def _tailscale_bin():
+ import shutil
+ p=shutil.which("tailscale")
+ if p:return p
+ for c in (r"C:\Program Files\Tailscale\tailscale.exe",r"C:\Program Files (x86)\Tailscale\tailscale.exe"):
+  if Path(c).is_file():return c
+ return "tailscale"
+def _ts_run(args,timeout=2.5):
+ import subprocess
+ kw={"capture_output":True,"text":True,"timeout":timeout,"encoding":"utf-8","errors":"replace"}
+ if os.name=="nt":
+  kw["creationflags"]=0x08000000
+  kw["startupinfo"]=subprocess.STARTUPINFO()
+  kw["startupinfo"].dwFlags|=subprocess.STARTF_USESHOWWINDOW
  try:
-  r=__import__("subprocess").run(["tailscale","ip","-4"],capture_output=True,text=True,timeout=3,encoding="utf-8",errors="replace")
+  return subprocess.run([_tailscale_bin()]+list(args),**kw)
+ except Exception:
+  return None
+_ts_cache={"t":0,"v":None}
+def tailscale_snapshot(port=2421,ttl=30,wait=True):
+ now=time.time()
+ hit=_ts_cache.get("v")
+ if hit is not None and now-float(_ts_cache.get("t") or 0)<ttl:
+  return dict(hit)
+ if not wait:
+  return dict(hit) if hit is not None else {"ip":"","dns":"","serve":False,"https":False,"ok":False,"port":int(port or 2421)}
+ out={"ip":"","dns":"","serve":False,"https":False,"ok":False}
+ try:
+  r=_ts_run(["status","--json"],timeout=2.2)
+  if r and r.returncode==0 and (r.stdout or "").strip():
+   st=json.loads(r.stdout)
+   self=st.get("Self") or {}
+   ips=self.get("TailscaleIPs") or []
+   ip=""
+   for x in ips:
+    s=str(x)
+    if s.count(".")==3:ip=s;break
+   if not ip:
+    r2=_ts_run(["ip","-4"],timeout=1.5)
+    if r2 and r2.returncode==0:
+     ip=(r2.stdout or "").strip().split()[0] if (r2.stdout or "").strip() else ""
+   dns=str(self.get("DNSName") or "").strip().rstrip(".")
+   out["ip"]=ip if ip and ip.count(".")==3 else ""
+   out["dns"]=dns
+   out["ok"]=bool(out["ip"] or out["dns"])
+ except Exception:
+  pass
+ if not out["ip"]:
+  try:
+   r=_ts_run(["ip","-4"],timeout=1.5)
+   if r and r.returncode==0:
+    ip=(r.stdout or "").strip().split()[0] if (r.stdout or "").strip() else ""
+    if ip and ip.count(".")==3:
+     out["ip"]=ip;out["ok"]=True
+  except Exception:
+   pass
+ try:
+  r=_ts_run(["serve","status","--json"],timeout=2.0)
+  raw=(r.stdout or "").strip() if r else ""
+  if r and r.returncode==0 and raw and raw not in ("null","{}","[]"):
+   try:js=json.loads(raw)
+   except Exception:js=None
+   if isinstance(js,dict) and js:
+    web=js.get("Web") or js.get("web") or {}
+    tcp=js.get("TCP") or js.get("tcp") or {}
+    out["serve"]=bool(web or tcp or js.get("Foreground") or js.get("Background"))
+    blob=json.dumps(js)
+    out["https"]=out["serve"] and ("443" in blob or "HTTPS" in blob or "https" in blob)
+   elif not js:
+    out["serve"]="http://" in raw.lower() or "https://" in raw.lower()
+    out["https"]="https://" in raw.lower()
+  elif r and r.returncode==0 and not raw:
+   t=_ts_run(["serve","status"],timeout=1.5)
+   txt=((t.stdout or "")+(t.stderr or "")).lower() if t else ""
+   if txt and "no serve" not in txt and "error" not in txt[:40]:
+    out["serve"]="http" in txt or "proxy" in txt or ":443" in txt
+    out["https"]="https" in txt
+ except Exception:
+  pass
+ if out.get("serve") and out.get("dns"):
+  out["https"]=True
+ out["port"]=int(port or 2421)
+ _ts_cache["t"]=now;_ts_cache["v"]=dict(out)
+ return dict(out)
+def enable_tailscale_serve(port=2421):
+ port=int(port or 2421)
+ _ts_cache["t"]=0;_ts_cache["v"]=None
+ attempts=(
+  ["serve","--bg",str(port)],
+  ["serve","--bg","http://127.0.0.1:%d"%port],
+  ["serve","--bg","--https=443","http://127.0.0.1:%d"%port],
+ )
+ last=""
+ for args in attempts:
+  r=_ts_run(args,timeout=8)
+  if r is None:
+   last="tailscale not found";continue
+  err=((r.stderr or "")+(r.stdout or "")).strip()
   if r.returncode==0:
-   ip=(r.stdout or "").strip().split()[0] if (r.stdout or "").strip() else ""
-   if ip and ip.count(".")==3:return ip
- except Exception:pass
- return None
+   snap=tailscale_snapshot(port,ttl=0)
+   return True,"",snap
+  last=err[:240] or ("exit %s"%r.returncode)
+  if "already" in last.lower() or "exists" in last.lower():
+   snap=tailscale_snapshot(port,ttl=0)
+   return True,last,snap
+ snap=tailscale_snapshot(port,ttl=0)
+ if snap.get("serve"):
+  return True,last,snap
+ return False,last or "tailscale serve failed",snap

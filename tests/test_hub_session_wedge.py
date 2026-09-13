@@ -82,6 +82,39 @@ class HubSessionWedge(unittest.IsolatedAsyncioTestCase):
         await s.finish_load(ws)
         await asyncio.sleep(0.05)
         s.assertTrue(any(json.loads(d).get("id")==7 for d in c2.sent),"the joined client must get the load result")
+    async def test_load_timeout_does_not_wedge_the_session(s):
+        s.mod.RPC_REPLY_TIMEOUT["session/load"]=0.05
+        ws=s.up()
+        c1=FakeWS()
+        await s.load(c1)
+        s.assertTrue(ws.loads("session/load"),"first load should reach the agent")
+        await asyncio.sleep(0.25)
+        c2=FakeWS()
+        await s.load(c2,rid=2)
+        s.assertEqual(len(ws.loads("session/load")),2,"a timed-out session/load must drop the lock so the next attach can reach the agent")
+        errs=[json.loads(d) for d in c1.sent if json.loads(d).get("error")]
+        s.assertTrue(errs,"the waiting client must get the load timeout")
+    async def test_cid_reconnect_rebinds_inflight_rpc(s):
+        ws=s.up()
+        c1=FakeWS();c2=FakeWS()
+        await s.hub._claim_cid(c1,"c-phone-1")
+        await s.hub._to_agent(c1,json.dumps({"jsonrpc":"2.0","id":3,"method":"session/new","params":{"cwd":"."}}))
+        await asyncio.sleep(0.05)
+        s.assertTrue(ws.loads("session/new"),"session/new must reach the agent")
+        fwd=ws.loads("session/new")[-1]
+        await s.hub._claim_cid(c2,"c-phone-1")
+        await s.hub._from_agent(json.dumps({"jsonrpc":"2.0","id":fwd["id"],"result":{"sessionId":"aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"}}))
+        s.assertTrue(any(json.loads(d).get("id")==3 and "result" in json.loads(d) for d in c2.sent),"the reconnected phone must get the session/new result")
+    async def test_wait_for_exit_does_not_block_the_pump(s):
+        src=(ROOT/"server.py").read_text(encoding="utf-8")
+        wait=src[src.find('if method in ("terminal/wait_for_exit"'):src.find("if method==\"terminal/kill\"")]
+        s.assertIn("asyncio.create_task(_later())",wait)
+        s.assertIn("RPC_REPLY_TIMEOUT",src)
+        s.assertIn('app.router.add_post("/api/session/new",session_new_http)',src)
+        s.assertIn("_rebind_client_pending",src)
+        expire=src[src.find("async def _rpc_expire"):src.find("async def _from_agent")]
+        s.assertIn("_load_finish(sid,keep=False)",expire)
+        s.assertIn('"session/load"',expire)
     async def test_unreachable_client_is_closed_not_silently_muted(s):
         s.up()
         slow=FakeWS(stall=True)

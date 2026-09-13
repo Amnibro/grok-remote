@@ -4,11 +4,16 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1,interactive-widget=resizes-content"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-title" content="Grok Remote"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
 <meta name="mobile-web-app-capable" content="yes"/>
 <meta name="theme-color" content="#0a0b0e" id="themeColor"/>
-<meta name="grok-remote-ui-build" content="2026-08-31-sess-list"/>
+<meta name="grok-remote-ui-build" content="2026-09-12-text-idle"/>
 <title>Grok Remote · GROK BUILD</title>
 <meta http-equiv="Cache-Control" content="no-store"/>
+<link rel="manifest" href="/manifest.webmanifest"/>
+<link rel="apple-touch-icon" href="/static/icon-180.png"/>
+<link rel="icon" type="image/png" sizes="192x192" href="/static/icon-192.png"/>
 <script>(function(){
   var root=document.documentElement;
   try{
@@ -33,7 +38,7 @@
     root.setAttribute("data-mode","dark");
   }
 })();</script>
-<link rel="stylesheet" href="/static/braid-layout.css?v=1.8.27"/>
+<link rel="stylesheet" href="/static/braid-layout.css?v=1.8.28"/>
 <style>
 :root{
   --comp-h:48px;
@@ -456,20 +461,21 @@ body.page-chat #chatTop{display:flex}
 #btnMore.on .mm-trig i:nth-child(8),#btnMore[aria-expanded="true"] .mm-trig i:nth-child(8){animation-delay:.28s}
 #btnMore.on .mm-trig i:nth-child(9),#btnMore[aria-expanded="true"] .mm-trig i:nth-child(9){animation-delay:.4s}
 @keyframes mm-dot{0%,100%{opacity:.35;transform:scale(.85)}50%{opacity:1;transform:scale(1.15)}}
-.more-menu{display:none;position:fixed;z-index:var(--z-menu);width:min(320px,94vw);max-height:min(78dvh,640px);overflow:auto;padding:0;border-radius:16px;background:linear-gradient(165deg,color-mix(in srgb,var(--panel) 92%,var(--acc) 6%),color-mix(in srgb,var(--panel) 98%,transparent) 40%,var(--panel));border:1px solid color-mix(in srgb,var(--acc) 32%,var(--line));box-shadow:var(--elev-3),0 0 0 1px color-mix(in srgb,#fff 4%,transparent),0 0 48px -12px var(--acc-glow),inset 0 1px 0 color-mix(in srgb,#fff 8%,transparent);backdrop-filter:blur(20px) saturate(1.25);-webkit-backdrop-filter:blur(20px) saturate(1.25);font-family:var(--font);font-size:inherit;line-height:inherit;transform-origin:top right}
+.more-menu{display:none;position:fixed;z-index:var(--z-menu);width:min(320px,94vw);max-height:min(78dvh,calc(100dvh - 16px));overflow:hidden;padding:0;border-radius:16px;background:linear-gradient(165deg,color-mix(in srgb,var(--panel) 92%,var(--acc) 6%),color-mix(in srgb,var(--panel) 98%,transparent) 40%,var(--panel));border:1px solid color-mix(in srgb,var(--acc) 32%,var(--line));box-shadow:var(--elev-3),0 0 0 1px color-mix(in srgb,#fff 4%,transparent),0 0 48px -12px var(--acc-glow),inset 0 1px 0 color-mix(in srgb,#fff 8%,transparent);backdrop-filter:blur(20px) saturate(1.25);-webkit-backdrop-filter:blur(20px) saturate(1.25);font-family:var(--font);font-size:inherit;line-height:inherit;transform-origin:top right}
 .more-menu.on{display:flex;flex-direction:column;animation:mm-pop .22s var(--ease-out,cubic-bezier(.16,1,.3,1)) both}
 @keyframes mm-pop{from{opacity:0;transform:translateY(-8px) scale(.96)}to{opacity:1;transform:translateY(0) scale(1)}}
+.more-menu .mm-head,.more-menu .mm-foot{flex:none}
 .more-menu .mm-head{padding:12px 14px 10px;border-bottom:1px solid color-mix(in srgb,var(--line) 80%,transparent);background:radial-gradient(120% 80% at 100% 0%,color-mix(in srgb,var(--acc) 14%,transparent),transparent 55%)}
-.more-menu .mm-head-top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px}
+.more-menu .mm-head-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
 .more-menu .mm-brand{font:700 11px/1.2 var(--font);letter-spacing:.1em;text-transform:uppercase;color:var(--soft);text-shadow:none}
 .more-menu .mm-head-x{border:1px solid var(--line);background:var(--panel2);color:var(--mut);border-radius:8px;width:28px;height:28px;font-size:14px;cursor:pointer;flex:none;line-height:1}
 .more-menu .mm-head-x:hover{border-color:var(--acc);color:var(--acc)}
-.more-menu .mm-status{display:flex;flex-wrap:wrap;gap:5px}
+.more-menu .mm-status,.more-menu #moreMenuStatus{display:none!important}
 .more-menu .mm-chip{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:999px;font:700 10px/1.2 var(--font-mono);letter-spacing:.03em;border:1px solid color-mix(in srgb,var(--line) 90%,var(--acc));background:color-mix(in srgb,var(--panel2) 88%,transparent);color:var(--soft)}
 .more-menu .mm-chip.live{border-color:color-mix(in srgb,var(--ok) 50%,var(--line));color:var(--ok);box-shadow:0 0 12px -6px color-mix(in srgb,var(--ok) 50%,transparent)}
 .more-menu .mm-chip.busy{border-color:color-mix(in srgb,var(--acc) 55%,var(--line));color:var(--acc)}
 .more-menu .mm-chip.hot{border-color:color-mix(in srgb,var(--gold,#c9a227) 50%,var(--line));color:var(--gold,#c9a227)}
-.more-menu .mm-body{padding:6px;overflow:auto;flex:1;min-height:0}
+.more-menu .mm-body{padding:6px;overflow:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;flex:1;min-height:0}
 .more-menu .mm-layer{display:none}
 .more-menu .mm-layer.on{display:block}
 .more-menu .mm-back{margin-bottom:4px;color:var(--mut)!important;font-weight:600!important;letter-spacing:.01em}
@@ -1211,6 +1217,19 @@ body.touring header,body.touring footer,body.touring main,body.touring .panel,bo
 body.voice-xr #feed .row .bub,body.voice-xr #feed .tool,body.voice-xr #feed .thought-row{font-size:1.05em}
 body.voice-xr footer .composer textarea{font-size:16px}
 body.voice-go #voiceHud,body.voice-xr #voiceHud{bottom:calc(var(--stack-h,120px) + 16px)}
+.pwa-banner{display:none;position:sticky;top:0;z-index:80;align-items:center;gap:8px;padding:8px 10px 8px 12px;background:color-mix(in srgb,var(--panel) 92%,transparent);border-bottom:1px solid var(--line);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+.pwa-banner.on{display:flex}
+.pwa-banner-t{flex:1;min-width:0;font-size:12px;font-weight:650;line-height:1.3}
+.pwa-banner button{flex:none;border:1px solid var(--line);background:var(--panel2);color:var(--tx);border-radius:8px;padding:6px 10px;font:700 12px/1 system-ui;cursor:pointer}
+.pwa-banner #btnPwaInstall{background:var(--acc);color:var(--on-acc,#0a0a0a);border-color:var(--acc)}
+.pwa-banner #btnPwaDismiss{width:32px;padding:6px 0}
+.pwa-sheet{position:fixed;inset:0;z-index:90;background:rgba(0,0,0,.55);display:flex;align-items:flex-end;justify-content:center;padding:16px}
+.pwa-sheet[hidden]{display:none!important}
+.pwa-sheet .pwa-card{width:min(420px,100%);background:var(--panel);color:var(--tx);border:1px solid var(--line);border-radius:16px 16px 12px 12px;padding:16px 16px 18px;box-shadow:0 16px 40px rgba(0,0,0,.4)}
+.pwa-sheet h3{margin:0 0 8px;font-size:16px}
+.pwa-sheet ol{margin:0 0 12px;padding-left:18px;color:var(--mut);font-size:.92em;line-height:1.45}
+.pwa-sheet .rowbtns{display:flex;gap:8px;flex-wrap:wrap}
+html.pwa-standalone .pwa-banner,body.desktop .pwa-banner,body.electron .pwa-banner{display:none!important}
 @media (max-width:720px){
 #voiceHud{bottom:calc(var(--stack-h,130px) + 8px)}
 #voiceHud.xr .vh-line{font-size:18px}
@@ -1221,7 +1240,7 @@ body.voice-go #voiceHud,body.voice-xr #voiceHud{bottom:calc(var(--stack-h,120px)
 <script defer src="/static/vendor/katex/katex.min.js"></script>
 <script src="/static/md.js?v=4"></script>
 <script src="/static/presets.js"></script>
-<script src="/static/chat-runtime.js?v=2026-08-31-sess-list"></script>
+<script src="/static/chat-runtime.js?v=2026-09-12-text-idle"></script>
 <script src="/static/work-dock.js" defer></script>
 <script src="/static/voice-mode.js" defer></script>
 <script src="/static/cockpit-features.js?v=rx7" defer></script>
@@ -1229,6 +1248,24 @@ body.voice-go #voiceHud,body.voice-xr #voiceHud{bottom:calc(var(--stack-h,120px)
 </head>
 <body>
 <div id="app">
+<div id="pwaBanner" class="pwa-banner" hidden>
+  <span class="pwa-banner-t" id="pwaBannerT">Add Grok Remote to your Home Screen</span>
+  <button type="button" id="btnPwaInstall">Install</button>
+  <button type="button" id="btnPwaDismiss" aria-label="Dismiss">×</button>
+</div>
+<div id="pwaSheet" class="pwa-sheet" hidden>
+  <div class="pwa-card" role="dialog" aria-labelledby="pwaSheetTitle">
+    <h3 id="pwaSheetTitle">Install Grok Remote</h3>
+    <ol id="pwaSheetSteps">
+      <li>Open this page in Safari or Chrome on your phone.</li>
+      <li>iPhone: Share → Add to Home Screen.</li>
+      <li>Android: Chrome menu → Install app.</li>
+    </ol>
+    <div class="rowbtns">
+      <button type="button" class="pri" id="btnPwaSheetOk">Got it</button>
+    </div>
+  </div>
+</div>
 <header class="pulse-frame">
   <button class="hdrbtn" id="btnBack" style="display:none" title="Sessions">‹</button>
   <button class="hdrbtn" id="btnRail" style="display:none" title="Toggle sessions sidebar">☰</button>
@@ -1245,7 +1282,6 @@ body.voice-go #voiceHud,body.voice-xr #voiceHud{bottom:calc(var(--stack-h,120px)
             <div class="mm-brand">Settings</div>
             <button type="button" class="mm-head-x" id="btnMoreClose" aria-label="Close menu">×</button>
           </div>
-          <div class="mm-status" id="moreMenuStatus" aria-live="polite"></div>
         </div>
         <div class="mm-body">
         <div class="mm-layer on" data-layer="home">
@@ -1300,6 +1336,8 @@ body.voice-go #voiceHud,body.voice-xr #voiceHud{bottom:calc(var(--stack-h,120px)
         </div>
         <div class="mm-layer" data-layer="link">
           <button type="button" class="mm-back" data-goto="home">‹ Connection</button>
+          <button type="button" id="btnInstallApp" role="menuitem" title="Add Grok Remote to the phone Home Screen"><span class="mm-ico" aria-hidden="true">▢</span><span class="mm-lab">Install app</span><span class="mm-k">PWA</span></button>
+          <button type="button" id="btnAwayHome" role="menuitem" title="Cloudflare / open 443, or Tailscale"><span class="mm-ico" aria-hidden="true">◈</span><span class="mm-lab">Away from home</span><span class="mm-k">off-LAN</span></button>
           <button type="button" id="btnPairPhoneMore" role="menuitem" title="Pair a phone — QR on this PC"><span class="mm-ico" aria-hidden="true">▦</span><span class="mm-lab">Pair phone</span><span class="mm-k">QR</span></button>
           <button type="button" id="btnHealthMore" role="menuitem" title="Check the UI hub and agent connection"><span class="mm-ico" aria-hidden="true">◇</span><span class="mm-lab">Health check</span><span class="mm-k">status</span></button>
           <button type="button" id="btnStartRemoteMore" role="menuitem" title="Start / restart agent serve"><span class="mm-ico" aria-hidden="true">►</span><span class="mm-lab">Start server</span><span class="mm-k">2419</span></button>
@@ -1308,7 +1346,7 @@ body.voice-go #voiceHud,body.voice-xr #voiceHud{bottom:calc(var(--stack-h,120px)
           <button type="button" id="btnPin" role="menuitem"><span class="mm-ico" aria-hidden="true">★</span><span class="mm-lab">Pin shortcuts</span><span class="mm-k">desk</span></button>
         </div>
         </div>
-        <div class="mm-foot" id="moreMenuFoot">a category stays open · Esc closes</div>
+        <div class="mm-foot" id="moreMenuFoot">Esc closes</div>
       </div>
     </div>
     <div class="orbit-menu-wrap">
@@ -1337,9 +1375,9 @@ body.voice-go #voiceHud,body.voice-xr #voiceHud{bottom:calc(var(--stack-h,120px)
   <div id="easyConnect" style="margin:0 0 14px;padding:12px 14px;border:1px solid var(--line);border-radius:14px;background:var(--panel2)">
     <div style="font-weight:700;margin:0 0 6px">Phone setup (3 steps)</div>
     <ol style="margin:0 0 10px;padding-left:18px;color:var(--mut);font-size:.92em;line-height:1.45">
-      <li>Same Wi‑Fi as this PC</li>
+      <li>Same Wi‑Fi as this PC, or the Internet / Cloudflare link when away</li>
       <li>Copy the link (or scan QR)</li>
-      <li>Open it in your phone browser</li>
+      <li>Open it, then Add to Home Screen</li>
     </ol>
     <label>Phone link</label>
     <input id="phoneUrl" readonly placeholder="loading…" style="font-size:13px"/>
@@ -1350,7 +1388,23 @@ body.voice-go #voiceHud,body.voice-xr #voiceHud{bottom:calc(var(--stack-h,120px)
     </div>
     <div style="display:flex;gap:12px;align-items:flex-start;margin-top:10px;flex-wrap:wrap">
       <div id="phoneQrWrap" class="phone-qr-wrap" hidden><img id="phoneQr" alt="QR code for phone" width="220" height="220"/></div>
-      <p class="hint" style="margin:0;flex:1;min-width:160px">No app install. Bookmark the link on your phone. If it 401s, re-copy after Start Server — the key rotates when the stack restarts.</p>
+      <p class="hint" style="margin:0;flex:1;min-width:160px">Bookmark or Add to Home Screen. If it 401s, re-copy after Start Server — the key rotates when the stack restarts. Away from home: public HTTPS (Cloudflare / open 443) or Tailscale.</p>
+    </div>
+    <div id="awayHome" hidden style="margin-top:12px;padding-top:10px;border-top:1px solid var(--line)">
+      <div style="font-weight:700;margin:0 0 4px">Away from home</div>
+      <p class="hint" style="margin:0 0 8px">Same pattern as Amni-Chat: HTTPS in front of this PC (Cloudflare tunnel or forwarded 443). Tailscale still works if you want a private tailnet instead of a public hostname.</p>
+      <label>Public HTTPS hostname</label>
+      <input id="publicUrl" placeholder="https://your-hostname.example" autocomplete="off" style="font-size:13px"/>
+      <div class="rowbtns" style="margin-top:8px">
+        <button class="pri" type="button" id="btnSavePublic">Save public URL</button>
+        <button type="button" id="btnCfTunnel">Start Cloudflare tunnel</button>
+      </div>
+      <label style="margin-top:10px">Away link</label>
+      <input id="awayUrl" readonly placeholder="set a hostname or start a tunnel" style="font-size:13px"/>
+      <div class="rowbtns" style="margin-top:8px">
+        <button class="pri" type="button" id="btnCopyAway">Copy away link</button>
+        <button type="button" id="btnEnableHttps">Enable Tailscale HTTPS</button>
+      </div>
     </div>
   </div>
   <p style="margin:0 0 8px">Live controller for Grok Build on this PC.</p>
@@ -2053,11 +2107,9 @@ function applyCompanion(){
   }
   const open=document.getElementById("btnOpenCompanion");
   if(open)open.hidden=!on;
-  if(on)compStart();
-  else{
-    if(typeof compTimer!=="undefined"&&compTimer){clearInterval(compTimer);compTimer=null}
-    const b=document.getElementById("compBadge");
-    if(b)b.style.display="none";
+  /* Idle / clip status belongs on /xr. The text chat never mounts that badge. */
+  if(typeof hideCompanionBadge==="function")hideCompanionBadge();
+  if(!on){
     try{if(window.grokVoice&&window.grokVoice.mode==="xr")window.grokVoice.setMode("off")}catch(e){}
   }
 }
@@ -3461,8 +3513,26 @@ function liveBelongsHere(sessionId){
 }
 window.setBusy=setBusy;
 window.setPhase=setPhase;
+function persistMsgQueue(){
+  try{
+    const slim=msgQueue.filter(x=>x&&x.tRaw).slice(-20).map(x=>({mode:x.mode==="fyi"?"fyi":"queue",tRaw:String(x.tRaw),sessionId:String(x.sessionId||""),at:x.at||Date.now()}));
+    localStorage.setItem("grok_remote_msgq",JSON.stringify(slim));
+  }catch(e){}
+}
+function loadMsgQueue(){
+  if(msgQueue.length)return;
+  try{
+    const a=JSON.parse(localStorage.getItem("grok_remote_msgq")||"[]");
+    if(!Array.isArray(a))return;
+    a.forEach(it=>{
+      if(!it||!it.tRaw)return;
+      msgQueue.push({id:"mq-restored-"+Date.now()+"-"+Math.random().toString(36).slice(2,6),mode:it.mode==="fyi"?"fyi":"queue",tRaw:String(it.tRaw),files:[],at:it.at||Date.now(),sessionId:String(it.sessionId||""),echoed:false});
+    });
+  }catch(e){}
+}
 function loadMsgMode(){
   try{const m=localStorage.getItem("grok_remote_msg_mode");if(["interject","queue","fyi"].includes(m))msgMode=m}catch(e){}
+  loadMsgQueue();
 }
 function saveMsgMode(){try{localStorage.setItem("grok_remote_msg_mode",msgMode)}catch(e){}}
 function paintMsgModeChips(){
@@ -3483,35 +3553,8 @@ function cycleMsgMode(){
   saveMsgMode();paintMsgModeChips();
 }
 function paintMoreMenuChrome(){
-  const st=document.getElementById("moreMenuStatus");
   const foot=document.getElementById("moreMenuFoot");
-  if(st){
-    const link=linkState==="uplink"?"live":(linkState==="sync"?"sync":(linkState||"standby"));
-    const phase=agentPhase||"idle";
-    const perm=getPermLevel(sid);
-    let todoN=0;
-    try{
-      const raw=JSON.parse(localStorage.getItem("grok_remote_todos")||"[]");
-      if(Array.isArray(raw))todoN=raw.filter(t=>t&&t.status!=="done").length;
-    }catch(e){}
-    const bits=[];
-    bits.push('<span class="mm-chip'+(link==="live"?" live":"")+'">'+esc(link)+"</span>");
-    bits.push('<span class="mm-chip'+(phase!=="idle"&&phase!=="error"?" busy":"")+'">'+esc(PHASE_LABEL[phase]||phase)+"</span>");
-    bits.push('<span class="mm-chip">perm '+esc(perm)+"</span>");
-    if(todoN)bits.push('<span class="mm-chip hot">todos '+todoN+"</span>");
-    if(msgMode&&msgMode!=="queue")bits.push('<span class="mm-chip">'+esc(msgMode)+"</span>");
-    if(ux&&ux.privacy)bits.push('<span class="mm-chip hot">spoiler</span>');
-    const folder=shortFolder(sidCwd||defaultCwd||"");
-    if(folder)bits.push('<span class="mm-chip">'+esc(folder)+"</span>");
-    if(sid)bits.push('<span class="mm-chip">'+esc(String(sid).slice(0,8))+"</span>");
-    if(linkRtt!=null)bits.push('<span class="mm-chip">'+linkRtt+"ms</span>");
-    st.innerHTML=bits.join("");
-  }
-  if(foot){
-    const sess=sid?String(sid).slice(0,10)+"…":"no session";
-    const folder=shortFolder(sidCwd||defaultCwd||"");
-    foot.textContent=(folder?folder+" · ":"")+sess+" · Esc closes";
-  }
+  if(foot)foot.textContent="Esc closes";
   if(window.grokCockpit&&window.grokCockpit.paintTodoBadge)try{window.grokCockpit.paintTodoBadge()}catch(e){}
   paintPermChip();paintMsgModeChips();paintViewToggles();
 }
@@ -3581,25 +3624,40 @@ function enqueueMsg(item){
   const it=Object.assign({id:"mq-"+Date.now()+"-"+Math.random().toString(36).slice(2,7),echoed:false},item);
   msgQueue.push(it);
   paintMsgQueue();
+  persistMsgQueue();
   armMsgRetry();
 }
-function markAgentAttach(sid,ready){
+function requeueLastDispatch(reason){
+  const d=lastDispatch;
+  if(!d||d.acked||d.retried)return false;
+  if(!(d.tRaw||(d.files&&d.files.length)))return false;
+  d.retried=true;
+  d.acked=true;
+  enqueueMsg({mode:d.mode==="fyi"?"fyi":"queue",tRaw:d.tRaw,files:d.files||[],at:Date.now(),sessionId:d.sid});
+  try{chip((reason?String(reason).slice(0,60)+" · ":"")+"kept in queue")}catch(e){}
+  return true;
+}
+function sessionIsAttached(id){
+  const want=String(id||"");
+  return !!(agentAttachReady&&(!want||!agentAttachSid||sessionIdsMatch(agentAttachSid,want)));
+}
+function markAgentAttach(sid,ready,wake){
   agentAttachSid=String(sid||"");
   agentAttachReady=!!ready;
-  if(ready){
+  if(ready||wake){
     const w=agentAttachWaiters.slice();
     agentAttachWaiters=[];
-    w.forEach(fn=>{try{fn()}catch(e){}});
+    w.forEach(fn=>{try{fn(!!ready)}catch(e){}});
   }
 }
 function waitAgentAttach(sid,ms){
   const want=String(sid||"");
-  if(agentAttachReady&&(!want||!agentAttachSid||sessionIdsMatch(agentAttachSid,want)))return Promise.resolve(true);
+  if(sessionIsAttached(want))return Promise.resolve(true);
   return new Promise(resolve=>{
     let done=false;
     const fin=ok=>{if(done)return;done=true;resolve(!!ok)};
-    agentAttachWaiters.push(()=>fin(true));
-    setTimeout(()=>fin(agentAttachReady&&(!want||!agentAttachSid||sessionIdsMatch(agentAttachSid,want))),ms||60000);
+    agentAttachWaiters.push(ok=>fin(!!ok&&sessionIsAttached(want)));
+    setTimeout(()=>fin(sessionIsAttached(want)),ms||20000);
   });
 }
 function isActiveTurn(token){return token!=null&&token===activeTurnToken}
@@ -3826,6 +3884,7 @@ async function dispatchPromptPayload(tRaw,files,mode,opts){
       }
       if(stillHere()){setBusy(false);setPhase("error",msg.slice(0,40))}
       chip(msg);
+      requeueLastDispatch(msg);
       scheduleMsgDrain(400);
     },
     onDrop:()=>{}
@@ -3871,12 +3930,27 @@ async function drainMsgQueue(){
      nothing re-armed it, so one blocked attempt parked the queue until the next unrelated
      event. armMsgRetry keeps a single 1.5s ticker alive while anything is queued. */
   if(msgDrainBusy||!sid||!ws||ws.readyState!==1||sessionSwitching){armMsgRetry();return}
-  if(busy&&!replaying){armMsgRetry();return}
+  const peekSid=String((msgQueue[0]&&msgQueue[0].sessionId)||sid||"");
+  if(!sessionIsAttached(peekSid)){
+    if(sessionIdsMatch(peekSid,sid)){
+      msgDrainBusy=true;
+      try{
+        await req("session/load",{sessionId:peekSid,cwd:sidCwd,mcpServers:[]},12000);
+        markAgentAttach(peekSid,true);
+        try{if(window.grokChat)window.grokChat.ready(peekSid)}catch(e){}
+      }catch(e){armMsgRetry();return}
+      finally{msgDrainBusy=false}
+    }else{armMsgRetry();return}
+  }
+  const staleBusy=!!busy&&!replaying&&(Date.now()-Math.max(lastLiveAt||0,0)>30000);
+  if(staleBusy){try{setBusy(false,sid);setPhase("idle")}catch(e){}}
+  if(busy&&!replaying&&!staleBusy){armMsgRetry();return}
   const now=Date.now();
   if(now-lastMsgDrain<400){armMsgRetry();return}
   msgDrainBusy=true;lastMsgDrain=now;
   const item=msgQueue.shift();
   paintMsgQueue();
+  persistMsgQueue();
   const itemSid=String(item.sessionId||sid||"");
   try{
     echoQueuedSend(item);
@@ -3884,8 +3958,8 @@ async function drainMsgQueue(){
     promoteSessionAfterMessage(itemSid).catch(()=>{});
     try{if(window.grokVoice)window.grokVoice.onTaskSent(item.tRaw)}catch(e){}
     const ok=await dispatchPromptPayload(item.tRaw,item.files||[],item.mode||"queue",{fromQueue:true,wasBusy:item.mode!=="fyi",sessionId:itemSid,sessionGen:sessionGen,allowCrossSession:true});
-    if(!ok){item.echoed=false;msgQueue.unshift(item);paintMsgQueue()}
-  }catch(e){item.echoed=false;chip("queue drain: "+e);msgQueue.unshift(item);paintMsgQueue()}
+    if(!ok){item.echoed=false;msgQueue.unshift(item);paintMsgQueue();persistMsgQueue()}
+  }catch(e){item.echoed=false;chip("queue drain: "+e);msgQueue.unshift(item);paintMsgQueue();persistMsgQueue()}
   finally{msgDrainBusy=false;armMsgRetry()}
 }
 function nextId(){return ++nid}
@@ -3969,6 +4043,7 @@ function openSheet(el,btn){
   if(btn)btn.classList.add("on");
 }
 function settingsAnchors(){return [document.getElementById("btnSettings"),document.getElementById("btnSettingsFoot"),document.getElementById("btnMore")].filter(Boolean)}
+let moreMenuAnchor=null;
 const MORE_LAYER_TITLES={home:"Settings",chat:"Chat",feed:"Feed",look:"Appearance",apps:"Apps",link:"Connection"};
 function showMoreLayer(name){
   const m=document.getElementById("moreMenu");
@@ -3978,6 +4053,13 @@ function showMoreLayer(name){
   m.dataset.layer=want;
   const brand=m.querySelector(".mm-brand");
   if(brand)brand.textContent=MORE_LAYER_TITLES[want]||"Settings";
+  const a=moreMenuAnchor||document.getElementById("btnSettings")||document.getElementById("btnSettingsFoot")||document.getElementById("btnMore");
+  if(m.classList.contains("on")&&a){
+    const body=m.querySelector(".mm-body");
+    if(body)body.scrollTop=0;
+    placeFixedMenu(m,a);
+    requestAnimationFrame(()=>placeFixedMenu(m,a));
+  }
 }
 function bindMoreLayers(){
   const m=document.getElementById("moreMenu");
@@ -4003,6 +4085,7 @@ function toggleMoreMenu(e){
   const m=document.getElementById("moreMenu");
   if(!m)return;
   const anchor=(e&&e.currentTarget)||document.getElementById("btnSettings")||document.getElementById("btnMore");
+  moreMenuAnchor=anchor;
   const open=!m.classList.contains("on");
   closeOrbitMenu();
   if(open){
@@ -4418,15 +4501,35 @@ function placeFixedMenu(menu,anchor){
   if(menu.parentElement!==document.body)document.body.appendChild(menu);
   menu.style.position="fixed";
   menu.style.zIndex="var(--z-menu)";
+  menu.style.right="auto";
+  const pad=8,minBox=120;
+  const vw=window.innerWidth,vh=window.innerHeight;
   const r=anchor.getBoundingClientRect();
-  const mw=menu.offsetWidth||280,mh=menu.offsetHeight||320;
-  let top=r.bottom+8,left=r.right-mw;
-  if(left<8)left=8;
-  if(left+mw>window.innerWidth-8)left=Math.max(8,window.innerWidth-mw-8);
-  if(top+mh>window.innerHeight-8)top=Math.max(8,r.top-mh-8);
+  menu.style.maxHeight="none";
+  menu.style.overflowY="hidden";
+  const mw=Math.min(menu.offsetWidth||280,vw-pad*2);
+  let left=r.right-mw;
+  if(left<pad)left=pad;
+  if(left+mw>vw-pad)left=Math.max(pad,vw-mw-pad);
+  const spaceBelow=Math.max(0,vh-r.bottom-pad);
+  const spaceAbove=Math.max(0,r.top-pad);
+  const needH=Math.max(menu.scrollHeight||0,menu.offsetHeight||0);
+  const openBelow=needH<=spaceBelow||(needH>spaceAbove&&spaceBelow>=spaceAbove);
+  let top,maxH;
+  if(openBelow){
+    top=r.bottom+pad;
+    maxH=Math.max(minBox,spaceBelow);
+  }else{
+    maxH=Math.max(minBox,spaceAbove);
+    const h=Math.min(needH,maxH);
+    top=r.top-pad-h;
+    if(top<pad){top=pad;maxH=Math.max(minBox,r.top-pad-top)}
+  }
+  if(top<pad)top=pad;
+  if(top+Math.min(needH,maxH)>vh-pad)maxH=Math.max(minBox,vh-pad-top);
+  menu.style.maxHeight=Math.round(maxH)+"px";
   menu.style.top=Math.round(top)+"px";
   menu.style.left=Math.round(left)+"px";
-  menu.style.right="auto";
 }
 function protectMath(s){
   const bag=[];
@@ -4735,6 +4838,11 @@ function feedHasUserText(text){
   return false;
 }
 function isLocalUserEcho(text){
+  if(lastDispatch&&!lastDispatch.acked){
+    const plain=normUserEcho(text);
+    const last=normUserEcho(lastDispatch.tRaw||lastLocalUserPlain);
+    if(plain&&last&&(plain===last||plain.endsWith(last)||last.endsWith(plain)))return true;
+  }
   if(Date.now()>=localEchoUntil)return false;
   const plain=normUserEcho(text);
   if(!plain)return true;
@@ -4786,35 +4894,17 @@ function stampUserRx(em){
   g.textContent=em;
 }
 let compTimer=null;
+function hideCompanionBadge(){
+  if(compTimer){clearInterval(compTimer);compTimer=null}
+  const b=document.getElementById("compBadge");
+  if(b&&b.parentNode)b.parentNode.removeChild(b);
+}
 async function compPoll(){
-  const badge=compMount();
-  if(!badge)return;
-  try{
-    const r=await fetch("/api/companion/state",{cache:"no-store"});
-    if(!r.ok)throw new Error(r.status);
-    const d=await r.json();
-    if(!d.available){badge.style.display="none";return}
-    const key=new URLSearchParams(location.search).get("key");
-    badge.href="/xr"+(key?"?key="+encodeURIComponent(key):"");
-    badge.style.display="inline-flex";
-    document.getElementById("compDot").style.background=d.clients?"#7fe0a8":"#c8a24a";
-    document.getElementById("compTxt").textContent=(d.clients?d.clients+" live · ":"idle · ")+String(d.base||"?").replace(/_loop$|_idle$/,"")+(d.gesture?" · "+d.gesture:"");
-    badge.title=d.clients?"Companion running — "+d.clients+" renderer(s), base "+d.base:"Companion service up, no renderer attached — click to open /xr";
-  }catch(e){badge.style.display="none"}
+  hideCompanionBadge();
+  try{await fetch("/api/companion/state",{cache:"no-store"})}catch(e){}
 }
-function compMount(){
-  let b=document.getElementById("compBadge");
-  if(b)return b;
-  b=document.createElement("a");
-  b.id="compBadge";
-  b.href="/xr";
-  b.title="Open the XR companion";
-  b.style.cssText="position:fixed;left:10px;bottom:10px;z-index:9999;display:none;align-items:center;gap:6px;padding:4px 10px;border:1px solid #24405e;border-radius:999px;background:#0b1420e6;color:#8fb8e0;font:11px/1.4 ui-monospace,monospace;text-decoration:none;white-space:nowrap;box-shadow:0 2px 10px #0008";
-  b.innerHTML='<span id="compDot" style="width:7px;height:7px;border-radius:50%;background:#7fe0a8;display:inline-block"></span><span id="compTxt">companion</span>';
-  document.body.appendChild(b);
-  return b;
-}
-function compStart(){if(!ux.companion)return;if(!compTimer){compPoll();compTimer=setInterval(compPoll,10000)}}
+function compMount(){hideCompanionBadge();return null}
+function compStart(){hideCompanionBadge()}
 function takeAgentRx(text){
   let t=String(text||"");
   const found=[];
@@ -6504,7 +6594,7 @@ function paintLinkBanner(reason){
 function abortSessionSwitch(){
   stopPoll();
   if(catchupTimer){clearTimeout(catchupTimer);catchupTimer=null}
-  catchupBusy=false;loadExpectSid=null;sendInFlight=false;handleMsg._waitPrompt=null;
+  catchupBusy=false;loadExpectSid=null;handleMsg._waitPrompt=null;
   try{pending.forEach((p,id)=>{if(p&&(p.kind==="prompt"||p.kind==="cancel"))return;try{p.reject(new Error("session switched"))}catch(e){} pending.delete(id)})}catch(e){}
 }
 
@@ -6650,10 +6740,15 @@ async function openSession(s){
         }catch(e){lastErr=String(e&&e.message||e);await sleep(500+i*400)}
       }
       if(attachGen===sessionGen&&String(sid)===attachId){
-        markAgentAttach(attachId,true);
-        try{if(window.grokChat)window.grokChat.ready(attachId)}catch(e){}
-        scheduleMsgDrain(80);
-        if(!ok&&lastErr&&!/invalid params|unknown session|not found|no such session/i.test(lastErr))try{chip("agent attach: "+lastErr.slice(0,80))}catch(x){}
+        if(ok){
+          markAgentAttach(attachId,true);
+          try{if(window.grokChat)window.grokChat.ready(attachId)}catch(e){}
+          scheduleMsgDrain(80);
+        }else{
+          markAgentAttach(attachId,false,true);
+          try{if(window.grokChat)window.grokChat.fail(attachId)}catch(e){}
+          if(lastErr)try{chip("agent attach: "+lastErr.slice(0,80))}catch(x){}
+        }
       }
       if(attachGen!==sessionGen||String(sid)!==attachId)return;
       try{await loadCommands()}catch(e){}
@@ -6668,6 +6763,30 @@ async function openSession(s){
   })();
 }
 
+async function sessionNew(cwd){
+  const c=String(cwd||"").trim();
+  if(!c)throw new Error("cwd required");
+  let last="socket not open";
+  if(ws&&ws.readyState===1){
+    try{return await req("session/new",{cwd:c,mcpServers:[]},25000)}
+    catch(e){
+      last=String(e&&e.message||e);
+      if(/session switched/i.test(last))throw e;
+    }
+  }
+  const ac=typeof AbortController!=="undefined"?new AbortController():null;
+  const kill=ac?setTimeout(()=>ac.abort(),50000):0;
+  try{
+    const r=await fetch("/api/session/new",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({cwd:c,mcpServers:[]}),signal:ac?ac.signal:undefined});
+    const text=await r.text();
+    let j=null;try{j=JSON.parse(String(text).replace(/^\uFEFF/,"").trim())}catch(e){j=null}
+    if(!r.ok||!j||j.ok===false)throw new Error((j&&(j.error||j.message))||text.slice(0,120)||last||("HTTP "+r.status));
+    return j;
+  }catch(e){
+    if(e&&(e.name==="AbortError"||/aborted/i.test(String(e&&e.message||e))))throw new Error("timeout: session/new");
+    throw e;
+  }finally{if(kill)clearTimeout(kill)}
+}
 async function newSession(cwd,firstMsg){
   abortSessionSwitch();
   stopPoll();
@@ -6686,7 +6805,7 @@ async function newSession(cwd,firstMsg){
   showHorizon("opening channel");
 
   try{
-    const r=await req("session/new",{cwd:c,mcpServers:[]},60000);
+    const r=await sessionNew(c);
     if(gen!==sessionGen)return;
     try{applyModelState(r&&r.models)}catch(e){}
     const newId=r&& (r.sessionId||r.session_id||(r.session&&r.session.sessionId));
@@ -6704,32 +6823,35 @@ async function newSession(cwd,firstMsg){
     chip("new session @ "+c);
     document.getElementById("hint").textContent="New chat · "+shortPath(c);
     setConn(true,"new chat",false);
+    try{setBusy(false)}catch(e){}
+    loadExpectSid=null;sessionSwitching=false;replaying=false;
+    markAgentAttach(sid,true);
+    try{if(window.grokChat)window.grokChat.ready(sid)}catch(e){}
+    stickBottom=true;forceScrollBottom({pin:true,settle:true,settleMs:100});
+    sessionFresh=true;
+    startPoll();
+    try{await fetchSessions()}catch(e){try{renderSessions()}catch(x){}}
+    paintSessionCurrent();
+    try{await loadCommands()}catch(e){}
+    if(firstMsg&&String(firstMsg).trim()){
+      sessionFresh=false;
+      box.value=String(firstMsg).trim();
+      await sendPrompt();
+    }
   }catch(e){
     if(gen===sessionGen){
       sid=null;window.sid=null;selectedSid=null;composerBoundSid=null;
-      try{setBusy(false)}catch(e){}
-      loadExpectSid=null;sessionSwitching=false;replaying=false;sessionFresh=false;hideHorizon();
+      try{setBusy(false)}catch(x){}
+      loadExpectSid=null;sessionFresh=false;
       paintSessionCurrent();
       chip("new session failed: "+e);alert(e);
     }
-    return;
-  }
-  if(gen!==sessionGen)return;
-  try{setBusy(false)}catch(e){}
-  loadExpectSid=null;sessionSwitching=false;replaying=false;
-  markAgentAttach(sid,true);
-  try{if(window.grokChat)window.grokChat.ready(sid)}catch(e){}
-  stickBottom=true;forceScrollBottom({pin:true,settle:true,settleMs:100});hideHorizon();
-  clearSessionFeed();
-  sessionFresh=true;
-  startPoll();
-  try{await fetchSessions()}catch(e){try{renderSessions()}catch(x){}}
-  paintSessionCurrent();
-  try{await loadCommands()}catch(e){}
-  if(firstMsg&&String(firstMsg).trim()){
-    sessionFresh=false;
-    box.value=String(firstMsg).trim();
-    await sendPrompt();
+  }finally{
+    if(gen===sessionGen){
+      try{hideHorizon()}catch(e){}
+      sessionSwitching=false;replaying=false;
+      try{setBusy(false)}catch(e){}
+    }
   }
 }
 
@@ -7641,9 +7763,14 @@ async function sendPrompt(forcedMode){
       stickBottom=true;
       forceScrollBottom({pin:true,settle:true,settleMs:80});
     }
-    if(!agentAttachReady&&(!agentAttachSid||sessionIdsMatch(agentAttachSid,sendSid))){
+    if(!sessionIsAttached(sendSid)){
       chip("waiting for agent to attach…");
-      await waitAgentAttach(sendSid,60000);
+      const attached=await waitAgentAttach(sendSid,20000);
+      if(!attached){
+        enqueueMsg({mode:mode==="fyi"?"fyi":"queue",tRaw,files,at:Date.now(),sessionId:sendSid});
+        chip("queued · agent not on this chat yet");
+        return;
+      }
     }
     promoteSessionAfterMessage(sendSid).catch(()=>{});
     try{if(window.grokVoice)window.grokVoice.onTaskSent(tRaw,{delivery:mode,agentBusy:isBusy,interjected:interjected})}catch(e){}
@@ -8023,10 +8150,29 @@ box.addEventListener("paste",e=>{
   if(files.length){e.preventDefault();addFiles(files)}
 });
 
+function isPublicView(){
+  const h=(location.hostname||"").toLowerCase();
+  if(h==="127.0.0.1"||h==="localhost"||h==="::1")return false;
+  return location.protocol==="https:";
+}
 function paintPhoneConnect(cfg){
+  const publicView=isPublicView();
+  const easy=document.getElementById("easyConnect");
+  if(easy)easy.hidden=!!publicView;
   const urlEl=document.getElementById("phoneUrl");
   const qr=document.getElementById("phoneQr");
   const wrap=document.getElementById("phoneQrWrap");
+  if(publicView){
+    if(urlEl)urlEl.value="";
+    if(wrap)wrap.hidden=true;
+    const awayEl=document.getElementById("awayUrl");
+    const pubEl=document.getElementById("publicUrl");
+    if(awayEl)awayEl.value="";
+    if(pubEl){pubEl.value="";pubEl.readOnly=true}
+    const awayWrap=document.getElementById("awayHome");
+    if(awayWrap)awayWrap.hidden=true;
+    return "";
+  }
   let url="";
   try{
     if(cfg&&cfg.ui)url=String(cfg.ui);
@@ -8034,11 +8180,30 @@ function paintPhoneConnect(cfg){
   }catch(e){}
   if(url&&url.indexOf("auto=")===-1)url+=(url.indexOf("?")>=0?"&":"?")+"auto=1";
   if(urlEl)urlEl.value=url||"";
-  if(qr&&url){
+  const host=(location.hostname||"").toLowerCase();
+  const local=host==="127.0.0.1"||host==="localhost";
+  if(qr&&url&&local){
     if(wrap)wrap.hidden=false;
-    qr.src="https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=16&data="+encodeURIComponent(url);
-    qr.onerror=()=>{if(wrap)wrap.hidden=true};
-  }
+    qr.removeAttribute("src");
+    fetch("/api/qr",{cache:"no-store"}).then(r=>r.text()).then(svg=>{
+      if(!svg||svg.indexOf("<svg")<0){if(wrap)wrap.hidden=true;return}
+      qr.outerHTML='<div id="phoneQr" class="phone-qr">'+svg+"</div>";
+    }).catch(()=>{if(wrap)wrap.hidden=true});
+  }else if(wrap)wrap.hidden=true;
+  const awayEl=document.getElementById("awayUrl");
+  const awayWrap=document.getElementById("awayHome");
+  const away=local?String((cfg&&(cfg.public_url||cfg.https_url||cfg.away_url||cfg.tailscale_url))||""):"";
+  if(awayEl)awayEl.value=away;
+  if(awayWrap)awayWrap.hidden=!local;
+  const pubEl=document.getElementById("publicUrl");
+  if(pubEl&&local&&cfg&&cfg.public_origin&&!pubEl.value)pubEl.value=cfg.public_origin;
+  const httpsBtn=document.getElementById("btnEnableHttps");
+  if(httpsBtn)httpsBtn.hidden=!!(cfg&&cfg.https_url)||!local;
+  const savePub=document.getElementById("btnSavePublic");
+  const cfBtn=document.getElementById("btnCfTunnel");
+  if(savePub)savePub.hidden=!local;
+  if(cfBtn)cfBtn.hidden=!local;
+  if(pubEl)pubEl.readOnly=!local;
   return url;
 }
 async function openAppUrl(url,opts){
@@ -8067,10 +8232,12 @@ async function loadCfg(){
     const text=await r.text();
     let c=null;try{c=JSON.parse(String(text).replace(/^\uFEFF/,"").trim())}catch(e){c=null}
     if(!r.ok||!c)throw new Error("config not json");
-    if(c.ws_url)document.getElementById("wsurl").value=c.ws_url;else document.getElementById("wsurl").value=defaultWs();
+    if(!window.__wsCustom)document.getElementById("wsurl").value=defaultWs();
+    else if(c.ws_url&&!isPublicView())document.getElementById("wsurl").value=c.ws_url;
     if(c.cwd){document.getElementById("cwd").value=c.cwd;defaultCwd=c.cwd}
     paintPhoneConnect(c);
-    log("cfg "+c.ui);return c;
+    if(!isPublicView())refreshAwayNet();
+    log("cfg ok");return c;
   }catch(e){document.getElementById("wsurl").value=defaultWs();paintPhoneConnect(null);return null}
 }
 (function wirePhoneConnect(){
@@ -8086,7 +8253,72 @@ async function loadCfg(){
   };
   if(openPc)openPc.onclick=()=>{const v=(document.getElementById("phoneUrl")||{}).value||location.href;openAppUrl(v,{sameWindowFallback:true}).catch(()=>{})};
   if(refresh)refresh.onclick=()=>loadCfg().then(()=>chip("link refreshed")).catch(()=>{});
+  const copyAway=document.getElementById("btnCopyAway");
+  if(copyAway)copyAway.onclick=async()=>{
+    const v=(document.getElementById("awayUrl")||{}).value||"";
+    if(!v){chip("no away link yet · save a hostname or start a Cloudflare tunnel");return}
+    try{await navigator.clipboard.writeText(v);chip("away link copied")}catch(e){alert(v)}
+  };
+  const enHttps=document.getElementById("btnEnableHttps");
+  if(enHttps)enHttps.onclick=()=>enableTailscaleHttps();
+  const savePub=document.getElementById("btnSavePublic");
+  if(savePub)savePub.onclick=()=>savePublicUrl();
+  const cfBtn=document.getElementById("btnCfTunnel");
+  if(cfBtn)cfBtn.onclick=()=>startCloudflareTunnel();
 })();
+async function refreshAwayNet(){
+  try{
+    const r=await fetch("/api/net",{cache:"no-store"});
+    const j=await r.json();
+    if(!j)return;
+    const awayEl=document.getElementById("awayUrl");
+    const wrap=document.getElementById("awayHome");
+    const u=j.public_url||j.away_url||j.https_url||j.tailscale_url||"";
+    if(awayEl&&u)awayEl.value=u;
+    if(wrap)wrap.hidden=false;
+    const pubEl=document.getElementById("publicUrl");
+    if(pubEl&&(j.public_origin||j.public_url)&&!pubEl.value)pubEl.value=j.public_origin||"";
+    const httpsBtn=document.getElementById("btnEnableHttps");
+    if(httpsBtn)httpsBtn.hidden=!!j.https_url;
+  }catch(e){}
+}
+async function savePublicUrl(){
+  const inp=document.getElementById("publicUrl");
+  const v=(inp&&inp.value||"").trim();
+  try{
+    const r=await fetch("/api/net/public",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({url:v})});
+    const j=await r.json();
+    if(j&&j.ok!==false){chip("public URL saved");await loadCfg()}
+    else chip((j&&j.error)||"could not save public URL · loopback only");
+  }catch(e){chip("could not save public URL")}
+}
+async function startCloudflareTunnel(){
+  const b=document.getElementById("btnCfTunnel");
+  if(b)b.disabled=true;
+  chip("starting Cloudflare tunnel…");
+  try{
+    const r=await fetch("/api/net/cloudflare-tunnel",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"start"})});
+    const j=await r.json();
+    if(j&&j.ok){chip("Cloudflare tunnel on");await loadCfg()}
+    else chip((j&&j.error)||"cloudflared failed · loopback only");
+  }catch(e){chip("could not start cloudflared")}
+  if(b)b.disabled=false;
+}
+async function enableTailscaleHttps(){
+  const st=document.getElementById("btnEnableHttps");
+  if(st)st.disabled=true;
+  try{
+    const r=await fetch("/api/net/tailscale-serve",{method:"POST"});
+    const j=await r.json();
+    if(j&&j.ok){
+      chip("Tailscale HTTPS on");
+      await loadCfg();
+    }else{
+      chip((j&&j.error)||"could not enable Tailscale HTTPS · loopback only");
+    }
+  }catch(e){chip("could not enable Tailscale HTTPS")}
+  if(st)st.disabled=false;
+}
 document.getElementById("reloadCfg").onclick=loadCfg;
 document.getElementById("pingHealth").onclick=async()=>{
   try{
@@ -8189,22 +8421,88 @@ window.addEventListener("resize",()=>{
   const om=document.getElementById("orbitMenu");
   if(om&&om.classList.contains("on"))placeFixedMenu(om,orbit);
 });
-function openPairPhone(){
+function openPairPhone(hash){
   closeOrbitMenu();closeMoreMenu();
   const host=(location.hostname||"").toLowerCase();
   const local=host==="127.0.0.1"||host==="localhost";
-  if(local){openAppUrl("/pair",{sameWindowFallback:true}).catch(()=>chip("phone pairing could not open"));return}
+  const dest="/pair"+(hash||"");
+  if(local){openAppUrl(dest,{sameWindowFallback:true}).catch(()=>chip("phone pairing could not open"));return}
   try{showPage("setup",true)}catch(e){}
   loadCfg().then(()=>{
-    const el=document.getElementById("easyConnect");
+    const el=document.getElementById(hash==="#away"?"awayHome":"easyConnect");
     if(el)try{el.scrollIntoView({block:"nearest",behavior:"smooth"})}catch(x){}
-    chip("phone pairing · copy the link or scan the QR");
+    chip(hash==="#away"?"away from home · Cloudflare / 443":"phone pairing · copy the link or scan the QR");
   }).catch(()=>{chip("phone pairing")});
 }
 const btnPairPhone=document.getElementById("btnPairPhone");
 if(btnPairPhone)btnPairPhone.onclick=()=>openPairPhone();
 const btnPairPhoneMore=document.getElementById("btnPairPhoneMore");
 if(btnPairPhoneMore)btnPairPhoneMore.onclick=()=>openPairPhone();
+const btnAwayHome=document.getElementById("btnAwayHome");
+if(btnAwayHome)btnAwayHome.onclick=()=>openPairPhone("#away");
+const btnInstallApp=document.getElementById("btnInstallApp");
+if(btnInstallApp)btnInstallApp.onclick=()=>{closeMoreMenu();showPwaHelp(true)};
+(function wirePwa(){
+  const standalone=window.matchMedia("(display-mode: standalone)").matches||window.navigator.standalone===true;
+  if(standalone)try{document.documentElement.classList.add("pwa-standalone")}catch(e){}
+  const secure=location.protocol==="https:"||location.hostname==="localhost"||location.hostname==="127.0.0.1";
+  try{
+    if(secure&&"serviceWorker" in navigator)navigator.serviceWorker.register("/sw.js",{scope:"/"}).catch(()=>{});
+  }catch(e){}
+  let deferred=null;
+  const banner=document.getElementById("pwaBanner");
+  const sheet=document.getElementById("pwaSheet");
+  const dismissed=(()=>{try{return localStorage.getItem("grok_remote_pwa_hide")==="1"}catch(e){return false}})();
+  function isDesk(){
+    return document.body.classList.contains("desktop")||document.body.classList.contains("electron")||/[?&]desktop=1/.test(location.search);
+  }
+  function showBanner(){
+    if(!banner||standalone||isDesk()||dismissed)return;
+    banner.hidden=false;banner.classList.add("on");
+    const t=document.getElementById("pwaBannerT");
+    if(t)t.textContent=deferred?"Install Grok Remote":(secure?"Add Grok Remote to your Home Screen":"Add to Home Screen · HTTPS (Cloudflare / 443) unlocks the full app");
+  }
+  window.showPwaHelp=function(force){
+    if(deferred&&!force){
+      deferred.prompt().catch(()=>{});
+      deferred=null;
+      if(banner){banner.hidden=true;banner.classList.remove("on")}
+      return;
+    }
+    const ios=/iphone|ipad|ipod/i.test(navigator.userAgent||"");
+    const steps=document.getElementById("pwaSheetSteps");
+    if(steps){
+      steps.innerHTML=ios
+        ?"<li>Tap the Share button in Safari.</li><li>Choose Add to Home Screen, then Add.</li><li>Away from Wi-Fi: Settings → Connection → Away from home, then scan the Internet (Cloudflare / 443) code.</li>"
+        :(secure
+          ?"<li>Open the Chrome menu (⋮).</li><li>Tap Install app or Add to Home Screen.</li><li>The icon opens Grok Remote without the browser chrome.</li>"
+          :"<li>Chrome menu → Add to Home Screen still works on this Wi-Fi link.</li><li>For a full PWA (HTTPS, works off-LAN): Settings → Connection → Away from home, save a public hostname or start a Cloudflare tunnel, then scan that code.</li>");
+    }
+    if(sheet)sheet.hidden=false;
+  };
+  window.addEventListener("beforeinstallprompt",e=>{
+    e.preventDefault();
+    deferred=e;
+    showBanner();
+  });
+  if(banner){
+    const inst=document.getElementById("btnPwaInstall");
+    const dis=document.getElementById("btnPwaDismiss");
+    if(inst)inst.onclick=()=>showPwaHelp(false);
+    if(dis)dis.onclick=()=>{
+      banner.hidden=true;banner.classList.remove("on");
+      try{localStorage.setItem("grok_remote_pwa_hide","1")}catch(e){}
+    };
+  }
+  const ok=document.getElementById("btnPwaSheetOk");
+  if(ok)ok.onclick=()=>{if(sheet)sheet.hidden=true};
+  if(sheet)sheet.addEventListener("click",e=>{if(e.target===sheet)sheet.hidden=true});
+  if(!standalone&&!isDesk()&&!dismissed){
+    const ios=/iphone|ipad|ipod/i.test(navigator.userAgent||"");
+    if(ios||!secure)showBanner();
+    else setTimeout(showBanner,1800);
+  }
+})();
 const btnStopRemote=document.getElementById("btnStopRemote");
 if(btnStopRemote)btnStopRemote.onclick=()=>{closeOrbitMenu();stopRemoteStack()};
 const btnStartRemote=document.getElementById("btnStartRemote");

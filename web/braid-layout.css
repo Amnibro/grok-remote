@@ -81,8 +81,10 @@ background:var(--panel)!important;backdrop-filter:blur(16px) saturate(1.2)!impor
 }
 html[data-layout="braid"] .more-menu{
 background:var(--panel)!important;
-background-image:none!important;width:min(300px,94vw)!important
+background-image:none!important;width:min(300px,94vw)!important;overflow:hidden!important
 }
+html[data-layout="braid"] .more-menu.on{display:flex!important;flex-direction:column!important}
+html[data-layout="braid"] .more-menu .mm-body{overflow:auto!important;flex:1;min-height:0}
 html[data-layout="braid"] .more-menu .mm-head{
 background:transparent!important;border-bottom:1px solid var(--braid-border)!important;padding:12px 12px 10px
 }
