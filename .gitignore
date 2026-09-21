@@ -31,3 +31,4 @@ web/rikku_mixamo_log.txt
 web/rikku_mixamo_*.png
 web/rig*.txt
 web/Soldier.glb
+archive/electron-desktop/*.exe

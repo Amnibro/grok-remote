@@ -307,8 +307,8 @@ html[data-layout="braid"] .nm{
 font-family:var(--font)!important;font-size:11px!important;font-weight:650!important;
 letter-spacing:.04em!important;color:var(--mut)!important;padding:0 2px 2px;text-transform:uppercase
 }
-html[data-layout="braid"] .row.msg .nm{color:var(--mut)!important;opacity:1}
-html[data-layout="braid"] .row.me .nm{color:var(--you)!important;text-align:right}
+html[data-layout="braid"] .row.msg > .nm-row .nm{display:none}
+html[data-layout="braid"] .horizon-sub{display:none}
 html[data-layout="braid"] .bub{
 max-width:min(100%,860px)!important;width:fit-content;border-radius:16px 16px 16px 5px!important;
 border:1px solid var(--braid-border)!important;background:var(--bg2)!important;box-shadow:none!important;

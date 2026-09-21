@@ -531,7 +531,7 @@ function paintTodoBadge(){
  const b=$("btnTodo");if(!b)return;
  const open=S.todos.filter(t=>t.status!=="done").length;
  const total=S.todos.length;
- const k=open?String(open)+(total>open?"/"+total:""):"board";
+ const k=open?String(open)+(total>open?"/"+total:""):"";
  b.innerHTML='<span class="mm-ico" aria-hidden="true">☑</span><span class="mm-lab">Todos</span><span class="mm-k">'+k+"</span>";
  b.classList.toggle("on",open>0);
  b.title=open?open+" open todo"+(open===1?"":"s")+(total?(" · "+total+" total"):""):"Todo board";
@@ -634,15 +634,15 @@ function injectChrome(){
     const wrap=document.createElement("div");
     wrap.id="toolsRow";
     wrap.innerHTML=
-      '<button type="button" id="btnAt" role="menuitem"><span class="mm-ico" aria-hidden="true">@</span><span class="mm-lab">Add path</span><span class="mm-k">file</span></button>'+
-      '<button type="button" id="btnTodo" role="menuitem"><span class="mm-ico" aria-hidden="true">☑</span><span class="mm-lab">Todos</span><span class="mm-k">board</span></button>'+
-      '<button type="button" id="btnTerm" role="menuitem"><span class="mm-ico" aria-hidden="true">〉</span><span class="mm-lab">Terminal</span><span class="mm-k">shell</span></button>'+
-      '<button type="button" id="btnGitDiff" role="menuitem"><span class="mm-ico" aria-hidden="true">±</span><span class="mm-lab">Git diff</span><span class="mm-k">diff</span></button>'+
-      '<button type="button" id="btnBg" role="menuitem"><span class="mm-ico" aria-hidden="true">⋯</span><span class="mm-lab">Background</span><span class="mm-k">bg</span></button>'+
-      '<button type="button" id="btnCp" role="menuitem"><span class="mm-ico" aria-hidden="true">◇</span><span class="mm-lab">Save point</span><span class="mm-k">snap</span></button>'+
-      '<button type="button" id="btnExport" role="menuitem"><span class="mm-ico" aria-hidden="true">↓</span><span class="mm-lab">Export chat</span><span class="mm-k">html</span></button>'+
-      '<button type="button" id="btnAgents" role="menuitem"><span class="mm-ico" aria-hidden="true">⌘</span><span class="mm-lab">Project MD</span><span class="mm-k">ctx</span></button>'+
-      '<button type="button" id="btnBudget" role="menuitem"><span class="mm-ico" aria-hidden="true">◎</span><span class="mm-lab">Limits</span><span class="mm-k">cost</span></button>';
+      '<button type="button" id="btnAt" role="menuitem"><span class="mm-ico" aria-hidden="true">@</span><span class="mm-lab">Add path</span></button>'+
+      '<button type="button" id="btnTodo" role="menuitem"><span class="mm-ico" aria-hidden="true">☑</span><span class="mm-lab">Todos</span><span class="mm-k"></span></button>'+
+      '<button type="button" id="btnTerm" role="menuitem"><span class="mm-ico" aria-hidden="true">〉</span><span class="mm-lab">Terminal</span></button>'+
+      '<button type="button" id="btnGitDiff" role="menuitem"><span class="mm-ico" aria-hidden="true">±</span><span class="mm-lab">Git diff</span></button>'+
+      '<button type="button" id="btnBg" role="menuitem"><span class="mm-ico" aria-hidden="true">⋯</span><span class="mm-lab">Background</span></button>'+
+      '<button type="button" id="btnCp" role="menuitem"><span class="mm-ico" aria-hidden="true">◇</span><span class="mm-lab">Save point</span></button>'+
+      '<button type="button" id="btnExport" role="menuitem"><span class="mm-ico" aria-hidden="true">↓</span><span class="mm-lab">Export chat</span></button>'+
+      '<button type="button" id="btnAgents" role="menuitem"><span class="mm-ico" aria-hidden="true">⌘</span><span class="mm-lab">Project MD</span></button>'+
+      '<button type="button" id="btnBudget" role="menuitem"><span class="mm-ico" aria-hidden="true">◎</span><span class="mm-lab">Limits</span></button>';
     if(toolsHost.id==="moreToolsHost")toolsHost.appendChild(wrap);
     else toolsHost.insertBefore(wrap,toolsHost.firstChild);
   }

@@ -81,7 +81,7 @@ def test_interject_keeps_prior_and_no_auto_cancel_pile():
     assert "echoQueuedSend(item)" in drain
     assert "function finishTurnOrKeep" in html
     assert "pendingTools" in html
-    assert "command still running" in html
+    assert 'setPhase("tools","command running")' in html
     assert 'id="workNow"' in html
     assert 'id="workKill"' in html
     assert "function paintWorkNow" in html
@@ -105,8 +105,8 @@ def test_overlay_layers_and_portals_are_consistent():
     assert "z-index:var(--z-app-chrome)!important" in html
     assert ".sheet{display:none;position:fixed;inset:0;z-index:var(--z-modal)" in html
     assert "z-index:var(--z-popover)!important" in braid
-    assert 'document.body.appendChild(sm)' in cockpit
-    assert 'requestAnimationFrame(place)' in cockpit
+    assert 'comp.appendChild(sm)' in cockpit
+    assert "requestAnimationFrame(()=>{placeSessFilterPop();requestAnimationFrame(placeSessFilterPop)})" in html
     sess=html[html.find("function placeSessFilterPop"):html.find("function syncSessFilterChrome")]
     assert "document.body.appendChild(pop)" in sess
     assert 'pop.style.zIndex="var(--z-popover)"' in sess
@@ -140,8 +140,8 @@ def test_archive_skin_supports_braid_and_legacy():
     assert 'flex-wrap: wrap !important' in skin
     assert 'data-variant="scient"' not in skin
     assert "openAppUrl(v,{sameWindowFallback:true})" in html
-    assert "window.openAppUrl" in cockpit
-    assert "window.paintFootQuiet" in cockpit
+    assert "window.openAppUrl" in html
+    assert "window.paintFootQuiet" in html
     assert 'btnSkills.style.display=on?"":"none"' in html
     assert "encodeURIComponent(cwd)" in html
     assert "encodeURIComponent(cwd||" not in html
@@ -216,13 +216,13 @@ def test_agent_bar_and_session_rail_stay_put():
     assert "placeAgentView(row)" in html
     assert "clearAgentRail()" in html
     assert ".agent-rail" in skin
-    assert "2026-09-12-text-idle" in html
+    assert "2026-09-12-quiet-copy" in html
     assert "else showPage(\"setup\",true)" not in html[html.find("const doAuto="):html.find("const forceTour=")]
     assert "const linking=connecting||!!(ws&&(ws.readyState===0||ws.readyState===1))" in html
     assert "#chatStage:not(.on){display:none!important" in html
     assert "#chatStage:not(.on){display:none!important" in braid
-    assert 'src="/static/chat-runtime.js?v=2026-09-12-text-idle"' in html
-    assert "braid-layout.css?v=1.8.28" in html
+    assert 'src="/static/chat-runtime.js?v=2026-09-12-quiet-copy"' in html
+    assert "braid-layout.css?v=1.8.29" in html
     assert "grok-archive-skin.css?v=19" in html
     assert "function stampMsgRow" in html
     assert "className=\"msg-at\"" in html
@@ -281,7 +281,12 @@ def test_agent_bar_and_session_rail_stay_put():
     assert "sess-dot" in html[html.find("function sessTitleHtml"):html.find("function sessMetaHtml")]
     assert "open-mark" not in html[html.find("function sessTitleHtml"):html.find("function sessMetaHtml")]
     assert "open-mark" not in html[html.find("function paintSessionCurrent"):html.find("function setSelectedSession")]
-    assert "2026-09-12-text-idle" in html
+    assert "2026-09-12-quiet-copy" in html
+    assert ">debug</button>" not in html
+    assert "Esc closes" not in html
+    assert 'placeholder="Search this chat' not in html
+    assert '>+ New chat</button>' not in html
+    assert "Desktop + phone share this session" not in html
     assert 'id="moreMenuStatus"' not in html
     assert "menu.style.maxHeight" in html[html.find("function placeFixedMenu"):html.find("function protectMath")]
     assert "placeFixedMenu(m,a)" in html[html.find("function showMoreLayer"):html.find("function bindMoreLayers")]
