@@ -46,7 +46,7 @@ def test_scient_and_defunct_module_chips_gone():
 def test_braid_md_and_work_dock_wired():
     html=(ROOT/"web"/"index.html").read_text(encoding="utf-8")
     assert 'src="/static/md.js' in html
-    assert 'src="/static/work-dock.js"' in html
+    assert 'src="/static/work-dock.js?v=' in html
     assert 'id="btnWork"' in html
     assert "window.mdbody_safe" in html
     assert "window.grokWork" in html
@@ -149,7 +149,7 @@ def test_archive_skin_supports_braid_and_legacy():
     assert 'fetch("/api/companion/state"' in html
     assert ':2423/motion/state' not in html
     assert 'isDemoMode()&&expectSid.startsWith("demo-")' in html
-    assert 'attachCwd&&!isDemoMode()' in html
+    assert 'fetch("/api/fs/root"' not in html
 def test_text_chat_has_no_companion_idle_badge():
     html=(ROOT/"web"/"index.html").read_text(encoding="utf-8")
     assert "if(on)compStart()" not in html
@@ -221,7 +221,7 @@ def test_agent_bar_and_session_rail_stay_put():
     assert "const linking=connecting||!!(ws&&(ws.readyState===0||ws.readyState===1))" in html
     assert "#chatStage:not(.on){display:none!important" in html
     assert "#chatStage:not(.on){display:none!important" in braid
-    assert 'src="/static/chat-runtime.js?v=2026-09-12-quiet-copy"' in html
+    assert 'src="/static/chat-runtime.js?v=2026-09-23-audit"' in html
     assert "braid-layout.css?v=1.8.29" in html
     assert "grok-archive-skin.css?v=19" in html
     assert "function stampMsgRow" in html
@@ -241,8 +241,8 @@ def test_agent_bar_and_session_rail_stay_put():
     assert ".work-line .send-spin[hidden]{display:none!important}" in html
     assert ".work-line .send-spin[hidden]{visibility:hidden;display:block!important" not in html
     assert "rows.slice(0,-1).forEach(r=>r.classList.add(\"dismissed\"))" in html
-    assert "function feedHasUserText" in html
-    assert "if(!replaying&&display&&feedHasUserText(display)&&!media)" in html
+    assert "function feedHasUserText" not in html
+    assert "function consumeOwnEcho" in html
     assert "/returned nothing/i.test(String(job.detail||\"\"))" in html
     assert ".work-kill,.work-kill[hidden]{display:none!important" in html
     assert "kill.hidden=true" in html
@@ -258,7 +258,7 @@ def test_agent_bar_and_session_rail_stay_put():
     assert "if(connecting||hubReinitBusy)return" in html
     assert "chip._hitchAt" in html
     assert "function settleRailTools" in html
-    assert "function dropAckedQueue" in html
+    assert "function dropAckedQueue" not in html
     assert "function bindPathOpens" in html
     assert "function openExternalTarget" in html
     assert 'fetch("/api/open"' in html
@@ -294,7 +294,9 @@ def test_agent_bar_and_session_rail_stay_put():
     assert 'fetch("/api/session/new"' in html
     assert "await waitAgentAttach(sendSid,20000)" in html
     assert "queued · agent not on this chat yet" in html
-    assert "function requeueLastDispatch" in html
+    assert "function requeueLastDispatch" not in html
+    assert "function offerRetry" in html
+    assert "_grPromptId" in html
     assert "function persistMsgQueue" in html
     assert "session switched" in html[html.find("async function sessionNew"):html.find("async function newSession")]
     assert "hideHorizon" in html[html.find("async function newSession"):html.find("let cmdSource")]

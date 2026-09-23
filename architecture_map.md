@@ -1,5 +1,14 @@
 # Grok Remote — architecture map
 
+**Updated:** 2026-09-23 · v1.10.0 audit contract
+- Session meta (titles, archive) is hub-owned: `plugin-data/grok-remote/session_meta.json`. Never write the agent's `summary.json`.
+- Ids: resolve at the edge (`resolve_sid`), compare exactly. Missing sessionId filled only when one session is in flight.
+- Idempotency: `_grPromptId` on prompts, `_grReq` on session/new; the hub strips and dedupes both. The client never auto-resends.
+- `/config.json` `cwd` = launch cwd (new-chat default), `fsRoot` = file browser only.
+- Broadcasts: `_x.ai/sessions/changed {sessionId,reason}`, heartbeat `busy:[sids]`, `_x.ai/remote/rpc_done {id,ok,detached,sessionId,cid,method,promptId}`.
+- WS close codes: 4401 auth, 4403 origin/host, 4409 cid conflict (hello/ping carry `nonce`).
+- `session/load` replay is routed to the requesting client only and never feeds the work board.
+
 **Updated:** 2026-08-24 · att store + stuck work
 - Hub SQLite `atts` + files under `plugin-data/grok-remote/att/{sid}/`. POST `/api/att`, GET `/api/att?sessionId=`, GET `/api/att/{id}`.
 - `session/prompt` ingest saves image/resource blobs so refresh paints `/api/att/{id}` instead of dead blob URLs.

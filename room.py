@@ -4,6 +4,7 @@ Deliberately not a transcript. One line each, 240 characters, newest last. Agent
 one-line curl (loopback needs no key) or `python room.py say "..."`. The UI polls the feed.
 """
 import os,sys,json,time,argparse
+from contextlib import contextmanager
 from pathlib import Path
 LIMIT=240
 KEEP=2000
@@ -11,6 +12,35 @@ def data_dir():
  base=os.environ.get("GROK_PLUGIN_DATA") or str(Path.home()/".grok"/"plugin-data"/"grok-remote")
  p=Path(base);p.mkdir(parents=True,exist_ok=True);return p
 def store_path():return data_dir()/"room.jsonl"
+def _seq_path():return data_dir()/"room.seq"
+@contextmanager
+def _locked():
+ f=open(data_dir()/"room.lock","a+")
+ try:
+  if os.name=="nt":
+   import msvcrt
+   while True:
+    try:
+     f.seek(0);msvcrt.locking(f.fileno(),msvcrt.LK_LOCK,1);break
+    except OSError:time.sleep(0.05)
+  else:
+   import fcntl;fcntl.flock(f.fileno(),fcntl.LOCK_EX)
+  yield
+ finally:
+  try:
+   if os.name=="nt":
+    import msvcrt;f.seek(0);msvcrt.locking(f.fileno(),msvcrt.LK_UNLCK,1)
+   else:
+    import fcntl;fcntl.flock(f.fileno(),fcntl.LOCK_UN)
+  except Exception:pass
+  f.close()
+def _read_seq():
+ try:return int(_seq_path().read_text(encoding="ascii").strip() or 0)
+ except Exception:return 0
+def _write_seq(n):
+ tmp=_seq_path().with_suffix(".seq.tmp")
+ tmp.write_text(str(int(n)),encoding="ascii")
+ os.replace(tmp,_seq_path())
 def _read_all():
  p=store_path()
  if not p.is_file():return []
@@ -27,7 +57,7 @@ def _read_all():
  except Exception:return []
  return out
 def _next_id(msgs):
- n=0
+ n=_read_seq()
  for m in msgs:
   try:n=max(n,int(m.get("id") or 0))
   except Exception:pass
@@ -39,16 +69,18 @@ def say(who,text,kind="say"):
  t=clean(text)
  if not t:return {"ok":False,"error":"empty message"}
  w=" ".join(str(who or "agent").split())[:32] or "agent"
- msgs=_read_all()
- m={"id":_next_id(msgs),"ts":time.time(),"who":w,"text":t,"kind":str(kind or "say")[:12]}
- if len(msgs)>=KEEP:
-  msgs=msgs[-(KEEP//2):]
-  tmp=store_path().with_suffix(".tmp")
-  with tmp.open("w",encoding="utf-8",newline="\n") as f:
-   for old in msgs:f.write(json.dumps(old,ensure_ascii=False)+"\n")
-  tmp.replace(store_path())
- with store_path().open("a",encoding="utf-8",newline="\n") as f:
-  f.write(json.dumps(m,ensure_ascii=False)+"\n")
+ with _locked():
+  msgs=_read_all()
+  m={"id":_next_id(msgs),"ts":time.time(),"who":w,"text":t,"kind":str(kind or "say")[:12]}
+  if len(msgs)>=KEEP:
+   msgs=msgs[-(KEEP//2):]
+   tmp=store_path().with_suffix(".tmp")
+   with tmp.open("w",encoding="utf-8",newline="\n") as f:
+    for old in msgs:f.write(json.dumps(old,ensure_ascii=False)+"\n")
+   tmp.replace(store_path())
+  with store_path().open("a",encoding="utf-8",newline="\n") as f:
+   f.write(json.dumps(m,ensure_ascii=False)+"\n")
+  _write_seq(m["id"])
  return {"ok":True,"message":m}
 def feed(since=0,limit=200):
  try:since=int(since or 0)
@@ -71,9 +103,12 @@ def members(window=900):
  return sorted(seen.values(),key=lambda r:-r["last"])
 def clear():
  p=store_path()
- try:
-  if p.is_file():p.unlink()
- except Exception:pass
+ with _locked():
+  msgs=_read_all()
+  if msgs:_write_seq(_next_id(msgs)-1)
+  try:
+   if p.is_file():p.unlink()
+  except Exception:pass
  return {"ok":True}
 def _who_default():
  return (os.environ.get("GROK_ROOM_WHO") or os.environ.get("GROK_AGENT_NAME")

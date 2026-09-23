@@ -32,6 +32,42 @@ def _convertbits(data,frombits,tobits,pad=True):
    ret.append((acc>>bits)&maxv)
  if pad and bits:ret.append((acc<<(tobits-bits))&maxv)
  return ret
+def _bech32_decode(bech):
+ b=str(bech or "").strip().lower()
+ pos=b.rfind("1")
+ if pos<1 or pos+7>len(b):raise ValueError("bad bech32")
+ hrp=b[:pos]
+ try:data=[_CHARSET.index(c) for c in b[pos+1:]]
+ except ValueError:raise ValueError("bad bech32 char")
+ if _bech32_polymod(_bech32_hrp_expand(hrp)+data)!=1:raise ValueError("bad bech32 checksum")
+ return hrp,data[:-6]
+def npub_decode(npub):
+ s=str(npub or "").strip().lower()
+ if len(s)==64 and all(c in "0123456789abcdef" for c in s):return s
+ hrp,data=_bech32_decode(s)
+ if hrp!="npub":raise ValueError("not an npub")
+ raw=bytes(_convertbits(data,5,8,pad=False))
+ if len(raw)!=32:raise ValueError("npub must hold 32 bytes")
+ return raw.hex()
+def _plugin_cfg():
+ try:
+  d=json.loads((_data_dir()/"config.json").read_text(encoding="utf-8",errors="replace"))
+  return d if isinstance(d,dict) else {}
+ except Exception:return {}
+def allowed_senders():
+ raw=[]
+ env=str(os.environ.get("GROK_REMOTE_NOSTR_ALLOW") or "")
+ raw+=[x for x in env.replace(";",",").split(",")]
+ cfg=_plugin_cfg().get("nostr_allow")
+ if isinstance(cfg,str):raw+=cfg.replace(";",",").split(",")
+ elif isinstance(cfg,list):raw+=[str(x) for x in cfg]
+ out=set()
+ for x in raw:
+  x=str(x or "").strip()
+  if not x:continue
+  try:out.add(npub_decode(x))
+  except Exception:pass
+ return out
 def npub_encode(pubkey_hex):
  raw=bytes.fromhex(str(pubkey_hex).strip())
  if len(raw)!=32:raise ValueError("pubkey must be 32 bytes")
@@ -55,7 +91,10 @@ def load_identity():
   except Exception:pass
  priv,pub=_priv_pub()
  d={"priv":priv,"pub":pub,"npub":npub_encode(pub),"created":int(time.time())}
- path.write_text(json.dumps(d,indent=2),encoding="utf-8")
+ tmp=path.with_name(path.name+".tmp")
+ fd=os.open(str(tmp),os.O_WRONLY|os.O_CREAT|os.O_TRUNC,0o600)
+ with os.fdopen(fd,"w",encoding="utf-8") as f:f.write(json.dumps(d,indent=2))
+ os.replace(tmp,path)
  try:os.chmod(path,0o600)
  except Exception:pass
  return d
@@ -63,9 +102,11 @@ def default_relays():
  env=str(os.environ.get("GROK_REMOTE_NOSTR_RELAYS") or "").strip()
  if env:return [x.strip() for x in env.split(",") if x.strip().startswith("wss://")]
  return ["wss://relay.damus.io","wss://nos.lol","wss://relay.primal.net"]
-def nostr_enabled():
+def nostr_switch():
  v=str(os.environ.get("GROK_REMOTE_NOSTR") or "1").strip().lower()
  return v not in ("0","false","off","no")
+def nostr_enabled():
+ return nostr_switch() and bool(allowed_senders())
 def _shared_key(priv_hex,pub_hex):
  from cryptography.hazmat.primitives.asymmetric import ec
  from cryptography.hazmat.primitives import serialization
@@ -111,13 +152,14 @@ def nip04_decrypt(priv_hex,pub_hex,content):
  return (unpad.update(padded)+unpad.finalize()).decode("utf-8")
 def status():
  ident=load_identity()
- return {"ok":True,"enabled":nostr_enabled(),"npub":ident.get("npub") or "","pub":ident.get("pub") or "","relays":default_relays()}
+ return {"ok":True,"enabled":nostr_enabled(),"allowed":len(allowed_senders()),"npub":ident.get("npub") or "","pub":ident.get("pub") or "","relays":default_relays()}
 _seen=set()
 _inbox={"task":None,"last_err":"","running":False}
 def inbox_status():
  st=status()
  st["running"]=bool(_inbox.get("running"))
  st["error"]=_inbox.get("last_err") or ""
+ st["dropped"]=int(_inbox.get("dropped") or 0)
  return st
 async def _relay_loop(url,ident,on_text):
  from aiohttp import ClientSession,ClientTimeout,WSMsgType
@@ -137,7 +179,12 @@ async def _relay_loop(url,ident,on_text):
      eid=str(ev.get("id") or "")
      if not eid or eid in _seen:continue
      if int(ev.get("kind") or 0)!=4:continue
-     if str(ev.get("pubkey") or "")==ident["pub"]:continue
+     sender=str(ev.get("pubkey") or "").lower()
+     if sender==ident["pub"]:continue
+     if sender not in allowed_senders():
+      _seen.add(eid)
+      _inbox["dropped"]=int(_inbox.get("dropped") or 0)+1
+      continue
      _seen.add(eid)
      if len(_seen)>400:
       for x in list(_seen)[:200]:_seen.discard(x)

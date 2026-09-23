@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 CHROME="${CHROME:-/c/Users/antho/.cache/puppeteer/chrome/win64-131.0.6778.204/chrome-win64/chrome.exe}"
-KEY="${XR_KEY:-***REMOVED***}"
+KEY="${XR_KEY:-$(cat "$(dirname "$0")/../.ui-secret" 2>/dev/null)}"
 HUB="${HUB:-http://127.0.0.1:2421}"
 MS="${MS:-http://127.0.0.1:2423}"
 PLUG="${PLUG:-/c/Users/antho/.grok/plugins/grok-remote}"

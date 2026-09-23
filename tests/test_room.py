@@ -48,7 +48,7 @@ class RoomStore(unittest.TestCase):
     def test_clear_empties_the_room(s):
         s.room.say("A","x");s.room.clear()
         s.assertEqual(s.room.feed(),[])
-        s.assertEqual(s.room.say("A","y")["message"]["id"],1)
+        s.assertEqual(s.room.say("A","y")["message"]["id"],2,"ids are monotonic across clear() so a poller holding since=N never misses new lines")
     def test_survives_a_corrupt_line(s):
         s.room.say("A","good")
         with s.room.store_path().open("a",encoding="utf-8") as f:f.write("{not json\n\n")

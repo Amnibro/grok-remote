@@ -15,15 +15,9 @@ function jobLive(j){
   if((j.asks||[]).some(a=>a&&!a.acked))return true;
   return (j.tools||[]).some(t=>t&&!TERM.test(str(t.status)));
 }
-/* Same contract as Aug 1 braid: prefix-tolerant ids (8+ chars, hyphen boundary).
-   Exact-only matching dropped live turns when ACP/hub sent a short or longer id. */
 function idsMatch(a,b){
-  const x=str(a),y=str(b);
-  if(!x||!y)return false;
-  if(x===y)return true;
-  const short=x.length<=y.length?x:y,long=x.length<=y.length?y:x;
-  if(short.length>=8&&long.startsWith(short)&&(long.length===short.length||long[short.length]==="-"))return true;
-  return false;
+  const x=str(a).trim(),y=str(b).trim();
+  return !!x&&x===y;
 }
 function makeRoom(sid){
   return {
@@ -57,10 +51,6 @@ function createChatRuntime(opts){
     if(!id)return makeRoom("");
     let r=rooms.get(id);
     if(r)return r;
-    if(state.openSid&&idsMatch(id,state.openSid)){
-      r=rooms.get(state.openSid);
-      if(r)return r;
-    }
     r=makeRoom(id);rooms.set(id,r);
     return r;
   }

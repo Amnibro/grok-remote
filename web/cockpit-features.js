@@ -379,17 +379,25 @@ function setupReconnect(){
 function pinSession(s){
  if(!s||!s.sessionId)return;
  if(S.pinned.some(p=>p.sessionId===s.sessionId))return;
- S.pinned.unshift({sessionId:s.sessionId,title:s.title||s.sessionId.slice(0,8),cwd:s.cwd||""});
+ S.pinned.unshift({sessionId:s.sessionId,title:"",cwd:s.cwd||""});
  savePins();paintPins();
 }
+function pinTitle(p){
+ try{if(typeof window.grokSessionTitle==="function")return window.grokSessionTitle(p.sessionId)}catch(e){}
+ return p.title||("Chat · "+String(p.sessionId||"").slice(0,8));
+}
+let pinSig="";
 function paintPins(){
  const el=$("pinBar");if(!el)return;
+ const sig=JSON.stringify(S.pinned.map(p=>[p.sessionId,pinTitle(p)]));
+ if(sig===pinSig&&el.childElementCount===S.pinned.length)return;
+ pinSig=sig;
  el.innerHTML="";
  S.pinned.forEach((p,i)=>{
  const b=document.createElement("button");b.type="button";b.className="pin-chip";
- b.textContent=p.title||p.sessionId.slice(0,8);
+ b.textContent=pinTitle(p);
  b.onclick=async()=>{
- const s=(window.sessions||[]).find(x=>x.sessionId===p.sessionId)||p;
+ const s=(typeof window.grokFindSession==="function"&&window.grokFindSession(p.sessionId))||p;
  if(typeof window.openSession==="function")await window.openSession(s);
  };
  b.oncontextmenu=e=>{e.preventDefault();S.pinned.splice(i,1);savePins();paintPins()};

@@ -31,6 +31,7 @@ fn repo_root() -> PathBuf {
         .join("..")
         .join("..")
 }
+#[cfg(windows)]
 fn ensure_script() -> Option<PathBuf> {
     [
         repo_root().join("scripts").join("ensure-running.ps1"),
@@ -84,10 +85,22 @@ fn ui_secret() -> String {
     }
     String::new()
 }
+fn expected_ui_marker() -> String {
+    let txt = std::fs::read_to_string(repo_root().join("web").join("index.html")).unwrap_or_default();
+    if let Some(i) = txt.find(r#"name="grok-remote-ui-build""#) {
+        if let Some(start) = txt[..i].rfind('<') {
+            if let Some(end) = txt[i..].find('>') {
+                return txt[start..i + end + 1].to_string();
+            }
+        }
+    }
+    UI_BUILD_MARKER.to_string()
+}
 fn served_ui_is_current(ui_port: u16) -> bool {
     if !repo_root().join("web").join("index.html").is_file() {
         return true;
     }
+    let marker = expected_ui_marker();
     let Ok(mut stream) = TcpStream::connect(("127.0.0.1", ui_port)) else {
         return false;
     };
@@ -105,8 +118,51 @@ fn served_ui_is_current(ui_port: u16) -> bool {
         return false;
     }
     let mut response = String::new();
-    stream.read_to_string(&mut response).is_ok() && response.contains(UI_BUILD_MARKER)
+    stream.read_to_string(&mut response).is_ok() && response.contains(&marker)
 }
+#[cfg(not(windows))]
+const HUB_UNIT: &str = "amni-grok-remote.service";
+#[cfg(not(windows))]
+fn systemctl_user(action: &str) -> bool {
+    Command::new("systemctl")
+        .args(["--user", action, HUB_UNIT])
+        .status()
+        .map(|s| s.success())
+        .unwrap_or(false)
+}
+#[cfg(not(windows))]
+fn restart_repo_ui() -> bool {
+    systemctl_user("restart")
+}
+#[cfg(not(windows))]
+fn spawn_stack() {
+    if systemctl_user("start") {
+        return;
+    }
+    let script = repo_root().join("start.sh");
+    if !script.is_file() {
+        return;
+    }
+    let cwd = std::env::var("GROK_REMOTE_CWD")
+        .unwrap_or_else(|_| home().join("ai").to_string_lossy().into_owned());
+    let log = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(repo_root().join("logs").join("desktop-hub.log"));
+    let mut cmd = Command::new("sh");
+    cmd.arg(&script)
+        .args(["--port", "2421", "--agent-port", "2419", "--cwd", &cwd])
+        .current_dir(repo_root())
+        .env("GROK_PROJECT_DIR", &cwd)
+        .stdin(std::process::Stdio::null());
+    if let Ok(f) = log {
+        if let Ok(f2) = f.try_clone() {
+            cmd.stdout(f).stderr(f2);
+        }
+    }
+    let _ = cmd.spawn();
+}
+#[cfg(windows)]
 fn restart_repo_ui() -> bool {
     let script = repo_root().join("scripts").join("restart-ui-only.ps1");
     if !script.is_file() {
@@ -127,6 +183,7 @@ fn restart_repo_ui() -> bool {
     }
     cmd.status().map(|status| status.success()).unwrap_or(false)
 }
+#[cfg(windows)]
 fn spawn_stack() {
     let Some(ps1) = ensure_script() else {
         return;

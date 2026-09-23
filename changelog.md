@@ -1,3 +1,42 @@
+## 2026-09-23 v1.10.0 audit: security, lock-ups, duplicate sends, mixed chats, new chats, names, filters, Linux
+A five-way audit found ~90 defects; this release fixes all of them. Tests: `tests/test_audit_server.py` (33, all pass; 29 fail on the old server), `tests/test_client_audit.mjs` (75/75; the old page passes 14/65), plus the existing suites.
+### Security
+- `?demo=1` no longer skips auth: it only unlocks GETs of the static page. `/ws` and `/api/*` always need the key.
+- Loopback is trusted only when Host and Origin are ours, so another website can't open the agent socket (DNS-rebinding guard). Cross-origin WS gets close 4403, a missing key 4401; the client shows a re-pair banner instead of reconnecting forever.
+- The 401 page no longer prints the key. The nostr inbox is off unless senders are allow-listed (`GROK_REMOTE_NOSTR_ALLOW`), and it uses its own session.
+- The pairing key that was hardcoded in `tests/*.sh` is purged from git history and rotated; the tests read `.ui-secret`.
+### Lock-ups and restarts
+- A timed-out RPC no longer deadlocks the hub (`close()` vs `_pump` both waiting on `_lock`). Nothing holds the lock across a network wait.
+- A "hung" agent is probed before anything is killed; a slow `session/new` or sessions list no longer restarts the agent and ends every running turn.
+- Prompts get a liveness check (10 min silent + failed probe) instead of spinning forever.
+- A hub or agent restart clears stale work-board jobs, so chats don't show busy forever. Turn completion pushes a work update.
+### Duplicate sends (the agent runs --always-approve)
+- The client never auto-resends. Errors show the error and a Retry button; the 120 s watchdog only reports.
+- Every prompt carries `_grPromptId`; the hub never forwards the same id twice. `session/new` carries `_grReq` and is deduped across WS and HTTP.
+- Completion notices carry `cid`, `id` and `sessionId`; another device's completion no longer ends your turn.
+### Mixed chats
+- Session ids are resolved once at the hub edge and compared exactly everywhere (the 8-char prefix is a UUIDv7 timestamp).
+- A missing sessionId is filled only when exactly one session is in flight; `_last_sid` is gone.
+- `session/load` replay goes only to the client that asked; other devices' feeds no longer get the whole transcript.
+### New chats, names, filters
+- The default folder is the hub's launch `--cwd`; opening a chat no longer moves it (`POST /api/fs/root` only moves the file browser).
+- New chats appear immediately on every device (`pending:true` rows, `_x.ai/sessions/changed` broadcasts).
+- Titles and archive live in `plugin-data/grok-remote/session_meta.json` (atomic, migrated once). The hub never writes the agent's `summary.json`, so renames stick and every device agrees. Per-device title/archive copies are migrated and deleted.
+- Filters: every folder's chats are reachable (All + search + a fold for other folders); only `kind:"auto"` sessions are hidden, no title guessing; counts count visible rows; list limit 500.
+### History and queue
+- Offsets stop at the last complete line (no lost events mid-write); pages are contiguous so scroll-up reaches every row; catch-up pages until caught up.
+- Echo dedupe is by event id, not loose text matching. Queue is per chat, removals persist, drafts survive a killed page.
+### Reconnect
+- Waking or going online probes the socket and reconnects a dead one; phones stay in the chat on reconnect; duplicated tabs get a fresh cid (4409) instead of kicking each other.
+- Heartbeats carry the busy session list so a stuck spinner fixes itself.
+### Linux
+- Process handling uses `/proc/net/tcp` + process groups instead of `netstat`/`taskkill`: boot is ~0.2 s instead of 18 s, no duplicate agent.
+- Tauri shell: `systemctl --user start|restart amni-grok-remote.service` (fallback `start.sh`); the UI build marker is read at runtime.
+- systemd unit: `RestartPreventExitStatus=97`, `KillMode=process`.
+- Braid is looked up on :12100 (`BRAID_URL`).
+### Tests
+- `tests/conftest.py` keeps every test temp dir in one folder and removes it (tests had been leaving hundreds of dirs in RAM-backed /tmp).
+
 ## 2026-09-06 IDLE_DWELL is 271s so 4-271s wakes hop without an overlay
 - Dwell is 271s so 4-271s hop/rephase and 271-536s still fire life.
 ## 2026-09-06 idle wakes 4-536s so life still has room after 270s dwell

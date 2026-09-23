@@ -71,13 +71,17 @@ def public_entry(raw,port,key):
   url="%s/%s"%(p["origin"],q)
   return {"ip":p["host"],"name":"Internet","note":"HTTPS · Cloudflare or open 443. Phone asks for the Away PIN on this page — the link does not carry the pairing key.","kind":"pub","rank":8,"url":url}
  return {"ip":p["host"],"name":"Internet","note":"Needs port %d forwarded on your router"%p["port"],"kind":"wan","rank":3,"url":url_for(p["host"],p["port"],key)}
+_SEGNO={"tried":False,"ok":False}
 def ensure_segno():
  try:
   import segno;return True
  except ImportError:pass
+ if _SEGNO["tried"]:return _SEGNO["ok"]
+ _SEGNO["tried"]=True
+ if str(__import__("os").environ.get("GROK_REMOTE_NO_PIP") or "")=="1":return False
  try:
-  subprocess.run([sys.executable,"-m","pip","install","-q","segno"],timeout=120,check=False)
-  import importlib;importlib.invalidate_caches();import segno;return True
+  subprocess.run([sys.executable,"-m","pip","install","-q","segno"],timeout=60,check=False,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+  import importlib;importlib.invalidate_caches();import segno;_SEGNO["ok"]=True;return True
  except Exception:return False
 def qr_svg(url,scale=8):
  try:
@@ -179,7 +183,7 @@ def page(addrs,cwd="",have_qr=True,port=2421,net=None,pin="",npub=""):
  pin_html=("<p class=st>Away PIN (phone asks once; the Internet link does not contain the pairing key): <code id=awayPin>%s</code></p>"%_esc(pin)) if pin else ""
  npub_html=("<div class=steps id=nostr><h2>Nostr text inbox</h2><ol>"
   "<li>Send a NIP-04 encrypted DM to this npub. Relays see ciphertext, not the prompt.</li>"
-  "<li>It lands in the active Grok chat on this PC. npub is not shown on the public HTTPS page.</li>"
+  "<li>Only senders on the allowlist are accepted. It lands in its own <b>Nostr inbox</b> chat on this PC. npub is not shown on the public HTTPS page.</li>"
   "</ol><div class=u id=nostrNpub>%s</div><button data-u=\"%s\">Copy npub</button></div>"%(_esc(npub),_esc(npub))) if npub else ""
  return ("<!doctype html><html><head><meta charset=utf-8><meta name=viewport content=\"width=device-width,initial-scale=1\">"
   "<title>Pair your phone - Grok Remote</title><style>%s</style></head><body><div class=wrap>"

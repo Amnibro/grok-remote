@@ -11,22 +11,25 @@ assert.equal(chat.state.openSid, "sess-aaaa-1111");
 assert.equal(chat.room("sess-aaaa-1111").attach, "loading");
 assert.equal(chat.belongs("sess-aaaa-1111"), true);
 assert.equal(chat.belongs("sess-bbbb-2222"), false);
-assert.equal(chat.belongs("sess-aaaa"), true, "8+ prefix with hyphen boundary");
+assert.equal(chat.belongs("sess-aaaa"), false, "C4: no prefix matching, the hub sends full ids");
 assert.equal(chat.belongs("sess-aaaX"), false, "no match without hyphen boundary");
+assert.equal(chat.belongs(" sess-aaaa-1111 "), true, "whitespace is not identity");
 assert.equal(chat.accept("sess-aaaa-1111", { history: true }), true);
 assert.equal(chat.accept("sess-aaaa-1111", { replay: true }), true, "replay is caller-gated like Aug 1");
 assert.equal(chat.accept("sess-aaaa-1111", { switching: true }), true, "switching is caller-gated like Aug 1");
 assert.equal(chat.accept("sess-bbbb-2222", {}), false);
 assert.equal(chat.accept("", { history: true }), true);
 assert.equal(chat.accept("", {}), false);
-assert.equal(chat.idsMatch("sess-aaaa-1111","sess-aaaa"), true);
+assert.equal(chat.idsMatch("sess-aaaa-1111","sess-aaaa"), false, "strict ids (C4)");
+assert.equal(chat.idsMatch("sess-aaaa-1111","sess-aaaa-1111"), true);
+assert.equal(chat.idsMatch("",""), false);
 
 chat.warming("sess-aaaa-1111");
 assert.equal(chat.room("sess-aaaa-1111").attach, "warming");
 chat.ready("sess-aaaa-1111");
 assert.equal(chat.room("sess-aaaa-1111").attach, "ready");
 assert.equal(chat.accept("sess-aaaa-1111", {}), true);
-assert.equal(chat.room("sess-aaaa").sid, "sess-aaaa-1111", "prefix looks up the open room");
+assert.notEqual(chat.room("sess-aaaa"), chat.room("sess-aaaa-1111"), "a prefix is a different room (C4)");
 
 const tools = chat.noteTool("sess-aaaa-1111", "t1", "in_progress");
 assert.equal(tools.has("t1"), true);
@@ -38,14 +41,13 @@ assert.equal(chat.room("sess-bbbb-2222").pendingTools.has("t2"), true);
 
 chat.setJobs([
   { sid: "sess-aaaa-1111", running: 1, phase: "responding", title: "this chat" },
-  { sid: "sess-aaaa", running: 1, phase: "tools", title: "same via prefix" },
+  { sid: "sess-aaaa", running: 1, phase: "tools", title: "a different (short) id is another chat" },
   { sid: "sess-bbbb-2222", running: 1, phase: "tools", title: "other", last_user: "do work" },
   { sid: "sess-cccc-3333", running: 0, tools: [{ status: "completed" }] },
   { sid: "sess-dddd-4444", running: 0, phase: "stalled", detail: "agent accepted the prompt and returned nothing" }
 ]);
 const extra = chat.extraJobs();
-assert.equal(extra.length, 1);
-assert.equal(extra[0].sid, "sess-bbbb-2222");
+assert.deepEqual(extra.map(j => j.sid), ["sess-aaaa", "sess-bbbb-2222"], "strict: the prefix job is not this chat");
 assert.equal(chat.jobLive({ running: 0, phase: "stalled" }), false);
 assert.equal(runtimeSrc.includes('st+" · "+title'), false);
 assert.equal(runtimeSrc.includes("agent-home-act"), true);

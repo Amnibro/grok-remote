@@ -27,18 +27,17 @@ try{
   ok("a prompt watchdog exists",has,
      "session/prompt is registered in `pending` with no timeout · nothing can ever clear the spinner");
   if(has){
-    /* Silent agent: watchdog must reject the pending prompt and clear busy. */
     const silent=await p.evaluate(async ()=>{
       window.__promptStallMs=1200;
       const id=98765;let rejected=null;
-      window.pending.set(id,{kind:"prompt",sessionId:"x",turnToken:0,resolve:()=>{},reject:e=>{rejected=String(e.message||e);window.setBusy(false)},onDrop:()=>{}});
+      window.pending.set(id,{kind:"prompt",sessionId:"x",turnToken:0,resolve:()=>{},reject:e=>{rejected=String(e.message||e)},onDrop:()=>{}});
       window.setBusy(true,"x");
       window.startPromptWatch(id);
       await new Promise(r=>setTimeout(r,3000));
-      return {rejected,busy:!!window.busy,stillPending:window.pending.has(id)};
+      const still=window.pending.has(id);window.stopPromptWatch();window.pending.delete(id);
+      return {rejected,stillPending:still,q:(window.msgQueue||[]).length};
     });
-    ok("a silent agent stops the spinner",silent.rejected!==null&&silent.busy===false&&!silent.stillPending,JSON.stringify(silent));
-    ok("the failure says something useful",/no reply from the agent/i.test(silent.rejected||""),String(silent.rejected));
+    ok("a silent agent never rejects / requeues the prompt",silent.rejected===null&&silent.stillPending&&silent.q===0,JSON.stringify(silent));
 
     /* A long turn that is still streaming keeps lastLiveAt fresh and must NOT be killed. */
     const streaming=await p.evaluate(async ()=>{

@@ -61,12 +61,15 @@ class HistoryMessagePriority(unittest.TestCase):
         got_kinds = kinds(got)
         got_text = "\n".join(texts(got))
 
-        self.assertLessEqual(len(got), 50)
-        self.assertIn("user_message_chunk", got_kinds)
+        # S8: pages are contiguous. A tool flood stretches the page back to the prompt that explains it
+        # (bounded by max(4*limit,400)) instead of silently dropping the aux rows in between.
+        self.assertLessEqual(len(got), 400)
+        self.assertEqual(got_kinds[0], "user_message_chunk")
         self.assertIn("agent_message_chunk", got_kinds)
         self.assertIn("latest user prompt", got_text)
         self.assertIn("answer-14", got_text)
-        self.assertFalse(meta["has_more"])
+        self.assertEqual(got_kinds.count("tool_call"), 35, "no tool row between the prompt and the answer may be dropped")
+        self.assertTrue(meta["has_more"], "older turns exist before the cursor")
 
     def test_raw_event_count_does_not_stop_scan_before_prompt(self):
         rows = []
@@ -118,7 +121,8 @@ class HistoryMessagePriority(unittest.TestCase):
         self.assertIn("live user", got_text)
         self.assertIn("live answer", got_text)
         self.assertTrue(meta["live"])
-        self.assertLessEqual(len(got), 20)
+        self.assertEqual(len(got), 252, "a contiguous tail: every tool row between prompt and answer")
+        self.assertEqual(meta["older_before"], 0)
 
     def test_live_cursor_past_eof_does_not_dump_tail(self):
         rows = [event("user_message_chunk", "hours ago")]

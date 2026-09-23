@@ -21,6 +21,7 @@ def _b64(raw):
  except Exception:return b""
 STALL_SECS=240.0
 STALL_QUIET=5.0
+QUIET_SECS=1800.0
 class WorkBoard:
  def __init__(self,path=None):
   self.path=path or db_path()
@@ -42,13 +43,29 @@ class WorkBoard:
 CREATE TABLE IF NOT EXISTS jobs(sid TEXT PRIMARY KEY,title TEXT,cwd TEXT,phase TEXT,detail TEXT,last_user TEXT,last_user_at REAL,queue TEXT,running INTEGER NOT NULL DEFAULT 0,updated REAL NOT NULL);
 CREATE TABLE IF NOT EXISTS tools(sid TEXT NOT NULL,tool_id TEXT NOT NULL,title TEXT,status TEXT,cmd TEXT,updated REAL NOT NULL,PRIMARY KEY(sid,tool_id));
 CREATE TABLE IF NOT EXISTS asks(id INTEGER PRIMARY KEY AUTOINCREMENT,sid TEXT NOT NULL,text TEXT NOT NULL,at REAL NOT NULL,acked INTEGER NOT NULL DEFAULT 0);
-CREATE TABLE IF NOT EXISTS atts(id TEXT PRIMARY KEY,sid TEXT NOT NULL,name TEXT,mime TEXT,path TEXT,sha TEXT,text_key TEXT,at REAL NOT NULL);
+CREATE TABLE IF NOT EXISTS atts(id TEXT NOT NULL,sid TEXT NOT NULL,name TEXT,mime TEXT,path TEXT,sha TEXT,text_key TEXT,at REAL NOT NULL,PRIMARY KEY(sid,id));
 CREATE INDEX IF NOT EXISTS ix_asks_sid ON asks(sid,at);
 CREATE INDEX IF NOT EXISTS ix_jobs_run ON jobs(running,updated);
+""")
+    self._migrate_atts(c)
+    c.executescript("""
 CREATE INDEX IF NOT EXISTS ix_atts_sid ON atts(sid,at);
+CREATE INDEX IF NOT EXISTS ix_atts_id ON atts(id);
 CREATE UNIQUE INDEX IF NOT EXISTS ix_atts_sha ON atts(sid,sha);
 """)
    finally:c.close()
+ def _migrate_atts(self,c):
+  pk={r[1] for r in c.execute("PRAGMA table_info(atts)").fetchall() if r[5]}
+  if pk=={"sid","id"}:return
+  c.execute("BEGIN IMMEDIATE")
+  try:
+   c.execute("CREATE TABLE atts_v2(id TEXT NOT NULL,sid TEXT NOT NULL,name TEXT,mime TEXT,path TEXT,sha TEXT,text_key TEXT,at REAL NOT NULL,PRIMARY KEY(sid,id))")
+   c.execute("INSERT OR IGNORE INTO atts_v2(id,sid,name,mime,path,sha,text_key,at) SELECT id,sid,name,mime,path,sha,text_key,at FROM atts")
+   c.execute("DROP TABLE atts")
+   c.execute("ALTER TABLE atts_v2 RENAME TO atts")
+   c.execute("COMMIT")
+  except Exception:
+   c.execute("ROLLBACK");raise
  def _job(self,c,sid):
   r=c.execute("SELECT * FROM jobs WHERE sid=?",(sid,)).fetchone()
   if r:return dict(r)
@@ -139,7 +156,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS ix_atts_sha ON atts(sid,sha);
      c.execute("UPDATE jobs SET queue=?,updated=? WHERE sid=?",("",now,sid))
      if not self._open_n(c,sid):
       ph=str((c.execute("SELECT phase FROM jobs WHERE sid=?",(sid,)).fetchone() or ["idle"])[0] or "")
-      if ph in ("waiting","tools"):self._idle_if_clear(c,sid,now)
+      if ph in ("waiting","tools","thinking","responding"):self._idle_if_clear(c,sid,now)
    finally:c.close()
   return True
  def mark_cancel(self,sid):
@@ -154,8 +171,57 @@ CREATE UNIQUE INDEX IF NOT EXISTS ix_atts_sha ON atts(sid,sha);
     c.execute("UPDATE asks SET acked=1 WHERE sid=? AND acked=0",(sid,))
    finally:c.close()
   return True
- def heal(self,sid=None):
+ def note_turn_end(self,sid,ok=True,detail=""):
+  sid=str(sid or "").strip()
+  if not sid:return False
   now=time.time()
+  with self._l:
+   c=self._cx()
+   try:
+    self._job(c,sid)
+    if not ok:
+     self._close_tools(c,sid,now,"failed")
+     c.execute("UPDATE jobs SET running=0,phase=?,detail=?,updated=? WHERE sid=?",("failed",(detail or "turn failed")[:120],now,sid))
+     c.execute("UPDATE asks SET acked=1 WHERE sid=? AND acked=0",(sid,))
+    elif not self._idle_if_clear(c,sid,now):
+     c.execute("UPDATE jobs SET phase=?,detail=?,updated=? WHERE sid=?",("tools","command running",now,sid))
+   finally:c.close()
+  return True
+ def _close_tools(self,c,sid,now,status):
+  c.execute("UPDATE tools SET status=?,updated=? WHERE sid=? AND lower(COALESCE(status,'')) NOT IN ('completed','failed','error','cancelled','canceled')",(status,now,sid))
+ def mark_failed(self,sid,detail="failed"):
+  sid=str(sid or "").strip()
+  if not sid:return False
+  now=time.time()
+  with self._l:
+   c=self._cx()
+   try:
+    self._job(c,sid)
+    self._close_tools(c,sid,now,"failed")
+    c.execute("UPDATE jobs SET running=0,phase=?,detail=?,updated=? WHERE sid=?",("failed",str(detail or "failed")[:120],now,sid))
+    c.execute("UPDATE asks SET acked=1 WHERE sid=? AND acked=0",(sid,))
+   finally:c.close()
+  return True
+ def reset_running(self,keep=(),detail="interrupted"):
+  keep={str(x) for x in (keep or ()) if x}
+  now=time.time();n=0
+  with self._l:
+   c=self._cx()
+   try:
+    for r in list(c.execute("SELECT sid FROM jobs WHERE running=1").fetchall()):
+     s=r["sid"]
+     if s in keep:continue
+     self._close_tools(c,s,now,"cancelled")
+     c.execute("UPDATE jobs SET running=0,phase=?,detail=?,updated=? WHERE sid=?",("idle",str(detail or "")[:120],now,s))
+     c.execute("UPDATE asks SET acked=1 WHERE sid=? AND acked=0",(s,))
+     n+=1
+    for r in list(c.execute("SELECT DISTINCT sid FROM tools WHERE lower(COALESCE(status,'')) NOT IN ('completed','failed','error','cancelled','canceled')").fetchall()):
+     if r["sid"] not in keep:self._close_tools(c,r["sid"],now,"cancelled")
+   finally:c.close()
+  return n
+ def heal(self,sid=None,inflight=None):
+  now=time.time()
+  inflight=None if inflight is None else {str(x) for x in inflight}
   with self._l:
    c=self._cx()
    try:
@@ -167,6 +233,15 @@ CREATE UNIQUE INDEX IF NOT EXISTS ix_atts_sha ON atts(sid,sha);
     n=0
     for r in rows:
      s=r["sid"]
+     if inflight is not None and s in inflight:continue
+     if inflight is not None:
+      up=float((c.execute("SELECT updated FROM jobs WHERE sid=?",(s,)).fetchone() or [0])[0] or 0)
+      tu=float((c.execute("SELECT MAX(updated) FROM tools WHERE sid=?",(s,)).fetchone() or [0])[0] or 0)
+      if now-max(up,tu)>QUIET_SECS:
+       self._close_tools(c,s,now,"cancelled")
+       c.execute("UPDATE jobs SET running=0,phase=?,detail=?,updated=? WHERE sid=?",("idle","no activity",now,s))
+       c.execute("UPDATE asks SET acked=1 WHERE sid=? AND acked=0",(s,))
+       n+=1;continue
      if self._open_n(c,s):continue
      jr=c.execute("SELECT last_user_at,updated FROM jobs WHERE sid=?",(s,)).fetchone()
      la=float((jr["last_user_at"] if jr else 0) or 0)
@@ -191,8 +266,8 @@ CREATE UNIQUE INDEX IF NOT EXISTS ix_atts_sha ON atts(sid,sha);
      n+=1
     return n
    finally:c.close()
- def snapshot(self,sid=None):
-  self.heal(sid)
+ def snapshot(self,sid=None,inflight=None):
+  self.heal(sid,inflight=inflight)
   with self._l:
    c=self._cx()
    try:
@@ -233,7 +308,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS ix_atts_sha ON atts(sid,sha);
    c=self._cx()
    try:
     c.execute("INSERT OR IGNORE INTO atts(id,sid,name,mime,path,sha,text_key,at) VALUES(?,?,?,?,?,?,?,?)",(aid,sid,str(name or "file")[:180],mime,str(dest),sha,key,now))
-    if key:c.execute("UPDATE atts SET text_key=COALESCE(NULLIF(?,''),text_key) WHERE id=?",(key,aid))
+    if key:c.execute("UPDATE atts SET text_key=COALESCE(NULLIF(?,''),text_key) WHERE sid=? AND id=?",(key,sid,aid))
    finally:c.close()
   return {"id":aid,"sid":sid,"name":str(name or "file"),"mime":mime,"url":"/api/att/"+aid,"sha":sha,"text_key":key}
  def ingest_prompt(self,sid,blocks):
@@ -275,6 +350,6 @@ CREATE UNIQUE INDEX IF NOT EXISTS ix_atts_sha ON atts(sid,sha);
   with self._l:
    c=self._cx()
    try:
-    r=c.execute("SELECT * FROM atts WHERE id=?",(aid,)).fetchone()
+    r=c.execute("SELECT * FROM atts WHERE id=? ORDER BY at DESC",(aid,)).fetchone()
     return dict(r) if r else None
    finally:c.close()

@@ -8,7 +8,7 @@ def test_ui_stashes_and_hydrates_atts():
  assert "function attNode(" in html
  assert 'fetch("/api/att"' in html
  assert "f._att" in html
- assert "hydrateAtts(openId)" in html
+ assert "hydrateAtts(openId,gen)" in html
  assert "running=CASE WHEN" not in (ROOT/"work_board.py").read_text(encoding="utf-8")
  srv=(ROOT/"server.py").read_text(encoding="utf-8")
  assert 'add_get("/api/att"' in srv

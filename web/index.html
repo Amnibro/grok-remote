@@ -8,13 +8,25 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
 <meta name="mobile-web-app-capable" content="yes"/>
 <meta name="theme-color" content="#0a0b0e" id="themeColor"/>
-<meta name="grok-remote-ui-build" content="2026-09-12-quiet-copy"/>
+<meta name="grok-remote-ui-build" content="2026-09-23-audit"/>
 <title>Grok Remote · GROK BUILD</title>
 <meta http-equiv="Cache-Control" content="no-store"/>
 <link rel="manifest" href="/manifest.webmanifest"/>
 <link rel="apple-touch-icon" href="/static/icon-180.png"/>
 <link rel="icon" type="image/png" sizes="192x192" href="/static/icon-192.png"/>
 <script>(function(){
+  try{
+    if(new URLSearchParams(location.search).get("demo")==="1"&&window.fetch){
+      var realFetch=window.fetch.bind(window);
+      window.fetch=function(input,init){
+        var u="";try{u=new URL(typeof input==="string"?input:(input&&input.url)||"",location.href).pathname}catch(e){}
+        if(/^\/(api\/|config(\.json)?$|health)/.test(u)){
+          return Promise.resolve(new Response('{"ok":false,"demo":true,"error":"demo mode"}',{status:503,headers:{"Content-Type":"application/json"}}));
+        }
+        return realFetch(input,init);
+      };
+    }
+  }catch(e){}
   var root=document.documentElement;
   try{
     var p=new URLSearchParams(location.search);
@@ -626,6 +638,11 @@ body.bordered .bub,body.bordered .tool,body.bordered .sess .item,body.bordered .
 .chip .chipn{margin-left:6px;font-family:var(--font-mono);font-size:.85em;font-weight:600;opacity:.75;
  border:1px solid color-mix(in srgb,var(--acc) 22%,var(--line));border-radius:999px;padding:1px 6px;background:var(--panel)}
 .chip span{border:1px solid color-mix(in srgb,var(--acc) 25%,var(--line));border-radius:999px;padding:3px 10px;background:var(--panel);box-shadow:0 0 12px -8px var(--acc-glow);font-family:var(--font-mono);letter-spacing:.3px}
+.chip.act-chip{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;align-items:center}
+.chip.act-chip.bad span{border-color:color-mix(in srgb,var(--bad) 45%,var(--line));color:var(--tx)}
+.chip.act-chip button{border:1px solid var(--line);background:var(--panel2);color:var(--tx);border-radius:999px;padding:3px 11px;font:600 .95em/1.3 var(--font-mono);cursor:pointer}
+.chip.act-chip button.pri{background:var(--acc);border-color:transparent;color:#05070a}
+.chip.act-chip button:disabled{opacity:.5;cursor:default}
 .chip.hist-more{margin:4px 0 10px;cursor:pointer;position:sticky;top:0;z-index:3}
 .chip.hist-more span{border-color:color-mix(in srgb,var(--acc) 40%,var(--line));color:var(--acc);background:color-mix(in srgb,var(--panel) 92%,transparent)}
 .chip.hist-more:hover span{border-color:var(--acc)}
@@ -1238,15 +1255,15 @@ html.pwa-standalone .pwa-banner,body.desktop .pwa-banner,body.electron .pwa-bann
 }
 </style>
 <link rel="stylesheet" href="/static/grok-archive-skin.css?v=19"/>
-<link rel="stylesheet" href="/static/vendor/katex/katex.min.css"/>
-<script defer src="/static/vendor/katex/katex.min.js"></script>
-<script src="/static/md.js?v=4"></script>
-<script src="/static/presets.js"></script>
-<script src="/static/chat-runtime.js?v=2026-09-12-quiet-copy"></script>
-<script src="/static/work-dock.js" defer></script>
-<script src="/static/voice-mode.js" defer></script>
-<script src="/static/cockpit-features.js?v=rx7" defer></script>
-<script src="/static/ide.js" defer></script>
+<link rel="stylesheet" href="/static/vendor/katex/katex.min.css?v=2026-09-23-audit"/>
+<script defer src="/static/vendor/katex/katex.min.js?v=2026-09-23-audit"></script>
+<script src="/static/md.js?v=4-2026-09-23-audit"></script>
+<script src="/static/presets.js?v=2026-09-23-audit"></script>
+<script src="/static/chat-runtime.js?v=2026-09-23-audit"></script>
+<script src="/static/work-dock.js?v=2026-09-23-audit" defer></script>
+<script src="/static/voice-mode.js?v=2026-09-23-audit" defer></script>
+<script src="/static/cockpit-features.js?v=rx8-2026-09-23-audit" defer></script>
+<script src="/static/ide.js?v=2026-09-23-audit" defer></script>
 </head>
 <body>
 <div id="app">
@@ -1424,7 +1441,7 @@ html.pwa-standalone .pwa-banner,body.desktop .pwa-banner,body.electron .pwa-bann
   <label>WebSocket</label>
   <input id="wsurl" placeholder="ws://192.168.x.x:2421/ws"/>
   <label>Default cwd for new sessions / tasks</label>
-  <input id="cwd" placeholder="C:\\path\\to\\project"/>
+  <input id="cwd" placeholder="~/path/to/project"/>
     </div>
   </details>
   <div class="rowbtns">
@@ -1594,7 +1611,7 @@ html.pwa-standalone .pwa-banner,body.desktop .pwa-banner,body.electron .pwa-bann
   <div class="card">
     <h3>New task <button type="button" class="sheet-x" id="closeTask" aria-label="Close">×</button></h3>
     <label>Working directory on PC</label>
-    <input id="taskCwd" placeholder="C:\\path\\to\\project"/>
+    <input id="taskCwd" placeholder="~/path/to/project"/>
     <label>First message / task (optional)</label>
     <textarea class="field" id="taskMsg" rows="3" placeholder="Build X, fix Y, explore Z…"></textarea>
     <div class="rowbtns">
@@ -1746,7 +1763,18 @@ let ux={borders:true,collapseThink:true,collapseCode:true,collapseTools:false,au
 let archived=new Set(),sessScope="active",sessArchiveReady=false;
 let sessListSig="",sessListPaintSig="",workBoardSig="";
 let msgMode="queue",msgQueue=[],msgDrainBusy=false,lastMsgDrain=0,msgRetryTimer=0,agentQueueNote="",lastEnterAt=0,pendingTools=new Set(),lastWorkTitle="",workJobs=[];
-let permLevel="always",permBySession={};
+let permLevel="always",permDefault="always",permBySession={};
+let ownEchoes=[],promptStartAt=Object.create(null),historyOffsetKnown=false,linkWanted=false;
+let newSessionBusy=null,hubHasMeta=false,lastEnterQueued=false,pendingFilesBy=Object.create(null);
+let resumeSidOnReconnect="",authBlocked=0;
+const httpPrompts=new Map();
+const PAGE_NONCE=Date.now().toString(36)+"-"+Math.random().toString(36).slice(2,8);
+const PAGE_LOADED_AT=Date.now();
+function uuid(){
+  try{if(window.crypto&&typeof crypto.randomUUID==="function")return crypto.randomUUID()}catch(e){}
+  const h=()=>Math.floor(Math.random()*0x10000).toString(16).padStart(4,"0");
+  return h()+h()+"-"+h()+"-4"+h().slice(1)+"-"+(8+Math.floor(Math.random()*4)).toString(16)+h().slice(1)+"-"+h()+h()+h();
+}
 const PERM_ORDER=["always","ask","plan"];
 const PERM_LABEL={always:"always approve",ask:"ask each tool",plan:"plan gate"};
 let personaId="default",directionId="none",personaApplied=new Set(),lastSetupQueueCancel=0;
@@ -2123,102 +2151,96 @@ function applyCollapseDefaults(){
   document.querySelectorAll(".tool").forEach(r=>{r.classList.toggle("collapsed",!!ux.collapseTools)});
   document.querySelectorAll(".collapsible.code").forEach(r=>{r.classList.toggle("collapsed",!!ux.collapseCode)});
 }
-function cacheArchiveLocal(){try{localStorage.setItem("grok_remote_archived",JSON.stringify([...archived]))}catch(e){}}
+const ARCH_LEGACY_KEY="grok_remote_archived",ARCH_MIGRATED_KEY="grok_remote_archived_migrated";
+const archPending=new Map();
 function loadArchiveLocal(){
-  try{
-    const raw=JSON.parse(String(localStorage.getItem("grok_remote_archived")||"[]").replace(/^\uFEFF/,"").trim()||"[]");
-    archived=new Set(Array.isArray(raw)?raw.map(String):[]);
-  }catch(e){archived=new Set()}
   try{sessScope=localStorage.getItem("grok_remote_sess_scope")||"active"}catch(e){sessScope="active"}
   if(!["active","live","archived","all"].includes(sessScope))sessScope="active";
 }
 try{loadArchiveLocal()}catch(e){}
+function applyArchPending(){
+  archPending.forEach((want,k)=>{if(want)archived.add(k);else archived.delete(k)});
+}
+function readJsonText(text){try{return JSON.parse(String(text||"").replace(/^\uFEFF/,"").trim())}catch(e){return null}}
 async function loadArchive(opts){
   opts=opts||{};
-  loadArchiveLocal();
-  const local=[...archived];
   try{
     const ac=typeof AbortController==="function"?new AbortController():null;
     const kill=ac?setTimeout(()=>ac.abort(),2500):0;
     const r=await fetch("/api/session/archived",{cache:"no-store",signal:ac?ac.signal:undefined});
     if(kill)clearTimeout(kill);
-    const text=await r.text();
-    let j=null;try{j=JSON.parse(String(text).replace(/^\uFEFF/,"").trim())}catch(e){j=null}
-    if(r.ok&&j&&j.ok&&Array.isArray(j.ids)){
-      const server=j.ids.map(String);
-      archived=new Set(server);
-      let merged=false;
-      if(opts.migrate&&local.length){
-        for(const id of local){
-          if(!archived.has(id)){archived.add(id);merged=true}
-        }
-      }
-      cacheArchiveLocal();
-      if(merged||(opts.migrate&&local.length&&server.length!==local.length)){
-        saveArchive(true).catch(()=>{});
-      }
-      if(opts.render)renderSessions();
+    const j=readJsonText(await r.text());
+    if(r.ok&&j&&j.ok!==false&&Array.isArray(j.ids)){
+      archived=new Set(j.ids.map(String));
+      (sessions||[]).forEach(s=>{if(s&&typeof s.archived==="boolean"){const k=String(s.sessionId||"");if(s.archived)archived.add(k);else archived.delete(k)}});
+      applyArchPending();
       sessArchiveReady=true;
+      if(opts.render){renderSessions();paintSessScopeChips()}
       return true;
     }
   }catch(e){}
-  cacheArchiveLocal();
   sessArchiveReady=true;
-  if(opts.render)renderSessions();
+  if(opts.render){renderSessions();paintSessScopeChips()}
   return false;
 }
-async function saveArchive(forceServer){
-  const ids=[...archived];
-  cacheArchiveLocal();
+async function migrateLegacyArchiveOnce(){
+  let local=[];
   try{
-    const r=await fetch("/api/session/archived",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({ids:ids})});
-    const text=await r.text();
-    let j=null;try{j=JSON.parse(String(text).replace(/^\uFEFF/,"").trim())}catch(e){j=null}
-    if(r.ok&&j&&j.ok&&Array.isArray(j.ids)){
-      archived=new Set(j.ids.map(String));
-      cacheArchiveLocal();
-      return true;
+    if(localStorage.getItem(ARCH_MIGRATED_KEY)==="1"){localStorage.removeItem(ARCH_LEGACY_KEY);return false}
+    const raw=readJsonText(localStorage.getItem(ARCH_LEGACY_KEY)||"[]");
+    local=Array.isArray(raw)?raw.map(String).filter(Boolean):[];
+  }catch(e){return false}
+  if(!hubHasMeta)return false;
+  if(migrateLegacyArchiveOnce._busy)return false;
+  migrateLegacyArchiveOnce._busy=true;
+  try{
+    if(local.length){
+      const r=await fetch("/api/session/archived",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({ids:local,migrate:true})});
+      const j=readJsonText(await r.text());
+      if(!r.ok||!j||j.ok===false)return false;
     }
-    if(forceServer)throw new Error((j&&j.error)||text.slice(0,120)||("HTTP "+r.status));
-  }catch(e){
-    if(forceServer)try{chip("archive sync failed: "+e)}catch(x){}
-  }
-  return false;
+    try{localStorage.setItem(ARCH_MIGRATED_KEY,"1");localStorage.removeItem(ARCH_LEGACY_KEY)}catch(e){}
+    return local.length>0;
+  }catch(e){return false}
+  finally{migrateLegacyArchiveOnce._busy=false}
 }
 async function setArchivedFlag(sessionId,wantArchived){
   const k=String(sessionId||"");
-  if(!k)return false;
+  if(!k)throw new Error("no session id");
+  const r=await fetch("/api/session/archived",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({sessionId:k,id:k,archived:!!wantArchived})});
+  const j=readJsonText(await r.text());
+  if(!r.ok||!j||j.ok===false)throw new Error((j&&(j.error||j.message))||("HTTP "+r.status));
+  if(Array.isArray(j.ids)&&!hubHasMeta)archived=new Set(j.ids.map(String));
   if(wantArchived)archived.add(k);else archived.delete(k);
-  cacheArchiveLocal();
-  try{
-    const r=await fetch("/api/session/archived",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:k,archived:!!wantArchived})});
-    const text=await r.text();
-    let j=null;try{j=JSON.parse(String(text).replace(/^\uFEFF/,"").trim())}catch(e){j=null}
-    if(r.ok&&j&&j.ok&&Array.isArray(j.ids)){
-      archived=new Set(j.ids.map(String));
-      cacheArchiveLocal();
-      return true;
-    }
-  }catch(e){}
-  return false;
+  const s=(sessions||[]).find(x=>String(x.sessionId)===k);
+  if(s)s.archived=!!wantArchived;
+  return true;
 }
 function saveSessScope(){try{localStorage.setItem("grok_remote_sess_scope",sessScope)}catch(e){}}
 function isArchived(id){
   const k=String(id||"");
-  if(!k)return false;
-  if(archived.has(k))return true;
-  for(const a of archived){
-    if(sessionIdsMatch(a,k))return true;
-  }
-  return false;
+  return !!k&&archived.has(k);
+}
+function setArchiveUi(k,want){
+  archPending.set(k,want);
+  if(want)archived.add(k);else archived.delete(k);
+  renderSessions();paintSessScopeChips();
+  return setArchivedFlag(k,want).then(()=>{
+    if(archPending.get(k)===want)archPending.delete(k);
+    renderSessions();paintSessScopeChips();
+    return true;
+  }).catch(err=>{
+    if(archPending.get(k)===want)archPending.delete(k);
+    if(want)archived.delete(k);else archived.add(k);
+    renderSessions();paintSessScopeChips();
+    actionChip((want?"archive":"unarchive")+" failed · "+String(err&&err.message||err).slice(0,60),[{label:"Retry",pri:true,fn:()=>setArchiveUi(k,want)}],{bad:true});
+    return false;
+  });
 }
 function toggleArchive(id,e){
   if(e){e.stopPropagation();e.preventDefault()}
   const k=String(id||"");if(!k)return;
-  const want=!archived.has(k);
-  if(want)archived.add(k);else archived.delete(k);
-  renderSessions();
-  setArchivedFlag(k,want).then(()=>{renderSessions()}).catch(()=>{saveArchive(true).then(()=>renderSessions())});
+  setArchiveUi(k,!isArchived(k));
 }
 function markSessionLive(sessionId){
   const k=String(sessionId||"");
@@ -2230,19 +2252,43 @@ function markSessionLive(sessionId){
     s.lastChangeUnixMs=Date.now();
     s.updatedAt=new Date().toISOString();
   }else{
-    sessions.unshift({sessionId:k,title:"(active)",cwd:sidCwd||defaultCwd||"",resident:true,activity:"live",lastChangeUnixMs:Date.now()});
+    sessions.unshift({sessionId:k,title:"",cwd:sidCwd||defaultCwd||"",resident:true,activity:"live",lastChangeUnixMs:Date.now(),_local:Date.now()});
   }
 }
 let sessListExpanded=false,sessFilterOpen=false;
 function isBraidLayout(){return(document.documentElement.getAttribute("data-layout")||"braid")!=="legacy"}
+let sessOthersOpen=false;
+function sessSearchBlob(s){
+  const id=String(s.sessionId||"");
+  return [id,s.title,s.agentTitle,s.generated_title,s.remote_title,s.cwd,s.modelId,s.activity,sessionOrigin(s),isArchived(id)?"archived":""].join(" ").toLowerCase();
+}
+function isEmptyArchiveStub(s){return !!(s&&s._fromArchive&&!String(s.title||"").trim()&&!s.cwd)}
+function sessInScope(s,scope){
+  const arch=isArchived(s.sessionId);
+  if(scope==="active")return !arch;
+  if(scope==="live")return !arch&&!!s.resident;
+  if(scope==="archived")return arch;
+  return true;
+}
+function classifySessions(scope,q,want){
+  const primary=[],others=[];
+  (sessions||[]).forEach(s=>{
+    if(!s||!s.sessionId)return;
+    if(isNoiseSession(s)||isEmptyArchiveStub(s))return;
+    if(!sessInScope(s,scope))return;
+    if(q&&!sessSearchBlob(s).includes(q))return;
+    const org=(s._fromArchive||isDemoMode())?"Chats":sessionOrigin(s);
+    if(org==="Chats"||(want&&String(s.sessionId)===String(want)))primary.push(s);
+    else others.push(s);
+  });
+  return {primary,others};
+}
 function paintSessScopeChips(){
   const hosts=[document.getElementById("sessScopeChips"),document.getElementById("sessScopeChipsPop")].filter(Boolean);
   if(!hosts.length)return;
   if(String(sessScope||"").indexOf("app:")===0){sessScope="active";saveSessScope()}
-  const nArch=archived.size;
-  const _chatsOnly=s=>s&&s.sessionId&&!isArchived(s.sessionId)&&!isNoiseSession(s)&&sessionOrigin(s)==="Chats";
-  const nLive=(sessions||[]).filter(s=>_chatsOnly(s)&&s.resident).length;
-  const nActive=(sessions||[]).filter(_chatsOnly).length;
+  const count=scope=>{const c=classifySessions(scope,"",railSessionId());return c.primary.length+c.others.length};
+  const nActive=count("active"),nLive=count("live"),nArch=count("archived");
   const labels={
     active:"Active"+(nActive?" "+nActive:""),
     live:"Live"+(nLive?" "+nLive:""),
@@ -2288,14 +2334,12 @@ function mergeArchivedStubs(){
   for(const id of archived){
     const k=String(id||"").trim();
     if(!k||have.has(k))continue;
-    const ov=titleOverrides[k]||"";
     sessions.push({
       sessionId:k,
-      title:ov||"",
-      generated_title:ov||"",
-      remote_title:ov||"",
+      title:"",
       cwd:"",
       resident:false,
+      archived:true,
       activity:"archived",
       lastChangeUnixMs:0,
       _fromArchive:true
@@ -2689,6 +2733,29 @@ function chip(t){
   feed.appendChild(d);
   if(stickBottom)scroll();else updateJump();
 }
+function actionChip(text,actions,opts){
+  opts=opts||{};
+  const d=document.createElement("div");
+  d.className="chip act-chip"+(opts.bad?" bad":"");
+  if(opts.key)d.dataset.act=String(opts.key);
+  const sp=document.createElement("span");sp.textContent=String(text==null?"":text);d.appendChild(sp);
+  const all=(actions||[]).concat(opts.noDismiss?[]:[{label:"Dismiss",fn:null}]);
+  all.forEach(a=>{
+    const b=document.createElement("button");b.type="button";b.textContent=a.label;
+    if(a.pri)b.className="pri";
+    b.onclick=e=>{
+      e.preventDefault();e.stopPropagation();
+      d.querySelectorAll("button").forEach(x=>{x.disabled=true});
+      try{d.remove()}catch(x){}
+      if(typeof a.fn==="function")try{a.fn()}catch(err){chip(String(err))}
+    };
+    d.appendChild(b);
+  });
+  if(opts.key)try{feed.querySelectorAll('.act-chip[data-act="'+String(opts.key).replace(/"/g,"")+'"]').forEach(x=>x.remove())}catch(e){}
+  feed.appendChild(d);
+  if(stickBottom)scroll();else updateJump();
+  return d;
+}
 const PHASE_LABEL={idle:"idle",waiting:"waiting",thinking:"thinking",responding:"writing",tools:"working",error:"error",sync:"sync"};
 function loadPermLevels(){
   try{
@@ -2697,23 +2764,24 @@ function loadPermLevels(){
   }catch(e){permBySession={}}
   try{
     const d=localStorage.getItem("grok_remote_perm_default");
-    if(PERM_ORDER.includes(d))permLevel=d;
+    if(PERM_ORDER.includes(d)){permDefault=d;permLevel=d}
   }catch(e){}
 }
 function savePermLevels(){
   try{localStorage.setItem("grok_remote_perm_levels",JSON.stringify(permBySession))}catch(e){}
-  try{localStorage.setItem("grok_remote_perm_default",permLevel)}catch(e){}
+  try{localStorage.setItem("grok_remote_perm_default",permDefault)}catch(e){}
 }
 function getPermLevel(id){
   const k=String(id||sid||"");
   if(k&&permBySession[k]&&PERM_ORDER.includes(permBySession[k]))return permBySession[k];
-  return PERM_ORDER.includes(permLevel)?permLevel:"always";
+  return PERM_ORDER.includes(permDefault)?permDefault:"always";
 }
 function setPermLevel(level,id){
   if(!PERM_ORDER.includes(level))return;
   const k=String(id||sid||"");
   permLevel=level;
   if(k)permBySession[k]=level;
+  else permDefault=level;
   savePermLevels();
   paintPermChip();
   chip("perm · "+(PERM_LABEL[level]||level)+(k?" · chat":""));
@@ -3334,29 +3402,42 @@ function settleRailTools(){
   }catch(e){pendingTools=new Set()}
   try{if(handleMsg._waitPrompt!=null&&!(pending&&pending.has(handleMsg._waitPrompt)))handleMsg._waitPrompt=null}catch(e){}
 }
-function dropAckedQueue(job){
-  if(!msgQueue.length)return;
-  const acked=new Set();
-  const add=t=>{const n=normUserEcho(t);if(n)acked.add(n)};
-  if(job){
-    add(job.last_user);
-    (job.asks||[]).forEach(a=>{if(a&&a.acked)add(a.text)});
+function ownPromptPending(sessionId,opts){
+  opts=opts||{};
+  const k=String(sessionId||"");
+  for(const p of pending.values()){
+    if(!p||p.kind!=="prompt")continue;
+    if(k&&String(p.sessionId||"")!==k)continue;
+    if(opts.liveOnly&&p.detached)continue;
+    return true;
   }
-  if(!acked.size)return;
-  const keep=msgQueue.filter(q=>!acked.has(normUserEcho(q.tRaw)));
-  if(keep.length===msgQueue.length)return;
-  msgQueue.splice(0,msgQueue.length,...keep);
-  try{paintMsgQueue()}catch(e){}
+  for(const [pid,h] of [...httpPrompts.entries()]){
+    if(Date.now()-h.at>30*60*1000){httpPrompts.delete(pid);continue}
+    if(!k||h.sid===k)return true;
+  }
+  return false;
+}
+function dropDetachedPrompts(sessionId){
+  const k=String(sessionId||"");
+  let n=0;
+  for(const [id,p] of [...pending.entries()]){
+    if(!p||p.kind!=="prompt"||!p.detached)continue;
+    if(k&&String(p.sessionId||"")!==k)continue;
+    pending.delete(id);n++;
+    if(handleMsg._waitPrompt===id)handleMsg._waitPrompt=null;
+  }
+  return n;
 }
 function applyWorkJob(job){
   const chat=window.grokChat;
+  const ownLive=!!(sid&&ws&&ws.readyState===1&&ownPromptPending(sid,{liveOnly:true}));
   if(!job){
+    if(ownLive){paintWorkBoard();return}
     if(chat){const r=chat.room(sid);r.pendingTools=new Set();pendingTools=r.pendingTools}
     else pendingTools=new Set();
     lastWorkTitle="";
     agentQueueNote="";
     settleRailTools();
-    dropAckedQueue(null);
     setBusy(false);
     setPhase("idle");
     paintWorkBoard();
@@ -3366,7 +3447,7 @@ function applyWorkJob(job){
   const roomTools=chat?chat.room(job.sid).pendingTools:new Set();
   roomTools.clear();
   open.forEach(t=>roomTools.add(String(t.id||t.tool_id||"")));
-  if(!chat||chat.belongs(job.sid)){
+  if(sessionIdsMatch(job.sid,sid)){
     pendingTools=roomTools;
     const stalled=/stalled/i.test(String(job.phase||""))||/returned nothing/i.test(String(job.detail||""));
     if(stalled){
@@ -3374,9 +3455,8 @@ function applyWorkJob(job){
       agentQueueNote="";
       try{if(handleMsg._waitPrompt!=null)handleMsg._waitPrompt=null}catch(e){}
       settleRailTools();
-      dropAckedQueue(job);
       setBusy(false,job.sid);
-      setPhase("idle");
+      setPhase("idle",ownLive?"no reply yet · hub marked this turn stalled":undefined);
       paintWorkNow();
     }else{
       lastWorkTitle=(open[0]&&((open[0].title||"")+(open[0].cmd?" · "+open[0].cmd:"")))||"";
@@ -3387,9 +3467,8 @@ function applyWorkJob(job){
         const d=open[0]&&(open[0].title||open[0].kind||open[0].cmd);
         setPhase(job.phase||"tools",d||undefined);
       }
-      else{
+      else if(!ownLive){
         settleRailTools();
-        dropAckedQueue(job);
         setBusy(false,job.sid);setPhase("idle");
       }
       paintWorkNow();
@@ -3408,21 +3487,19 @@ function paintAgentJobs(){
   window.grokChat.setJobs(workJobs,{
     open(id){const s=(sessions||[]).find(x=>sessionIdsMatch(x.sessionId,id));if(s)openSession(s)},
     kill(id){killWork(id)},
-    title(id){
-      const s=(sessions||[]).find(x=>sessionIdsMatch(x.sessionId,id));
-      if(s)return sessionTitle(s);
-      return "Chat · "+String(id||"").slice(0,8);
-    }
+    title(id){return sessionTitleById(id)}
   });
 }
 async function hydrateWork(forSid){
+  const want=String(forSid||sid||""),gen=sessionGen;
   try{
     const r=await fetch("/api/work",{cache:"no-store"});
     const j=await r.json();
     workJobs=Array.isArray(j.jobs)?j.jobs:[];
   }catch(e){}
   paintWorkBoard();
-  const want=String(forSid||sid||"");
+  try{syncSessionWorkMarks()}catch(e){}
+  if(!want||gen!==sessionGen||String(sid||"")!==want)return;
   applyWorkJob(workJobs.find(x=>sessionIdsMatch(x.sid,want))||null);
 }
 async function killWork(sessionId){
@@ -3517,7 +3594,7 @@ window.setBusy=setBusy;
 window.setPhase=setPhase;
 function persistMsgQueue(){
   try{
-    const slim=msgQueue.filter(x=>x&&x.tRaw).slice(-20).map(x=>({mode:x.mode==="fyi"?"fyi":"queue",tRaw:String(x.tRaw),sessionId:String(x.sessionId||""),at:x.at||Date.now()}));
+    const slim=msgQueue.filter(x=>x&&x.tRaw).slice(-20).map(x=>({id:String(x.id||""),mode:x.mode==="fyi"?"fyi":"queue",tRaw:String(x.tRaw),sessionId:String(x.sessionId||""),at:x.at||Date.now()}));
     localStorage.setItem("grok_remote_msgq",JSON.stringify(slim));
   }catch(e){}
 }
@@ -3528,7 +3605,7 @@ function loadMsgQueue(){
     if(!Array.isArray(a))return;
     a.forEach(it=>{
       if(!it||!it.tRaw)return;
-      msgQueue.push({id:"mq-restored-"+Date.now()+"-"+Math.random().toString(36).slice(2,6),mode:it.mode==="fyi"?"fyi":"queue",tRaw:String(it.tRaw),files:[],at:it.at||Date.now(),sessionId:String(it.sessionId||""),echoed:false});
+      msgQueue.push({id:String(it.id||"")||("mq-restored-"+Date.now()+"-"+Math.random().toString(36).slice(2,6)),mode:it.mode==="fyi"?"fyi":"queue",tRaw:String(it.tRaw),files:[],at:it.at||Date.now(),sessionId:String(it.sessionId||""),echoed:false});
     });
   }catch(e){}
 }
@@ -3576,18 +3653,22 @@ function paintMsgQueue(){
   const slim=window.matchMedia&&window.matchMedia("(max-width:820px)").matches;
   const note=collapseRepeatNote(agentQueueNote||"");
   if(note&&!(slim&&/^working/i.test(note)))bits.push('<div class="q-head">Agent</div><div class="q-item mode-queue"><span class="q-badge">agent</span><div class="q-body">'+esc(note)+"</div></div>");
-  if(msgQueue.length){
-    bits.push('<div class="q-head">Queue · '+msgQueue.length+"</div>");
-    msgQueue.forEach((q,i)=>{
+  const here=String(sid||"");
+  const mine=msgQueue.map((q,i)=>[q,i]).filter(([q])=>!q.sessionId||String(q.sessionId)===here);
+  const elsewhere=msgQueue.length-mine.length;
+  if(mine.length){
+    bits.push('<div class="q-head">Queue · '+mine.length+"</div>");
+    mine.forEach(([q,i])=>{
       bits.push('<div class="q-item mode-'+esc(q.mode)+'"><span class="q-badge">'+esc(q.mode)+'</span><div class="q-body">'+esc((q.tRaw||"").slice(0,160))+(q.files&&q.files.length?" · "+q.files.length+" file(s)":"")+'</div><button type="button" data-qn="'+i+'" title="Send now — cancel current turn and send this">Now</button><button type="button" data-qi="'+i+'" title="Remove">×</button></div>');
     });
   }
+  if(elsewhere>0)bits.push('<div class="q-head q-elsewhere">'+elsewhere+" queued in other chat"+(elsewhere===1?"":"s")+"</div>");
   queueEl.innerHTML=bits.join("");
   queueEl.querySelectorAll("button[data-qi]").forEach(btn=>{
     btn.onclick=e=>{
       e.preventDefault();
       const i=+btn.getAttribute("data-qi");
-      if(i>=0&&i<msgQueue.length){msgQueue.splice(i,1);paintMsgQueue()}
+      if(i>=0&&i<msgQueue.length){msgQueue.splice(i,1);persistMsgQueue();paintMsgQueue()}
     };
   });
   queueEl.querySelectorAll("button[data-qn]").forEach(btn=>{
@@ -3609,6 +3690,7 @@ function echoQueuedSend(item){
 async function sendQueuedNow(i){
   if(!(i>=0)||i>=msgQueue.length)return;
   const item=msgQueue.splice(i,1)[0];
+  persistMsgQueue();
   paintMsgQueue();
   const target=String(item.sessionId||sid||"");
   chip("send now · interject");
@@ -3616,9 +3698,8 @@ async function sendQueuedNow(i){
     await cancelTurn(target,{waitMs:360,force:true});
     await sleep(80);
     echoQueuedSend(item);
-    const ok=await dispatchPromptPayload(item.tRaw,item.files||[],"interject",{fromQueue:true,wasBusy:true,interjected:true,sessionId:target,sessionGen:sessionGen,allowCrossSession:true});
-    if(!ok){item.echoed=false;msgQueue.unshift(item);paintMsgQueue()}
-  }catch(e){item.echoed=false;msgQueue.unshift(item);paintMsgQueue();chip("send now: "+e)}
+    await dispatchPromptPayload(item.tRaw,item.files||[],"interject",{fromQueue:true,wasBusy:true,interjected:true,sessionId:target,sessionGen:sessionGen,allowCrossSession:true});
+  }catch(e){offerRetry({sid:target,tRaw:item.tRaw,files:item.files||[],mode:"interject",promptId:"",hubAcked:true,opts:{fromQueue:true,wasBusy:true,interjected:true}},"send now: "+String(e&&e.message||e))}
 }
 function enqueueMsg(item){
   const it=Object.assign({id:"mq-"+Date.now()+"-"+Math.random().toString(36).slice(2,7),echoed:false},item);
@@ -3626,16 +3707,6 @@ function enqueueMsg(item){
   paintMsgQueue();
   persistMsgQueue();
   armMsgRetry();
-}
-function requeueLastDispatch(reason){
-  const d=lastDispatch;
-  if(!d||d.acked||d.retried)return false;
-  if(!(d.tRaw||(d.files&&d.files.length)))return false;
-  d.retried=true;
-  d.acked=true;
-  enqueueMsg({mode:d.mode==="fyi"?"fyi":"queue",tRaw:d.tRaw,files:d.files||[],at:Date.now(),sessionId:d.sid});
-  try{chip((reason?String(reason).slice(0,60)+" · ":"")+"kept in queue")}catch(e){}
-  return true;
 }
 function sessionIsAttached(id){
   const want=String(id||"");
@@ -3784,13 +3855,74 @@ async function cancelTurn(forSid,opts){
 window.cancelTurn=cancelTurn;
 function sleep(ms){return new Promise(r=>setTimeout(r,ms))}
 function activeSendSid(){return String(sid||"")}
+const OWN_ECHO_TTL=15*60*1000;
+function noteOwnEcho(sessionId,texts,promptId){
+  const k=String(sessionId||"");
+  if(!k)return;
+  const now=Date.now();
+  ownEchoes=ownEchoes.filter(e=>now-e.at<OWN_ECHO_TTL);
+  (texts||[]).map(t=>normUserEcho(t)).filter(Boolean).forEach(t=>{
+    if(!ownEchoes.some(e=>e.sid===k&&e.text===t&&e.promptId===String(promptId||"")))ownEchoes.push({sid:k,text:t,at:now,promptId:String(promptId||"")});
+  });
+  if(ownEchoes.length>80)ownEchoes=ownEchoes.slice(-80);
+}
+function forgetOwnEcho(promptId){
+  const p=String(promptId||"");
+  if(p)ownEchoes=ownEchoes.filter(e=>e.promptId!==p);
+}
+function consumeOwnEcho(text,sessionId){
+  const t=normUserEcho(text);
+  if(!t)return false;
+  const k=String(sessionId||sid||"");
+  const now=Date.now();
+  const i=ownEchoes.findIndex(e=>e.sid===k&&e.text===t&&now-e.at<OWN_ECHO_TTL);
+  if(i<0)return false;
+  ownEchoes.splice(i,1);
+  return true;
+}
+function offerRetry(d,msg,opts){
+  opts=opts||{};
+  if(!d||!(d.tRaw||(d.files&&d.files.length)))return null;
+  const viewing=sessionIdsMatch(sid,d.sid);
+  const why=String(msg||"send failed").replace(/\s+/g," ").slice(0,110);
+  if(!viewing){chip("send failed in "+sessionTitleById(d.sid)+" · "+why);return null}
+  const acts=[{label:"Retry",pri:true,fn:()=>retryDispatch(d,{})}];
+  if(opts.asText)acts.push({label:"Retry as text",fn:()=>retryDispatch(d,{asText:true})});
+  return actionChip(opts.title||("✕ not sent · "+why),acts,{bad:true,key:"retry-"+(d.promptId||d.at||"")});
+}
+async function retryDispatch(d,opts){
+  opts=opts||{};
+  if(!d)return false;
+  const promptId=d.hubAcked||!d.promptId?uuid():d.promptId;
+  let files=d.files||[],tRaw=d.tRaw||"";
+  if(opts.asText&&files.some(isImage)){
+    const note=files.filter(isImage).map(f=>"[image attached: "+f.name+"]").join(" ");
+    files=files.filter(f=>!isImage(f));
+    tRaw=(tRaw?tRaw+"\n\n":"")+note+"\n(Agent may not accept image content blocks on this link.)";
+  }
+  const o=Object.assign({},d.opts||{},{promptId,sessionId:d.sid,sessionGen:sessionGen,allowCrossSession:true,isRetry:true});
+  chip(promptId===d.promptId?"retry · same id (hub dedupes)":"retry · new send");
+  return dispatchPromptPayload(tRaw,files,d.mode||"queue",o);
+}
+function markPersonaApplied(key,on){
+  const k=String(key||"");
+  if(!k)return;
+  if(on)personaApplied.add(k);else personaApplied.delete(k);
+  savePersonaApplied();
+}
 async function dispatchPromptPayload(tRaw,files,mode,opts){
   opts=opts||{};
   const targetSid=String(opts.sessionId||resolveSendSid()||sid||"");
+  const promptId=String(opts.promptId||uuid());
+  const d={id:null,promptId,sid:targetSid,tRaw,files:files||[],mode:mode||"queue",at:Date.now(),acked:false,hubAcked:false,
+    opts:{fromQueue:!!opts.fromQueue,wasBusy:!!opts.wasBusy,interjected:!!opts.interjected,skipSetup:!!opts.skipSetup}};
+  const fail=(msg,o)=>{dispatchPromptPayload.lastFail={sent:false,reason:String(msg||"")};offerRetry(d,msg,o);return false};
+  dispatchPromptPayload.lastFail=null;
   if(!targetSid){chip("no session");return false}
   if(sessionSwitching&&!opts.allowCrossSession){chip("wait · switching chat");return false}
   const wrapped=wrapForMode(tRaw,mode,{fromQueue:!!opts.fromQueue,wasBusy:!!opts.wasBusy,interjected:!!opts.interjected});
-  const t=(opts.fromQueue||opts.skipSetup)?wrapped:withAgentSetup(wrapped,targetSid);
+  const setup=(opts.fromQueue||opts.skipSetup)?{text:wrapped,key:""}:agentSetupFor(wrapped,targetSid);
+  const t=setup.text;
   const viewing=()=>sessionIdsMatch(sid,targetSid);
   turnToken++;
   const myToken=turnToken;
@@ -3802,31 +3934,49 @@ async function dispatchPromptPayload(tRaw,files,mode,opts){
   try{blocks=await buildPromptBlocks(t,files||[])}
   catch(e){
     if(viewing()&&isActiveTurn(myToken)){setBusy(false);setPhase("error",String(e).slice(0,40))}
-    chip(String(e));return false
+    return fail(String(e&&e.message||e));
   }
   if(!blocks.length){
     if(viewing()&&isActiveTurn(myToken)){setBusy(false);setPhase("idle")}
     return false
   }
+  noteOwnEcho(targetSid,blocks.filter(b=>b&&b.type==="text").map(b=>b.text).concat([tRaw]),promptId);
   const wsUp=ws&&ws.readyState===1;
   if(!wsUp){
+    let r=null;
     try{
-      const r=await fetch("/api/session/prompt",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({sessionId:targetSid,prompt:blocks})});
+      if(setup.key)markPersonaApplied(setup.key,true);
+      promptStartAt[targetSid]=Date.now();
+      const requestId="http-"+nextId();
+      httpPrompts.set(promptId,{sid:targetSid,token:myToken,at:Date.now(),requestId});
+      r=await fetch("/api/session/prompt",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({sessionId:targetSid,prompt:blocks,_grPromptId:promptId,cid:clientId(),requestId})});
       const text=await r.text();
-      let j=null;try{j=JSON.parse(String(text).replace(/^\uFEFF/,"").trim())}catch(e){j=null}
-      if(!r.ok||!j||!j.ok)throw new Error((j&&(j.error||j.message))||text.slice(0,80)||("HTTP "+r.status));
-      lastDispatch={id:"http-"+Date.now(),sid:targetSid,tRaw,files:files||[],mode:mode||"queue",at:Date.now(),acked:true,retried:false};
-      if(viewing()&&isActiveTurn(myToken))setPhase("waiting","via http");
-      reconnectArmed=true;wantReconnect=true;scheduleReconnect(200,"sent via http");
+      const j=readJsonText(text);
+      d.hubAcked=true;
+      if(!r.ok||!j||!j.ok){httpPrompts.delete(promptId);throw new Error((j&&(j.error||j.message))||text.slice(0,80)||("HTTP "+r.status))}
+      d.id=requestId;d.acked=true;
+      lastDispatch=d;
+      if(j.duplicate){httpPrompts.delete(promptId);chip("already sent · the hub has this message");if(viewing())hydrateWork(targetSid).catch(()=>{})}
+      else if(j.done){
+        httpPrompts.delete(promptId);
+        if(viewing()&&isActiveTurn(myToken)){finishTurnOrKeep(targetSid);scheduleCatchup(150)}
+        promoteSessionAfterMessage(targetSid).catch(()=>{});
+      }
+      else if(viewing()&&isActiveTurn(myToken))setPhase("waiting","via http");
+      reconnectArmed=true;wantReconnect=true;linkWanted=true;scheduleReconnect(200,"sent via http");
       return true;
     }catch(e){
+      if(setup.key)markPersonaApplied(setup.key,false);
+      forgetOwnEcho(promptId);
+      httpPrompts.delete(promptId);
+      if(!r)d.hubAcked=false;
       if(viewing()&&isActiveTurn(myToken)){setBusy(false);setPhase("error","not connected")}
-      chip("not connected · "+String(e).slice(0,80));
-      return false;
+      return fail("not connected · "+String(e&&e.message||e).slice(0,80));
     }
   }
-  if(!isActiveTurn(myToken)){chip("superseded · not sent");return false}
+  if(!isActiveTurn(myToken)){forgetOwnEcho(promptId);return fail("superseded by a newer send · not sent")}
   const id=nextId();
+  d.id=id;
   if(viewing())handleMsg._waitPrompt=id;
   const stillHere=()=>sessionIdsMatch(sid,targetSid);
   const onDone=ok=>{
@@ -3847,10 +3997,27 @@ async function dispatchPromptPayload(tRaw,files,mode,opts){
   pending.set(id,{
     kind:"prompt",
     sessionId:targetSid,
+    promptId,
     turnToken:myToken,
-    resolve:()=>onDone(true),
+    sentAt:Date.now(),
+    resolve:res=>{
+      d.hubAcked=true;d.acked=true;
+      if(res&&res.stopReason==="duplicate"){
+        stopPromptWatch();
+        if(handleMsg._waitPrompt===id)handleMsg._waitPrompt=null;
+        chip("already sent · the hub has this message");
+        if(stillHere())hydrateWork(targetSid).catch(()=>{});
+        return;
+      }
+      onDone(true);
+    },
     reject:e=>{
-      if(!isActiveTurn(myToken))return;
+      stopPromptWatch();
+      if(e&&e.fromHub)d.hubAcked=true;
+      if(!isActiveTurn(myToken)){
+        if(e&&e.fromHub&&!/cancel/i.test(String(e.message||e))){if(setup.key)markPersonaApplied(setup.key,false);forgetOwnEcho(promptId);offerRetry(d,String(e.message||e))}
+        return;
+      }
       if(handleMsg._waitPrompt===id)handleMsg._waitPrompt=null;
       try{if(window.grokVoice)window.grokVoice.setBusyFlag(false)}catch(x){}
       const msg=String(e&&e.message||e);
@@ -3863,33 +4030,26 @@ async function dispatchPromptPayload(tRaw,files,mode,opts){
         if(stillHere()){setBusy(false);setPhase("idle")}
         return;
       }
-      if(/image|prompt|capability|unsupported|invalid/i.test(msg)&&(files||[]).some(isImage)&&stillHere()&&isActiveTurn(myToken)){
-        chip("image block rejected — retrying as text note");
-        const note=(files||[]).filter(isImage).map(f=>"[image attached: "+f.name+"]").join(" ");
-        const id2=nextId();
-        turnToken++;const t2=turnToken;activeTurnToken=t2;
-        if(stillHere())handleMsg._waitPrompt=id2;
-        pending.set(id2,{
-          kind:"prompt",
-          sessionId:targetSid,
-          turnToken:t2,
-          resolve:()=>{if(isActiveTurn(t2)){if(handleMsg._waitPrompt===id2)handleMsg._waitPrompt=null;if(stillHere()){setBusy(false);setPhase("idle")}}promoteSessionAfterMessage(targetSid).catch(()=>{});try{if(window.grokVoice)window.grokVoice.onTurnDone()}catch(e){}scheduleMsgDrain(200)},
-          reject:err=>{if(isActiveTurn(t2)){if(handleMsg._waitPrompt===id2)handleMsg._waitPrompt=null;if(stillHere()){setBusy(false);setPhase("error",String(err).slice(0,40))}}chip(String(err));try{if(window.grokVoice)window.grokVoice.setBusyFlag(false)}catch(x){}}
-        });
-        const fallback=[{type:"text",text:(t?t+"\n\n":"")+note+"\n(Agent may not accept image content blocks on this link.)"}];
-        if(stillHere())setBusy(true);
-        ws.send(JSON.stringify({jsonrpc:"2.0",id:id2,method:"session/prompt",params:{sessionId:targetSid,prompt:fallback}}));
-        return;
-      }
+      if(setup.key)markPersonaApplied(setup.key,false);
+      forgetOwnEcho(promptId);
       if(stillHere()){setBusy(false);setPhase("error",msg.slice(0,40))}
-      chip(msg);
-      requeueLastDispatch(msg);
-      scheduleMsgDrain(400);
+      const imageish=/image|prompt|capability|unsupported|invalid/i.test(msg)&&(files||[]).some(isImage);
+      offerRetry(d,msg,{asText:imageish});
     },
     onDrop:()=>{}
   });
-  lastDispatch={id,sid:targetSid,tRaw,files:files||[],mode:mode||"queue",at:Date.now(),acked:false,retried:false};
-  ws.send(JSON.stringify({jsonrpc:"2.0",id,method:"session/prompt",params:{sessionId:targetSid,prompt:blocks}}));
+  lastDispatch=d;
+  promptStartAt[targetSid]=Date.now();
+  try{
+    ws.send(JSON.stringify({jsonrpc:"2.0",id,method:"session/prompt",params:{sessionId:targetSid,prompt:blocks,_grPromptId:promptId}}));
+  }catch(e){
+    pending.delete(id);
+    if(handleMsg._waitPrompt===id)handleMsg._waitPrompt=null;
+    forgetOwnEcho(promptId);
+    if(viewing()&&isActiveTurn(myToken)){setBusy(false);setPhase("error","send failed")}
+    return fail("send failed · "+String(e&&e.message||e).slice(0,60));
+  }
+  if(setup.key)markPersonaApplied(setup.key,true);
   startPromptWatch(id);
   promptCount++;
   if(window.grokCockpit&&window.grokCockpit.noteUsage)window.grokCockpit.noteUsage(t||tRaw||"");
@@ -3898,28 +4058,37 @@ async function dispatchPromptPayload(tRaw,files,mode,opts){
 }
 const PROMPT_STALL_MS=120000;
 function promptStallMs(){const v=+((window.__promptStallMs)||0);return v>0?v:PROMPT_STALL_MS}
-let promptWatchTimer=0;
-function stopPromptWatch(){if(promptWatchTimer){clearInterval(promptWatchTimer);promptWatchTimer=0}}
+let promptWatchTimer=0,promptWatchNote="";
+function stopPromptWatch(){
+  if(promptWatchTimer){clearInterval(promptWatchTimer);promptWatchTimer=0}
+  if(promptWatchNote&&phaseDetail===promptWatchNote){phaseDetail="";try{paintLivebar()}catch(e){}}
+  promptWatchNote="";
+}
 function startPromptWatch(id){
-  /* session/prompt is sent raw and registered straight into `pending`, so it never got req()'s
-     timeout — the one RPC that matters most had none. A brain-dead agent (process alive, WS
-     answering, workers gone) accepts the prompt and returns nothing, and the spinner ran forever.
-     Watch total SILENCE, not elapsed time: a real long turn streams thoughts constantly and keeps
-     lastLiveAt fresh, so it is never killed. */
   stopPromptWatch();
   const t0=Date.now();
   promptWatchTimer=setInterval(()=>{
     const p=pending.get(id);
     if(!p){stopPromptWatch();return}
     const quiet=Date.now()-Math.max(lastLiveAt||0,t0);
-    if(quiet<promptStallMs())return;
-    stopPromptWatch();
-    pending.delete(id);
-    try{p.reject(new Error("no reply from the agent for "+Math.round(quiet/1000)+"s · it may need a restart"))}catch(e){}
+    if(quiet<promptStallMs()){
+      if(promptWatchNote&&phaseDetail===promptWatchNote){phaseDetail="";promptWatchNote="";paintLivebar();paintWorkNow()}
+      return;
+    }
+    const m=Math.max(1,Math.round(quiet/60000));
+    const note="no updates for "+(quiet<60000?Math.round(quiet/1000)+"s":m+"m");
+    if(note!==promptWatchNote){
+      promptWatchNote=note;
+      if(sessionIdsMatch(sid,p.sessionId)){phaseDetail=note;paintLivebar();paintWorkNow()}
+    }
   },Math.max(250,Math.min(5000,Math.floor(promptStallMs()/4))));
 }
+function queueHeadIndex(){
+  const here=String(sid||"");
+  return msgQueue.findIndex(q=>q&&(!q.sessionId||String(q.sessionId)===here));
+}
 function armMsgRetry(){
-  if(msgRetryTimer||!msgQueue.length)return;
+  if(msgRetryTimer||!msgQueue.length||queueHeadIndex()<0)return;
   msgRetryTimer=setTimeout(()=>{msgRetryTimer=0;drainMsgQueue().catch(()=>{})},1500);
 }
 function scheduleMsgDrain(ms){setTimeout(()=>drainMsgQueue().catch(()=>{}),ms||300);armMsgRetry()}
@@ -3929,36 +4098,43 @@ async function drainMsgQueue(){
      nothing re-armed it, so one blocked attempt parked the queue until the next unrelated
      event. armMsgRetry keeps a single 1.5s ticker alive while anything is queued. */
   if(msgDrainBusy||!sid||!ws||ws.readyState!==1||sessionSwitching){armMsgRetry();return}
-  const peekSid=String((msgQueue[0]&&msgQueue[0].sessionId)||sid||"");
+  const head=queueHeadIndex();
+  if(head<0)return;
+  const peekSid=String(sid);
   if(!sessionIsAttached(peekSid)){
-    if(sessionIdsMatch(peekSid,sid)){
-      msgDrainBusy=true;
-      try{
-        await req("session/load",{sessionId:peekSid,cwd:sidCwd,mcpServers:[]},12000);
+    if(attachReplay){armMsgRetry();return}
+    msgDrainBusy=true;
+    suppressLive=true;attachReplay=true;
+    try{
+      await req("session/load",{sessionId:peekSid,cwd:sidCwd,mcpServers:[]},12000);
+      if(String(sid)===peekSid){
         markAgentAttach(peekSid,true);
         try{if(window.grokChat)window.grokChat.ready(peekSid)}catch(e){}
-      }catch(e){armMsgRetry();return}
-      finally{msgDrainBusy=false}
-    }else{armMsgRetry();return}
+      }
+    }catch(e){armMsgRetry();return}
+    finally{
+      msgDrainBusy=false;
+      if(String(sid)===peekSid){attachReplay=false;suppressLive=false;scheduleCatchup(200)}
+    }
   }
-  const staleBusy=!!busy&&!replaying&&(Date.now()-Math.max(lastLiveAt||0,0)>30000);
+  const staleBusy=!!busy&&!replaying&&(Date.now()-Math.max(lastLiveAt||0,0)>30000)&&!ownPromptPending(sid,{liveOnly:true});
   if(staleBusy){try{setBusy(false,sid);setPhase("idle")}catch(e){}}
   if(busy&&!replaying&&!staleBusy){armMsgRetry();return}
   const now=Date.now();
   if(now-lastMsgDrain<400){armMsgRetry();return}
+  const idx=queueHeadIndex();
+  if(idx<0)return;
   msgDrainBusy=true;lastMsgDrain=now;
-  const item=msgQueue.shift();
+  const item=msgQueue.splice(idx,1)[0];
   paintMsgQueue();
   persistMsgQueue();
   const itemSid=String(item.sessionId||sid||"");
   try{
     echoQueuedSend(item);
-    localEchoUntil=Date.now()+5000;
     promoteSessionAfterMessage(itemSid).catch(()=>{});
     try{if(window.grokVoice)window.grokVoice.onTaskSent(item.tRaw)}catch(e){}
-    const ok=await dispatchPromptPayload(item.tRaw,item.files||[],item.mode||"queue",{fromQueue:true,wasBusy:item.mode!=="fyi",sessionId:itemSid,sessionGen:sessionGen,allowCrossSession:true});
-    if(!ok){item.echoed=false;msgQueue.unshift(item);paintMsgQueue();persistMsgQueue()}
-  }catch(e){item.echoed=false;chip("queue drain: "+e);msgQueue.unshift(item);paintMsgQueue();persistMsgQueue()}
+    await dispatchPromptPayload(item.tRaw,item.files||[],item.mode||"queue",{fromQueue:true,wasBusy:item.mode!=="fyi",sessionId:itemSid,sessionGen:sessionGen,allowCrossSession:true});
+  }catch(e){chip("queue drain: "+e);offerRetry({sid:itemSid,tRaw:item.tRaw,files:item.files||[],mode:item.mode||"queue",promptId:"",hubAcked:true,opts:{fromQueue:true,wasBusy:item.mode!=="fyi"}},String(e&&e.message||e))}
   finally{msgDrainBusy=false;armMsgRetry()}
 }
 function nextId(){return ++nid}
@@ -3967,8 +4143,9 @@ function req(method,params,timeoutMs){
     if(!ws||ws.readyState!==1)return reject(new Error("socket not open"));
     const id=nextId();
     const t=setTimeout(()=>{if(pending.has(id)){pending.delete(id);reject(new Error("timeout: "+method))}},timeoutMs||120000);
-    pending.set(id,{resolve:v=>{clearTimeout(t);resolve(v)},reject:e=>{clearTimeout(t);reject(e)}});
-    ws.send(JSON.stringify({jsonrpc:"2.0",id,method,params}));
+    pending.set(id,{method,sessionId:String((params&&params.sessionId)||""),resolve:v=>{clearTimeout(t);resolve(v)},reject:e=>{clearTimeout(t);reject(e)}});
+    try{ws.send(JSON.stringify({jsonrpc:"2.0",id,method,params}))}
+    catch(e){clearTimeout(t);pending.delete(id);reject(e)}
   });
 }
 
@@ -4823,50 +5000,13 @@ function noteSeenUser(key){
 function normUserEcho(text){
   return stripPromptChrome(String(text||"")).replace(/\s+/g," ").trim();
 }
-function feedHasUserText(text){
-  const plain=normUserEcho(text);
-  if(!plain)return false;
-  if(seenUserTexts.has(plain)||seenUserTexts.has(String(text||"").trim()))return true;
-  try{
-    const rows=feed?feed.querySelectorAll(".row.me .bub"):[];
-    for(let i=0;i<rows.length;i++){
-      const raw=normUserEcho(rows[i].dataset.raw||rows[i].innerText||"");
-      if(raw&&(raw===plain||plain.endsWith(raw)||raw.endsWith(plain)))return true;
-    }
-  }catch(e){}
-  return false;
-}
-function isLocalUserEcho(text){
-  if(lastDispatch&&!lastDispatch.acked){
-    const plain=normUserEcho(text);
-    const last=normUserEcho(lastDispatch.tRaw||lastLocalUserPlain);
-    if(plain&&last&&(plain===last||plain.endsWith(last)||last.endsWith(plain)))return true;
-  }
-  if(Date.now()>=localEchoUntil)return false;
-  const plain=normUserEcho(text);
-  if(!plain)return true;
-  if(seenUserTexts.has(plain)||seenUserTexts.has(String(text||"").trim())||seenUserTexts.has(stripPromptChrome(text||"").trim()))return true;
-  const last=normUserEcho(lastLocalUserPlain);
-  if(last&&(plain===last||plain.endsWith(last)||last.endsWith(plain)))return true;
-  try{
-    const rows=feed?feed.querySelectorAll(".row.me .bub"):[];
-    for(let i=rows.length-1;i>=Math.max(0,rows.length-4);i--){
-      const raw=normUserEcho(rows[i].dataset.raw||"");
-      if(raw&&(raw===plain||plain.endsWith(raw)||raw.endsWith(plain)))return true;
-    }
-  }catch(e){}
-  return false;
-}
 function paintHistoryUser(text,content){
   userWireBuf="";
   curAgent=null;curThought=null;curThoughtRow=null;curUser=null;
   const display=stripPromptChrome(text||"");
   const media=contentMedia(content);
   if(!display.trim()&&!media)return false;
-  if(!replaying&&display&&isLocalUserEcho(display)&&!media){noteSeenUser(display);return false}
-  /* Live catch-up must not append a You bubble the feed already shows. That
-     is how "Did you finish?" (hours ago) landed under a prompt just sent. */
-  if(!replaying&&display&&feedHasUserText(display)&&!media){noteSeenUser(display);return false}
+  if(media&&media.id&&!display.trim()&&feed.querySelector('[data-att="'+String(media.id).replace(/"/g,"")+'"]'))return false;
   const bub=addRow("You");
   bub.classList.add("md");
   bub.dataset.raw=display;
@@ -4952,7 +5092,7 @@ function appendUser(text,opts){
     const display=stripPromptChrome(userWireBuf);
     if(!display.trim())return;
     const key=display.trim();
-    if(!opts.force&&isLocalUserEcho(display)){
+    if(!opts.force&&consumeOwnEcho(display,sid)){
       userWireBuf="";
       return;
     }
@@ -5417,15 +5557,13 @@ function appendRecap(u){
 }
 function handleUpdate(u,sessionId,meta){
   if(!u)return;
-  /* Aug 1 braid gate: suppress only while switching / attach, then match this
-     session with prefix-tolerant ids. Do not drop same-chat live because
-     attachReplay is set or the hub sent a shorter sessionId. */
   if(suppressLive&&!historyPainting)return;
   if(sessionSwitching&&!historyPainting)return;
   if(!sid)return;
   if(sessionId){
     if(!sessionIdsMatch(sessionId,sid))return;
   }else if(!historyPainting)return;
+  if(!historyPainting&&!sessionIsAttached(sid))return;
   const chat=window.grokChat;
   const want=String(sid);
   if(chat){
@@ -5446,7 +5584,9 @@ function handleUpdate(u,sessionId,meta){
   if(t==="user_message_chunk"){
     const c=u.content||{};
     const txt=c.text||"";
-    if(!replaying&&txt&&isLocalUserEcho(txt)&&!contentMedia(c)){userWireBuf="";return}
+    const cm=contentMedia(c);
+    if(cm&&cm.id&&!txt&&feed.querySelector('[data-att="'+String(cm.id).replace(/"/g,"")+'"]'))return;
+    if(!replaying&&txt&&!cm&&consumeOwnEcho(txt,want)){userWireBuf="";return}
     if(replaying||historyPainting){paintHistoryUser(txt,c);return}
     curAgent=null;curThought=null;
     if(!userWireBuf)curUser=null;
@@ -5527,13 +5667,16 @@ function handleMsg(data){
   if(data.id!=null&&pending.has(data.id)){
     const p=pending.get(data.id);pending.delete(data.id);
     if(data.error){
-      try{p.reject(new Error(data.error.message||JSON.stringify(data.error)))}catch(e){}
+      const err=new Error(data.error.message||JSON.stringify(data.error));
+      err.fromHub=true;err.code=data.error.code;
+      try{p.reject(err)}catch(e){}
     }else{
       try{p.resolve(data.result||{})}catch(e){}
     }
+    const dup=!!(data.result&&data.result.stopReason==="duplicate");
     if(handleMsg._waitPrompt===data.id){
       handleMsg._waitPrompt=null;
-      if(!cancelInFlight){
+      if(!cancelInFlight&&!dup&&!data.error){
         const same=!p||!p.sessionId||sessionIdsMatch(p.sessionId,sid);
         if(same){
           try{closeOpen()}catch(e){}
@@ -5556,12 +5699,42 @@ function handleMsg(data){
     }
     return;
   }
+  if(method==="_x.ai/remote/cid_conflict"){
+    regenerateClientId();
+    return;
+  }
   if(method==="_x.ai/remote/rpc_done"){
-    if(params&&params.detached){
-      softDetach=false;
-      if(handleMsg._waitPrompt!=null){try{pending.delete(handleMsg._waitPrompt)}catch(e){}handleMsg._waitPrompt=null}
-      if(!cancelInFlight&&!replaying){setBusy(false,sid);setPhase("idle");scheduleCatchup(120);scheduleMsgDrain(200)}
+    const pp=params||{};
+    let pid=pp.id;
+    let pend=pid!=null?pending.get(pid):null;
+    if((!pend||pend.kind!=="prompt")&&pp.promptId){
+      for(const [k,v] of pending.entries()){if(v&&v.kind==="prompt"&&v.promptId===String(pp.promptId)){pid=k;pend=v;break}}
     }
+    const cidSaid=Object.prototype.hasOwnProperty.call(pp,"cid");
+    const cidMine=cidSaid&&isMyCid(pp.cid);
+    const sidOk=!pp.sessionId||!pend||!pend.sessionId||String(pp.sessionId)===String(pend.sessionId);
+    const mine=!pp.internal&&!!(pend&&pend.kind==="prompt"&&sidOk&&(cidMine||(!cidSaid&&pend.detached)));
+    const hp=!pp.internal&&cidMine&&pp.promptId?httpPrompts.get(String(pp.promptId)):null;
+    if(hp&&!mine){
+      httpPrompts.delete(String(pp.promptId));
+      if(sid&&String(sid)===hp.sid&&isActiveTurn(hp.token)){
+        if(pp.ok===false){setBusy(false);setPhase("error",String(pp.error||"turn failed").slice(0,40));chip("turn failed on the PC · "+String(pp.error||"").slice(0,80))}
+        else finishTurnOrKeep(hp.sid);
+      }
+      scheduleCatchup(120);
+      return;
+    }
+    if(mine){
+      softDetach=false;
+      if(pp.ok===false||pp.error){
+        const em=typeof pp.error==="string"?pp.error:((pp.error&&pp.error.message)||"turn failed on the PC");
+        handleMsg({jsonrpc:"2.0",id:pid,error:{message:em}});
+      }else handleMsg({jsonrpc:"2.0",id:pid,result:pp.result||{}});
+      scheduleCatchup(120);
+      return;
+    }
+    const k=String(pp.sessionId||"");
+    if(k&&sid&&k===String(sid)&&!sessionSwitching){hydrateWork(sid).catch(()=>{});scheduleCatchup(150)}
     return;
   }
   if(method==="_x.ai/remote/auto_permission"||method==="_x.ai/remote/client_rpc"){
@@ -5572,7 +5745,9 @@ function handleMsg(data){
     return;
   }
   if(method==="session/update"){
-    handleUpdate(params.update,params.sessionId,params._meta||(params.update&&params.update._meta)||data._meta);
+    const up=params.update;
+    if(up&&up.sessionUpdate==="session_info_update")noteAgentSessionInfo(params.sessionId,up);
+    handleUpdate(up,params.sessionId,params._meta||(up&&up._meta)||data._meta);
     return;
   }
   if(method==="_x.ai/session/update"||method==="x.ai/session/update"){
@@ -5587,7 +5762,7 @@ function handleMsg(data){
     return;
   }
   if(method==="_x.ai/queue/changed"){
-    if(sessionSwitching||!sid||(params.sessionId&&!liveBelongsHere(params.sessionId)))return;
+    if(sessionSwitching||!sid||!params.sessionId||!liveBelongsHere(params.sessionId))return;
     const entries=params.entries||[];const run=params.runningPromptId;
     const seenQ=new Set();
     const parts=[];
@@ -5617,10 +5792,8 @@ function handleMsg(data){
     return;
   }
   if(method==="_x.ai/sessions/changed"){
-    if(!sessionSwitching){
-      fetchSessions().catch(()=>{});
-      scheduleCatchup(400);
-    }
+    scheduleSessionsRefetch(300);
+    if(!sessionSwitching&&params&&params.sessionId&&sid&&String(params.sessionId)===String(sid)&&params.reason==="turn")scheduleCatchup(400);
     return;
   }
   if(method.includes("permission")||method.includes("ask_user")||method==="session/request_permission"){
@@ -5732,6 +5905,7 @@ async function paintDiskEvents(events,sessionId,opts){
 }
 function applyHistoryMeta(meta){
   meta=meta||{};
+  if(typeof meta.size==="number"||typeof meta.end==="number")historyOffsetKnown=true;
   if(typeof meta.size==="number")historyFileSize=meta.size;
   if(typeof meta.end==="number"&&!meta.live){/* keep size for live tail */}
   if(typeof meta.end==="number"&&meta.live)historyFileSize=meta.end;
@@ -5817,67 +5991,83 @@ async function loadOlderHistory(){
     updateJump();
   }
 }
+const CATCHUP_MAX_PAGES=8;
 async function diskLiveCatchup(){
   if(!sid||replaying||sessionSwitching||diskCatchupBusy)return 0;
   if(isDemoMode()&&String(sid).startsWith("demo-"))return 0;
   const expect=String(sid),gen=sessionGen,expectCwd=String(sidCwd||"");
   diskCatchupBusy=true;
+  let total=0;
   try{
-    const q=new URLSearchParams({
-      sessionId:expect,
-      cwd:expectCwd,
-      live:"1",
-      since:String(historyFileSize||0),
-      limit:"200"
-    });
-    const r=await fetch("/api/session/history?"+q.toString(),{cache:"no-store"});
-    const text=await r.text();
-    let j=null;try{j=JSON.parse(String(text).replace(/^\uFEFF/,"").trim())}catch(e){j=null}
-    if(String(sid)!==expect||gen!==sessionGen||sessionSwitching||replaying)return 0;
-    if(!r.ok||!j||!j.ok)return 0;
-    if(j.sessionId&&!sessionIdsMatch(j.sessionId,expect))return 0;
-    const meta=j.meta||{};
-    const fileSize=typeof meta.size==="number"?meta.size:historyFileSize;
-    if(meta.reset||(historyFileSize>0&&fileSize<historyFileSize)){
-      historyFileSize=typeof meta.end==="number"?meta.end:(typeof fileSize==="number"?fileSize:0);
-      return 0;
-    }
-    const events=Array.isArray(j.events)?j.events:[];
-    const alreadyPainted=!!(feed&&feed.querySelector(".row.msg"));
-    if(!(historyFileSize>0)&&alreadyPainted){
-      if(typeof meta.end==="number")historyFileSize=meta.end;
-      else if(typeof fileSize==="number")historyFileSize=fileSize;
-      return 0;
-    }
-    let n=0;
-    if(events.length){
-      n=await paintDiskEvents(events,expect,{replay:false,gen:gen});
+    for(let pageN=0;pageN<CATCHUP_MAX_PAGES;pageN++){
+      const q=new URLSearchParams({
+        sessionId:expect,
+        cwd:expectCwd,
+        live:"1",
+        since:String(historyFileSize||0),
+        limit:"200"
+      });
+      const r=await fetch("/api/session/history?"+q.toString(),{cache:"no-store"});
+      const text=await r.text();
+      const j=readJsonText(text);
+      if(String(sid)!==expect||gen!==sessionGen||sessionSwitching||replaying)return 0;
+      if(!r.ok||!j||!j.ok)return total;
+      if(j.sessionId&&!sessionIdsMatch(j.sessionId,expect))return total;
+      const meta=j.meta||{};
+      const fileSize=typeof meta.size==="number"?meta.size:historyFileSize;
+      if(meta.reset||(historyFileSize>0&&fileSize<historyFileSize)){
+        historyFileSize=typeof meta.end==="number"?meta.end:(typeof fileSize==="number"?fileSize:0);
+        historyOffsetKnown=true;
+        return total;
+      }
+      const events=Array.isArray(j.events)?j.events:[];
+      if(!historyOffsetKnown&&!(historyFileSize>0)&&feed&&feed.querySelector(".row.msg")){
+        if(typeof meta.end==="number")historyFileSize=meta.end;
+        else if(typeof fileSize==="number")historyFileSize=fileSize;
+        historyOffsetKnown=true;
+        return total;
+      }
+      let n=0;
+      if(events.length){
+        n=await paintDiskEvents(events,expect,{replay:false,gen:gen});
+        if(String(sid)!==expect||gen!==sessionGen)return 0;
+        if(n)noteCatchupTurnState(events,expect);
+        total+=n;
+      }
       if(String(sid)!==expect||gen!==sessionGen)return 0;
-      if(n){
-        /* Hub work board is the live/idle source of truth. Catch-up used to
-           replay a pending read as if it were still running, so after
-           "back online" the Agents rail and spinner stayed on while the PC
-           had already finished. */
-        const job=workJobs.find(x=>sessionIdsMatch(x.sid,expect));
-        if(job)applyWorkJob(job);
-        else{
-          const done=events.some(ev=>{
-            const k=(((ev||{}).params||{}).update||{}).sessionUpdate||"";
-            return k==="turn_completed"||k==="task_completed";
-          });
-          if(done){
-            if(eventsHaveOpenTool(events)){setBusy(true,expect);setPhase("tools","command running")}
-            else{setBusy(false,expect);setPhase("idle")}
-          }
-        }
+      const prevOff=historyFileSize;
+      const hasEnd=typeof meta.end==="number";
+      if(hasEnd)historyFileSize=meta.end;
+      else if(typeof fileSize==="number")historyFileSize=fileSize;
+      historyOffsetKnown=true;
+      const more=meta.has_more===true||(hasEnd&&typeof meta.size==="number"&&meta.end<meta.size&&events.length>=200);
+      if(!more||!hasEnd||historyFileSize<=prevOff)return total;
+      if(pageN===CATCHUP_MAX_PAGES-1){
+        actionChip("more updates than one catch-up reads · some lines are not shown yet",[{label:"Load missed",pri:true,fn:()=>{softCatchup().catch(()=>{})}},{label:"Reload chat",fn:()=>{const s=(sessions||[]).find(x=>String(x.sessionId)===expect)||{sessionId:expect,cwd:expectCwd};openSession(s)}}],{key:"catchup-more"});
       }
     }
-    if(String(sid)!==expect||gen!==sessionGen)return 0;
-    if(typeof meta.end==="number")historyFileSize=meta.end;
-    else if(typeof fileSize==="number")historyFileSize=fileSize;
-    return n;
-  }catch(e){return 0}
+    return total;
+  }catch(e){return total}
   finally{diskCatchupBusy=false}
+}
+function noteCatchupTurnState(events,expect){
+  const job=workJobs.find(x=>sessionIdsMatch(x.sid,expect));
+  if(job){applyWorkJob(job);return}
+  const sentAt=promptStartAt[expect]||0;
+  let done=false;
+  events.forEach(ev=>{
+    const params=(ev||{}).params||{};
+    const u=params.update||{};
+    const k=u.sessionUpdate||"";
+    if(k!=="turn_completed"&&k!=="task_completed")return;
+    const at=eventTimeMs(params._meta||u._meta||null,u);
+    if(sentAt&&(!at||at<sentAt-1000))return;
+    done=true;
+  });
+  if(!done)return;
+  if(ownPromptPending(expect,{liveOnly:true}))return;
+  if(eventsHaveOpenTool(events)){setBusy(true,expect);setPhase("tools","command running")}
+  else{setBusy(false,expect);setPhase("idle")}
 }
 
 async function softCatchup(){
@@ -5899,6 +6089,7 @@ function clearSessionFeed(){
   seenUserTexts=new Set();
   promptCount=0;
   historyFileSize=0;
+  historyOffsetKnown=false;
   historyHasMore=false;
   historyOlderBefore=0;
   historyLoadingOlder=false;
@@ -5912,13 +6103,10 @@ function adoptDiskTitle(sessionId,title,cwd){
   const id=String(sessionId||"").trim();
   const t=String(title||"").trim();
   if(!id||!t)return;
-  if(!titleOverrides[id]){
-    const s=sessions.find(x=>String(x.sessionId)===id);
-    if(s){
-      if(!s.title||!String(s.title).trim()||/^untitled$/i.test(String(s.title))){s.title=t;s.generated_title=t}
-      if(!s.remote_title)s.remote_title=t;
-      if(cwd&&!s.cwd)s.cwd=cwd;
-    }
+  const s=sessions.find(x=>String(x.sessionId)===id);
+  if(s){
+    if(!s.titleIsManual&&isPlaceholderTitle(s.title,id)){s.title=t;s.generated_title=t}
+    if(cwd&&!s.cwd)s.cwd=cwd;
   }
   try{paintChatTitle();renderSessions()}catch(e){}
 }
@@ -5933,8 +6121,7 @@ async function hydrateSessionTitles(list){
   const missing=ids.filter(id=>{
     const s=sessions.find(x=>String(x.sessionId)===id);
     if(!s)return true;
-    const cur=String(s.title||s.generated_title||s.remote_title||titleOverrides[id]||"").trim();
-    return !cur||/^untitled$/i.test(cur)||s._fromArchive;
+    return isPlaceholderTitle(s.title||s.generated_title||s.remote_title,id)||s._fromArchive;
   });
   const needKind=ids.filter(id=>{const s=sessions.find(x=>String(x.sessionId)===id);return !s||s.kind==null});
   const batch=[...new Set([...missing,...needKind])].slice(0,250);
@@ -5954,10 +6141,10 @@ async function hydrateSessionTitles(list){
         s={sessionId:id,title:"",cwd:"",resident:false,activity:isArchived(id)?"archived":"",_fromArchive:isArchived(id)};
         sessions.push(s);
       }
-      if(titleOverrides[id])continue;
-      if(t){
-        s.title=t;s.generated_title=t;s.remote_title=t;n++;
+      if(t&&!s.titleIsManual&&(isPlaceholderTitle(s.title,id)||s._fromArchive||!hubHasMeta)){
+        s.title=t;s.generated_title=t;n++;
       }
+      if(s._fromArchive&&(t||row.cwd))s._fromArchive=false;
       if(row.cwd&&!s.cwd)s.cwd=row.cwd;
       if(row.kind!=null)s.kind=row.kind;
       if(row.mtime||row.updatedAt)s.lastChangeUnixMs=Number(row.mtime||row.updatedAt)||s.lastChangeUnixMs||0;
@@ -5990,13 +6177,24 @@ function startPoll(){
 }
 function stopPoll(){if(pollTimer){clearInterval(pollTimer);pollTimer=null}}
 
+function homeCwd(){
+  if(defaultCwd&&defaultCwd!==".")return String(defaultCwd);
+  const el=document.getElementById("cwd");
+  return String(el&&el.value||"").trim();
+}
+function normPathKey(t){return String(t||"").split(BSLASH).join("/").toLowerCase().replace(/[/]+$/,"")}
+function isHomeDirPath(cwd){
+  return /^(\/home\/[^/]+|\/users\/[^/]+|[a-z]:\/users\/[^/]+|\/root)$/.test(cwd);
+}
+function isScratchPath(cwd){
+  return cwd.indexOf("/appdata/local/temp/")>=0||cwd.indexOf("/scratchpad/")>=0||/^\/tmp\//.test(cwd+"/")||/^\/var\/folders\//.test(cwd)||/^\/private\/var\/folders\//.test(cwd);
+}
 function sessionOrigin(s){
   /* Every app that drives the shared agent leaves its fingerprint in the session cwd -
      Braid seats run in Amni-Delve workspace, watchers in Temp scratchpads, loops in the
      plugin root. Group by that instead of blacklisting title patterns app by app:
      new apps sort themselves out on day one. "Chats" = the remote own workspace. */
-  const norm=t=>String(t||"").split(BSLASH).join("/").toLowerCase().replace(/[/]+$/,"");
-  const cwd=norm(s&&s.cwd);
+  const cwd=normPathKey(s&&s.cwd);
   /* Server-classified kind from the session dir beats every path heuristic: "auto" is the
      no-human-operator system prompt (headless automation), "braid" is the grok-actor
      [AGENT SETUP injection that rides every Braid-driven seat. Needed since apps adopt v7
@@ -6008,69 +6206,30 @@ function sessionOrigin(s){
     const v0=(String(s&&s.sessionId||"").match(/^[0-9a-f]{8}-[0-9a-f]{4}-([0-9a-f])/)||[])[1]||"";
     return v0==="4"?"Apps":"Chats";
   }
-  const home=norm(defaultCwd&&defaultCwd!=="."?defaultCwd:(document.getElementById("cwd")||{}).value);
+  const home=normPathKey(homeCwd());
   const sidv=(String(s&&s.sessionId||"").match(/^[0-9a-f]{8}-[0-9a-f]{4}-([0-9a-f])/)||[])[1]||"";
   if(home&&cwd===home){
     /* Apps that drive the shared agent from THIS workspace still give themselves away:
        they mint their session ids (uuid v4) while grok-native sessions are v7. Braid
        re-pins every couple of turns, which is exactly the flood. */
-    if(sidv==="4")return "Apps";
-    /* Cron-style drivers that dodge both tells (interactive prompt, no persona) still
-       repeat themselves: three or more sessions with the same token-set title is a
-       machine, not a person. Resident sessions are exempt - never hide an open turn. */
-    if(!s.resident&&titleClusterCount(s)>=3)return "Background";
+    if(sidv==="4"&&!s.resident&&!s.pending&&!s._local)return "Apps";
     return "Chats";
   }
-  if(cwd.indexOf("/appdata/local/temp/")>=0||cwd.indexOf("/scratchpad/")>=0)return "Background";
+  if(isScratchPath(cwd))return "Background";
   if(cwd.indexOf("/amni-delve")>=0)return "Braid";
   if(cwd.indexOf("/.grok/plugins/grok-remote")>=0)return "Grok Remote";
-  if(cwd.indexOf("/azno")>=0)return "Azno";
   if(home&&cwd.indexOf(home+"/")===0){
     const rest=cwd.slice(home.length+1).split("/")[0];
     return rest?rest.charAt(0).toUpperCase()+rest.slice(1):"Chats";
   }
+  if(isHomeDirPath(cwd))return "Home";
   const base=cwd.split("/").filter(Boolean).pop()||"Other";
-  return base==="antho"?"Home":base.charAt(0).toUpperCase()+base.slice(1);
+  return base.charAt(0).toUpperCase()+base.slice(1);
 }
 const BSLASH=String.fromCharCode(92);
-let __clusterCounts=null,__clusterStamp="";
-function __clusterKey(s){
-  const w=String(s&&(s.title||s.generated_title||s.remote_title)||"").toLowerCase().replace(/[^a-z0-9\s-]/g," ").split(/\s+/).filter(Boolean);
-  return w.length<3?"":w.sort().join(" ");
-}
-function titleClusterCount(s){
-  const list=sessions||[];
-  const stamp=list.length+":"+String(list[0]&&list[0].sessionId||"")+":"+String(list[list.length-1]&&list[list.length-1].sessionId||"");
-  if(!__clusterCounts||__clusterStamp!==stamp){
-    __clusterCounts={};__clusterStamp=stamp;
-    for(const x of list){
-      const k=__clusterKey(x);
-      if(k)__clusterCounts[k]=(__clusterCounts[k]||0)+1;
-    }
-  }
-  const k=__clusterKey(s);
-  return k?(__clusterCounts[k]||0):0;
-}
 function isNoiseSession(s){
   if(!s)return false;
-  const t=String(s.title||s.generated_title||"").trim();
-  const cwd=String(s.cwd||"").replace(/\\/g,"/").toLowerCase();
-  if(!t)return false;
-  if(/you are azno'?s automated market-watch/i.test(t))return true;
-  if(/market[-\s]?watch/i.test(t))return true;
-  if(/\bco-?pilot\b/i.test(t)&&/(azno|ticker|entry|exit|verdict|signal|json|ohlcv|market)/i.test(t))return true;
-  if(/(^|\b)(azno\s+)?ta\s+(cache|json|probe)\b/i.test(t)&&/(ticker|verdict|action|signal|watch|trade)/i.test(t))return true;
-  if(/ticker\s+(market\s+)?verdict|verdict\s+lines?\s+(for|from)|watch\s+probe/i.test(t))return true;
-  if(/\bohlcv\b/i.test(t)&&/(probe|ticker|verdict|action|breakout|cache|json)/i.test(t))return true;
-  if(/generate\s+(one-line\s+|per-)?(ticker|verdict)/i.test(t))return true;
-  if(/entry\s*exit\s*(signal|line|alert|stock|ticker)/i.test(t))return true;
-  if(/consider-entry|stand-aside/i.test(t))return true;
-  if(/process\s+(azno\s+)?ta\s+(cache\s+)?json/i.test(t))return true;
-  if(/azno\s+live\s+trading\s+(health\s+check|stack)/i.test(t))return true;
-  if(/\/azno-v2\/?$/.test(cwd)&&/(ticker\s+verdict|ta\s+(json|probe)|ohlcv|entry\s*exit|probe\s+ticker|multi-ticker)/i.test(t))return true;
-  if(/(amni[-\s]?chat).*(watchdog|keepalive|healthz|relay\s+tick)/i.test(t))return true;
-  if(/(watchdog|keepalive).*(amni|azno|relay|adam)/i.test(t))return true;
-  return false;
+  return s.kind==="auto"||s.auto===true||s.noise===true;
 }
 function normalizeSessions(raw){
   let s=raw;
@@ -6080,12 +6239,7 @@ function normalizeSessions(raw){
     break;
   }
   if(!Array.isArray(s))s=[];
-  return s.filter(x=>x&&x.sessionId&&!isNoiseSession(x)).map(x=>{
-    const id=String(x.sessionId||"");
-    const ov=titleOverrides[id];
-    if(ov){x=Object.assign({},x,{title:ov,remote_title:ov,generated_title:ov})}
-    return x;
-  });
+  return s.filter(x=>x&&x.sessionId&&!isNoiseSession(x));
 }
 function sessionStamp(s){
   if(!s)return 0;
@@ -6106,25 +6260,28 @@ function sessionStamp(s){
   return 0;
 }
 function pickBestSession(list){
-  const arr=(list||[]).filter(s=>s&&s.sessionId&&!isArchived(s.sessionId)&&!isNoiseSession(s));
+  const arr=(list||[]).filter(s=>s&&s.sessionId&&!isArchived(s.sessionId)&&!isNoiseSession(s)&&sessionOrigin(s)==="Chats");
   if(!arr.length)return null;
-  const cwd=(document.getElementById("cwd")&&document.getElementById("cwd").value||defaultCwd||"").replace(/\\/g,"/").toLowerCase();
+  const cwd=normPathKey(homeCwd());
   const score=s=>{
     let sc=sessionStamp(s);
     if(s.resident)sc+=1e15;
     if(s.activity&&/active|running|busy|live/i.test(String(s.activity)))sc+=1e14;
-    const scwd=String(s.cwd||"").replace(/\\/g,"/").toLowerCase();
-    if(cwd&&scwd&&(scwd===cwd||scwd.endsWith(cwd)||cwd.endsWith(scwd)))sc+=1e13;
+    const scwd=normPathKey(s.cwd);
+    if(cwd&&scwd&&scwd===cwd)sc+=1e13;
     return sc;
   };
   return arr.slice().sort((a,b)=>score(b)-score(a))[0]||null;
 }
 function shortPath(p){
-  const s=String(p||"").replace(/[/\\]+/g,"\\").replace(/\\+$/,"");
+  const raw=String(p||"");
+  const win=raw.indexOf(BSLASH)>=0&&raw.indexOf("/")<0;
+  const sep=win?BSLASH:"/";
+  const s=raw.split(BSLASH).join("/").replace(/\/+/g,"/").replace(/\/+$/,"");
   if(!s)return "";
-  const parts=s.split("\\").filter(Boolean);
-  if(parts.length<=2)return s;
-  return "…\\"+parts.slice(-2).join("\\");
+  const parts=s.split("/").filter(Boolean);
+  const out=parts.length<=2?s:("…/"+parts.slice(-2).join("/"));
+  return win?out.split("/").join(sep):out;
 }
 function relTime(ms){
   if(!ms)return "";
@@ -6135,40 +6292,74 @@ function relTime(ms){
   if(d<604800000)return Math.floor(d/86400000)+"d ago";
   try{return new Date(ms).toLocaleDateString()}catch(e){return ""}
 }
-let titleOverrides={};
-function loadTitleOverrides(){
-  try{
-    const raw=JSON.parse(String(localStorage.getItem("grok_remote_titles")||"{}").replace(/^\uFEFF/,"").trim()||"{}");
-    titleOverrides=raw&&typeof raw==="object"?raw:{};
-  }catch(e){titleOverrides={}}
+const TITLES_LEGACY_KEY="grok_remote_titles";
+function untitledLabel(id){
+  const k=String(id||"").trim();
+  return k?"Chat · "+k.slice(0,8):"New chat";
 }
-function saveTitleOverrides(){try{localStorage.setItem("grok_remote_titles",JSON.stringify(titleOverrides))}catch(e){}}
+function isPlaceholderTitle(t,id){
+  const v=String(t||"").trim();
+  if(!v)return true;
+  if(/^(untitled|new chat|\(active\)|chat)$/i.test(v))return true;
+  return !!id&&v===untitledLabel(id);
+}
 function sessionTitle(s){
-  if(!s)return"Untitled";
+  if(!s)return untitledLabel("");
   const id=String(s.sessionId||s.id||"");
-  const ov=id&&titleOverrides[id];
-  const t=String(ov||s.remote_title||s.title||s.generated_title||"").trim();
-  return t||"Untitled";
+  if(s.titleIsManual&&String(s.title||"").trim())return String(s.title).trim();
+  for(const t of [s.title,s.agentTitle,s.generated_title,s.remote_title]){
+    if(!isPlaceholderTitle(t,id))return String(t).trim();
+  }
+  return untitledLabel(id);
 }
-function applyLocalTitle(sessionId,title){
-  const id=String(sessionId||"");
-  const t=String(title||"").trim();
-  if(!id||!t)return;
-  titleOverrides[id]=t;
-  saveTitleOverrides();
-  const s=sessions.find(x=>String(x.sessionId)===id);
-  if(s){s.title=t;s.remote_title=t;s.generated_title=t}
-  paintChatTitle();
-  try{renderSessions()}catch(e){}
+function sessionTitleById(id){
+  const k=String(id||"");
+  const s=(sessions||[]).find(x=>String(x.sessionId)===k);
+  return s?sessionTitle(s):untitledLabel(k);
 }
+window.grokSessionTitle=sessionTitleById;
+window.grokFindSession=id=>(sessions||[]).find(x=>String(x.sessionId)===String(id||""))||null;
+async function migrateLegacyTitlesOnce(){
+  let map=null;
+  try{map=readJsonText(localStorage.getItem(TITLES_LEGACY_KEY)||"");}catch(e){return}
+  if(!map||typeof map!=="object"){try{localStorage.removeItem(TITLES_LEGACY_KEY)}catch(e){}return}
+  if(!hubHasMeta||migrateLegacyTitlesOnce._busy)return;
+  migrateLegacyTitlesOnce._busy=true;
+  try{
+    let failed=0;
+    for(const id of Object.keys(map)){
+      const t=String(map[id]||"").trim();
+      if(!id||!t)continue;
+      const s=(sessions||[]).find(x=>String(x.sessionId)===id);
+      if(s&&s.titleIsManual)continue;
+      if(s&&String(s.title||"").trim()===t)continue;
+      try{await postRename(id,t)}catch(e){failed++}
+    }
+    if(!failed)try{localStorage.removeItem(TITLES_LEGACY_KEY)}catch(e){}
+    if(Object.keys(map).length)scheduleSessionsRefetch(200);
+  }finally{migrateLegacyTitlesOnce._busy=false}
+}
+function noteAgentSessionInfo(sessionId,u){
+  const k=String(sessionId||"");
+  const t=String(u&&(u.title||u.name)||"").trim();
+  if(!k)return;
+  const s=(sessions||[]).find(x=>String(x.sessionId)===k);
+  if(s&&t){
+    s.agentTitle=t;
+    if(!s.titleIsManual){s.title=t;s.generated_title=t}
+    try{paintChatTitle();renderSessions();paintPinsLive()}catch(e){}
+  }
+  scheduleSessionsRefetch(600);
+}
+function paintPinsLive(){try{if(window.grokCockpit&&window.grokCockpit.paintPins)window.grokCockpit.paintPins()}catch(e){}}
 function paintChatTitle(){
   const el=document.getElementById("chatTitle");
   const meta=document.getElementById("chatMeta");
   if(!el)return;
   if(!sid){el.textContent="Chat";el.title="Rename chat";if(meta){meta.hidden=true;meta.textContent=""};try{if(window.grokChat)window.grokChat.setHomeTitle("This chat")}catch(e){}return}
-  const s=sessions.find(x=>String(x.sessionId)===String(sid))||{sessionId:sid,title:titleOverrides[String(sid)]||"",cwd:sidCwd||""};
+  const s=sessions.find(x=>String(x.sessionId)===String(sid))||{sessionId:sid,title:"",cwd:sidCwd||""};
   const t=sessionTitle(s);
-  el.textContent=t;
+  if(el.textContent!==t)el.textContent=t;
   el.title="Rename · "+t;
   try{if(window.grokChat)window.grokChat.setHomeTitle(t)}catch(e){}
   if(meta){
@@ -6181,31 +6372,46 @@ function paintChatTitle(){
     meta.title=(s.cwd||sidCwd||"")+" · "+sid;
   }
 }
+async function postRename(id,title){
+  const r=await fetch("/api/session/rename",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({sessionId:id,title:title})});
+  const text=await r.text();
+  const j=readJsonText(text);
+  if(!r.ok||!j||j.ok===false)throw new Error((j&&(j.error||j.message))||String(text||"").slice(0,80)||("HTTP "+r.status));
+  return j;
+}
 async function renameSession(sessionId,opts){
   opts=opts||{};
   const id=String(sessionId||sid||"");
   if(!id){chip("open a chat first");return false}
   if(isDemoMode()){chip("rename disabled in demo");return false}
-  const s=sessions.find(x=>String(x.sessionId)===id)||{sessionId:id,title:titleOverrides[id]||"",cwd:sidCwd||defaultCwd||""};
-  const cur=sessionTitle(s);
+  let s=sessions.find(x=>String(x.sessionId)===id);
+  if(!s){s={sessionId:id,title:"",cwd:sidCwd||defaultCwd||"",_local:Date.now()};sessions.unshift(s)}
+  const shown=sessionTitle(s);
+  const manual=s.titleIsManual?String(s.title||"").trim():"";
   let next=opts.title;
   if(next==null){
-    next=window.prompt("Rename chat",cur);
+    next=window.prompt("Rename chat (empty = use the agent's title)",manual||(isPlaceholderTitle(shown,id)?"":shown));
     if(next==null)return false;
   }
   next=String(next||"").trim().replace(/\s+/g," ");
-  if(!next){chip("title required");return false}
-  if(next===cur){chip("unchanged");return false}
-  applyLocalTitle(id,next);
-  chip("renamed · "+next.slice(0,40));
+  if(next&&next===manual){chip("unchanged");return false}
+  if(!next&&!s.titleIsManual){chip("unchanged");return false}
+  const prev={title:s.title,titleIsManual:!!s.titleIsManual};
+  if(next){s.title=next;s.titleIsManual=true}
+  else{s.title=s.agentTitle||"";s.titleIsManual=false}
+  try{paintChatTitle();renderSessions();paintPinsLive()}catch(e){}
   try{
-    const r=await fetch("/api/session/rename",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({sessionId:id,title:next,cwd:s.cwd||sidCwd||defaultCwd||""})});
-    const text=await r.text();
-    let j=null;try{j=JSON.parse(String(text).replace(/^\uFEFF/,"").trim())}catch(e){j=null}
-    if(!r.ok||!j||!j.ok)throw new Error((j&&j.error)||text||("HTTP "+r.status));
+    const j=await postRename(id,next);
+    if(j&&typeof j.title==="string")s.title=j.title||next;
+    if(j&&typeof j.titleIsManual==="boolean")s.titleIsManual=j.titleIsManual;
+    if(j&&typeof j.agentTitle==="string")s.agentTitle=j.agentTitle;
+    chip(next?"renamed · "+next.slice(0,40):"title cleared · agent title shows");
+    scheduleSessionsRefetch(250);
     return true;
   }catch(e){
-    chip("rename saved locally · server: "+String(e).slice(0,60));
+    s.title=prev.title;s.titleIsManual=prev.titleIsManual;
+    try{paintChatTitle();renderSessions();paintPinsLive()}catch(x){}
+    actionChip("rename failed · "+String(e&&e.message||e).slice(0,60),[{label:"Retry",pri:true,fn:()=>{renameSession(id,{title:next}).catch(()=>{})}}],{bad:true});
     return false;
   }
 }
@@ -6239,25 +6445,36 @@ function paintDemoChat(){
   stickBottom=true;scroll();
 }
 async function fetchSessionsDisk(){
-  const r=await fetch("/api/sessions?limit=120",{cache:"no-store"});
+  const r=await fetch("/api/sessions?limit=500",{cache:"no-store"});
   const text=await r.text();
-  let j=null;try{j=JSON.parse(String(text).replace(/^\uFEFF/,"").trim())}catch(e){j=null}
-  if(!r.ok||!j||!j.ok)throw new Error((j&&(j.error||j.message))||text.slice(0,80)||("HTTP "+r.status));
-  return normalizeSessions({sessions:j.sessions||[]});
+  const j=readJsonText(text);
+  if(!r.ok||!j||!j.ok)throw new Error((j&&(j.error||j.message))||String(text||"").slice(0,80)||("HTTP "+r.status));
+  const rows=Array.isArray(j.sessions)?j.sessions:[];
+  const meta=typeof j.total==="number"||rows.some(x=>x&&(typeof x.archived==="boolean"||typeof x.titleIsManual==="boolean"));
+  if(meta)hubHasMeta=true;
+  return normalizeSessions({sessions:rows});
 }
 function mergeSessionLists(disk,live){
   const by=new Map();
-  (disk||[]).forEach(s=>{if(s&&s.sessionId)by.set(String(s.sessionId),s)});
+  (disk||[]).forEach(s=>{if(s&&s.sessionId)by.set(String(s.sessionId),Object.assign({},s,{_disk:true}))});
   (live||[]).forEach(s=>{
     if(!s||!s.sessionId)return;
     const id=String(s.sessionId);
-    const prev=by.get(id)||{};
-    by.set(id,Object.assign({},prev,s,{title:s.title||prev.title||"",cwd:s.cwd||prev.cwd||"",resident:!!s.resident}));
+    const prev=by.get(id);
+    if(!prev){by.set(id,Object.assign({},s));return}
+    const title=(prev.titleIsManual||!isPlaceholderTitle(prev.title,id))?prev.title:(s.title||prev.title||"");
+    by.set(id,Object.assign({},prev,s,{title:title,titleIsManual:!!prev.titleIsManual,archived:prev.archived,cwd:prev.cwd||s.cwd||"",resident:!!s.resident,_disk:true}));
+  });
+  (sessions||[]).forEach(s=>{
+    if(!s||!s.sessionId||!s._local)return;
+    const id=String(s.sessionId);
+    if(by.has(id)){const cur=by.get(id);if(s.resident&&!cur.resident)cur.resident=true;return}
+    if(Date.now()-Number(s._local)<180000)by.set(id,s);
   });
   try{
-    const last=JSON.parse(localStorage.getItem("grok_remote_last")||"{}");
+    const last=readLastSession();
     if(last&&last.sid&&!isPlaceholderSid(last.sid)&&!by.has(String(last.sid))){
-      by.set(String(last.sid),{sessionId:String(last.sid),cwd:last.cwd||defaultCwd||"",title:titleOverrides[last.sid]||"",resident:false,activity:"recent",lastChangeUnixMs:last.at||Date.now()});
+      by.set(String(last.sid),{sessionId:String(last.sid),cwd:last.cwd||defaultCwd||"",title:"",resident:false,activity:"recent",lastChangeUnixMs:last.at||Date.now()});
     }
   }catch(e){}
   return [...by.values()];
@@ -6266,9 +6483,21 @@ function revealSessList(){
   sessArchiveReady=true;
   if(sessList){try{sessList.dataset.ready="1"}catch(e){}}
 }
-async function fetchSessions(){
+let sessionsRefetchTimer=0,fetchSessionsP=null,fetchSessionsAgain=false;
+function scheduleSessionsRefetch(ms){
+  if(sessionsRefetchTimer)clearTimeout(sessionsRefetchTimer);
+  sessionsRefetchTimer=setTimeout(()=>{sessionsRefetchTimer=0;fetchSessions().catch(()=>{})},ms==null?300:ms);
+}
+function fetchSessions(){
+  if(fetchSessionsP){fetchSessionsAgain=true;return fetchSessionsP}
+  fetchSessionsP=fetchSessionsOnce().finally(()=>{
+    fetchSessionsP=null;
+    if(fetchSessionsAgain){fetchSessionsAgain=false;scheduleSessionsRefetch(50)}
+  });
+  return fetchSessionsP;
+}
+async function fetchSessionsOnce(){
   try{loadArchiveLocal()}catch(e){}
-  const archDone=loadArchive({migrate:true}).catch(()=>false);
   try{
     if(isDemoMode()){
       sessions=DEMO_SESSIONS.slice();
@@ -6277,18 +6506,26 @@ async function fetchSessions(){
       revealSessList();
       return sessions;
     }
-    let disk=[];
-    try{disk=await fetchSessionsDisk()}catch(e){}
+    let disk=[],diskOk=false;
+    try{disk=await fetchSessionsDisk();diskOk=true}catch(e){}
+    const archDone=loadArchive({}).catch(()=>false);
     let live=[];
-    try{live=normalizeSessions(await req("_x.ai/sessions/list",{},8000))}catch(e){}
-    if(!archived.size){
-      try{await Promise.race([archDone,new Promise(r=>setTimeout(r,500))])}catch(e){}
-    }
+    if(ws&&ws.readyState===1){try{live=normalizeSessions(await req("_x.ai/sessions/list",{},8000))}catch(e){}}
+    try{await Promise.race([archDone,new Promise(r=>setTimeout(r,800))])}catch(e){}
+    if(!diskOk&&!live.length&&(sessions||[]).length)return sessions;
     sessions=mergeSessionLists(disk,live);
+    sessions.forEach(s=>{if(typeof s.archived==="boolean"){const k=String(s.sessionId);if(s.archived)archived.add(k);else archived.delete(k)}});
+    applyArchPending();
     renderSessions();
     paintSessScopeChips();
+    paintChatTitle();
+    paintPinsLive();
     revealSessList();
-    archDone.then(()=>{try{renderSessions();paintSessScopeChips()}catch(e){}});
+    archDone.then(()=>{try{sessions.forEach(s=>{if(typeof s.archived==="boolean"){const k=String(s.sessionId);if(s.archived)archived.add(k);else archived.delete(k)}});applyArchPending();renderSessions();paintSessScopeChips()}catch(e){}});
+    if(hubHasMeta){
+      migrateLegacyArchiveOnce().then(n=>{if(n)scheduleSessionsRefetch(200)}).catch(()=>{});
+      migrateLegacyTitlesOnce().catch(()=>{});
+    }
     hydrateSessionTitles(sessions).catch(()=>{});
     return sessions;
   }finally{
@@ -6303,13 +6540,8 @@ function railSessionId(){
   try{return String((feed&&feed.dataset&&feed.dataset.sid)||"").trim()}catch(e){return""}
 }
 function sessionIdsMatch(a,b){
-  if(window.grokChat&&typeof window.grokChat.idsMatch==="function")return window.grokChat.idsMatch(a,b);
   const x=String(a||"").trim(),y=String(b||"").trim();
-  if(!x||!y)return false;
-  if(x===y)return true;
-  const short=x.length<=y.length?x:y,long=x.length<=y.length?y:x;
-  if(short.length>=8&&long.startsWith(short)&&(long.length===short.length||long[short.length]==="-"))return true;
-  return false;
+  return !!x&&x===y;
 }
 function paintSessionCurrent(){
   if(!sessList)return;
@@ -6357,8 +6589,7 @@ function sessRowState(s,want){
   const arch=isArchived(id);
   const cur=sessionIdsMatch(id,want);
   const working=sessionIsWorking(id);
-  const title=sessionTitle(s);
-  const titleShow=title&&title!=="Untitled"?title:("Chat · "+id.slice(0,8));
+  const titleShow=sessionTitle(s);
   const path=shortPath(s.cwd||"");
   const ago=relTime(sessionStamp(s));
   return {id,arch,cur,working,resident:!!s.resident,titleShow,ago,path,cwd:String(s.cwd||"")};
@@ -6386,6 +6617,9 @@ function applySessRow(el,s,want){
   const mh=sessMetaHtml(st);
   if(t&&t.innerHTML!==th)t.innerHTML=th;
   if(m&&m.innerHTML!==mh)m.innerHTML=mh;
+  const ab=el.querySelector('button[data-act="arch"]');
+  const lab=st.arch?"Unarchive":"Archive";
+  if(ab&&ab.textContent!==lab)ab.textContent=lab;
 }
 function syncSessionWorkMarks(){
   if(!sessList)return;
@@ -6396,28 +6630,8 @@ function syncSessionWorkMarks(){
     if(s)applySessRow(el,s,want);
   });
 }
-function renderSessions(){
-  if(sessScope==="archived"||sessScope==="all")try{mergeArchivedStubs()}catch(e){}
-  const q=((document.getElementById("sessFilter")||{}).value||"").toLowerCase().trim();
-  const want=railSessionId();
-  const items=sessions.filter(s=>{
-    if(!s||!s.sessionId)return false;
-    if(!s._fromArchive&&isNoiseSession(s))return false;
-    const id=String(s.sessionId||"");
-    const arch=isArchived(id);
-    /* user chats and app-driven sessions live in different rooms now: the default scopes
-       show YOUR chats; each app gets its own chip. */
-    const __org=s._fromArchive?"Chats":sessionOrigin(s);
-    const __app=String(sessScope||"").indexOf("app:")===0?String(sessScope).slice(4):null;
-    if(__app){if(__org!==__app||arch)return false}
-    else if(__org!=="Chats")return false;
-    if(sessScope==="active"&&arch)return false;
-    if(sessScope==="archived"&&!arch)return false;
-    if(sessScope==="live"&&!s.resident)return false;
-    if(sessScope==="live"&&arch)return false;
-    if(!q)return true;
-    return [s.sessionId,s.title,s.generated_title,s.remote_title,s.cwd,s.modelId,s.activity,arch?"archived":""].join(" ").toLowerCase().includes(q);
-  }).sort((a,b)=>{
+function sortSessRows(list){
+  return list.sort((a,b)=>{
     if(sessScope==="archived"){
       const ta=sessionStamp(a),tb=sessionStamp(b);
       if(tb!==ta)return tb-ta;
@@ -6428,6 +6642,21 @@ function renderSessions(){
     const rr=(b.resident?1:0)-(a.resident?1:0);if(rr)return rr;
     return sessionStamp(b)-sessionStamp(a);
   });
+}
+function renderSessions(){
+  if(sessScope==="archived"||sessScope==="all")try{mergeArchivedStubs()}catch(e){}
+  const q=((document.getElementById("sessFilter")||{}).value||"").toLowerCase().trim();
+  const want=railSessionId();
+  const cls=classifySessions(sessScope,q,want);
+  const items=sortSessRows(cls.primary);
+  const groupAt={};
+  cls.others.forEach(s=>{const g=sessionOrigin(s);groupAt[g]=Math.max(groupAt[g]||0,sessionStamp(s))});
+  const others=cls.others.slice().sort((a,b)=>{
+    const ga=sessionOrigin(a),gb=sessionOrigin(b);
+    if(ga!==gb)return (groupAt[gb]-groupAt[ga])||ga.localeCompare(gb);
+    return sessionStamp(b)-sessionStamp(a);
+  });
+  const othersInline=!!q||sessScope==="all"||sessOthersOpen;
   const PREVIEW=sessScope==="archived"?50:3;
   const braid=isBraidLayout();
   const useCollapse=braid&&!q&&items.length>PREVIEW&&!isWideLayout();
@@ -6442,13 +6671,15 @@ function renderSessions(){
     const headIds=new Set(head.map(s=>String(s.sessionId||"")));
     rest=items.filter(s=>!headIds.has(String(s.sessionId||"")));
   }
-  const shown=useCollapse&&rest.length&&!sessListExpanded?head:(useCollapse?head.concat(rest):items);
+  const shownMain=useCollapse&&rest.length&&!sessListExpanded?head:(useCollapse?head.concat(rest):items);
+  const shownOthers=othersInline?others:[];
+  const shown=shownMain.concat(shownOthers);
   /* Identity is the visible id order. Titles, badges, and relative times patch the existing
      nodes so hover and scroll stay put. A live turn used to wipe the rail ~2.5x a second. */
-  const structSig=JSON.stringify([sessScope,q,String(want||""),sessListExpanded,shown.map(s=>String(s.sessionId||""))]);
+  const structSig=JSON.stringify([sessScope,q,String(want||""),sessListExpanded,othersInline,others.length,shown.map(s=>String(s.sessionId||"")),shownOthers.map(s=>sessionOrigin(s))]);
   const paintSig=JSON.stringify(shown.map(s=>{
     const st=sessRowState(s,want);
-    return [st.id,st.titleShow,st.resident,st.arch,st.working,st.cwd,st.actBadge,st.ago];
+    return [st.id,st.titleShow,st.resident,st.arch,st.working,st.cwd,st.ago];
   }));
   const existing=[...sessList.querySelectorAll(".item")];
   const sameOrder=existing.length===shown.length&&existing.every((el,i)=>String(el.dataset.sid||"")===String(shown[i].sessionId||""));
@@ -6463,13 +6694,6 @@ function renderSessions(){
   sessListSig=structSig;
   sessListPaintSig=paintSig;
   sessList.innerHTML="";
-  if(!items.length){
-    const empty=document.createElement("div");empty.className="sess-empty";
-    empty.textContent=sessScope==="archived"
-      ?(archived.size?"Archived ids loaded · titles hydrating… tap ↻":"No archived chats yet · Archive on a session row")
-      :(q?"No matches":"No sessions yet — New chat");
-    sessList.appendChild(empty);syncSessFilterChrome();return;
-  }
   function paintSessRow(s,host){
     const id=String(s.sessionId||"");
     const st=sessRowState(s,want);
@@ -6482,7 +6706,7 @@ function renderSessions(){
     const rb=document.createElement("button");rb.type="button";rb.textContent="Rename";rb.title="Rename chat";
     rb.onclick=e=>{e.stopPropagation();renameSession(id).catch(err=>chip(String(err)))};
     acts.appendChild(rb);
-    const ab=document.createElement("button");ab.type="button";ab.textContent=st.arch?"Unarchive":"Archive";
+    const ab=document.createElement("button");ab.type="button";ab.dataset.act="arch";ab.textContent=st.arch?"Unarchive":"Archive";
     ab.onclick=e=>toggleArchive(id,e);
     acts.appendChild(ab);
     const pb=document.createElement("button");pb.type="button";pb.className="pin";pb.textContent="Pin";
@@ -6497,6 +6721,15 @@ function renderSessions(){
       openSession(s);
     };
     host.appendChild(d);
+  }
+  if(!items.length){
+    const empty=document.createElement("div");empty.className="sess-empty";
+    const hidden=others.length;
+    empty.textContent=q?(hidden?"No chats match here · "+hidden+" in other folders below":"No matches")
+      :sessScope==="archived"?(hidden?"No archived chats in this folder · "+hidden+" elsewhere":"No archived chats yet · Archive on a session row")
+      :sessScope==="live"?(hidden?"No live chats in this folder · "+hidden+" elsewhere":"No live chats · send a message to one")
+      :(hidden?"No chats in this folder yet · "+hidden+" in other folders & apps":"No sessions yet — New chat");
+    sessList.appendChild(empty);
   }
   head.forEach(s=>paintSessRow(s,sessList));
   if(useCollapse&&rest.length&&!sessListExpanded){
@@ -6518,6 +6751,33 @@ function renderSessions(){
     less.textContent="▴ Show less";
     less.onclick=()=>{sessListExpanded=false;renderSessions()};
     sessList.appendChild(less);
+  }
+  if(others.length){
+    if(othersInline){
+      const wrap=document.createElement("div");wrap.className="sess-rest sess-others";
+      let g="";
+      shownOthers.forEach(s=>{
+        const og=sessionOrigin(s);
+        if(og!==g){g=og;const lab=document.createElement("div");lab.className="sess-rest-lab";lab.textContent=og==="Chats"?"Chats":og;wrap.appendChild(lab)}
+        paintSessRow(s,wrap);
+      });
+      sessList.appendChild(wrap);
+      if(!q&&sessScope!=="all"){
+        const less=document.createElement("button");
+        less.type="button";less.className="sess-more";
+        less.setAttribute("aria-expanded","true");
+        less.textContent="▴ Hide other folders & apps";
+        less.onclick=()=>{sessOthersOpen=false;renderSessions()};
+        sessList.appendChild(less);
+      }
+    }else{
+      const more=document.createElement("button");
+      more.type="button";more.className="sess-more sess-others-more";
+      more.setAttribute("aria-expanded","false");
+      more.textContent="▸ "+others.length+" in other folders & apps";
+      more.onclick=()=>{sessOthersOpen=true;renderSessions()};
+      sessList.appendChild(more);
+    }
   }
   paintSessionCurrent();
   syncSessFilterChrome();
@@ -6580,6 +6840,7 @@ function paintLinkBanner(reason){
   const offline=!linked;
   if(!offline){el.classList.remove("on");return}
   el.classList.add("on");
+  if(authBlocked)return;
   if(msg){
     const t=reason||(linkState==="connecting"?"Connecting to this PC…":"Offline · not linked to Grok on this PC");
     msg.textContent=t+(location.hostname==="127.0.0.1"||location.hostname==="localhost"?"":" · same Wi‑Fi + paired link required");
@@ -6589,27 +6850,70 @@ function abortSessionSwitch(){
   stopPoll();
   if(catchupTimer){clearTimeout(catchupTimer);catchupTimer=null}
   catchupBusy=false;loadExpectSid=null;handleMsg._waitPrompt=null;
-  try{pending.forEach((p,id)=>{if(p&&(p.kind==="prompt"||p.kind==="cancel"))return;try{p.reject(new Error("session switched"))}catch(e){} pending.delete(id)})}catch(e){}
+  try{pending.forEach((p,id)=>{
+    if(!p||p.kind==="prompt"||p.kind==="cancel")return;
+    if(!p.sessionId)return;
+    try{p.reject(new Error("session switched"))}catch(e){}
+    pending.delete(id);
+  })}catch(e){}
 }
 
 function isPlaceholderSid(id){
   return !String(id||"").trim()||/^demo-/i.test(String(id||"").trim());
 }
+const LAST_KEY="grok_remote_last";
+function readLastSession(){
+  try{const t=readJsonText(sessionStorage.getItem(LAST_KEY)||"");if(t&&t.sid)return t}catch(e){}
+  try{const l=readJsonText(localStorage.getItem(LAST_KEY)||"");if(l&&l.sid)return l}catch(e){}
+  return null;
+}
 function rememberSessionSid(id,cwd){
   if(isPlaceholderSid(id))return;
-  try{localStorage.setItem("grok_remote_last",JSON.stringify({sid:String(id||""),cwd:String(cwd||""),at:Date.now()}))}catch(e){}
+  const v=JSON.stringify({sid:String(id||""),cwd:String(cwd||""),at:Date.now()});
+  try{sessionStorage.setItem(LAST_KEY,v)}catch(e){}
+  try{localStorage.setItem(LAST_KEY,v)}catch(e){}
   try{localStorage.setItem("grok_remote_watch",JSON.stringify({sid:String(id||"")}))}catch(e){}
+  try{
+    const u=new URL(location.href);
+    if(u.searchParams.get("session")!==String(id)){
+      u.searchParams.set("session",String(id));
+      history.replaceState(history.state,"",u.pathname+u.search+u.hash);
+    }
+  }catch(e){}
+}
+const DRAFTS_KEY="grok_remote_drafts";
+let draftPersistTimer=0;
+function loadDraftStore(){
+  try{
+    const j=readJsonText(localStorage.getItem(DRAFTS_KEY)||"");
+    if(j&&typeof j==="object")Object.keys(j).forEach(k=>{if(composerDrafts[k]==null&&typeof j[k]==="string")composerDrafts[k]=j[k]});
+  }catch(e){}
+}
+function persistDrafts(){
+  if(draftPersistTimer){clearTimeout(draftPersistTimer);draftPersistTimer=0}
+  try{
+    const out={};
+    Object.keys(composerDrafts).filter(k=>String(composerDrafts[k]||"").trim()).slice(-30).forEach(k=>{out[k]=String(composerDrafts[k]).slice(0,20000)});
+    if(Object.keys(out).length)localStorage.setItem(DRAFTS_KEY,JSON.stringify(out));
+    else localStorage.removeItem(DRAFTS_KEY);
+  }catch(e){}
+}
+function schedulePersistDrafts(){
+  if(draftPersistTimer)clearTimeout(draftPersistTimer);
+  draftPersistTimer=setTimeout(persistDrafts,400);
 }
 function stampComposerBind(id){
   const k=String(id||sid||"");
   if(!k)return;
   composerBoundSid=k;
-  if(box)composerDrafts[k]=box.value||"";
+  if(box){composerDrafts[k]=box.value||"";schedulePersistDrafts()}
 }
 function saveComposerDraft(id){
   const k=String(id||"");
   if(!k||!box)return;
   composerDrafts[k]=box.value||"";
+  try{pendingFilesBy[k]=pendingFiles.slice()}catch(e){}
+  schedulePersistDrafts();
 }
 function loadComposerDraft(id){
   const k=String(id||"");
@@ -6619,15 +6923,20 @@ function loadComposerDraft(id){
   try{box.style.height="auto"}catch(e){}
   try{if(typeof onComposerInputLayout==="function")onComposerInputLayout()}catch(e){}
   composerBoundSid=k||null;
+  try{pendingFiles=(k&&pendingFilesBy[k])?pendingFilesBy[k].slice():[];paintAttachBar()}catch(e){}
 }
 function clearComposerDraft(id){
   const k=String(id||"");
-  if(k)delete composerDrafts[k];
+  if(k){delete composerDrafts[k];delete pendingFilesBy[k];schedulePersistDrafts()}
 }
 function resolveSendSid(){
   const typed=String(composerBoundSid||"").trim();
   if(typed)return typed;
   return String(sid||"").trim();
+}
+let cwdOverride="";
+function newChatCwd(){
+  return String(cwdOverride||homeCwd()||".").trim()||".";
 }
 async function openSession(s){
   if(!s||!s.sessionId){chip("bad session");return}
@@ -6647,6 +6956,7 @@ async function openSession(s){
   sid=null;window.sid=null;loadExpectSid=null;
   sidCwd=String(s.cwd||defaultCwd||".").replace(/\\\\/g,"\\");
   clearSessionFeed();
+  ownEchoes=ownEchoes.filter(e=>e.sid!==openId);
   try{if(feed)feed.dataset.sid=openId}catch(e){}
   showPage("chat");replaying=true;stickBottom=true;
   showHorizon("loading recent");
@@ -6658,16 +6968,18 @@ async function openSession(s){
     loadComposerDraft(openId);
     permLevel=getPermLevel(openId);
     paintPermChip();
+    try{paintMsgQueue()}catch(e){}
     try{if(feed)feed.dataset.sid=openId}catch(e){}
     if(gen!==sessionGen)return;
     try{
       let hist=await paintDiskHistory(openId,sidCwd,{limit:HISTORY_PAGE,max_bytes:HISTORY_MAX_BYTES,chat_only:true,gen:gen});
       if(gen!==sessionGen||String(sid)!==openId)return;
       if(hist&&hist.stale)return;
+      if(hist&&hist.missing){historyFileSize=0;historyOffsetKnown=true}
       painted=hist.count||0;
       if(hist&&hist.dir)try{feed.dataset.histDir=String(hist.dir)}catch(e){}
       if(hist&&hist.title)adoptDiskTitle(openId,hist.title,sidCwd);
-      try{await hydrateAtts(openId)}catch(e){}
+      try{await hydrateAtts(openId,gen)}catch(e){}
       try{hideHorizon()}catch(e){}
       try{if(painted>0)upgradeRichBubbles(feed)}catch(e){}
     }catch(e){
@@ -6694,7 +7006,6 @@ async function openSession(s){
       try{if(window.grokChat)window.grokChat.warming(openId)}catch(e){}
       selectedSid=openId;window.sid=sid;
       hydrateWork(openId).catch(()=>{});
-      hydrateAtts(openId).catch(()=>{});
       try{if(feed)feed.dataset.sid=openId}catch(e){}
       paintSessionCurrent();
       try{renderSessions()}catch(e){}
@@ -6747,7 +7058,6 @@ async function openSession(s){
       if(attachGen!==sessionGen||String(sid)!==attachId)return;
       try{await loadCommands()}catch(e){}
       try{if(window.grokCockpit&&window.grokCockpit.refreshSessionContext)window.grokCockpit.refreshSessionContext()}catch(e){}
-      try{if(attachCwd&&!isDemoMode())fetch("/api/fs/root",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({path:attachCwd})}).catch(()=>{})}catch(e){}
     }finally{
       if(attachGen===sessionGen&&String(sid)===attachId){
         attachReplay=false;suppressLive=false;
@@ -6757,12 +7067,13 @@ async function openSession(s){
   })();
 }
 
-async function sessionNew(cwd){
+async function sessionNew(cwd,reqId){
   const c=String(cwd||"").trim();
   if(!c)throw new Error("cwd required");
+  const grReq=String(reqId||uuid());
   let last="socket not open";
   if(ws&&ws.readyState===1){
-    try{return await req("session/new",{cwd:c,mcpServers:[]},25000)}
+    try{return await req("session/new",{cwd:c,mcpServers:[],_grReq:grReq},25000)}
     catch(e){
       last=String(e&&e.message||e);
       if(/session switched/i.test(last))throw e;
@@ -6771,17 +7082,31 @@ async function sessionNew(cwd){
   const ac=typeof AbortController!=="undefined"?new AbortController():null;
   const kill=ac?setTimeout(()=>ac.abort(),50000):0;
   try{
-    const r=await fetch("/api/session/new",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({cwd:c,mcpServers:[]}),signal:ac?ac.signal:undefined});
+    const r=await fetch("/api/session/new",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({cwd:c,mcpServers:[],_grReq:grReq}),signal:ac?ac.signal:undefined});
     const text=await r.text();
-    let j=null;try{j=JSON.parse(String(text).replace(/^\uFEFF/,"").trim())}catch(e){j=null}
-    if(!r.ok||!j||j.ok===false)throw new Error((j&&(j.error||j.message))||text.slice(0,120)||last||("HTTP "+r.status));
-    return j;
+    const j=readJsonText(text);
+    if(!r.ok||!j||j.ok===false)throw new Error((j&&(j.error||j.message))||String(text||"").slice(0,120)||last||("HTTP "+r.status));
+    return j.result&&typeof j.result==="object"&&!j.sessionId?j.result:j;
   }catch(e){
     if(e&&(e.name==="AbortError"||/aborted/i.test(String(e&&e.message||e))))throw new Error("timeout: session/new");
     throw e;
   }finally{if(kill)clearTimeout(kill)}
 }
-async function newSession(cwd,firstMsg){
+function newSession(cwd,firstMsg){
+  if(newSessionBusy){chip("new chat already opening…");return newSessionBusy}
+  const reqId=uuid();
+  const btn=document.getElementById("newSess");
+  if(btn)btn.disabled=true;
+  newSessionBusy=newSessionRun(cwd,firstMsg,reqId).finally(()=>{
+    newSessionBusy=null;
+    if(btn)btn.disabled=false;
+  });
+  return newSessionBusy;
+}
+async function newSessionRun(cwd,firstMsg,reqId){
+  let sentFirst=false;
+  const prevSid=String(sid||selectedSid||"");
+  if(prevSid)saveComposerDraft(prevSid);
   abortSessionSwitch();
   stopPoll();
   sessionSwitching=true;
@@ -6790,29 +7115,39 @@ async function newSession(cwd,firstMsg){
   const gen=++sessionGen;
   sid=null;window.sid=null;selectedSid=null;loadExpectSid=null;
   paintSessionCurrent();
-  const c=(cwd||document.getElementById("cwd").value||defaultCwd||".").trim();
+  const c=String(cwd||"").trim()||newChatCwd();
   if(!c){sessionSwitching=false;sessionFresh=false;alert("cwd required");return}
   sidCwd=c;
   clearSessionFeed();
+  try{box.value="";composerBoundSid=null;pendingFiles=[];paintAttachBar();onComposerInputLayout()}catch(e){}
   showPage("chat");
   replaying=true;setBusy(true);stickBottom=true;
   showHorizon("opening channel");
 
   try{
-    const r=await sessionNew(c);
+    const r=await sessionNew(c,reqId);
     if(gen!==sessionGen)return;
     try{applyModelState(r&&r.models)}catch(e){}
-    const newId=r&& (r.sessionId||r.session_id||(r.session&&r.session.sessionId));
+    const newId=String(r&&(r.sessionId||r.session_id||(r.session&&r.session.sessionId))||"");
     if(!newId)throw new Error("session/new returned no id · "+JSON.stringify(r||{}).slice(0,180));
-    sid=String(newId);window.sid=sid;selectedSid=sid;loadExpectSid=null;rememberSessionSid(sid,sidCwd);
+    sid=newId;window.sid=sid;selectedSid=sid;loadExpectSid=null;rememberSessionSid(sid,sidCwd);
     try{if(window.grokChat)window.grokChat.open(sid,gen)}catch(e){}
     try{if(feed)feed.dataset.sid=sid}catch(e){}
+    if(!(sessions||[]).some(x=>String(x.sessionId)===newId)){
+      sessions.unshift({sessionId:newId,title:"",cwd:c,resident:true,activity:"live",pending:true,lastChangeUnixMs:Date.now(),_local:Date.now()});
+    }
+    if(sessScope!=="active"&&sessScope!=="all"){sessScope="active";saveSessScope()}
+    try{const f=document.getElementById("sessFilter");if(f&&f.value){f.value="";syncSessFilterChrome()}}catch(e){}
+    paintSessScopeChips();
+    renderSessions();
     paintSessionCurrent();
     composerBoundSid=sid;
-    if(!permBySession[sid])permBySession[sid]=getPermLevel()||"always";
-    permLevel=getPermLevel(sid);paintPermChip();savePermLevels();
+    permLevel=getPermLevel(sid);paintPermChip();
     try{const pref=(localStorage.getItem("grok_remote_effort")||"").toLowerCase();if(pref&&pref!==reasoningEffort)await setEffort(pref,{quiet:true})}catch(e){}
+    if(gen!==sessionGen||String(sid)!==newId)return;
     clearSessionFeed();
+    historyOffsetKnown=true;
+    try{paintMsgQueue()}catch(e){}
     sessionFresh=true;
     document.getElementById("hint").textContent=shortPath(c);
     setConn(true,"new chat",false);
@@ -6820,15 +7155,21 @@ async function newSession(cwd,firstMsg){
     loadExpectSid=null;sessionSwitching=false;replaying=false;
     markAgentAttach(sid,true);
     try{if(window.grokChat)window.grokChat.ready(sid)}catch(e){}
+    paintChatTitle();
     stickBottom=true;forceScrollBottom({pin:true,settle:true,settleMs:100});
     sessionFresh=true;
     startPoll();
     try{await fetchSessions()}catch(e){try{renderSessions()}catch(x){}}
+    if(gen!==sessionGen||String(sid)!==newId)return;
     paintSessionCurrent();
     try{await loadCommands()}catch(e){}
+    if(gen!==sessionGen||String(sid)!==newId)return;
     if(firstMsg&&String(firstMsg).trim()){
       sessionFresh=false;
       box.value=String(firstMsg).trim();
+      composerBoundSid=newId;
+      sentFirst=true;
+      sessionSwitching=false;replaying=false;
       await sendPrompt();
     }
   }catch(e){
@@ -6843,7 +7184,7 @@ async function newSession(cwd,firstMsg){
     if(gen===sessionGen){
       try{hideHorizon()}catch(e){}
       sessionSwitching=false;replaying=false;
-      try{setBusy(false)}catch(e){}
+      if(!sentFirst)try{setBusy(false)}catch(e){}
     }
   }
 }
@@ -6940,7 +7281,7 @@ function startLinkKeepalive(){
   linkKeepaliveTimer=setInterval(()=>{
     if(!ws||ws.readyState!==1)return;
     const silent=Date.now()-linkLastRx;
-    try{ws.send(JSON.stringify({jsonrpc:"2.0",method:"_x.ai/remote/ping",params:{t:Date.now(),cid:clientId()}}))}catch(e){}
+    try{ws.send(JSON.stringify({jsonrpc:"2.0",method:"_x.ai/remote/ping",params:helloParams()}))}catch(e){}
     /* NEVER tear down the link from a hidden tab. This timer is throttled to roughly once a
        minute while hidden, so `silent` is past 45s on the first fire no matter how healthy the
        socket is - the stale-link guard was closing the one connection it exists to protect, and
@@ -6949,13 +7290,42 @@ function startLinkKeepalive(){
     if(document.visibilityState==="hidden")return;
     const loopback=/^127\.0\.0\.1$|^localhost$|^\[::1\]$/i.test(location.hostname);
     if(loopback)return;
-    if(silent>90000&&!(pending&&pending.size)){
+    if(silent>90000){
       try{chip("link stale · forcing reconnect")}catch(e){}
-      try{ws.close()}catch(e){}
-      reconnectArmed=true;wantReconnect=true;
-      scheduleReconnect(800,"stale link");
+      forceReconnect("stale link");
     }
   },4000);
+}
+function forceReconnect(reason){
+  const old=ws;
+  reconnectArmed=true;wantReconnect=true;linkWanted=true;
+  if(old){
+    try{old.onclose&&old.onclose({code:4000,reason:"client:"+String(reason||"stale")})}catch(e){}
+    try{old.onclose=null;old.onerror=null;old.onmessage=null;old.close()}catch(e){}
+    if(ws===old)ws=null;
+  }
+  connecting=false;
+  scheduleReconnect(300,reason||"stale link");
+}
+let linkProbeBusy=false;
+function probeLink(ms){
+  if(!ws||ws.readyState!==1||linkProbeBusy)return Promise.resolve(!!(ws&&ws.readyState===1));
+  linkProbeBusy=true;
+  const sock=ws,t0=Date.now();
+  try{sock.send(JSON.stringify({jsonrpc:"2.0",method:"_x.ai/remote/ping",params:{t:Date.now(),cid:clientId(),nonce:PAGE_NONCE,loadedAt:PAGE_LOADED_AT}}))}
+  catch(e){linkProbeBusy=false;forceReconnect("probe send failed");return Promise.resolve(false)}
+  return new Promise(res=>{
+    const iv=setInterval(()=>{
+      if(ws!==sock){clearInterval(iv);linkProbeBusy=false;res(false);return}
+      if(linkLastRx>=t0){clearInterval(iv);linkProbeBusy=false;res(true);return}
+      if(Date.now()-t0>=(ms||3000)){
+        clearInterval(iv);linkProbeBusy=false;
+        try{chip("link did not answer · reconnecting")}catch(e){}
+        forceReconnect("no pong");
+        res(false);
+      }
+    },150);
+  });
 }
 function stopReconnectLoop(){
   reconnectArmed=false;wantReconnect=false;reconnectParked=false;
@@ -6963,6 +7333,7 @@ function stopReconnectLoop(){
   stopLinkKeepalive();
 }
 function scheduleReconnect(ms,reason){
+  if(authBlocked)return;
   if(!reconnectArmed&&!wantReconnect)return;
   if(connecting)return;
   if(ws&&ws.readyState===1)return;
@@ -7012,26 +7383,26 @@ function resumeAfterSoftReconnect(){
       if(p&&p.detached&&p.kind!=="prompt"){try{pending.delete(id)}catch(e){}}
     });
   }catch(e){}
-  try{if(sid){startPoll();scheduleCatchup(200);softCatchup().then(()=>maybeResendOrphan()).catch(()=>maybeResendOrphan())}}catch(e){}
+  try{if(sid){startPoll();scheduleCatchup(200);softCatchup().then(()=>noteOrphanSend()).catch(()=>noteOrphanSend())}}catch(e){}
 }
-async function maybeResendOrphan(){
+function noteOrphanSend(){
   const d=lastDispatch;
-  if(!d||d.acked||d.retried)return;
+  if(!d||d.acked||d.hubAcked||d.orphanOffered)return;
   if(!sid||!sessionIdsMatch(sid,d.sid))return;
-  if(Date.now()-d.at>12000)return;
-  if(lastLocalUserPlain&&normUserEcho(d.tRaw)!==normUserEcho(lastLocalUserPlain))return;
-  if(!ws||ws.readyState!==1)return;
-  d.retried=true;
-  chip("link dropped mid-send · sending again");
-  try{
-    await dispatchPromptPayload(d.tRaw,d.files||[],d.mode||"queue",{wasBusy:!!busy,sessionId:d.sid,sessionGen:sessionGen,allowCrossSession:true,skipSetup:true});
-  }catch(e){chip("resend: "+e);d.retried=false}
+  if(Date.now()-d.at>10*60*1000)return;
+  const p=d.id!=null?pending.get(d.id):null;
+  if(p&&!p.detached)return;
+  d.orphanOffered=true;
+  offerRetry(d,"link dropped",{title:"link dropped while sending · Retry only if it never arrived (the hub ignores a copy it already has)"});
 }
 function onPageBecameVisible(){
-  if(intentionalClose)return;
+  if(intentionalClose||!linkWanted||authBlocked||isDemoMode())return;
   reconnectArmed=true;wantReconnect=true;reconnectParked=false;
   try{if(sid)startPoll()}catch(e){}
-  if(ws&&ws.readyState===1){linkLastRx=Date.now();try{startPoll();scheduleCatchup(150);startLinkKeepalive()}catch(e){}return}
+  if(ws&&ws.readyState===1){
+    probeLink(3200).then(alive=>{if(alive){try{startPoll();scheduleCatchup(150);startLinkKeepalive()}catch(e){}}});
+    return;
+  }
   if(connecting)return;
   connectAttempt=0;
   scheduleReconnect(80,"page visible");
@@ -7066,7 +7437,7 @@ async function startRemoteStack(opts){
   setConn(false,"starting server…");setPhase("sync","agent");
   try{chip("starting agent serve · force="+force)}catch(e){}
   try{
-    const cwd=(document.getElementById("cwd")&&document.getElementById("cwd").value)||defaultCwd||".";
+    const cwd=newChatCwd();
     const r=await fetch("/api/stack/start",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({force:force,cwd:cwd,restart:force})});
     const text=await r.text();
     let j=null;try{j=JSON.parse(String(text).replace(/^\uFEFF/,"").trim())}catch(e){j=null}
@@ -7109,15 +7480,27 @@ async function startRemoteStack(opts){
   return false;
   }finally{startInFlight=false}
 }
+let cidMem="";
+const cidHistory=new Set();
+function isMyCid(c){const v=String(c||"");return !!v&&(v===clientId()||cidHistory.has(v))}
 function clientId(){
+  if(cidMem)return cidMem;
   try{
     let id=sessionStorage.getItem("grok_remote_cid");
-    if(id&&id.length>=8)return id;
+    if(id&&id.length>=8){cidMem=id;return id}
     id="c-"+Math.random().toString(36).slice(2)+Date.now().toString(36);
     sessionStorage.setItem("grok_remote_cid",id);
+    cidMem=id;
     return id;
-  }catch(e){return "c-"+Math.random().toString(36).slice(2)+Date.now().toString(36)}
+  }catch(e){cidMem="c-"+Math.random().toString(36).slice(2)+Date.now().toString(36);return cidMem}
 }
+function regenerateClientId(){
+  if(cidMem)cidHistory.add(cidMem);
+  cidMem="c-"+Math.random().toString(36).slice(2)+Date.now().toString(36);
+  try{sessionStorage.setItem("grok_remote_cid",cidMem)}catch(e){}
+  return cidMem;
+}
+function helloParams(){return {t:Date.now(),cid:clientId(),nonce:PAGE_NONCE,loadedAt:PAGE_LOADED_AT}}
 function initParams(){return {protocolVersion:1,clientInfo:{name:"grok-remote",version:"3.8"},clientCapabilities:{fs:{readTextFile:true,writeTextFile:true},terminal:true}}}
 async function reattachSessionAfterHubRestart(){
   const attachId=String(sid||"");
@@ -7151,6 +7534,25 @@ async function reattachSessionAfterHubRestart(){
       attachReplay=false;
       suppressLive=false;
     }
+  }
+}
+function onHubBusy(list){
+  if(!Array.isArray(list)||!sid||sessionSwitching||replaying)return;
+  const k=String(sid);
+  const running=list.some(x=>String(x)===k);
+  if(running){
+    if(!busy||(busySid&&String(busySid)!==k)){setBusy(true,k);if(agentPhase==="idle")setPhase("sync","running on PC")}
+    return;
+  }
+  if(Date.now()-(promptStartAt[k]||0)<8000)return;
+  for(const [pid,h] of [...httpPrompts.entries()])if(h.sid===k)httpPrompts.delete(pid);
+  if(ownPromptPending(k,{liveOnly:true}))return;
+  const nDet=dropDetachedPrompts(k);
+  if(busy&&(!busySid||String(busySid)===k)||pendingTools.size||nDet){
+    settleRailTools();
+    setBusy(false,k);
+    if(agentPhase!=="error")setPhase("idle");
+    if(nDet)scheduleCatchup(120);
   }
 }
 function onHubState(up){
@@ -7187,9 +7589,9 @@ async function connect(opts){
   if(connecting)return;
   if(!opts.force&&ws&&ws.readyState===1&&Date.now()-linkLastRx<20000)return;
   connecting=true;
+  linkWanted=true;authBlocked=0;
   const myGen=++connectGen;
   let url=document.getElementById("wsurl").value.trim()||defaultWs();
-  defaultCwd=document.getElementById("cwd").value.trim()||".";
   /* The auth cookie is scoped to the host in the ADDRESS BAR. A stored ws url pointing at a
      different interface (LAN vs meshnet vs loopback) dials a host the cookie will not ride
      to - 401, close, retry forever. Unless the user typed a custom url this session, the
@@ -7232,9 +7634,10 @@ async function connect(opts){
        protocol error and the hub hitch/init-failed loop follows. Disk list
        already filled the rail at boot. */
     try{paintLinkBanner("")}catch(e){}
-    try{ws.send(JSON.stringify({jsonrpc:"2.0",method:"_x.ai/remote/hello",params:{t:Date.now(),cid:clientId()}}))}catch(e){}
+    try{ws.send(JSON.stringify({jsonrpc:"2.0",method:"_x.ai/remote/hello",params:helloParams()}))}catch(e){}
     try{
-      const keepSid=String(sid||window.__wantSession||"");
+      const keepSid=String(sid||selectedSid||resumeSidOnReconnect||window.__wantSession||"");
+      resumeSidOnReconnect="";
       const wasDetach=!!softDetach||!!opts.fromReconnect;
       const initRes=await req("initialize",initParams(),20000);
       if(myGen!==connectGen||ws!==sock)return;
@@ -7274,9 +7677,12 @@ async function connect(opts){
       try{await hydrateWork(sid)}catch(e){}
       if(myGen!==connectGen||ws!==sock)return;
       updateLayoutClass();
+      const resuming=!!(keepSid||window.__wantSession||window.__wantTask);
       if(isWideLayout()){
         showPage("chat");
         picker.classList.add("on");
+        try{history.replaceState({page:"chat"},"","#chat")}catch(e){}
+      }else if(resuming&&page==="chat"){
         try{history.replaceState({page:"chat"},"","#chat")}catch(e){}
       }else{
         showPage("sessions");
@@ -7288,11 +7694,12 @@ async function connect(opts){
         window.__wantSession=null;window.__wantSessionForced=false;
         if(isPlaceholderSid(want))await autoOpenBestSession();
         else{
-          let s=sessions.find(x=>sessionIdsMatch(x.sessionId,want)||String(x.sessionId).startsWith(want));
+          let s=sessions.find(x=>sessionIdsMatch(x.sessionId,want));
+          if(!s&&want.length>=8){const hits=sessions.filter(x=>String(x.sessionId).startsWith(want));if(hits.length===1)s=hits[0]}
           if(!s&&forced){
             let cwd=defaultCwd||"";
-            try{const last=JSON.parse(localStorage.getItem("grok_remote_last")||"{}");if(last&&last.cwd)cwd=last.cwd}catch(e){}
-            s={sessionId:want,cwd:cwd,resident:false,title:titleOverrides[want]||""};
+            try{const last=readLastSession();if(last&&last.sid===want&&last.cwd)cwd=last.cwd}catch(e){}
+            s={sessionId:want,cwd:cwd,resident:false,title:""};
           }
           if(s){
             if(sessionIdsMatch(sid,s.sessionId))resumeAfterSoftReconnect();
@@ -7300,7 +7707,8 @@ async function connect(opts){
           }else await autoOpenBestSession();
         }
       }else if(window.__wantTask){
-        await newSession(document.getElementById("cwd").value,window.__wantTask);
+        const task=window.__wantTask;window.__wantTask=null;
+        await newSession(newChatCwd(),task);
       }else if(keepSid&&sessionIdsMatch(sid,keepSid)){
         resumeAfterSoftReconnect();
       }else if(keepSid){
@@ -7345,18 +7753,30 @@ async function connect(opts){
         if(sent)linkRtt=Math.max(0,Date.now()-sent);
         linkLastPong=Date.now();
         onHubState(p.hub_up);
+        onHubBusy(p.busy);
         try{paintOrbitStatus();paintLivebar()}catch(e){}
         return;
       }
-      if(obj&&obj.method==="_x.ai/remote/hub"){onHubState(obj.params&&obj.params.up);return}
+      if(obj&&obj.method==="_x.ai/remote/hub"){const hp=obj.params||{};onHubState(hp.up);onHubBusy(hp.busy);return}
       handleMsg(obj);
     }catch(e){try{log("ws parse: "+String(e).slice(0,120)+" · "+String(ev.data).slice(0,80))}catch(x){}}
   };
-  ws.onclose=()=>{
+  ws.onclose=ev=>{
     try{clearTimeout(openWatch)}catch(e){}
     if(ws!==sock&&ws)return;
     if(myGen===connectGen)connecting=false;
     stopLinkKeepalive();
+    const code=Number(ev&&ev.code)||0,why=String(ev&&ev.reason||"");
+    if(code===4401||code===4403){
+      clearLoadingChrome("auth");
+      detachPendingOnSoftClose();
+      showAuthProblem(code,why);
+      return;
+    }
+    if(code===4409||/cid.?conflict/i.test(why)){
+      regenerateClientId();
+      try{log("cid conflict · new cid "+clientId())}catch(e){}
+    }
     clearLoadingChrome("link lost");
     const keepSid=sid||selectedSid||window.__wantSession||"";
     if(intentionalClose){
@@ -7370,7 +7790,7 @@ async function connect(opts){
     }
     const nDet=detachPendingOnSoftClose();
     softDetach=true;
-    if(keepSid){window.__wantSession=String(keepSid);try{if(!sid){sid=String(keepSid);window.sid=sid}}catch(e){}}
+    if(keepSid){resumeSidOnReconnect=String(keepSid);try{if(!sid){sid=String(keepSid);window.sid=sid}}catch(e){}}
     try{if(sid)startPoll()}catch(e){}
     if(nDet||busy){
       setPhase("sync","bg on PC");
@@ -7385,9 +7805,9 @@ async function connect(opts){
     if(reconnectArmed||wantReconnect||softDetach){
       reconnectArmed=true;wantReconnect=true;
       setConn(false,"reconnecting");
-      scheduleReconnect(null,"socket closed");
-      if(page==="chat"&&(!feed||!feed.childElementCount)){
-        try{showPage(isWideLayout()?"sessions":"sessions")}catch(e){}
+      scheduleReconnect((code===4409||/cid.?conflict/i.test(why))?250:null,"socket closed");
+      if(page==="chat"&&!keepSid&&(!feed||!feed.childElementCount)){
+        try{showPage("sessions")}catch(e){}
       }
     }else{
       setConn(false,"closed");
@@ -7397,12 +7817,36 @@ async function connect(opts){
   ws.onerror=()=>{if(!intentionalClose){setConn(false,"error");if(!softDetach)setPhase("error","socket error");clearLoadingChrome("socket error")}};
 }
 window.connect=connect;
+function showAuthProblem(code,why){
+  authBlocked=code;
+  stopReconnectLoop();
+  softDetach=false;
+  setConn(false,code===4401?"not paired":"origin refused");
+  setPhase("error",code===4401?"re-pair":"origin");
+  const el=document.getElementById("linkBanner");
+  const msg=document.getElementById("linkBannerMsg");
+  const rb=document.getElementById("btnBannerReconnect");
+  const sb=document.getElementById("btnBannerSetup");
+  if(el)el.classList.add("on");
+  if(msg)msg.textContent=code===4401
+    ?"This device is not paired with the PC any more. On the PC open ☰ → Pair phone and scan the code (or open its link here), then tap Retry."
+    :"The PC refused this page's address (origin check). Open Grok Remote from the paired link or the PC's own address."+(why?" · "+why:"");
+  if(rb)rb.textContent="Retry";
+  if(sb)sb.textContent=code===4401?"Re-pair":"Setup";
+  if(sb)sb.dataset.repair=code===4401?"1":"";
+  try{chip(code===4401?"not paired · re-pair this device":"origin refused by the PC")}catch(e){}
+  if(!isWideLayout())try{showPage("setup",true)}catch(e){}
+}
+window.showAuthProblem=showAuthProblem;
 window.clearLoadingChrome=clearLoadingChrome;
 (function wireLinkBanner(){
   const r=document.getElementById("btnBannerReconnect");
   const s=document.getElementById("btnBannerSetup");
-  if(r)r.onclick=()=>{reconnectArmed=true;wantReconnect=true;connectAttempt=0;clearLoadingChrome("manual reconnect");connect({fromReconnect:true}).catch(()=>{})};
-  if(s)s.onclick=()=>{clearLoadingChrome();showPage("setup",true);loadCfg().catch(()=>{})};
+  if(r)r.onclick=()=>{r.textContent="Reconnect";authBlocked=0;reconnectArmed=true;wantReconnect=true;connectAttempt=0;clearLoadingChrome("manual reconnect");connect({fromReconnect:true}).catch(()=>{})};
+  if(s)s.onclick=()=>{
+    if(s.dataset.repair==="1"){try{openPairPhone()}catch(e){showPage("setup",true)}return}
+    clearLoadingChrome();showPage("setup",true);loadCfg().catch(()=>{});
+  };
 })();
 document.addEventListener("visibilitychange",()=>{
   if(document.visibilityState==="visible")onPageBecameVisible();
@@ -7464,22 +7908,24 @@ async function stashFiles(sid,files,text){
   }
   return out;
 }
-async function hydrateAtts(sessionId){
+async function hydrateAtts(sessionId,gen){
   const want=String(sessionId||sid||"");
+  const g=gen!=null?gen:sessionGen;
   if(!want||!feed)return;
   try{
     const r=await fetch("/api/att?sessionId="+encodeURIComponent(want),{cache:"no-store"});
     const j=await r.json();
+    if(g!==sessionGen||String(sid||"")!==want)return;
     const items=Array.isArray(j.items)?j.items:[];
     if(!items.length)return;
     const bubs=[...feed.querySelectorAll(".row.me .bub")];
     items.forEach(att=>{
       if(!att||!att.id)return;
-      if(feed.querySelector('[data-att="'+att.id+'"]'))return;
+      if(att.sessionId&&String(att.sessionId)!==want)return;
+      if(feed.querySelector('[data-att="'+String(att.id).replace(/"/g,"")+'"]'))return;
       const key=normUserEcho(att.text_key||"");
-      let bub=null;
-      if(key)bub=bubs.find(b=>{const raw=normUserEcho(b.dataset.raw||"");return raw&&(raw===key||raw.includes(key)||key.includes(raw))});
-      if(!bub)bub=bubs[bubs.length-1];
+      if(!key)return;
+      const bub=bubs.find(b=>normUserEcho(b.dataset.raw||"")===key);
       if(!bub)return;
       const n=attNode({kind:/^video\//.test(att.mime||"")?"video":"image",src:att.url,id:att.id,name:att.name||""});
       if(n)bub.appendChild(n);
@@ -7664,17 +8110,14 @@ function loadPersonaApplied(){
 function savePersonaApplied(){
   try{localStorage.setItem("grok_remote_persona_applied",JSON.stringify([...personaApplied].slice(-80)))}catch(e){}
 }
-function withAgentSetup(userText,sessionKey){
+function agentSetupFor(userText,sessionKey){
   const t=String(userText||"");
   const pre=agentSetupText();
-  if(!pre)return t;
-  if(/\[AGENT SETUP/i.test(t))return t;
+  if(!pre)return {text:t,key:""};
+  if(/\[AGENT SETUP/i.test(t))return {text:t,key:""};
   const key=String(sessionKey||sid||"").trim();
-  if(!key)return t;
-  if(personaApplied.has(key))return t;
-  personaApplied.add(key);
-  savePersonaApplied();
-  return pre+"\n\n---\n"+t;
+  if(!key||personaApplied.has(key))return {text:t,key:""};
+  return {text:pre+"\n\n---\n"+t,key};
 }
 async function injectPersonaNow(){
   if(!sid||!ws||ws.readyState!==1){alert("Connect / open a session first");return}
@@ -7694,10 +8137,12 @@ async function sendPrompt(forcedMode){
   if(tRaw&&sid&&!composerBoundSid)stampComposerBind(sid);
   const sendSid=resolveSendSid();
   if(!sendSid){chip("pick a chat first");return}
+  lastEnterQueued=false;
   if(sendInFlight){
     enqueueMsg({mode:msgMode==="fyi"?"fyi":"queue",tRaw,files:pendingFiles.slice(),at:Date.now(),sessionId:sendSid});
+    lastEnterQueued=true;
     box.value="";box.style.height="auto";
-    if(sendSid)composerDrafts[sendSid]="";
+    if(sendSid){composerDrafts[sendSid]="";delete pendingFilesBy[sendSid];schedulePersistDrafts()}
     pendingFiles=[];paintAttachBar();
     chip("queued · previous send still in flight");
     return;
@@ -7708,14 +8153,14 @@ async function sendPrompt(forcedMode){
       try{
         if(await handleRemoteSlash(tRaw)){
           box.value="";box.style.height="auto";
-          if(sendSid)composerDrafts[sendSid]="";
+          if(sendSid){composerDrafts[sendSid]="";schedulePersistDrafts()}
           return;
         }
       }catch(e){chip("slash: "+e);return}
     }
     const mode=(forcedMode&&["interject","queue","fyi"].includes(forcedMode))?forcedMode:msgMode;
     box.value="";box.style.height="auto";
-    if(sendSid)composerDrafts[sendSid]="";
+    if(sendSid){composerDrafts[sendSid]="";delete pendingFilesBy[sendSid];schedulePersistDrafts()}
     const files=pendingFiles.slice();
     pendingFiles=[];paintAttachBar();
     try{await stashFiles(sendSid,files,tRaw)}catch(e){}
@@ -7725,11 +8170,13 @@ async function sendPrompt(forcedMode){
     const isBusy=viewing?((!!busy&&!replaying)||agentWorking):agentWorking;
     if(viewing&&isBusy&&mode==="queue"){
       enqueueMsg({mode:"queue",tRaw,files,at:Date.now(),sessionId:sendSid});
+      lastEnterQueued=true;
       try{if(window.grokVoice)window.grokVoice.onTaskSent(tRaw,{delivery:"queue",agentBusy:true})}catch(e){}
       return;
     }
     if(viewing&&isBusy&&mode==="fyi"){
       enqueueMsg({mode:"fyi",tRaw,files,at:Date.now(),sessionId:sendSid});
+      lastEnterQueued=true;
       try{if(window.grokVoice)window.grokVoice.onTaskSent(tRaw,{delivery:"fyi",agentBusy:true})}catch(e){}
       return;
     }
@@ -7740,7 +8187,6 @@ async function sendPrompt(forcedMode){
       interjected=true;
       await sleep(isBusy||busy?100:40);
     }
-    localEchoUntil=Date.now()+12000;
     sessionFresh=false;
     const display=(mode==="fyi"?"FYI · ":"")+(interjected||mode==="interject"?"Interject · ":"")+tRaw;
     if(viewing&&(tRaw||files.length)){
@@ -7756,15 +8202,14 @@ async function sendPrompt(forcedMode){
       chip("waiting for agent to attach…");
       const attached=await waitAgentAttach(sendSid,20000);
       if(!attached){
-        enqueueMsg({mode:mode==="fyi"?"fyi":"queue",tRaw,files,at:Date.now(),sessionId:sendSid});
+        enqueueMsg({mode:mode==="fyi"?"fyi":"queue",tRaw,files,at:Date.now(),sessionId:sendSid,echoed:viewing});
         chip("queued · agent not on this chat yet");
         return;
       }
     }
     promoteSessionAfterMessage(sendSid).catch(()=>{});
     try{if(window.grokVoice)window.grokVoice.onTaskSent(tRaw,{delivery:mode,agentBusy:isBusy,interjected:interjected})}catch(e){}
-    const ok=await dispatchPromptPayload(tRaw,files,mode,{wasBusy:isBusy,interjected:!!(interjected&&isBusy),sessionId:sendSid,sessionGen:sessionGen,allowCrossSession:true});
-    if(!ok&&(tRaw||(files&&files.length)))enqueueMsg({mode:mode==="fyi"?"fyi":"queue",tRaw,files,at:Date.now(),sessionId:sendSid});
+    await dispatchPromptPayload(tRaw,files,mode,{wasBusy:isBusy,interjected:!!(interjected&&isBusy),sessionId:sendSid,sessionGen:sessionGen,allowCrossSession:true});
     if(viewing&&stickBottom)forceScrollBottom({pin:false,settle:true,settleMs:60});
     else if(viewing)updateJump();
   }finally{
@@ -7775,16 +8220,12 @@ async function promoteSessionAfterMessage(sessionId){
   const k=String(sessionId||sid||"");
   if(!k||isDemoMode())return;
   const wasArchived=isArchived(k);
-  if(wasArchived){archived.delete(k);cacheArchiveLocal()}
   markSessionLive(k);
   if(sessScope==="archived"){sessScope="active";saveSessScope();paintSessScopeChips()}
-  renderSessions();
-  if(wasArchived){
-    try{await setArchivedFlag(k,false)}catch(e){try{await saveArchive(true)}catch(x){}}
-  }
+  if(wasArchived)await setArchiveUi(k,false);
+  else renderSessions();
   try{
     await fetchSessions();
-    if(wasArchived&&isArchived(k)){archived.delete(k);cacheArchiveLocal();try{await setArchivedFlag(k,false)}catch(e){}}
     markSessionLive(k);
     const s2=sessions.find(x=>String(x.sessionId)===k);
     if(s2)s2.lastChangeUnixMs=Math.max(sessionStamp(s2),Date.now());
@@ -7849,7 +8290,7 @@ skillsSheet.addEventListener("click",e=>{if(e.target===skillsSheet)closeAllSheet
 function openTaskSheet(){
   if(!taskSheet)return;
   const tc=document.getElementById("taskCwd"),tm=document.getElementById("taskMsg");
-  if(tc)tc.value=(document.getElementById("cwd")&&document.getElementById("cwd").value)||defaultCwd||"";
+  if(tc)tc.value=newChatCwd();
   if(tm)tm.value="";
   openSheet(taskSheet,btnNewTask);
 }
@@ -7865,7 +8306,6 @@ if(taskGo)taskGo.onclick=async()=>{
   const m=(document.getElementById("taskMsg")&&document.getElementById("taskMsg").value.trim())||"";
   if(!c){alert("cwd required");return}
   closeAllSheets();
-  if(document.getElementById("cwd"))document.getElementById("cwd").value=c;
   try{await newSession(c,m)}catch(e){alert(e)}
 };
 const btnRail=document.getElementById("btnRail"),btnCollapseRail=document.getElementById("btnCollapseRail"),railTab=document.getElementById("railTab");
@@ -7937,8 +8377,7 @@ if(ctxMeterEl)ctxMeterEl.onclick=()=>{
 window.grokIdeSend=async function(text){
   if(!sid||!ws||ws.readyState!==1){
     if(typeof newSession==="function"){
-      const c=(document.getElementById("cwd")&&document.getElementById("cwd").value)||defaultCwd||".";
-      await newSession(c,"");
+      await newSession(newChatCwd(),"");
     }else throw new Error("not connected");
   }
   if(!sid)throw new Error("no session");
@@ -7946,10 +8385,8 @@ window.grokIdeSend=async function(text){
   await sendPrompt();
 };
 window.grokIdeNewSession=async function(cwd,msg){
-  if(document.getElementById("cwd"))document.getElementById("cwd").value=cwd||"";
-  defaultCwd=cwd||defaultCwd;
   if(!ws||ws.readyState!==1)await connect();
-  await newSession(cwd||defaultCwd,msg||"");
+  await newSession(cwd||newChatCwd(),msg||"");
   if(window.grokIde&&window.grokIde.show)window.grokIde.show(true);
 };
 (function(){
@@ -7959,7 +8396,7 @@ window.grokIdeNewSession=async function(cwd,msg){
 send.onclick=e=>{
   if(e){e.preventDefault();e.stopPropagation()}
   const now=Date.now();
-  const dbl=now-lastEnterAt<450;
+  const dbl=now-lastEnterAt<450&&lastEnterQueued;
   lastEnterAt=now;
   sendPrompt(dbl?"interject":undefined).catch(err=>chip(String(err)));
 };
@@ -7977,23 +8414,26 @@ const chatTitleBtn=document.getElementById("chatTitle");
 if(chatTitleBtn)chatTitleBtn.onclick=e=>{if(selectionIn(chatTitleBtn)||clickWasDrag(chatTitleBtn,e,8))return;renameSession(sid||selectedSid).catch(err=>chip(String(err)))};
 if(chatTitleBtn)chatTitleBtn.onpointerdown=e=>{chatTitleBtn._sx=e.clientX;chatTitleBtn._sy=e.clientY};
 (function wireMsgModeRow(){
+  loadMsgMode();paintMsgModeChips();
   const host=document.getElementById("msgModeRow");if(!host)return;
   host.querySelectorAll(".mode-chip[data-mode]").forEach(b=>{
     b.onclick=()=>{msgMode=b.getAttribute("data-mode")||"queue";saveMsgMode();paintMsgModeChips()};
   });
-  loadMsgMode();paintMsgModeChips();
 })();
 box.addEventListener("keydown",e=>{
   if(e.key==="Enter"&&!e.shiftKey&&!e.isComposing&&e.keyCode!==229){
     e.preventDefault();
     e.stopPropagation();
     const now=Date.now();
-    const dbl=now-lastEnterAt<450;
+    const dbl=now-lastEnterAt<450&&lastEnterQueued;
     lastEnterAt=now;
-    if(dbl&&!box.value.trim()&&!pendingFiles.length&&msgQueue.length){
-      sendQueuedNow(0).catch(err=>chip(String(err)));
+    const head=queueHeadIndex();
+    if(dbl&&!box.value.trim()&&!pendingFiles.length&&head>=0){
+      lastEnterQueued=false;
+      sendQueuedNow(head).catch(err=>chip(String(err)));
       return;
     }
+    if(!box.value.trim()&&!pendingFiles.length)return;
     sendPrompt(dbl?"interject":undefined).catch(err=>chip(String(err)));
   }
 });
@@ -8001,6 +8441,9 @@ box.addEventListener("input",()=>{
   if(sid)stampComposerBind(sid);
   onComposerInputLayout();
 });
+window.addEventListener("pagehide",()=>{try{if(sid&&box)composerDrafts[String(sid)]=box.value||""}catch(e){}persistDrafts()});
+document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="hidden")persistDrafts()});
+(function(){const c=document.getElementById("cwd");if(c)c.addEventListener("input",()=>{cwdOverride=c.value.trim()})})();
 box.addEventListener("focus",()=>{
   if(sid)stampComposerBind(sid);
   captureBaselineViewport();
@@ -8165,7 +8608,11 @@ function paintPhoneConnect(cfg){
   let url="";
   try{
     if(cfg&&cfg.ui)url=String(cfg.ui);
-    else if(location.origin&&location.origin.indexOf("http")===0)url=location.origin+"/"+location.search;
+    else if(location.origin&&location.origin.indexOf("http")===0){
+      const sp=new URLSearchParams(location.search);sp.delete("session");
+      const qs=sp.toString();
+      url=location.origin+"/"+(qs?"?"+qs:"");
+    }
   }catch(e){}
   if(url&&url.indexOf("auto=")===-1)url+=(url.indexOf("?")>=0?"&":"?")+"auto=1";
   if(urlEl)urlEl.value=url||"";
@@ -8223,7 +8670,8 @@ async function loadCfg(){
     if(!r.ok||!c)throw new Error("config not json");
     if(!window.__wsCustom)document.getElementById("wsurl").value=defaultWs();
     else if(c.ws_url&&!isPublicView())document.getElementById("wsurl").value=c.ws_url;
-    if(c.cwd){document.getElementById("cwd").value=c.cwd;defaultCwd=c.cwd}
+    if(c.cwd){defaultCwd=String(c.cwd);if(!cwdOverride)document.getElementById("cwd").value=c.cwd}
+    if(c.fsRoot)window.__grokFsRoot=String(c.fsRoot);
     paintPhoneConnect(c);
     if(!isPublicView())refreshAwayNet();
     log("cfg ok");return c;
@@ -8269,8 +8717,16 @@ async function refreshAwayNet(){
     if(pubEl&&(j.public_origin||j.public_url)&&!pubEl.value)pubEl.value=j.public_origin||"";
     const httpsBtn=document.getElementById("btnEnableHttps");
     if(httpsBtn)httpsBtn.hidden=!!j.https_url;
+    const cfBtn=document.getElementById("btnCfTunnel");
+    const tun=j.tunnel||{};
+    if(cfBtn)cfBtn.textContent=tun.running?"Cloudflare tunnel on":"Start Cloudflare tunnel";
+    if(awayEl&&!u&&tun.error)awayEl.placeholder=String(tun.error);
   }catch(e){}
 }
+setInterval(function(){
+  const h=(location.hostname||"").toLowerCase();
+  if(h==="127.0.0.1"||h==="localhost")refreshAwayNet();
+},30000);
 async function savePublicUrl(){
   const inp=document.getElementById("publicUrl");
   const v=(inp&&inp.value||"").trim();
@@ -8654,7 +9110,7 @@ window.addEventListener("resize",()=>{
   }catch(e){variant="grok";mode="dark"}
   loadLayout();
   loadUx();
-  loadTitleOverrides();
+  loadDraftStore();
   loadPersonaApplied();
   (function waitKatex(n){
     if(window.katex){flushMathQueue();return}
@@ -8702,14 +9158,14 @@ window.addEventListener("resize",()=>{
   applyUx();
   if(window.grokRemote){
     document.body.classList.add("electron","desktop");
-    try{if(window.grokRemote.getCwd){const c=await window.grokRemote.getCwd();if(c)document.getElementById("cwd").value=c}}catch(e){}
+    try{if(window.grokRemote.getCwd){const c=await window.grokRemote.getCwd();if(c){document.getElementById("cwd").value=c;cwdOverride=String(c)}}}catch(e){}
   }
   await loadCfg();
   try{
-    const last=JSON.parse(localStorage.getItem("grok_remote_last")||"{}");
+    const last=readJsonText(localStorage.getItem("grok_remote_last")||"");
     if(last&&isPlaceholderSid(last.sid))localStorage.removeItem("grok_remote_last");
   }catch(e){}
-  if(q.get("cwd"))document.getElementById("cwd").value=q.get("cwd");
+  if(q.get("cwd")){document.getElementById("cwd").value=q.get("cwd");cwdOverride=q.get("cwd")}
   if(q.get("ws"))document.getElementById("wsurl").value=q.get("ws");
   if(q.get("session")){window.__wantSession=q.get("session");window.__wantSessionForced=true}
   if(q.get("task"))window.__wantTask=q.get("task");
@@ -8739,7 +9195,7 @@ window.addEventListener("resize",()=>{
   if(doAuto){
     reconnectArmed=true;wantReconnect=true;connectAttempt=0;
     try{
-      const last=JSON.parse(localStorage.getItem("grok_remote_last")||"{}");
+      const last=readLastSession();
       if(last&&last.sid&&!isPlaceholderSid(last.sid)&&!window.__wantSession)window.__wantSession=String(last.sid);
     }catch(e){}
     showPage("sessions",true);

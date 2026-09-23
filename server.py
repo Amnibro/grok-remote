@@ -19,9 +19,28 @@ HUB_MAX_CLIENTS=6
 HUB_MAX_LOADS=64
 LOAD_WAIT=10.0
 BROADCAST_SEND_TIMEOUT=5.0
-RPC_REPLY_TIMEOUT={"initialize":20.0,"session/new":25.0,"session/load":20.0,"_x.ai/sessions/list":15.0,"sessions/list":15.0}
+RPC_REPLY_TIMEOUT={"initialize":20.0,"session/new":90.0,"session/load":20.0,"_x.ai/sessions/list":15.0,"sessions/list":15.0}
 WORK_PUSH_MIN_GAP=0.4
 TEXT_EXT={".py",".js",".ts",".tsx",".jsx",".json",".md",".txt",".css",".html",".htm",".xml",".yml",".yaml",".toml",".ini",".cfg",".env",".sh",".ps1",".bat",".cmd",".rs",".go",".java",".c",".h",".cpp",".hpp",".cs",".rb",".php",".sql",".r",".swift",".kt",".vue",".svelte",".scss",".less",".svg",".gitignore",".dockerfile",".cmake",".gradle",".log",".diff",".patch",".csv"}
+def plugin_data_dir():
+ base=os.environ.get("GROK_PLUGIN_DATA") or str(Path.home()/".grok"/"plugin-data"/"grok-remote")
+ p=Path(base);p.mkdir(parents=True,exist_ok=True)
+ return p
+def atomic_write_text(path,text):
+ path=Path(path);path.parent.mkdir(parents=True,exist_ok=True)
+ tmp=path.with_name("%s.tmp-%d-%s"%(path.name,os.getpid(),uuid.uuid4().hex[:6]))
+ try:
+  with open(tmp,"w",encoding="utf-8",newline="\n") as f:
+   f.write(text);f.flush()
+   try:os.fsync(f.fileno())
+   except Exception:pass
+  os.replace(tmp,path)
+ finally:
+  try:
+   if tmp.exists():tmp.unlink()
+  except Exception:pass
+def atomic_write_json(path,obj,indent=2):
+ atomic_write_text(path,json.dumps(obj,indent=indent,ensure_ascii=False))
 def lan_ip():
  try:
   with socket.socket(socket.AF_INET,socket.SOCK_DGRAM) as s:
@@ -37,31 +56,109 @@ def port_open(port:int,host="127.0.0.1",timeout=0.2):
    return True
  except Exception:
   return False
-def listen_pids_port(port:int,exclude_self=True):
- pids=[];me=os.getpid()
- try:
-  out=subprocess.run(["netstat","-ano"],capture_output=True,text=True,timeout=8,encoding="utf-8",errors="replace")
-  for line in (out.stdout or "").splitlines():
-   if "LISTENING" not in line:continue
-   parts=line.split()
-   if len(parts)<5:continue
-   addr=parts[1]
+def _proc_listen_inodes(port:int):
+ inodes=set()
+ for fn in ("/proc/net/tcp","/proc/net/tcp6"):
+  try:
+   with open(fn,encoding="ascii",errors="replace") as f:
+    next(f,None)
+    for line in f:
+     parts=line.split()
+     if len(parts)<10 or parts[3]!="0A":continue
+     try:
+      if int(parts[1].rsplit(":",1)[1],16)!=port:continue
+     except Exception:continue
+     if parts[9]!="0":inodes.add(parts[9])
+  except Exception:pass
+ return inodes
+def _proc_pids_for_inodes(inodes):
+ pids=set()
+ if not inodes:return pids
+ want={"socket:[%s]"%i for i in inodes}
+ try:names=os.listdir("/proc")
+ except Exception:return pids
+ for d in names:
+  if not d.isdigit():continue
+  fd_dir="/proc/%s/fd"%d
+  try:fds=os.listdir(fd_dir)
+  except OSError:continue
+  for fd in fds:
    try:
-    if int(addr.rsplit(":",1)[1])!=port:continue
-   except Exception:continue
-   try:pid=int(parts[-1])
-   except Exception:continue
-   if pid<=0:continue
-   if exclude_self and pid==me:continue
-   pids.append(pid)
+    if os.readlink(fd_dir+"/"+fd) in want:pids.add(int(d));break
+   except OSError:continue
+ return pids
+def listen_pids_port(port:int,exclude_self=True):
+ pids=set();me=os.getpid();port=int(port)
+ try:
+  if os.name=="nt":
+   out=subprocess.run(["netstat","-ano"],capture_output=True,text=True,timeout=8,encoding="utf-8",errors="replace")
+   for line in (out.stdout or "").splitlines():
+    if "LISTENING" not in line:continue
+    parts=line.split()
+    if len(parts)<5:continue
+    try:
+     if int(parts[1].rsplit(":",1)[1])!=port:continue
+     pid=int(parts[-1])
+    except Exception:continue
+    if pid>0:pids.add(pid)
+  elif os.path.isdir("/proc/net"):
+   inodes=_proc_listen_inodes(port)
+   pids=_proc_pids_for_inodes(inodes)
+   if inodes and not pids and shutil.which("ss"):
+    out=subprocess.run(["ss","-ltnpH","sport = :%d"%port],capture_output=True,text=True,timeout=5,encoding="utf-8",errors="replace")
+    pids={int(x) for x in re.findall(r"pid=(\d+)",out.stdout or "")}
+  elif shutil.which("lsof"):
+   out=subprocess.run(["lsof","-nP","-iTCP:%d"%port,"-sTCP:LISTEN","-t"],capture_output=True,text=True,timeout=5,encoding="utf-8",errors="replace")
+   pids={int(x) for x in (out.stdout or "").split() if x.strip().isdigit()}
  except Exception:pass
- return sorted(set(pids))
-def kill_pids_list(pids):
+ if exclude_self:pids.discard(me)
+ return sorted(p for p in pids if p>0)
+AGENT_PROC={"proc":None}
+def _agent_pidfile():
+ return plugin_data_dir()/"agent.pid"
+def _pid_alive(pid:int):
+ pr=AGENT_PROC.get("proc")
+ if pr is not None and pr.pid==pid:return pr.poll() is None
+ if os.name=="nt":
+  try:
+   r=subprocess.run(["tasklist","/FI","PID eq %d"%pid,"/NH"],capture_output=True,text=True,timeout=5,encoding="utf-8",errors="replace")
+   return str(pid) in (r.stdout or "")
+  except Exception:return False
+ try:os.kill(pid,0)
+ except ProcessLookupError:return False
+ except PermissionError:return True
+ except Exception:return False
+ try:
+  st=Path("/proc/%d/stat"%pid).read_text(errors="replace")
+  if st[st.rfind(")")+2:][:1]=="Z":return False
+ except Exception:pass
+ return True
+def kill_pids_list(pids,grace=3.0):
  killed=[]
  for pid in pids:
+  pid=int(pid)
+  if os.name=="nt":
+   try:
+    r=subprocess.run(["taskkill","/F","/PID",str(pid)],capture_output=True,text=True,timeout=8,encoding="utf-8",errors="replace")
+    killed.append({"pid":pid,"ok":r.returncode==0,"out":((r.stdout or "")+(r.stderr or ""))[:120]})
+   except Exception as e:
+    killed.append({"pid":pid,"ok":False,"out":str(e)[:120]})
+   continue
+  import signal as _sig
+  def _send(sig):
+   try:
+    if os.getpgid(pid)==pid and pid!=os.getpgid(0):os.killpg(pid,sig)
+    else:os.kill(pid,sig)
+   except ProcessLookupError:pass
   try:
-   r=subprocess.run(["taskkill","/F","/PID",str(pid)],capture_output=True,text=True,timeout=8,encoding="utf-8",errors="replace")
-   killed.append({"pid":pid,"ok":r.returncode==0,"out":((r.stdout or "")+(r.stderr or ""))[:120]})
+   _send(_sig.SIGTERM);how="SIGTERM"
+   t0=time.time()
+   while time.time()-t0<grace and _pid_alive(pid):time.sleep(0.1)
+   if _pid_alive(pid):
+    _send(_sig.SIGKILL);how="SIGKILL"
+    t1=time.time()
+    while time.time()-t1<2 and _pid_alive(pid):time.sleep(0.05)
+   killed.append({"pid":pid,"ok":not _pid_alive(pid),"out":how})
   except Exception as e:
    killed.append({"pid":pid,"ok":False,"out":str(e)[:120]})
  return killed
@@ -74,6 +171,7 @@ def use_leader_mode():
  v=str(os.environ.get("GROK_REMOTE_LEADER") or "").strip().lower()
  return v in ("1","true","yes","on")
 def write_run_agent_cmd(secret:str,agent_port:int,cwd:str,use_leader=None):
+ if os.name!="nt":return None
  log_dir=ROOT/"logs";log_dir.mkdir(parents=True,exist_ok=True)
  grok=find_grok()
  if not grok:return None
@@ -85,31 +183,56 @@ def write_run_agent_cmd(secret:str,agent_port:int,cwd:str,use_leader=None):
  body="@echo off\r\ncd /d \"%s\"\r\nset GROK_AGENT_SECRET=%s\r\n\"%s\" agent --always-approve %s serve --bind 127.0.0.1:%d --secret %s >> \"%s\" 2>&1\r\n"%(cwd_s,secret,grok,flag,agent_port,secret,agent_log)
  cmd_path.write_text(body,encoding="utf-8",errors="replace")
  return cmd_path
+def agent_pidfile_pid():
+ try:
+  d=json.loads(_agent_pidfile().read_text(encoding="utf-8"))
+  return int(d.get("pid") or 0)
+ except Exception:return 0
+def stop_agent_process(agent_port:int,grace=3.0):
+ pids=set()
+ pr=AGENT_PROC.get("proc")
+ if pr is not None and pr.poll() is None:pids.add(pr.pid)
+ pf=agent_pidfile_pid()
+ if pf and _pid_alive(pf):pids.add(pf)
+ pids.update(listen_pids_port(agent_port,exclude_self=True))
+ out=kill_pids_list(sorted(pids),grace=grace) if pids else []
+ if pr is not None:
+  try:pr.wait(timeout=1)
+  except Exception:pass
+ AGENT_PROC["proc"]=None
+ try:_agent_pidfile().unlink()
+ except Exception:pass
+ return out
 def start_agent_process(secret:str,agent_port:int,cwd:str,force=False):
- if not force and listen_pids_port(agent_port,exclude_self=False):
+ if not force and (port_open(agent_port) or listen_pids_port(agent_port,exclude_self=False)):
   print("[boot] agent already on :%d — leave it"%agent_port,flush=True)
   return "existing"
- if force:claim_port(agent_port,"agent")
+ if force:
+  k=stop_agent_process(agent_port)
+  if k:print("[boot] stopped old agent %s"%k,flush=True)
  grok=find_grok()
- if not grok:raise RuntimeError("grok.exe not found under ~/.grok/bin")
+ if not grok:raise RuntimeError("grok binary not found under ~/.grok/bin or PATH")
  write_run_agent_cmd(secret,agent_port,cwd,use_leader=False)
  log_dir=ROOT/"logs";log_dir.mkdir(parents=True,exist_ok=True)
  log_path=log_dir/"agent.spawn.log"
  try:logf=open(log_path,"a",encoding="utf-8",errors="replace")
  except Exception:logf=subprocess.DEVNULL
- creation=0x08000000 if sys.platform=="win32" else 0
  env=dict(os.environ);env["GROK_AGENT_SECRET"]=str(secret)
- subprocess.Popen([grok,"agent","--always-approve","--no-leader","serve","--bind","127.0.0.1:%d"%int(agent_port),"--secret",str(secret)],
-  cwd=str(cwd),stdout=logf,stderr=logf,stdin=subprocess.DEVNULL,
-  creationflags=creation if sys.platform=="win32" else 0,env=env,close_fds=False)
- print("[boot] spawned grok agent serve :%d"%int(agent_port),flush=True)
+ kw={}
+ if sys.platform=="win32":kw["creationflags"]=0x08000000|0x00000200
+ else:kw["start_new_session"]=True
+ proc=subprocess.Popen([grok,"agent","--always-approve","--no-leader","serve","--bind","127.0.0.1:%d"%int(agent_port),"--secret",str(secret)],
+  cwd=str(cwd),stdout=logf,stderr=logf,stdin=subprocess.DEVNULL,env=env,close_fds=(sys.platform!="win32"),**kw)
+ AGENT_PROC["proc"]=proc
+ try:atomic_write_json(_agent_pidfile(),{"pid":proc.pid,"port":int(agent_port),"started":time.time()})
+ except Exception:pass
+ print("[boot] spawned grok agent serve :%d pid=%d"%(int(agent_port),proc.pid),flush=True)
  return grok
 def wait_port(port:int,timeout=20.0):
- import time
  t0=time.time()
  while time.time()-t0<timeout:
-  if listen_pids_port(port,exclude_self=False):return True
-  time.sleep(0.35)
+  if port_open(port,timeout=0.3):return True
+  time.sleep(0.2)
  return False
 def xai_api_key():
  for k in ("XAI_API_KEY","GROK_API_KEY","xai_api_key"):
@@ -164,9 +287,7 @@ def actor_state_public(st):
   if not st:return None
   return {"preset":st.get("preset"),"name":st.get("name"),"intensity":float(st.get("intensity") or 0),"scope":st.get("_layer") or st.get("scope") or "global","source":st.get("source") or "","session_id":st.get("session_id")}
 def react_store_path():
- base=os.environ.get("GROK_PLUGIN_DATA") or str(Path.home()/".grok"/"plugin-data"/"grok-remote")
- p=Path(base);p.mkdir(parents=True,exist_ok=True)
- return p/"reactions.json"
+ return plugin_data_dir()/"reactions.json"
 def load_reacts():
  path=react_store_path()
  if not path.is_file():return {}
@@ -175,12 +296,10 @@ def load_reacts():
   return d if isinstance(d,dict) else {}
  except Exception:return {}
 def save_reacts(d):
- react_store_path().write_text(json.dumps(d,indent=2),encoding="utf-8")
+ atomic_write_json(react_store_path(),d)
 RX_TEMP_DEFAULT=0.65
 def rx_temp_store_path():
- base=os.environ.get("GROK_PLUGIN_DATA") or str(Path.home()/".grok"/"plugin-data"/"grok-remote")
- p=Path(base);p.mkdir(parents=True,exist_ok=True)
- return p/"rx-temp.json"
+ return plugin_data_dir()/"rx-temp.json"
 def load_rx_temps():
  path=rx_temp_store_path()
  if not path.is_file():return {}
@@ -189,7 +308,7 @@ def load_rx_temps():
   return d if isinstance(d,dict) else {}
  except Exception:return {}
 def save_rx_temps(d):
- rx_temp_store_path().write_text(json.dumps(d,indent=2),encoding="utf-8")
+ atomic_write_json(rx_temp_store_path(),d)
 def rx_temp_record(uid):
  bag=load_rx_temps()
  rec=bag.get(uid) if isinstance(bag.get(uid),dict) else None
@@ -197,11 +316,9 @@ def rx_temp_record(uid):
   rec={"mode":"adaptive","value":RX_TEMP_DEFAULT,"updated":0}
  return rec
 def archive_store_path():
- base=os.environ.get("GROK_PLUGIN_DATA") or str(Path.home()/".grok"/"plugin-data"/"grok-remote")
- p=Path(base);p.mkdir(parents=True,exist_ok=True)
- return p/"archived_sessions.json"
-def load_archived_ids():
- path=archive_store_path()
+ return plugin_data_dir()/"archived_sessions.json"
+def load_archived_ids(path=None):
+ path=Path(path) if path else archive_store_path()
  if not path.is_file():return []
  try:
   data=json.loads(path.read_text(encoding="utf-8",errors="replace"))
@@ -215,26 +332,19 @@ def load_archived_ids():
    seen.add(s);out.append(s)
   return out
  except Exception:return []
-def save_archived_ids(ids):
- path=archive_store_path()
- clean=[];seen=set()
- for x in ids or []:
-  s=str(x or "").strip()
-  if not s or s in seen:continue
-  seen.add(s);clean.append(s)
- path.write_text(json.dumps({"ids":clean,"updatedAt":__import__("time").time()},indent=2),encoding="utf-8")
- return clean
 def encode_session_cwd(cwd:str):
  s=str(Path(cwd).expanduser()) if cwd else ""
  s=s.replace("/","\\") if os.name=="nt" else s
  return quote(s,safe="")
 def _session_dir_ok(d:Path):
  return d.is_dir() and ((d/"updates.jsonl").is_file() or (d/"summary.json").is_file())
+SID_INDEX_TTL=10.0
 _SID_INDEX=None
 _SID_INDEX_AT=0.0
+_SID_INDEX_DIRTY=False
 _SID_DIR_CACHE={}
 def _rebuild_sid_index():
- global _SID_INDEX,_SID_INDEX_AT
+ global _SID_INDEX,_SID_INDEX_AT,_SID_INDEX_DIRTY
  idx={}
  root=GROK_SESSIONS
  if root.is_dir():
@@ -252,22 +362,44 @@ def _rebuild_sid_index():
   except Exception:pass
  _SID_INDEX=idx
  _SID_INDEX_AT=time.time()
+ _SID_INDEX_DIRTY=False
  return idx
 def _sid_index(force=False):
- global _SID_INDEX,_SID_INDEX_AT
- if force or _SID_INDEX is None or (time.time()-_SID_INDEX_AT)>60:return _rebuild_sid_index()
+ if force or _SID_INDEX is None or _SID_INDEX_DIRTY or (time.time()-_SID_INDEX_AT)>SID_INDEX_TTL:return _rebuild_sid_index()
  return _SID_INDEX
+def invalidate_session_index():
+ global _SID_INDEX_DIRTY
+ _SID_INDEX_DIRTY=True
 def _cache_session_dir(sid,cwd,d):
  if not d:return d
  _SID_DIR_CACHE[(sid,str(cwd or ""))]= (str(d),time.time()+90)
  return d
-def _sid_match(a,b):
- """July 20 keep-rule: equal, or 8+ char prefix cut on a hyphen."""
- x,y=str(a or "").strip(),str(b or "").strip()
- if not x or not y:return False
- if x==y:return True
- short,long=(x,y) if len(x)<=len(y) else (y,x)
- return len(short)>=8 and long.startswith(short) and (len(long)==len(short) or long[len(short)]=="-")
+_UUIDISH=re.compile(r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
+SID_PREFIX_MIN=8
+def resolve_sid(raw,known=()):
+ s=str(raw or "").strip()
+ if not s:return "",None
+ if ".." in s or "/" in s or "\\" in s:return s,"bad sessionId"
+ if _UUIDISH.match(s) or len(s)>=36 or len(s)<SID_PREFIX_MIN:return s,None
+ known=[str(k) for k in (known or ()) if k]
+ if s in known:return s,None
+ idx=_sid_index()
+ if s in idx:return s,None
+ def _cands(ix):return {k for k in list(ix.keys())+known if k!=s and k.startswith(s)}
+ c=_cands(idx)
+ if not c and (time.time()-_SID_INDEX_AT)>2.0:c=_cands(_sid_index(force=True))
+ if len(c)==1:return c.pop(),None
+ if len(c)>1:return s,"ambiguous sessionId prefix %r matches %d sessions"%(s,len(c))
+ return s,None
+def _norm_cwd(v):
+ v=str(v or "").strip()
+ if not v:return ""
+ if os.name=="nt":
+  v=v.replace("/","\\")
+  while "\\\\" in v[1:]:v=v[0]+v[1:].replace("\\\\","\\")
+ try:v=os.path.normpath(v)
+ except Exception:pass
+ return os.path.normcase(v).rstrip("\\/") or v
 def find_session_dir(session_id:str,cwd:str|None=None):
  sid=str(session_id or "").strip()
  if not sid or ".." in sid or "/" in sid or "\\" in sid:return None
@@ -300,48 +432,157 @@ def find_session_dir(session_id:str,cwd:str|None=None):
    d2=root/enc2/sid
    if _session_dir_ok(d2):return _cache_session_dir(sid,cwd,d2)
  hits=list(_sid_index().get(sid) or [])
- if not hits and (time.time()-_SID_INDEX_AT)>5.0:
+ if not hits and (time.time()-_SID_INDEX_AT)>2.0:
   hits=list(_sid_index(force=True).get(sid) or [])
- if not hits:
-  idx=_sid_index()
-  for k,dirs in idx.items():
-   if k!=sid and _sid_match(k,sid):hits.extend(dirs)
  hits=[d for d in hits if _session_dir_ok(d)]
  if len(hits)==1:return _cache_session_dir(sid,cwd,hits[0])
  if len(hits)>1:
   if cwd:
-   try:
-    cnorm=str(Path(cwd).expanduser().resolve()).replace("/","\\").lower() if os.name=="nt" else str(Path(cwd).expanduser().resolve())
-   except Exception:
-    cnorm=str(cwd or "").replace("/","\\").lower() if os.name=="nt" else str(cwd or "")
+   try:cnorm=_norm_cwd(Path(cwd).expanduser().resolve())
+   except Exception:cnorm=_norm_cwd(cwd)
    cwd_hits=[]
    for d in hits:
     try:
-     parent=unquote(d.parent.name).replace("/","\\")
-     pl=parent.lower() if os.name=="nt" else parent
-     if cnorm and (pl==cnorm or pl.endswith(cnorm) or cnorm.endswith(pl)):cwd_hits.append(d)
+     pl=_norm_cwd(unquote(d.parent.name))
+     if cnorm and (pl==cnorm or pl.endswith(os.sep+cnorm.lstrip(os.sep)) or cnorm.endswith(os.sep+pl.lstrip(os.sep))):cwd_hits.append(d)
     except Exception:pass
    if len(cwd_hits)==1:return _cache_session_dir(sid,cwd,cwd_hits[0])
    if cwd_hits:hits=cwd_hits
   hits.sort(key=lambda d:(d/"updates.jsonl").stat().st_mtime if (d/"updates.jsonl").is_file() else 0,reverse=True)
   return _cache_session_dir(sid,cwd,hits[0])
  return None
-def read_session_title(sdir:Path):
- if not sdir:return ""
- try:
-  summ=json.loads((sdir/"summary.json").read_text(encoding="utf-8",errors="replace"))
-  return str(summ.get("remote_title") or summ.get("generated_title") or summ.get("session_summary") or "").strip()
- except Exception:return ""
+_SUMMARY_CACHE={}
 def read_session_info(sdir:Path):
- out={"title":"","cwd":""}
+ out={"title":"","cwd":"","legacy_title":""}
  if not sdir:return out
+ p=Path(sdir)/"summary.json"
+ try:st=p.stat()
+ except Exception:return out
+ key=str(p);sig=(st.st_mtime_ns,st.st_size)
+ hit=_SUMMARY_CACHE.get(key)
+ if hit and hit[0]==sig:return dict(hit[1])
  try:
-  summ=json.loads((sdir/"summary.json").read_text(encoding="utf-8",errors="replace"))
-  out["title"]=str(summ.get("remote_title") or summ.get("generated_title") or summ.get("session_summary") or "").strip()
-  info=summ.get("info") if isinstance(summ.get("info"),dict) else {}
-  out["cwd"]=str(info.get("cwd") or summ.get("cwd") or "").strip()
- except Exception:pass
+  summ=json.loads(p.read_text(encoding="utf-8",errors="replace"))
+  if isinstance(summ,dict):
+   out["title"]=str(summ.get("generated_title") or summ.get("session_summary") or summ.get("remote_title") or "").strip()
+   out["legacy_title"]=str(summ.get("remote_title") or "").strip()
+   info=summ.get("info") if isinstance(summ.get("info"),dict) else {}
+   out["cwd"]=str(info.get("cwd") or summ.get("cwd") or "").strip()
+ except Exception:return out
+ if len(_SUMMARY_CACHE)>4000:_SUMMARY_CACHE.clear()
+ _SUMMARY_CACHE[key]=(sig,dict(out))
  return out
+def read_session_title(sdir:Path):
+ return read_session_info(sdir).get("title") or ""
+_KIND_CACHE={}
+def session_kind(sdir):
+ key=str(sdir)
+ v=_KIND_CACHE.get(key)
+ if v is not None:return v
+ kind="human";has_sp=False;has_turn=False
+ try:
+  sp=Path(sdir)/"system_prompt.txt"
+  if sp.is_file():
+   has_sp=True
+   if "no human operator" in sp.read_text(encoding="utf-8",errors="replace")[:4000]:kind="auto"
+ except Exception:pass
+ if kind=="human":
+  try:
+   ch=Path(sdir)/"chat_history.jsonl"
+   if ch.is_file():
+    has_turn=True
+    with open(ch,encoding="utf-8",errors="replace") as f:
+     head=f.read(12000)
+    if "Your hologram body" in head:kind="auto"
+  except Exception:pass
+ if kind=="auto" or (has_sp and has_turn):
+  if len(_KIND_CACHE)>8000:_KIND_CACHE.clear()
+  _KIND_CACHE[key]=kind
+ return kind
+class SessionMeta:
+ def __init__(self,path=None):
+  self.path=Path(path) if path else plugin_data_dir()/"session_meta.json"
+  self._alock=None
+  self._cache=None
+  self._sig=None
+ def _read(self):
+  p=self.path
+  try:st=p.stat()
+  except FileNotFoundError:return {},True
+  except OSError:return None,False
+  sig=(st.st_mtime_ns,st.st_size)
+  if self._cache is not None and self._sig==sig:return self._cache,True
+  try:raw=p.read_text(encoding="utf-8")
+  except OSError:return None,False
+  try:d=json.loads(raw) if raw.strip() else {}
+  except ValueError:d=None
+  if not isinstance(d,dict):
+   bad=p.with_name("%s.bad-%d"%(p.name,int(time.time())))
+   try:os.replace(p,bad);print("[meta] %s unreadable - moved to %s"%(p.name,bad.name),flush=True)
+   except OSError:return None,False
+   return {},True
+  clean={str(k):v for k,v in d.items() if isinstance(v,dict)}
+  self._cache=clean;self._sig=sig
+  return clean,True
+ def all(self):
+  d,ok=self._read()
+  return dict(d or {})
+ def get(self,sid):
+  return dict(self.all().get(str(sid)) or {})
+ def archived_ids(self):
+  return [k for k,v in self.all().items() if v.get("archived")]
+ def _write(self,d):
+  atomic_write_json(self.path,d)
+  try:
+   st=self.path.stat();self._cache=d;self._sig=(st.st_mtime_ns,st.st_size)
+  except Exception:self._cache=None
+ def _apply(self,d,sid,fields):
+  ent=dict(d.get(sid) or {"title":None,"archived":False})
+  ent.update(fields)
+  ent["updated_at"]=int(time.time()*1000)
+  if not ent.get("title"):ent["title"]=None
+  ent["archived"]=bool(ent.get("archived"))
+  if ent["title"] is None and not ent["archived"]:d.pop(sid,None)
+  else:d[sid]=ent
+  return ent
+ def update_sync(self,changes):
+  d,ok=self._read()
+  if not ok:raise RuntimeError("session_meta.json is unreadable; refusing to overwrite it")
+  d=dict(d);out={}
+  for sid,fields in changes.items():
+   sid=str(sid or "").strip()
+   if sid:out[sid]=self._apply(d,sid,dict(fields))
+  self._write(d)
+  return out
+ async def update(self,sid,**fields):
+  if self._alock is None:self._alock=asyncio.Lock()
+  async with self._alock:
+   return self.update_sync({sid:fields}).get(str(sid))
+ async def update_many(self,changes):
+  if self._alock is None:self._alock=asyncio.Lock()
+  async with self._alock:
+   return self.update_sync(changes)
+ def migrate(self,sessions_root=None,archive_path=None):
+  if self.path.exists():return None
+  root=Path(sessions_root) if sessions_root else GROK_SESSIONS
+  d={};n_arch=0;n_title=0;now=int(time.time()*1000)
+  for sid in load_archived_ids(archive_path):
+   d[sid]={"title":None,"archived":True,"updated_at":now};n_arch+=1
+  try:
+   if root.is_dir():
+    for sp in root.glob("*/*/summary.json"):
+     try:
+      summ=json.loads(sp.read_text(encoding="utf-8",errors="replace"))
+      t=str((summ or {}).get("remote_title") or "").strip() if isinstance(summ,dict) else ""
+     except Exception:continue
+     if not t:continue
+     sid=sp.parent.name
+     ent=d.setdefault(sid,{"title":None,"archived":False,"updated_at":now})
+     if not ent.get("title"):ent["title"]=t[:160];n_title+=1
+  except Exception as e:print("[meta] migrate scan:",e,flush=True)
+  self._write(d)
+  print("[meta] migrated %d archived id(s) + %d title(s) into %s"%(n_arch,n_title,self.path),flush=True)
+  return {"archived":n_arch,"titles":n_title}
 def _parse_update_line(line,live=False):
  line=(line or "").strip()
  if not line:return None
@@ -378,6 +619,12 @@ def _parse_update_line(line,live=False):
 def _strip_ev(ev):
  return {k:v for k,v in ev.items() if not k.startswith("_")}
 _CHAT_TEXT_CAP=120_000
+_ATT_BOARD={}
+def _att_board():
+ k=os.environ.get("GROK_PLUGIN_DATA") or ""
+ wb=_ATT_BOARD.get(k)
+ if wb is None:wb=_ATT_BOARD[k]=WorkBoard()
+ return wb
 _CHAT_MARK_A=b"user_message_chunk"
 _CHAT_MARK_B=b"agent_message_chunk"
 def _trim_chat_text(ev,cap=_CHAT_TEXT_CAP):
@@ -399,7 +646,7 @@ def _trim_chat_text(ev,cap=_CHAT_TEXT_CAP):
    mime=str(c.get("mimeType") or res.get("mimeType") or "image/png")
    name=str(c.get("name") or Path(str(res.get("uri") or "image")).name)
    rec=None
-   try:rec=WorkBoard().save_att(sid,name,mime,raw,str(t or "")[:80])
+   try:rec=_att_board().save_att(sid,name,mime,raw,str(t or "")[:80])
    except Exception:rec=None
    c=dict(c)
    if rec:
@@ -441,23 +688,42 @@ def _coalesce_chat(events):
   if "params" not in prev:prev["params"]={}
   prev["params"]["update"]=pu
  return out
-def _message_first_tail(events,limit):
- """Keep conversational messages before auxiliary thought/tool events.
-
- History pages are a UI budget, not a raw JSONL budget. Tool-heavy turns can
- contain hundreds of auxiliary records; slicing those records directly hides
- the user prompt and final answer that explain them.
- """
- limit=max(1,int(limit or 1))
- events=list(events or [])
- if len(events)<=limit:return events
- primary={"user_message_chunk","agent_message_chunk"}
- msg_idx=[i for i,ev in enumerate(events) if ev.get("_kind") in primary]
- aux_idx=[i for i,ev in enumerate(events) if ev.get("_kind") not in primary]
- keep=set(msg_idx[-limit:])
- room=limit-len(keep)
- if room>0:keep.update(aux_idx[-room:])
- return [ev for i,ev in enumerate(events) if i in keep]
+HISTORY_EXTEND_MIN=400
+def _suffix_start(events,limit):
+ n=len(events);limit=max(1,int(limit or 1))
+ if n<=limit:return 0
+ start=n-limit
+ if not any(ev.get("_kind")=="user_message_chunk" for ev in events[start:]):
+  cap=max(limit*4,HISTORY_EXTEND_MIN)
+  for i in range(start-1,-1,-1):
+   if n-i>cap:break
+   if events[i].get("_kind")=="user_message_chunk":
+    start=i;break
+ return start
+def _committed_size(f,size):
+ if size<=0:return 0
+ pos=size;step=65536
+ while pos>0:
+  start=max(0,pos-step)
+  f.seek(start)
+  chunk=f.read(pos-start)
+  i=chunk.rfind(b"\n")
+  if i>=0:return start+i+1
+  pos=start
+ return 0
+_LIVE_MARKS=(_CHAT_MARK_A,_CHAT_MARK_B,b"agent_thought_chunk",b"tool_call",b"turn_completed",b"task_completed",b"plan",b"session_recap")
+def _parse_lines(blob,base,live,marks=None,keep=None):
+ out=[];off=base
+ for raw_line in blob.splitlines(keepends=True):
+  line_start=off;off+=len(raw_line)
+  if marks is not None and not any(m in raw_line for m in marks):continue
+  s=raw_line.decode("utf-8","replace").rstrip("\r\n")
+  if not s.strip():continue
+  ev=_parse_update_line(s,live=live)
+  if not ev or (keep is not None and ev.get("_kind") not in keep):continue
+  ev["_off"]=line_start
+  out.append(ev)
+ return out
 def read_session_updates(session_dir:Path,limit=1600,max_bytes=8_000_000,since_bytes=0,live=False,before_bytes=None,chat_only=False):
  path=session_dir/"updates.jsonl"
  if not path.is_file():return [],{"path":str(path),"missing":True,"size":0,"has_more":False}
@@ -472,47 +738,45 @@ def read_session_updates(session_dir:Path,limit=1600,max_bytes=8_000_000,since_b
  if live and since>=size:
   return [],{"path":str(path),"size":size,"returned":0,"scanned":0,"since":since,"live":True,"has_more":False,"end":size}
  if since>size:since=0
- end_pos=size
- window_start=0
- scored=[]
  msg_kinds={"user_message_chunk","agent_message_chunk"}
- chat_kinds=msg_kinds|{"agent_thought_chunk","plan","session_recap","turn_completed","task_completed"}
  try:
   with path.open("rb") as f:
+   csize=_committed_size(f,size)
+   base={"path":str(path),"size":csize,"bytes":size}
    if live:
-    if since>0:f.seek(since)
-    else:
-     start=max(0,size-min(max_bytes,512_000));f.seek(start)
+    tail=since<=0
+    if tail:
+     start=max(0,csize-min(max_bytes,512_000));f.seek(start)
      if start>0:f.readline()
+    else:
+     if since>=csize:
+      return [],{**base,"returned":0,"scanned":0,"since":since,"live":True,"has_more":False,"end":max(since,csize) if since<=size else csize}
+     f.seek(since)
     window_start=f.tell()
-    raw=f.read()
-    cut=raw.rfind(b"\n")+1
-    if cut>0 and cut<len(raw):raw=raw[:cut]
-    end_pos=window_start+len(raw)
-    for line in raw.splitlines():
-     if _CHAT_MARK_A not in line and _CHAT_MARK_B not in line and b"agent_thought_chunk" not in line and b"tool_call" not in line and b"turn_completed" not in line and b"task_completed" not in line and b"plan" not in line and b"session_recap" not in line:continue
-     try:s=line.decode("utf-8","replace")
-     except Exception:s=""
-     ev=_parse_update_line(s,live=True)
-     if ev:scored.append(ev)
-    scored=_message_first_tail(_coalesce_chat(scored),limit)
-    return [_trim_chat_text(_strip_ev(ev)) for ev in scored],{"path":str(path),"size":size,"end":end_pos,"returned":len(scored),"scanned":len(scored),"since":since,"live":True,"has_more":False,"window_start":window_start}
-   end_cap=size if before_bytes is None else min(max(0,int(before_bytes)),size)
-   if end_cap<=0:return [],{"path":str(path),"size":size,"has_more":False,"window_start":0,"window_end":0,"returned":0,"live":False}
+    blob=f.read(max(0,csize-window_start))
+    evs=_coalesce_chat(_parse_lines(blob,window_start,True,marks=_LIVE_MARKS))
+    scanned=len(evs)
+    if tail:
+     evs=evs[_suffix_start(evs,limit):]
+     first_off=evs[0]["_off"] if evs else csize
+     return [_trim_chat_text(_strip_ev(ev)) for ev in evs],{**base,"end":csize,"returned":len(evs),"scanned":scanned,"since":since,"live":True,"has_more":False,"has_older":first_off>0,"older_before":int(first_off),"window_start":int(first_off)}
+    lim=max(1,int(limit or 1))
+    if len(evs)>lim:
+     end=evs[lim]["_off"];evs=evs[:lim];more=True
+    else:
+     end=csize;more=False
+    return [_trim_chat_text(_strip_ev(ev)) for ev in evs],{**base,"end":int(end),"returned":len(evs),"scanned":scanned,"since":since,"live":True,"has_more":more,"window_start":window_start}
+   end_cap=csize if before_bytes is None else min(max(0,int(before_bytes)),csize)
+   if end_cap<=0:return [],{**base,"has_more":False,"window_start":0,"window_end":0,"returned":0,"live":False,"older_before":0,"end":0}
    if chat_only:
     want=max(1,int(limit))
     keep_kinds=msg_kinds|{"agent_thought_chunk","tool_call","tool_call_update","plan"}
     msg_target=max(6,min(24,max(1,want//2)))
     max_scan=min(4_000_000,max(800_000,int(max_bytes or 0)*4,want*80_000))
     scan=min(max_scan,max(250_000,want*12_000))
-    collected=[]
-    first_off=end_cap
     scanned_lines=0
-    start=end_cap
-    coalesced=[]
     acc=[]
     read_to=end_cap
-    end_pos=end_cap
     window_start=end_cap
     while True:
      start=max(0,end_cap-scan)
@@ -521,71 +785,35 @@ def read_session_updates(session_dir:Path,limit=1600,max_bytes=8_000_000,since_b
      window_start=f.tell()
      if window_start<read_to:
       blob=f.read(read_to-window_start)
-      if read_to==end_cap:end_pos=window_start+len(blob)
-      lines=blob.splitlines(keepends=True)
-      scanned_lines+=len(lines)
-      off=window_start+len(blob)
-      for raw_line in reversed(lines):
-       off-=len(raw_line)
-       if _CHAT_MARK_A not in raw_line and _CHAT_MARK_B not in raw_line and b"agent_thought_chunk" not in raw_line and b"tool_call" not in raw_line:continue
-       s=raw_line.decode("utf-8","replace").rstrip("\r\n")
-       if not s.strip():continue
-       ev=_parse_update_line(s,live=False)
-       if not ev or ev.get("_kind") not in keep_kinds:continue
-       ev["_off"]=off
-       acc.append(ev)
+      part=_parse_lines(blob,window_start,False,marks=(_CHAT_MARK_A,_CHAT_MARK_B,b"agent_thought_chunk",b"tool_call",b"plan"),keep=keep_kinds)
+      scanned_lines+=blob.count(b"\n")
+      acc=part+acc
       read_to=window_start
      groups=0;lastk=None
-     for ev in reversed(acc):
+     for ev in acc:
       k=ev.get("_kind") or ""
-      if k in msg_kinds and (lastk is None or lastk!=k):groups+=1
+      if k in msg_kinds and k!=lastk:groups+=1
       if k in msg_kinds:lastk=k
      if groups>=msg_target or start<=0 or scan>=max_scan:break
      scan=min(max_scan,max(scan*2,scan+4_000_000))
-    coalesced=_coalesce_chat(list(reversed(acc)))
-    first_off=coalesced[0].get("_off",window_start) if coalesced else window_start
-    collected=_message_first_tail(coalesced,want)
-    first_off=collected[0].get("_off",first_off) if collected else first_off
-    has_more=bool(first_off>0 and (start>0 or len(coalesced)>len(collected) or window_start>0))
-    return [_trim_chat_text(_strip_ev(ev)) for ev in collected],{"path":str(path),"size":size,"returned":len(collected),"scanned":scanned_lines,"live":False,"has_more":has_more,"window_start":int(first_off),"window_end":end_pos,"end":end_pos,"older_before":int(first_off),"chat_only":True}
+    coalesced=_coalesce_chat(acc)
+    collected=coalesced[_suffix_start(coalesced,want):]
+    first_off=collected[0].get("_off",window_start) if collected else window_start
+    return [_trim_chat_text(_strip_ev(ev)) for ev in collected],{**base,"returned":len(collected),"scanned":scanned_lines,"live":False,"has_more":bool(first_off>0),"window_start":int(first_off),"window_end":end_cap,"end":end_cap,"older_before":int(first_off),"chat_only":True}
    start=max(0,end_cap-max_bytes)
    f.seek(start)
    if start>0:f.readline()
    window_start=f.tell()
    blob=f.read(max(0,end_cap-window_start))
-   end_pos=window_start+len(blob)
-  lines=blob.splitlines(keepends=True)
-  off=window_start
-  for line in lines:
-   line_start=off
-   off+=len(line)
-   if b"sessionUpdate" not in line and b"session_update" not in line:continue
-   s=line.decode("utf-8","replace").rstrip("\r\n")
-   if not s.strip():continue
-   ev=_parse_update_line(s,live=False)
-   if ev:
-    ev["_off"]=line_start
-    scored.append(ev)
+   scored=_parse_lines(blob,window_start,False,marks=(b"sessionUpdate",b"session_update"))
  except Exception as e:
   return [],{"path":str(path),"error":str(e),"size":size,"has_more":False}
  if not scored:
-  return [],{"path":str(path),"size":size,"returned":0,"scanned":0,"live":False,"has_more":window_start>0,"window_start":window_start,"window_end":end_pos,"end":end_pos}
- trimmed=len(scored)>limit
- if trimmed:
-  chat_idx=[];tool_idx=[]
-  for i,ev in enumerate(scored):
-   (chat_idx if ev.get("_kind") in chat_kinds else tool_idx).append(i)
-  chat_budget=max(limit*3//4,max(1,limit-20))
-  keep=set(chat_idx[-chat_budget:])
-  room=limit-len(keep)
-  if room>0:keep.update(tool_idx[-room:])
-  kept=[scored[i] for i in range(len(scored)) if i in keep]
- else:
-  kept=scored
+  return [],{**base,"returned":0,"scanned":0,"live":False,"has_more":window_start>0,"window_start":window_start,"window_end":end_cap,"end":end_cap,"older_before":window_start}
+ kept=scored[_suffix_start(scored,limit):]
  first_off=kept[0].get("_off",window_start) if kept else window_start
  events=[_trim_chat_text(_strip_ev(ev)) for ev in kept]
- has_more=bool(window_start>0 or trimmed)
- return events,{"path":str(path),"size":size,"returned":len(events),"scanned":len(scored),"live":False,"has_more":has_more,"window_start":int(first_off),"window_end":end_pos,"end":end_pos,"older_before":int(first_off),"chat_only":bool(chat_only)}
+ return events,{**base,"returned":len(events),"scanned":len(scored),"live":False,"has_more":bool(first_off>0),"window_start":int(first_off),"window_end":end_cap,"end":end_cap,"older_before":int(first_off),"chat_only":bool(chat_only)}
 def is_text_path(p:Path):
  if p.suffix.lower() in TEXT_EXT:return True
  if p.name.lower() in ("dockerfile","makefile","license","readme"):return True
@@ -717,19 +945,58 @@ def public_safe_cfg(cfg):
  d["watch"]="/watch"
  d["serve"]=False
  return d
-def make_auth_middleware(token:str):
+def _host_key(v):
+ v=str(v or "").strip().lower().rstrip(".")
+ return v
+def origin_allowed(origin,hosts,origins):
+ o=str(origin or "").strip().lower().rstrip("/")
+ if not o or o=="null":return False
+ if o in origins:return True
+ u=urlparse(o)
+ if u.scheme not in ("http","https") or not u.netloc:return False
+ return _host_key(u.netloc) in hosts
+def host_allowed(host,hosts):
+ return _host_key(host) in hosts
+DEMO_PATHS=("/","/index.html","/manifest.webmanifest","/sw.js","/favicon.ico")
+def request_is_websocket(request):
+ try:return (request.headers.get("Upgrade") or "").lower()=="websocket"
+ except Exception:return False
+def make_auth_middleware(token:str,allow=None):
  from aiohttp import web
- def _loopback(request):
-  return request_is_loopback(request)
+ import hmac as _hmac
+ def _ok(v):
+  v=str(v or "")
+  return bool(v) and _hmac.compare_digest(v.encode(),str(token).encode())
+ async def _refuse(request,code,msg):
+  if request.path=="/ws" and request_is_websocket(request):
+   ws=web.WebSocketResponse()
+   try:
+    await ws.prepare(request)
+    await ws.close(code=code,message=msg.encode())
+   except Exception:pass
+   return ws
+  return web.json_response({"error":msg},status=403 if code==4403 else 401)
  @web.middleware
  async def auth_mw(request,handler):
   if not token:return await handler(request)
-  if request.query.get("demo")=="1":return await handler(request)
-  if request.path in ("/health","/health/deep","/w","/api/pair/unlock"):return await handler(request)
-  supplied=request.query.get("key") or request.cookies.get(UI_KEY_COOKIE) or request.headers.get("X-Grok-Remote-Key") or ""
-  loop=_loopback(request)
-  if not loop and supplied!=token:
-   if request.path=="/ws":raise web.HTTPUnauthorized(text="unauthorized")
+  path=request.path
+  if path in ("/health","/health/deep","/w","/api/pair/unlock"):return await handler(request)
+  explicit=_ok(request.query.get("key")) or _ok(request.headers.get("X-Grok-Remote-Key"))
+  cookie=_ok(request.cookies.get(UI_KEY_COOKIE))
+  try:hosts,origins=allow() if allow else (set(),set())
+  except Exception:hosts,origins=set(),set()
+  origin=request.headers.get("Origin")
+  origin_ok=origin is None or origin_allowed(origin,hosts,origins)
+  sensitive=path=="/ws" or (path.startswith("/api/") and request.method not in ("GET","HEAD","OPTIONS"))
+  if sensitive and not explicit and not origin_ok:
+   print("[auth] refused cross-origin %s %s origin=%s"%(request.method,path,str(origin)[:80]),flush=True)
+   return await _refuse(request,4403,"origin not allowed")
+  loop=request_is_loopback(request) and origin_ok and host_allowed(request.host,hosts)
+  authed=explicit or cookie or loop
+  if not authed and request.query.get("demo")=="1" and request.method in ("GET","HEAD") and (path in DEMO_PATHS or path.startswith("/static/")):
+   return await handler(request)
+  if not authed:
+   if path=="/ws":return await _refuse(request,4401,"unauthorized")
    acc=(request.headers.get("Accept") or "").lower()
    if "text/html" in acc and request.method=="GET":
     tok=(request.query.get("t") or "").strip()
@@ -755,21 +1022,17 @@ def make_auth_middleware(token:str):
       "<p>Open the Internet code from the PC pair page, then enter the Away PIN. This public URL does not skip the key and does not show host identities.</p>"
       "</body>")
     else:
-     local="http://127.0.0.1:%s/?key=%s&auto=1"%(request.url.port or 2421,token)
-     phone=("http://%s:%s/?key=%s&auto=1"%(lan_ip(),request.url.port or 2421,token))
      html=("<!doctype html><meta charset=utf-8><meta name=viewport content=\"width=device-width,initial-scale=1\">"
       "<title>Grok Remote — pair</title>"
       "<body style=\"font-family:system-ui;max-width:36rem;margin:2rem auto;padding:0 1rem;line-height:1.5;background:#0b0d10;color:#e8eaed\">"
       "<h1 style=\"font-size:1.25rem\">Pairing key required</h1>"
-      "<p>Open the <b>paired link</b> (has <code>?key=…</code>). Same Wi‑Fi as the PC.</p>"
-      "<p><a style=\"color:#7dd3fc\" href=\""+phone+"\">Open phone link</a></p>"
-      "<p style=\"word-break:break-all;font-size:12px;opacity:.85\">"+phone+"</p>"
-      "<p><a style=\"color:#a7f3d0\" href=\""+local+"\">Open on this PC (localhost)</a></p>"
-      "</body>")
+      "<p>Open the <b>paired link</b> (has <code>?key=…</code>) from the pair page on the PC "
+      "(<code>http://127.0.0.1:%s/pair</code>), or scan its QR code. Same Wi‑Fi as the PC.</p>"
+      "</body>")%(request.url.port or 2421)
     return web.Response(text=html,status=401,content_type="text/html")
    return web.json_response({"error":"unauthorized · open the paired link from connect.url, or add ?key=<secret>"},status=401)
   resp=await handler(request)
-  if request.path!="/ws" and (supplied==token or (loop and token)):
+  if path!="/ws" and (explicit or loop) and not cookie:
    try:
     kw={"max_age":30*86400,"httponly":True,"samesite":"Lax","path":"/"}
     if request_is_https(request):kw["secure"]=True
@@ -880,6 +1143,27 @@ class HubTerminal:
   for t in self._tasks:
    t.cancel()
   return {}
+PROMPT_IDLE_SECS=600.0
+PROMPT_ID_TTL=1800.0
+NEW_REQ_TTL=120.0
+PROBE_TIMEOUT=8.0
+CID_SILENT_SECS=20.0
+BUSY_RECENT_SECS=900.0
+UPDATE_METHODS=("session/update","_x.ai/session/update","x.ai/session/update")
+def _jd(o):return json.dumps(o,separators=(",",":"))
+def _mkfut():
+ fut=asyncio.get_event_loop().create_future()
+ fut.add_done_callback(lambda f:f.cancelled() or f.exception())
+ return fut
+async def _quiet_close(obj,timeout=2.0):
+ if obj is None:return
+ try:await asyncio.wait_for(obj.close(),timeout)
+ except asyncio.CancelledError:raise
+ except Exception:pass
+def _update_kind(obj):
+ p=obj.get("params") if isinstance(obj.get("params"),dict) else {}
+ u=p.get("update") if isinstance(p.get("update"),dict) else p
+ return str((u or {}).get("sessionUpdate") or "")
 class AgentHub:
  def __init__(self,agent_ws:str):
   self.agent_ws=agent_ws
@@ -891,12 +1175,15 @@ class AgentHub:
   self._session=None
   self._reader=None
   self._lock=asyncio.Lock()
+  self._connecting=None
+  self._gen=0
   self._alive=False
   self._init_result=None
   self._init_error=None
   self._init_done=False
   self._last_err=""
   self._rpc_futs={}
+  self._rpc_meta={}
   self._agent_req_ids=set()
   self._terms={}
   self._hub_rev_ids=set()
@@ -910,6 +1197,19 @@ class AgentHub:
   self._last_sid=""
   self._hung_agent=False
   self._last_agent_spawn=0
+  self._last_pong=0.0
+  self._pong_seen=False
+  self._sid_rx={}
+  self._prompt_ids={}
+  self._new_reqs={}
+  self._new_orphans={}
+  self._created={}
+  self._nofill_log=0.0
+  self._liveness_probe_at=0.0
+  self.default_cwd=""
+  self.meta=None
+ def _agent_ok(self):
+  return self._agent is not None and not self._agent.closed
  def _schedule_work_push(self):
   """A session/load replays the ENTIRE transcript over this socket, and every replayed tool_call
   used to fire its own _x.ai/work/changed. The client rebuilds the session rail on each one, so
@@ -926,25 +1226,25 @@ class AgentHub:
     await asyncio.sleep(WORK_PUSH_MIN_GAP)
   except asyncio.CancelledError:return
   except Exception as e:print("[hub] work pump:",e,flush=True)
- def _load_begin(self,sid):
-  """session/load bookkeeping lives in ONE map. Every entry is {ev,res}: ev fires exactly
-  once when the load resolves, res holds the result while THIS upstream socket lives.
-  _close_unlocked fires every ev and drops the map, so an upstream drop can never leave a
-  session id waiting on an Event nobody will set, and can never answer a later load from a
-  cache the new agent process knows nothing about."""
+ def _load_begin(self,sid,client=None):
   ent=self._loads.get(sid)
   if ent is None:
-   while len(self._loads)>=HUB_MAX_LOADS:self._loads.pop(next(iter(self._loads)),None)
-   ent={"ev":asyncio.Event(),"res":None}
+   if len(self._loads)>=HUB_MAX_LOADS:
+    done=[k for k,v in self._loads.items() if v["ev"].is_set()]
+    for k in done[:max(1,len(self._loads)-HUB_MAX_LOADS+1)]:self._loads.pop(k,None)
+   ent={"ev":asyncio.Event(),"res":None,"clients":set()}
    self._loads[sid]=ent
   ent["ev"]=asyncio.Event()
   ent["res"]=None
+  ent["clients"]=set()
+  if client is not None:ent["clients"].add(client)
   return ent
  def _load_finish(self,sid,res=None,keep=True):
   ent=self._loads.get(sid)
   if ent is None:return
   if res is not None:ent["res"]=res
   ent["ev"].set()
+  ent["clients"]=set()
   if not keep and ent["res"] is None:self._loads.pop(sid,None)
  async def _load_wait(self,sid,timeout=LOAD_WAIT):
   """Resolve inside the client's 12s session/load timeout, never outlive it."""
@@ -954,47 +1254,168 @@ class AgentHub:
    try:await asyncio.wait_for(ent["ev"].wait(),timeout)
    except Exception:pass
   return (self._loads.get(sid) or {}).get("res")
- def _maybe_spawn_agent(self,force=False):
-  port=getattr(self,"agent_port",2419)
-  hung=bool(force or getattr(self,"_hung_agent",False))
+ def _inflight_prompt_sids(self):
+  out=set()
+  for v in list(self.pending.values()):
+   m=v[2] if v and len(v)>2 and isinstance(v[2],dict) else {}
+   if m.get("method")=="session/prompt" and m.get("sid"):out.add(str(m["sid"]))
+  for m in list(self._rpc_meta.values()):
+   if m.get("method")=="session/prompt" and m.get("sid"):out.add(str(m["sid"]))
+  return out
+ def _inflight_sids(self):
+  out=self._inflight_prompt_sids()
+  for sid,ent in list(self._loads.items()):
+   if not ent["ev"].is_set():out.add(sid)
+  return out
+ def _known_sids(self):
+  return set(self._loads)|set(self._created)
+ def _busy_sids(self):
+  out=set(self._inflight_prompt_sids())
   try:
-   listening=bool(listen_pids_port(int(port),exclude_self=False))
-  except Exception:listening=False
-  if listening and not hung:return
+   now=time.time()
+   for j in self._work_snapshot():
+    if j.get("running") and now-float(j.get("updated") or 0)<BUSY_RECENT_SECS:out.add(str(j.get("sid") or ""))
+  except Exception:pass
+  return sorted(x for x in out if x)
+ async def _maybe_spawn_agent(self,force=False):
+  port=getattr(self,"agent_port",2419)
+  if not force and port_open(port):return
   fn=getattr(self,"spawn_agent",None)
   if not fn:return
   now=time.time()
   if now-getattr(self,"_last_agent_spawn",0)<30:return
   self._last_agent_spawn=now
-  self._hung_agent=False
+  print("[hub] %s"%("agent failed its probe — kill + respawn grok agent serve" if force else "agent port dead — spawning grok agent serve"),flush=True)
+  loop=asyncio.get_event_loop()
   try:
-   print("[hub] %s — respawning grok agent serve"%("agent hung (RPC timeout)" if hung else "agent port dead"),flush=True)
-   try:fn(force=True) if hung else fn()
-   except TypeError:fn()
+   try:await loop.run_in_executor(None,lambda:fn(force=bool(force)))
+   except TypeError:await loop.run_in_executor(None,fn)
   except Exception as e:print("[hub] agent respawn failed:",e,flush=True)
  def start_watch(self):
   if self._watch_task and not self._watch_task.done():return
   self._watch_task=asyncio.create_task(self._watch_loop())
  async def _notify_hub_state(self,up):
   """Clients used to look 'connected' while the agent behind the hub was gone - their
-  pings are answered by the hub itself, so the link never went stale. Tell them."""
-  msg=json.dumps({"jsonrpc":"2.0","method":"_x.ai/remote/hub","params":{"up":bool(up)}},separators=(",",":"))
-  for c in list(self.clients):
-   try:
-    if not c.closed:await c.send_str(msg)
+  pings are answered by the hub itself, so the link never went stale. Tell them. The busy list
+  (C6) lets a client correct a spinner that missed its turn's completion."""
+  params={"up":bool(up)}
+  try:params["busy"]=self._busy_sids()
+  except Exception:params["busy"]=[]
+  msg=_jd({"jsonrpc":"2.0","method":"_x.ai/remote/hub","params":params})
+  await asyncio.gather(*[self._send_client(c,msg) for c in list(self.clients)],return_exceptions=True)
+ async def _ping_upstream(self,timeout=5.0):
+  ws=self._agent
+  if ws is None or ws.closed:return False
+  if not self._pong_seen:return None
+  t0=time.time()
+  try:await asyncio.wait_for(ws.ping(),timeout)
+  except Exception:return False
+  while time.time()-t0<timeout:
+   if self._last_pong>=t0:return True
+   await asyncio.sleep(0.1)
+  return False
+ async def _learn_pong(self,ws):
+  try:
+   t0=time.time()
+   await asyncio.wait_for(ws.ping(),3)
+   for _ in range(30):
+    if self._last_pong>=t0:return
+    await asyncio.sleep(0.1)
+  except Exception:pass
+ async def _probe_side(self,timeout=PROBE_TIMEOUT):
+  from aiohttp import ClientSession,ClientTimeout,WSMsgType
+  try:
+   async with ClientSession(timeout=ClientTimeout(total=timeout+2,connect=min(4.0,timeout))) as s:
+    async with s.ws_connect(self.agent_ws,heartbeat=None) as w:
+     await w.send_str(_jd({"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":1,"clientInfo":{"name":"grok-remote-probe","version":"1"},"clientCapabilities":{}}}))
+     end=time.time()+timeout
+     while time.time()<end:
+      msg=await asyncio.wait_for(w.receive(),max(0.1,end-time.time()))
+      if msg.type==WSMsgType.TEXT:
+       try:o=json.loads(msg.data)
+       except Exception:continue
+       if isinstance(o,dict) and o.get("id")==1 and o.get("method") is None:return "result" in o
+      elif msg.type in (WSMsgType.CLOSE,WSMsgType.CLOSED,WSMsgType.ERROR):return False
+  except Exception:return False
+  return False
+ async def probe_agent(self):
+  up,side=await asyncio.gather(self._ping_upstream(5.0),self._probe_side(PROBE_TIMEOUT))
+  return bool(side and up is not False)
+ async def _recover_hung(self):
+  self._hung_agent=False
+  up,side=await asyncio.gather(self._ping_upstream(5.0),self._probe_side(PROBE_TIMEOUT))
+  if side and up is not False:
+   print("[hub] agent flagged hung but answers probes — slow, not dead; leaving it running",flush=True)
+   return
+  if side:
+   print("[hub] upstream socket dead, agent answers — reconnecting only",flush=True)
+   await self.close()
+   await self.ensure(retries=8,delay=0.35)
+   return
+  print("[hub] agent failed its probe",flush=True)
+  await self.close()
+  await self._maybe_spawn_agent(force=True)
+  await self.ensure(retries=10,delay=0.5)
+ async def _check_prompt_liveness(self):
+  now=time.time();stale=[]
+  for nid,v in list(self.pending.items()):
+   m=v[2] if v and len(v)>2 and isinstance(v[2],dict) else {}
+   if m.get("method")!="session/prompt":continue
+   last=max(float(m.get("t") or 0),float(m.get("seen") or 0),float(self._sid_rx.get(m.get("sid"),0) or 0))
+   if now-last>=PROMPT_IDLE_SECS:stale.append(("ws",nid,m))
+  for nid,m in list(self._rpc_meta.items()):
+   if m.get("method")!="session/prompt":continue
+   last=max(float(m.get("t") or 0),float(m.get("seen") or 0),float(self._sid_rx.get(m.get("sid"),0) or 0))
+   if now-last>=PROMPT_IDLE_SECS:stale.append(("rpc",nid,m))
+  if not stale or now-self._liveness_probe_at<60:return
+  self._liveness_probe_at=now
+  if await self.probe_agent():
+   for _,_,m in stale:m["seen"]=now
+   print("[hub] %d prompt(s) quiet %dm but the agent answers probes — still waiting"%(len(stale),int(PROMPT_IDLE_SECS//60)),flush=True)
+   return
+  msg="no agent activity for %d min and the agent did not answer a liveness probe — turn marked failed"%int(PROMPT_IDLE_SECS//60)
+  for how,nid,m in stale:
+   sid=str(m.get("sid") or "")
+   note={"id":None,"ok":False,"detached":False,"sessionId":sid or None,"cid":m.get("cid") or "","method":"session/prompt","error":msg}
+   if how=="ws":
+    ent=self.pending.pop(nid,None)
+    if not ent:continue
+    note["id"]=ent[1];note["detached"]=ent[0] is None
+    await self._reply_err(ent[0],ent[1],msg,-32002)
+   else:
+    fut=self._rpc_futs.pop(nid,None);self._rpc_meta.pop(nid,None)
+    if fut is not None and not fut.done():fut.set_result({"jsonrpc":"2.0","id":nid,"error":{"code":-32002,"message":msg}})
+    note["id"]=m.get("clientId");note["detached"]=m.get("via")=="http"
+   print("[hub] prompt failed (liveness) · sid=%s"%sid[:8],flush=True)
+   try:self.work.mark_failed(sid,msg)
    except Exception:pass
+   await self._broadcast(_jd({"jsonrpc":"2.0","method":"_x.ai/remote/rpc_done","params":note}))
+  self._schedule_work_push()
+  self._hung_agent=True
+ def _gc(self):
+  now=time.time()
+  for k,t in list(self._prompt_ids.items()):
+   if now-t>PROMPT_ID_TTL:self._prompt_ids.pop(k,None)
+  self._newreq_prune()
+  for k,v in list(self._new_orphans.items()):
+   if now-float(v.get("t") or 0)>600:self._new_orphans.pop(k,None)
+  for sid,v in list(self._created.items()):
+   age=now-float(v.get("created_at") or 0)
+   if age>86400:self._created.pop(sid,None)
+   elif age>5:
+    try:
+     if find_session_dir(sid):self._created.pop(sid,None)
+    except Exception:pass
+  for sid,t in list(self._sid_rx.items()):
+   if now-t>86400:self._sid_rx.pop(sid,None)
  async def _watch_loop(self):
   hb=0.0
   while True:
    try:
-    if getattr(self,"_hung_agent",False):
-     try:await self.close()
-     except Exception:pass
-     self._maybe_spawn_agent(force=True)
-     await self.ensure(retries=8,delay=0.35)
-    down=self._agent is None or self._agent.closed
+    if self._hung_agent:await self._recover_hung()
+    down=not self._agent_ok()
     # a dead upstream with clients waiting is an outage, not a curiosity - hurry
-    await asyncio.sleep(2 if ((down or getattr(self,"_hung_agent",False)) and self.clients) else 10)
+    await asyncio.sleep(2 if (down and self.clients) else 10)
     # A BACKGROUND TAB CANNOT KEEP ITS OWN LINK ALIVE. Chrome throttles setInterval to about
     # once a minute in a hidden tab, so the client's 4s keepalive stops firing, its own
     # "silent > 45s" check trips, and it closes the socket it was trying to protect. Inbound
@@ -1003,12 +1424,14 @@ class AgentHub:
     await self._prune_clients(room=0)
     if self.clients and time.time()-hb>=15:
      hb=time.time()
-     await self._notify_hub_state(bool(self._agent and not self._agent.closed))
+     await self._notify_hub_state(self._agent_ok())
     if self.clients or self.pending or self._rpc_futs:
      ok=await self.ensure(retries=2,delay=0.25)
-     if not ok:self._maybe_spawn_agent()
-    elif self._agent is None or self._agent.closed:
+     if not ok:await self._maybe_spawn_agent()
+    elif not self._agent_ok():
      await self.ensure(retries=1,delay=0.15)
+    await self._check_prompt_liveness()
+    self._gc()
    except asyncio.CancelledError:return
    except Exception as e:
     print("[hub] watch:",e,flush=True)
@@ -1021,15 +1444,35 @@ class AgentHub:
    meta.pop("detached",None)
    self.pending[k]=(new,orig,meta)
    n+=1
+  for ent in self._loads.values():
+   cl=ent.get("clients")
+   if cl and old in cl:cl.discard(old);cl.add(new)
   return n
- async def _claim_cid(self,client,cid):
+ async def _claim_cid(self,client,cid,nonce=""):
   cid=str(cid or "").strip()
-  if not cid or len(cid)<4:return
-  try:client._cid=cid
-  except Exception:pass
+  if not cid or len(cid)<4:return True
+  nonce=str(nonce or "").strip()[:80]
   old=self._by_cid.get(cid)
+  if old is None or old is client or getattr(old,"closed",True):
+   self._by_cid[cid]=client
+   try:client._cid=cid;client._nonce=nonce or getattr(client,"_nonce","")
+   except Exception:pass
+   return True
+  old_nonce=str(getattr(old,"_nonce","") or "")
+  last=float(getattr(old,"_last_rx",0) or 0)
+  silent=(time.time()-last)>=CID_SILENT_SECS
+  same_page=bool(nonce) and nonce==old_nonce
+  legacy=not nonce and not old_nonce
+  if not (silent or same_page or legacy):
+   print("[hub] cid-conflict %s · two live tabs share it · refusing the newcomer"%cid[:16],flush=True)
+   try:
+    await self._send_client(client,_jd({"jsonrpc":"2.0","method":"_x.ai/remote/cid_conflict","params":{"cid":cid}}))
+    await asyncio.wait_for(client.close(code=4409,message=b"cid-conflict"),1.0)
+   except Exception:pass
+   return False
+  try:client._cid=cid;client._nonce=nonce
+  except Exception:pass
   self._by_cid[cid]=client
-  if old is None or old is client:return
   n=self._rebind_client_pending(old,client)
   self.clients.discard(old)
   try:self._client_seq.remove(old)
@@ -1038,6 +1481,7 @@ class AgentHub:
    if not getattr(old,"closed",True):await asyncio.wait_for(old.close(),1.0)
   except Exception:pass
   print("[hub] replaced duplicate client %s · rebound %d RPC(s) · n=%d"%(cid[:16],n,len(self.clients)),flush=True)
+  return True
  def _ws_loopback(self,c):
   try:
    req=getattr(c,"_req",None)
@@ -1075,35 +1519,131 @@ class AgentHub:
     if not getattr(old,"closed",True):await asyncio.wait_for(old.close(),1.0)
    except Exception:pass
    print("[hub] pruned extra client · n=%d"%len(self.clients),flush=True)
-   print("[hub] dropped stale client · n=%d"%len(self.clients),flush=True)
  def _next_id(self):
   self._nid+=1
   return self._nid
  def _next_term_id(self):
   self._term_n+=1
   return "term-%d-%s"%(self._term_n,uuid.uuid4().hex[:8])
- async def call_rpc(self,method:str,params=None,timeout=90.0):
+ async def _rpc_send(self,method,params=None,meta=None):
   if not await self.ensure():
    raise RuntimeError("agent offline · "+(self._last_err or "no hub"))
   nid=self._next_id()
-  fut=asyncio.get_event_loop().create_future()
-  self._rpc_futs[nid]=fut
-  payload={"jsonrpc":"2.0","id":nid,"method":method,"params":params or {}}
+  fut=_mkfut()
+  m=dict(meta or {});m.setdefault("method",method);m.setdefault("t",time.time())
+  if isinstance(params,dict):
+   if params.get("sessionId"):m.setdefault("sid",str(params.get("sessionId")))
+   if method in ("session/set_model","session/set_mode"):m["params"]=params
+  self._rpc_futs[nid]=fut;self._rpc_meta[nid]=m
   try:
-   await self._agent.send_str(json.dumps(payload,separators=(",",":")))
+   await asyncio.wait_for(self._agent.send_str(_jd({"jsonrpc":"2.0","id":nid,"method":method,"params":params or {}})),8)
   except Exception as e:
-   self._rpc_futs.pop(nid,None)
-   raise RuntimeError(str(e))
+   self._rpc_futs.pop(nid,None);self._rpc_meta.pop(nid,None)
+   raise RuntimeError(str(e) or type(e).__name__)
+  return nid,fut
+ async def call_rpc(self,method:str,params=None,timeout=90.0,meta=None):
+  nid,fut=await self._rpc_send(method,params,meta)
   try:
-   return await asyncio.wait_for(fut,timeout=timeout)
-  except Exception:
-   self._rpc_futs.pop(nid,None)
+   return await asyncio.wait_for(asyncio.shield(fut),timeout=timeout)
+  except asyncio.TimeoutError:
+   m=self._rpc_meta.get(nid) or {}
+   if method!="session/prompt":
+    self._rpc_futs.pop(nid,None);self._rpc_meta.pop(nid,None)
+    if method=="session/new":self._new_orphans[nid]=dict(m,t=time.time())
+    if method=="session/load" and m.get("sid"):
+     self._load_finish(m["sid"],keep=False)
+     self._hung_agent=True
    raise
+ def _session_cwd(self,sid):
+  c=(self._created.get(sid) or {}).get("cwd")
+  if c:return c
+  try:
+   d=find_session_dir(sid)
+   if d:
+    c=read_session_info(d).get("cwd")
+    if c:return c
+  except Exception:pass
+  return self.default_cwd or os.getcwd()
+ async def ensure_loaded(self,sid,cwd=None,timeout=None):
+  sid=str(sid or "").strip()
+  if not sid:return False
+  lim=float(timeout or RPC_REPLY_TIMEOUT.get("session/load",20.0))
+  ent=self._loads.get(sid)
+  if ent is not None:
+   if ent["res"] is not None:return True
+   if not ent["ev"].is_set():return (await self._load_wait(sid,lim+5)) is not None
+  if not await self.ensure(retries=8,delay=0.35):return False
+  self._load_begin(sid)
+  print("[hub] session/load (hub-internal) · sid=%s"%sid[:8],flush=True)
+  try:
+   obj=await self.call_rpc("session/load",{"sessionId":sid,"cwd":cwd or self._session_cwd(sid),"mcpServers":[]},timeout=lim)
+  except Exception as e:
+   self._load_finish(sid,keep=False)
+   print("[hub] internal session/load failed · sid=%s · %s"%(sid[:8],str(e)[:120]),flush=True)
+   return False
+  return isinstance(obj,dict) and "error" not in obj
+ def _prompt_seen(self,pid):
+  t=self._prompt_ids.get(pid) if pid else None
+  return t is not None and time.time()-t<PROMPT_ID_TTL
+ def _prompt_mark(self,pid):
+  if pid:self._prompt_ids[pid]=time.time()
+ def _prompt_unmark(self,pid):
+  if pid:self._prompt_ids.pop(pid,None)
+ def _newreq_prune(self):
+  now=time.time()
+  for k,v in list(self._new_reqs.items()):
+   age=now-float(v.get("t") or 0)
+   if (v["fut"].done() and age>NEW_REQ_TTL) or age>NEW_REQ_TTL*3:self._new_reqs.pop(k,None)
+ def _newreq_fail(self,key,obj=None):
+  ent=self._new_reqs.pop(key,None) if key else None
+  if ent and not ent["fut"].done():
+   ent["fut"].set_result(obj or {"jsonrpc":"2.0","error":{"code":-32000,"message":"session/new failed"}})
+ async def new_session(self,params,gr_req=None,timeout=60.0):
+  params=dict(params or {});params.pop("_grReq",None)
+  key=str(gr_req or "").strip()[:128]
+  if key:
+   self._newreq_prune()
+   ent=self._new_reqs.get(key)
+   if ent:
+    print("[hub] session/new duplicate _grReq %s — sharing the first result"%key[:12],flush=True)
+    return await asyncio.wait_for(asyncio.shield(ent["fut"]),timeout)
+   self._new_reqs[key]={"fut":_mkfut(),"t":time.time()}
+  try:
+   return await self.call_rpc("session/new",params,timeout=timeout,meta={"grReq":key,"cwd":str(params.get("cwd") or "")})
+  except asyncio.TimeoutError:
+   raise
+  except Exception as e:
+   self._newreq_fail(key,{"jsonrpc":"2.0","error":{"code":-32000,"message":str(e)[:200]}})
+   raise
+ async def send_prompt(self,sid,blocks,gr_pid=None,cid="",client_id=None,wait=8.0,via="hub"):
+  sid=str(sid or "").strip()
+  if not sid:raise ValueError("sessionId required")
+  gr_pid=str(gr_pid or "").strip()[:128]
+  if gr_pid and self._prompt_seen(gr_pid):return {"duplicate":True,"duplicateOf":gr_pid}
+  self._prompt_mark(gr_pid)
+  try:
+   if not await self.ensure(retries=8,delay=0.35):raise RuntimeError("agent offline")
+   if not await self.ensure_loaded(sid):raise RuntimeError("session/load failed for "+sid)
+   try:
+    self.work.ingest_prompt(sid,blocks)
+    self.work.note_prompt(sid,"\n".join(str(b.get("text") or "") for b in blocks if isinstance(b,dict)))
+   except Exception:pass
+   nid,fut=await self._rpc_send("session/prompt",{"sessionId":sid,"prompt":blocks},{"sid":sid,"cid":str(cid or ""),"clientId":client_id,"grPromptId":gr_pid,"via":via})
+  except Exception:
+   self._prompt_unmark(gr_pid)
+   raise
+  self._schedule_work_push()
+  print("[hub] prompt (%s) · sid=%s · id=%s"%(via,sid[:8],nid),flush=True)
+  try:return await asyncio.wait_for(asyncio.shield(fut),wait)
+  except asyncio.TimeoutError:return {"running":True,"id":nid}
  async def inject_prompt(self,session_id:str,text:str,timeout=300.0):
   sid=str(session_id or "").strip()
   t=str(text or "").strip()
   if not sid or not t:raise ValueError("sessionId and text required")
-  return await self.call_rpc("session/prompt",{"sessionId":sid,"prompt":[{"type":"text","text":t}]},timeout=timeout)
+  obj=await self.send_prompt(sid,[{"type":"text","text":t}],wait=timeout,via="hub")
+  if isinstance(obj,dict) and obj.get("error"):
+   e=obj.get("error");raise RuntimeError(str(e.get("message") if isinstance(e,dict) else e)[:240])
+  return obj
  async def set_model_effort(self,session_id:str,model_id:str,effort:str):
   sid=str(session_id or "").strip()
   mid=str(model_id or "").strip() or "grok-4.5"
@@ -1115,90 +1655,135 @@ class AgentHub:
   return await self.call_rpc("session/set_model",{"sessionId":sid,"modelId":mid,"_meta":{"reasoningEffort":eff}},timeout=30.0)
  async def ensure(self,retries=3,delay=0.2):
   for i in range(max(1,retries)):
-   async with self._lock:
-    if self._agent is not None and not self._agent.closed:return True
-    await self._open()
-    if self._agent is not None and not self._agent.closed:return True
+   if self._agent_ok():return True
+   fut=self._connecting
+   if fut is None or fut.done():
+    fut=self._connecting=asyncio.ensure_future(self._open())
+   try:await asyncio.shield(fut)
+   except asyncio.CancelledError:
+    if fut.cancelled():pass
+    else:raise
+   except Exception:pass
+   if self._agent_ok():return True
    if i+1<retries:await asyncio.sleep(delay)
   return False
  async def _open(self):
   from aiohttp import ClientSession,ClientTimeout
-  await self._close_unlocked(keep_init=False)
+  if self._agent is not None or self._session is not None or self._reader is not None:
+   await self._close_unlocked(keep_init=False)
+  gen=self._gen
+  sess=None
   try:
-   self._session=ClientSession(timeout=ClientTimeout(total=None,connect=8,sock_connect=8,sock_read=None))
-   self._agent=await self._session.ws_connect(self.agent_ws,heartbeat=None,max_msg_size=16*1024*1024,autoping=False,receive_timeout=None)
-   self._alive=True
-   self._last_err=""
-   self._reader=asyncio.create_task(self._pump())
-   print("[hub] upstream agent connected · clients=%d"%len(self.clients),flush=True)
-   asyncio.create_task(self._notify_hub_state(True))
+   sess=ClientSession(timeout=ClientTimeout(total=None,connect=8,sock_connect=8,sock_read=None))
+   ws=await sess.ws_connect(self.agent_ws,heartbeat=None,max_msg_size=16*1024*1024,autoping=False,receive_timeout=None)
   except Exception as e:
    self._last_err=re.sub(r"server-key=[^&'\s]+","server-key=***",str(e))[:200]
-   print("[hub] upstream open failed:",e,flush=True)
-   await self._close_unlocked(keep_init=False)
+   print("[hub] upstream open failed:",self._last_err,flush=True)
+   await _quiet_close(sess)
+   return False
+  if gen!=self._gen:
+   await _quiet_close(ws);await _quiet_close(sess)
+   return False
+  self._session=sess;self._agent=ws
+  self._alive=True
+  self._last_err=""
+  self._pong_seen=False
+  self._reader=asyncio.create_task(self._pump(ws))
+  print("[hub] upstream agent connected · clients=%d"%len(self.clients),flush=True)
+  self._on_upstream_up(ws)
+  return True
+ def _on_upstream_up(self,ws):
+  try:
+   n=self.work.reset_running(keep=self._inflight_prompt_sids(),detail="interrupted · hub/agent restarted")
+   if n:
+    print("[hub] healed %d stale work job(s) on agent connect"%n,flush=True)
+    self._schedule_work_push()
+  except Exception as e:print("[hub] heal on connect:",e,flush=True)
+  asyncio.create_task(self._notify_hub_state(True))
+  asyncio.create_task(self._learn_pong(ws))
  async def _close_unlocked(self,keep_init=False):
   self._alive=False
-  if self._reader and self._reader is not asyncio.current_task():
-   self._reader.cancel()
-   try:await self._reader
-   except Exception:pass
-   self._reader=None
-  elif self._reader:
-   self._reader=None
-  if self._agent is not None:
-   try:
-    if not self._agent.closed:await self._agent.close()
-   except Exception:pass
-   self._agent=None
-  if self._session is not None:
-   try:await self._session.close()
-   except Exception:pass
-   self._session=None
-  for tid,term in list(self._terms.items()):
-   try:await term.release()
-   except Exception:pass
-  self._terms.clear()
+  reader,agent,sess=self._reader,self._agent,self._session
+  self._reader=None;self._agent=None;self._session=None
+  terms=list(self._terms.values());self._terms.clear()
   self._hub_rev_ids.clear()
-  for lsid,ent in list(self._loads.items()):
-   try:ent["ev"].set()
-   except Exception:pass
-  self._loads.clear()
-  dead=list(self.pending.items())
-  self.pending.clear()
-  for nid,ent in dead:
-   client=ent[0] if ent else None
-   orig=ent[1] if ent and len(ent)>1 else None
-   try:
-    if client is not None and not client.closed and orig is not None:
-     await client.send_str(json.dumps({"jsonrpc":"2.0","id":orig,"error":{"code":-32001,"message":"agent disconnected"}}))
-   except Exception:pass
-  dead_rpc=list(self._rpc_futs.items())
-  self._rpc_futs.clear()
-  for nid,fut in dead_rpc:
-   if not fut.done():fut.set_exception(RuntimeError("agent disconnected"))
+  loads=list(self._loads.values());self._loads.clear()
+  dead=list(self.pending.items());self.pending.clear()
+  dead_rpc=list(self._rpc_futs.items());self._rpc_futs.clear()
+  dead_meta=dict(self._rpc_meta);self._rpc_meta.clear()
+  self._new_orphans.clear()
   if not keep_init:
    self._init_result=None
    self._init_error=None
    self._init_done=False
+  for ent in loads:
+   try:ent["ev"].set()
+   except Exception:pass
+  for nid,fut in dead_rpc:
+   if not fut.done():fut.set_exception(RuntimeError("agent disconnected"))
+   m=dead_meta.get(nid) or {}
+   if m.get("grReq"):self._newreq_fail(m["grReq"],{"jsonrpc":"2.0","error":{"code":-32001,"message":"agent disconnected"}})
+  failed_sids=set()
+  for nid,ent in dead:
+   m=ent[2] if ent and len(ent)>2 and isinstance(ent[2],dict) else {}
+   if m.get("grReq"):self._newreq_fail(m["grReq"],{"jsonrpc":"2.0","error":{"code":-32001,"message":"agent disconnected"}})
+   if m.get("method")=="session/prompt" and m.get("sid"):failed_sids.add(str(m["sid"]))
+  for nid,m in dead_meta.items():
+   if m.get("method")=="session/prompt" and m.get("sid"):failed_sids.add(str(m["sid"]))
+  for sid in failed_sids:
+   try:self.work.mark_failed(sid,"agent disconnected mid-turn")
+   except Exception:pass
+  if reader is not None and reader is not asyncio.current_task():
+   reader.cancel()
+   try:await asyncio.wait({reader},timeout=2.0)
+   except Exception:pass
+  await _quiet_close(agent,2.0)
+  await _quiet_close(sess,2.0)
+  for term in terms:
+   try:await asyncio.wait_for(term.release(),3.0)
+   except Exception:pass
+  for nid,ent in dead:
+   client=ent[0] if ent else None
+   orig=ent[1] if ent and len(ent)>1 else None
+   m=ent[2] if ent and len(ent)>2 and isinstance(ent[2],dict) else {}
+   if client is not None and not getattr(client,"closed",True) and orig is not None:
+    await self._send_client(client,_jd({"jsonrpc":"2.0","id":orig,"error":{"code":-32001,"message":"agent disconnected"}}))
+   if m.get("method")=="session/prompt":
+    await self._broadcast(_jd({"jsonrpc":"2.0","method":"_x.ai/remote/rpc_done","params":{"id":orig,"ok":False,"detached":client is None,"sessionId":m.get("sid") or None,"cid":m.get("cid") or "","method":"session/prompt","error":"agent disconnected"}}))
+  if failed_sids:self._schedule_work_push()
  async def close(self):
-  async with self._lock:
-   await self._close_unlocked(keep_init=False)
- async def _pump(self):
+  self._gen+=1
+  self._connecting=None
+  await self._close_unlocked(keep_init=False)
+ async def _pump(self,ws=None):
   from aiohttp import WSMsgType
+  ws=ws if ws is not None else self._agent
+  if ws is None:return
+  cancelled=False
   try:
-   async for msg in self._agent:
+   async for msg in ws:
     if msg.type==WSMsgType.TEXT:await self._from_agent(msg.data)
     elif msg.type==WSMsgType.BINARY:
      try:await self._from_agent(msg.data.decode("utf-8","replace"))
      except Exception:pass
+    elif msg.type==WSMsgType.PONG:
+     self._last_pong=time.time();self._pong_seen=True
+    elif msg.type==WSMsgType.PING:
+     try:await ws.pong(msg.data)
+     except Exception:pass
     elif msg.type in (WSMsgType.CLOSE,WSMsgType.ERROR,WSMsgType.CLOSED):break
-  except asyncio.CancelledError:return
+  except asyncio.CancelledError:
+   cancelled=True
+   raise
   except Exception as e:print("[hub] pump error:",e,flush=True)
   finally:
-   print("[hub] upstream closed · watcher retries every 2s while clients wait",flush=True)
-   async with self._lock:
-    await self._close_unlocked(keep_init=False)
-   await self._notify_hub_state(False)
+   if not cancelled and self._agent is ws:
+    print("[hub] upstream closed · watcher retries every 2s while clients wait",flush=True)
+    asyncio.get_event_loop().create_task(self._upstream_lost(ws))
+ async def _upstream_lost(self,ws):
+  if self._agent is not ws:return
+  await self._close_unlocked(keep_init=False)
+  await self._notify_hub_state(False)
  async def _reply_agent(self,rid,result=None,error=None):
   if self._agent is None or self._agent.closed:return
   if rid is not None:self._hub_rev_ids.discard(rid)
@@ -1317,38 +1902,41 @@ class AgentHub:
    return True
   return False
  def _ensure_session_id(self,obj):
-  """ACP sometimes omits sessionId on chunks. Tag with the last known sid so
-  every client can route the update to one room — the Aug 1 braid contract."""
   if not isinstance(obj,dict):return False
   method=obj.get("method")
   if method not in ("session/update","_x.ai/session/update","x.ai/session/update","_x.ai/queue/changed","session/request_permission"):
    return False
   params=obj.get("params") if isinstance(obj.get("params"),dict) else None
   if params is None:return False
-  sid=str(params.get("sessionId") or "")
-  if sid:
-   self._last_sid=sid
-   return False
-  last=str(getattr(self,"_last_sid","") or "")
-  if not last:return False
-  params["sessionId"]=last
-  return True
+  if str(params.get("sessionId") or ""):return False
+  cands=self._inflight_sids()
+  if len(cands)==1:
+   params["sessionId"]=next(iter(cands))
+   return True
+  now=time.time()
+  if now-self._nofill_log>30:
+   self._nofill_log=now
+   print("[hub] %s without sessionId and %d session(s) in flight — not guessing"%(method,len(cands)),flush=True)
+  return False
  def _work_note(self,obj):
   try:
    method=obj.get("method")
    params=obj.get("params") if isinstance(obj.get("params"),dict) else {}
    sid=str(params.get("sessionId") or "")
-   if method=="session/update" or method in ("_x.ai/session/update","x.ai/session/update"):
+   if method in UPDATE_METHODS:
     upd=params.get("update") if isinstance(params.get("update"),dict) else params
     self.work.note_update(sid,upd,params.get("_meta") or obj.get("_meta") or {})
    elif method=="_x.ai/queue/changed":
     self.work.note_queue(sid,params.get("entries") or [],params.get("runningPromptId"))
   except Exception as e:
    print("[hub] work note:",e,flush=True)
+ def _work_snapshot(self,sid=None):
+  try:return self.work.snapshot(sid,inflight=self._inflight_prompt_sids())
+  except TypeError:return self.work.snapshot(sid)
  async def _work_push(self):
   try:
-   jobs=self.work.snapshot()
-   await self._broadcast(json.dumps({"jsonrpc":"2.0","method":"_x.ai/work/changed","params":{"jobs":jobs}},separators=(",",":")))
+   jobs=self._work_snapshot()
+   await self._broadcast(_jd({"jsonrpc":"2.0","method":"_x.ai/work/changed","params":{"jobs":jobs}}))
   except Exception:pass
  async def _send_client(self,client,data):
   if client is None or getattr(client,"closed",True):return False
@@ -1356,6 +1944,22 @@ class AgentHub:
    await asyncio.wait_for(client.send_str(data),BROADCAST_SEND_TIMEOUT)
    return True
   except Exception:return False
+ def _schedule_sessions_changed(self,sid,reason):
+  invalidate_session_index()
+  key=(sid or "",reason)
+  pend=self.__dict__.setdefault("_sc_pending",set())
+  if key in pend:return
+  pend.add(key)
+  async def _later():
+   try:
+    await asyncio.sleep(0.25)
+   finally:pend.discard(key)
+   await self.sessions_changed(sid,reason)
+  try:asyncio.get_event_loop().create_task(_later())
+  except Exception:pend.discard(key)
+ async def sessions_changed(self,sid,reason):
+  invalidate_session_index()
+  await self._broadcast(_jd({"jsonrpc":"2.0","method":"_x.ai/sessions/changed","params":{"sessionId":sid or None,"reason":reason}}))
  async def _rpc_expire(self,nid,timeout,method):
   try:await asyncio.sleep(float(timeout))
   except Exception:return
@@ -1371,63 +1975,138 @@ class AgentHub:
    # and prompts for that sid sat behind a load nobody would finish.
    self._load_finish(sid,keep=False)
    print("[hub] session/load timeout · drop lock · sid=%s"%(sid[:8]),flush=True)
-  if method in ("session/new","session/load","_x.ai/sessions/list","sessions/list","initialize"):
+  if method=="session/new":
+   self._new_orphans[nid]=dict(meta or {},t=time.time())
+  if method in ("session/load","initialize"):
    self._hung_agent=True
  async def _from_agent(self,raw:str):
   try:obj=json.loads(raw)
   except Exception:
    await self._broadcast(raw);return
+  if not isinstance(obj,dict):
+   await self._broadcast(raw);return
   rid=obj.get("id",None)
   method=obj.get("method")
-  tagged=False
-  if method:
-   tagged=self._ensure_session_id(obj)
-   self._work_note(obj)
-   k=""
-   if method=="session/update":
-    u=(obj.get("params") or {}).get("update") if isinstance(obj.get("params"),dict) else {}
-    k=str((u or {}).get("sessionUpdate") or "")
-   if method=="_x.ai/queue/changed" or k in ("tool_call","tool_call_update","turn_completed","task_completed","user_message_chunk"):
-    self._schedule_work_push()
-  is_resp=rid is not None and method is None
-  if is_resp:
-   fut=self._rpc_futs.pop(rid,None)
-   if fut is not None and not fut.done():
-    fut.set_result(obj)
-    await self._broadcast(json.dumps({"jsonrpc":"2.0","method":"_x.ai/remote/rpc_done","params":{"id":rid,"ok":"error" not in obj}},separators=(",",":")))
-    return
-   ent=self.pending.pop(rid,None)
-   if not ent:return
-   client,orig,meta=ent if len(ent)==3 else (ent[0],ent[1],{})
-   if meta.get("init"):
-    if "result" in obj:
-     self._init_result=obj.get("result")
-     self._init_error=None
-     self._init_done=True
-    elif "error" in obj:
-     # Cache SUCCESS only. A cached init error was served to every later client until the
-     # upstream happened to cycle - one transient failure during agent boot poisoned the
-     # hub for everyone. The requester still gets this error; the next initialize goes
-     # upstream fresh.
-     self._init_error=None
-     self._init_result=None
-     self._init_done=False
-   if meta.get("method")=="session/load" and meta.get("sid"):
-    msid=str(meta.get("sid") or "")
-    ok="error" not in obj
-    self._load_finish(msid,(obj.get("result") or {}) if ok else None,keep=ok)
-    print("[hub] session/load done · sid=%s · ok=%s"%(msid[:8],ok),flush=True)
-   obj["id"]=orig
-   data=json.dumps(obj,separators=(",",":"))
-   await self._send_client(client,data)
-   if meta.get("detached"):
-    await self._broadcast(json.dumps({"jsonrpc":"2.0","method":"_x.ai/remote/rpc_done","params":{"id":orig,"ok":"error" not in obj,"detached":True}},separators=(",",":")))
-   return
+  if rid is not None and method is None:
+   await self._on_response(rid,obj);return
   if rid is not None and method:
    handled=await self._handle_reverse(obj)
    if handled:return
    self._agent_req_ids.add(rid)
-  await self._broadcast(json.dumps(obj,separators=(",",":")) if tagged else (raw if isinstance(raw,str) else json.dumps(obj,separators=(",",":"))))
+   await self._broadcast(raw if isinstance(raw,str) else _jd(obj));return
+  if not method:
+   await self._broadcast(raw);return
+  tagged=self._ensure_session_id(obj)
+  params=obj.get("params") if isinstance(obj.get("params"),dict) else {}
+  sid=str(params.get("sessionId") or "")
+  if sid:self._sid_rx[sid]=time.time()
+  data=_jd(obj) if tagged else (raw if isinstance(raw,str) else _jd(obj))
+  if sid and method in UPDATE_METHODS:
+   lent=self._loads.get(sid)
+   if lent is not None and not lent["ev"].is_set() and sid not in self._inflight_prompt_sids():
+    for c in list(lent.get("clients") or ()):
+     await self._send_client(c,data)
+    return
+  self._work_note(obj)
+  k=_update_kind(obj) if method in UPDATE_METHODS else ""
+  if method=="_x.ai/queue/changed" or k in ("tool_call","tool_call_update","turn_completed","task_completed","user_message_chunk"):
+   self._schedule_work_push()
+  if k in ("turn_completed","task_completed"):
+   self._schedule_sessions_changed(sid,"turn")
+  await self._broadcast(data)
+ async def _on_response(self,rid,obj):
+  ok="error" not in obj
+  fut=self._rpc_futs.pop(rid,None)
+  if fut is not None:
+   meta=self._rpc_meta.pop(rid,None) or {}
+   self._after_response(meta,obj)
+   if not fut.done():fut.set_result(obj)
+   if meta.get("method")=="session/prompt":
+    note={"id":meta.get("clientId"),"ok":ok,"sessionId":meta.get("sid") or None,"cid":meta.get("cid") or "","method":"session/prompt","detached":meta.get("via")=="http","internal":meta.get("via")!="http"}
+    if meta.get("grPromptId"):note["promptId"]=meta.get("grPromptId")
+    await self._broadcast(_jd({"jsonrpc":"2.0","method":"_x.ai/remote/rpc_done","params":note}))
+   return
+  ent=self.pending.pop(rid,None)
+  if not ent:
+   orph=self._new_orphans.pop(rid,None)
+   if orph is not None:self._after_response(orph,obj)
+   return
+  client,orig,meta=ent if len(ent)==3 else (ent[0],ent[1],{})
+  if meta.get("init"):
+   if "result" in obj:
+    self._init_result=obj.get("result")
+    self._init_error=None
+    self._init_done=True
+   elif "error" in obj:
+    self._init_error=None
+    self._init_result=None
+    self._init_done=False
+  self._after_response(meta,obj)
+  out=dict(obj);out["id"]=orig
+  await self._send_client(client,_jd(out))
+  if meta.get("method")=="session/prompt" or meta.get("detached"):
+   note={"id":orig,"ok":ok,"detached":bool(meta.get("detached")),"sessionId":meta.get("sid") or None,"cid":meta.get("cid") or "","method":meta.get("method") or ""}
+   if meta.get("grPromptId"):note["promptId"]=meta.get("grPromptId")
+   await self._broadcast(_jd({"jsonrpc":"2.0","method":"_x.ai/remote/rpc_done","params":note}))
+ def _after_response(self,meta,obj):
+  try:
+   method=str(meta.get("method") or "");sid=str(meta.get("sid") or "");ok="error" not in obj
+   res=obj.get("result") if isinstance(obj.get("result"),dict) else {}
+   if method=="session/load" and sid:
+    self._load_finish(sid,res if ok else None,keep=ok)
+    print("[hub] session/load done · sid=%s · ok=%s"%(sid[:8],ok),flush=True)
+   elif method=="session/new":
+    key=str(meta.get("grReq") or "")
+    nsid=str(res.get("sessionId") or "") if ok else ""
+    if nsid:self._remember_created(nsid,meta.get("cwd") or "",res)
+    if key:
+     if ok:
+      ent=self._new_reqs.get(key)
+      if ent is None:ent=self._new_reqs[key]={"fut":_mkfut(),"t":time.time()}
+      if not ent["fut"].done():ent["fut"].set_result(obj)
+      ent["t"]=time.time()
+     else:self._newreq_fail(key,obj)
+   elif method=="session/prompt" and sid:
+    try:self.work.note_turn_end(sid,ok=ok,detail="" if ok else str((obj.get("error") or {}).get("message") if isinstance(obj.get("error"),dict) else obj.get("error"))[:120])
+    except Exception as e:print("[hub] turn end:",e,flush=True)
+    self._schedule_work_push()
+    self._schedule_sessions_changed(sid,"turn")
+   elif ok and method in ("session/set_model","session/set_mode") and sid:
+    self._patch_load_cache(method,meta.get("params") or {})
+  except Exception as e:print("[hub] after response:",e,flush=True)
+ def _remember_created(self,sid,cwd,res=None):
+  self._created[sid]={"sid":sid,"cwd":str(cwd or ""),"created_at":time.time()}
+  ent=self._load_begin(sid)
+  ent["res"]=dict(res or {"sessionId":sid})
+  ent["ev"].set()
+  print("[hub] session/new → %s · cwd=%s"%(sid[:8],str(cwd or "")[:80]),flush=True)
+  self._schedule_sessions_changed(sid,"new")
+ def _patch_load_cache(self,method,params):
+  import copy
+  sid=str((params or {}).get("sessionId") or "")
+  ent=self._loads.get(sid)
+  if not ent or not isinstance(ent.get("res"),dict):return
+  res=copy.deepcopy(ent["res"])
+  if method=="session/set_model":
+   models=res.get("models") if isinstance(res.get("models"),dict) else None
+   if models is None:
+    self._loads.pop(sid,None);return
+   mid=str(params.get("modelId") or "")
+   if mid:models["currentModelId"]=mid
+   pm=params.get("_meta") if isinstance(params.get("_meta"),dict) else {}
+   eff=pm.get("reasoningEffort")
+   if eff:
+    cur=models.get("currentModelId")
+    for m in models.get("availableModels") or []:
+     if isinstance(m,dict) and m.get("modelId")==cur:
+      mm=dict(m.get("_meta") or {}) if isinstance(m.get("_meta"),dict) else {}
+      mm["reasoningEffort"]=eff;m["_meta"]=mm
+  elif method=="session/set_mode":
+   modes=res.get("modes") if isinstance(res.get("modes"),dict) else None
+   if modes is None or not params.get("modeId"):
+    self._loads.pop(sid,None);return
+   modes["currentModeId"]=params.get("modeId")
+  ent["res"]=res
  async def _broadcast(self,data:str):
   """Dropping a client here used to leave its socket OPEN. handle_client kept answering its
   pings, so the phone read 'live' and received nothing for the rest of the run - a heavy
@@ -1457,6 +2136,9 @@ class AgentHub:
    meta=dict(v[2]) if len(v)>2 and isinstance(v[2],dict) else {}
    meta["detached"]=True
    self.pending[k]=(None,orig,meta)
+  for ent in self._loads.values():
+   cl=ent.get("clients")
+   if cl:cl.discard(client)
   n=sum(1 for v in self.pending.values() if isinstance(v,tuple) and len(v)>2 and isinstance(v[2],dict) and v[2].get("detached"))
   if n:print("[hub] detached %d in-flight RPC(s) · turns keep running on PC"%n,flush=True)
  def _drop_client_pending(self,client):
@@ -1501,22 +2183,19 @@ class AgentHub:
      except Exception:raw=None
     elif msg.type in (WSMsgType.CLOSE,WSMsgType.ERROR,WSMsgType.CLOSED):break
     if raw is None:continue
-    try:client._last_rx=time.time()
-    except Exception:pass
     try:peek=json.loads(raw)
     except Exception:peek=None
     if isinstance(peek,dict) and peek.get("method") in ("_x.ai/remote/ping","_x.ai/remote/hello"):
      params=peek.get("params") if isinstance(peek.get("params"),dict) else {}
-     await self._claim_cid(client,params.get("cid") or params.get("clientId"))
-     if peek.get("method")=="_x.ai/remote/hello":
-      try:
-       await client.send_str(json.dumps({"jsonrpc":"2.0","method":"_x.ai/remote/pong","params":{"t":params.get("t"),"s":time.time(),"clients":len(self.clients),"hub_up":bool(self._agent and not self._agent.closed),"hello":True}},separators=(",",":")))
-      except Exception:pass
-      continue
-     try:
-      await client.send_str(json.dumps({"jsonrpc":"2.0","method":"_x.ai/remote/pong","params":{"t":params.get("t"),"s":time.time(),"clients":len(self.clients),"hub_up":bool(self._agent and not self._agent.closed)}},separators=(",",":")))
+     if not await self._claim_cid(client,params.get("cid") or params.get("clientId"),params.get("nonce") or params.get("tabNonce") or params.get("instance")):break
+     try:client._last_rx=time.time()
      except Exception:pass
+     pong={"t":params.get("t"),"s":time.time(),"clients":len(self.clients),"hub_up":self._agent_ok()}
+     if peek.get("method")=="_x.ai/remote/hello":pong["hello"]=True;pong["busy"]=self._busy_sids()
+     await self._send_client(client,_jd({"jsonrpc":"2.0","method":"_x.ai/remote/pong","params":pong}))
      continue
+    try:client._last_rx=time.time()
+    except Exception:pass
     await inbox.put(raw)
   except Exception as e:
    print("[hub] client error:",e,flush=True)
@@ -1524,7 +2203,7 @@ class AgentHub:
    try:worker.cancel()
    except Exception:pass
    try:await worker
-   except Exception:pass
+   except BaseException:pass
    self.clients.discard(client)
    try:self._client_seq.remove(client)
    except ValueError:pass
@@ -1534,7 +2213,8 @@ class AgentHub:
    print("[hub] client leave · n=%d · in-flight turns stay on hub"%len(self.clients),flush=True)
  async def _to_agent(self,client,raw:str):
   try:obj=json.loads(raw)
-  except Exception:
+  except Exception:obj=None
+  if not isinstance(obj,dict):
    if not await self.ensure():
     await self._reply_err(client,None,"agent offline")
     return
@@ -1545,58 +2225,97 @@ class AgentHub:
   orig=obj.get("id",None)
   if method=="_x.ai/remote/ping":
    params=obj.get("params") if isinstance(obj.get("params"),dict) else {}
-   try:
-    await client.send_str(json.dumps({"jsonrpc":"2.0","method":"_x.ai/remote/pong","params":{"t":params.get("t"),"s":time.time(),"clients":len(self.clients),"hub_up":bool(self._agent and not self._agent.closed)}},separators=(",",":")))
-   except Exception:pass
+   await self._send_client(client,_jd({"jsonrpc":"2.0","method":"_x.ai/remote/pong","params":{"t":params.get("t"),"s":time.time(),"clients":len(self.clients),"hub_up":self._agent_ok()}}))
    return
   if method=="initialize" and orig is not None and self._init_done and self._init_result is not None:
-   try:await client.send_str(json.dumps({"jsonrpc":"2.0","id":orig,"result":self._init_result},separators=(",",":")))
-   except Exception:pass
+   await self._send_client(client,_jd({"jsonrpc":"2.0","id":orig,"result":self._init_result}))
    return
   if method=="initialize" and orig is not None and self._init_done and self._init_error is not None:
-   try:await client.send_str(json.dumps({"jsonrpc":"2.0","id":orig,"error":self._init_error},separators=(",",":")))
-   except Exception:pass
+   await self._send_client(client,_jd({"jsonrpc":"2.0","id":orig,"error":self._init_error}))
    return
+  params=obj.get("params") if isinstance(obj.get("params"),dict) else None
+  gr_req="";gr_pid=""
+  if params is not None and method:
+   params=dict(params)
+   if method=="session/new":gr_req=str(params.pop("_grReq","") or "").strip()[:128]
+   if method=="session/prompt":gr_pid=str(params.pop("_grPromptId","") or "").strip()[:128]
+   if params.get("sessionId"):
+    full,err=resolve_sid(params.get("sessionId"),self._known_sids())
+    if err:
+     await self._reply_err(client,orig,err,-32602)
+     return
+    params["sessionId"]=full
+   obj=dict(obj);obj["params"]=params
+  if gr_pid and self._prompt_seen(gr_pid):
+   print("[hub] duplicate prompt %s — not forwarded"%gr_pid[:12],flush=True)
+   if orig is not None:
+    await self._send_client(client,_jd({"jsonrpc":"2.0","id":orig,"result":{"stopReason":"duplicate","duplicateOf":gr_pid}}))
+   return
+  if gr_req:
+   self._newreq_prune()
+   nent=self._new_reqs.get(gr_req)
+   if nent is not None:
+    print("[hub] session/new duplicate _grReq %s — sharing the first result"%gr_req[:12],flush=True)
+    async def _dup():
+     try:res=await asyncio.wait_for(asyncio.shield(nent["fut"]),90)
+     except Exception as e:
+      await self._reply_err(client,orig,"session/new still pending: "+(str(e) or "timeout")[:120],-32001);return
+     if orig is not None:
+      out=dict(res);out["id"]=orig;out.setdefault("jsonrpc","2.0")
+      await self._send_client(client,_jd(out))
+    asyncio.create_task(_dup())
+    return
+   self._new_reqs[gr_req]={"fut":_mkfut(),"t":time.time()}
+  self._prompt_mark(gr_pid)
   # initialize is the one request worth waiting for: it is how every client starts, and
   # "agent offline" here is what made first connections fail while the agent was still
   # booting. Everything else keeps the fast path - a prompt against a dead agent should
   # error quickly, not hang.
   patient=method in ("initialize","session/load","session/new")
   if not await self.ensure(retries=(30 if patient else 3),delay=(0.5 if patient else 0.2)):
+   self._prompt_unmark(gr_pid)
+   self._newreq_fail(gr_req,{"jsonrpc":"2.0","error":{"code":-32001,"message":"agent offline"}})
    await self._reply_err(client,orig,"agent offline · is serve on :2419? "+(self._last_err or ""),-32001)
    return
+  sid=str((params or {}).get("sessionId") or "")
+  if method=="session/cancel" and sid:
+   try:self.work.mark_cancel(sid)
+   except Exception:pass
+   self._schedule_work_push()
   if orig is not None and method:
-   params=obj.get("params") if isinstance(obj.get("params"),dict) else {}
-   sid=str((params or {}).get("sessionId") or "")
-   if sid:self._last_sid=sid
    lent=self._loads.get(sid) if sid else None
    if method=="session/load" and lent is not None:
     async def _join():
      res=await self._load_wait(sid)
      if res is not None:
-      try:await client.send_str(json.dumps({"jsonrpc":"2.0","id":orig,"result":res},separators=(",",":")))
-      except Exception:pass
+      await self._send_client(client,_jd({"jsonrpc":"2.0","id":orig,"result":res}))
      else:await self._reply_err(client,orig,"session/load still in flight")
     if lent["res"] is not None or not lent["ev"].is_set():
+     if not lent["ev"].is_set():lent.setdefault("clients",set()).add(client)
      asyncio.create_task(_join())
      return
    wait_load=method=="session/prompt" and lent is not None and not lent["ev"].is_set()
    if method=="session/load" and sid:
-    self._load_begin(sid)
+    self._load_begin(sid,client)
     print("[hub] session/load · sid=%s"%(sid[:8]),flush=True)
    payload=dict(obj)
+   meta={"init":method=="initialize","method":method,"sid":sid,"t":time.time(),"cid":str(getattr(client,"_cid","") or ""),"cwd":str((params or {}).get("cwd") or "")}
+   if gr_req:meta["grReq"]=gr_req
+   if gr_pid:meta["grPromptId"]=gr_pid
+   if method in ("session/set_model","session/set_mode"):meta["params"]=params
    async def _go():
     if wait_load:await self._load_wait(sid)
     self._nid+=1
     nid=self._nid
-    meta={"init":method=="initialize","method":method,"sid":sid,"t":time.time()}
     self.pending[nid]=(client,orig,meta)
     payload["id"]=nid
-    try:await asyncio.wait_for(self._agent.send_str(json.dumps(payload,separators=(",",":"))),8)
+    try:await asyncio.wait_for(self._agent.send_str(_jd(payload)),8)
     except Exception as e:
      self.pending.pop(nid,None)
      if method=="session/load" and sid:self._load_finish(sid,keep=False)
-     await self._reply_err(client,orig,str(e))
+     self._prompt_unmark(gr_pid)
+     self._newreq_fail(gr_req,{"jsonrpc":"2.0","error":{"code":-32000,"message":str(e) or "send failed"}})
+     await self._reply_err(client,orig,str(e) or "send failed")
      return
     lim=RPC_REPLY_TIMEOUT.get(method)
     if lim:asyncio.create_task(self._rpc_expire(nid,lim,method))
@@ -1615,9 +2334,6 @@ class AgentHub:
       except Exception as e:print("[hub] att ingest:",e,flush=True)
      self.work.note_prompt(sid,"\n".join(bits),cwd=str((params or {}).get("cwd") or ""))
     except Exception:pass
-   if method=="session/cancel" and sid:
-    try:self.work.mark_cancel(sid)
-    except Exception:pass
    if method in ("session/load","session/prompt","session/new"):asyncio.create_task(_go())
    else:await _go()
    return
@@ -1625,7 +2341,7 @@ class AgentHub:
    if orig in self._hub_rev_ids:return
    if orig not in self._agent_req_ids:return
    self._agent_req_ids.discard(orig)
-  try:await self._agent.send_str(json.dumps(obj,separators=(",",":")))
+  try:await self._agent.send_str(_jd(obj))
   except Exception as e:await self._reply_err(client,orig,str(e))
 def parse_loop_interval(raw:str):
  s=str(raw or "").strip().lower().replace("every","").strip()
@@ -1680,8 +2396,7 @@ class RemoteLoopManager:
   except Exception as e:print("[loop] load failed:",e,flush=True)
  def _save(self):
   try:
-   self.store.parent.mkdir(parents=True,exist_ok=True)
-   self.store.write_text(json.dumps({"jobs":list(self.jobs.values())},indent=2),encoding="utf-8")
+   atomic_write_json(self.store,{"jobs":list(self.jobs.values())})
   except Exception as e:print("[loop] save failed:",e,flush=True)
  def list_jobs(self,session_id=None):
   items=list(self.jobs.values())
@@ -1717,6 +2432,12 @@ class RemoteLoopManager:
     self._tasks[jid]=asyncio.create_task(self._run(jid))
  async def _run(self,jid:str):
   try:
+   job=self.jobs.get(jid) or {}
+   last=float(job.get("last_fire") or 0)
+   iv=max(60,int(job.get("interval_sec") or 300))
+   if last>0:
+    wait=last+iv-time.time()
+    if wait>0:await asyncio.sleep(min(wait,iv))
    while jid in self.jobs:
     job=self.jobs.get(jid)
     if not job:break
@@ -1753,16 +2474,21 @@ async def main_async(a):
  agent_ws="ws://%s:%d/ws?server-key=%s"%(agent_host,a.agent_port,a.secret)
  lan=lan_ip()
  work_root=Path(a.cwd).expanduser().resolve()
- state={"cwd":str(work_root)}
+ state={"cwd":str(work_root),"fs_root":str(work_root)}
  hub=AgentHub(agent_ws)
  hub.agent_port=a.agent_port
- loops=RemoteLoopManager(hub,LOOP_STORE)
+ hub.default_cwd=state["cwd"]
+ meta=SessionMeta()
+ try:meta.migrate()
+ except Exception as e:print("[meta] migrate failed:",e,flush=True)
+ hub.meta=meta
+ loops=RemoteLoopManager(hub,plugin_data_dir()/"loops.json")
  keyq=("?key=%s"%a.secret) if a.secret else ""
- cfg={"agent_host":agent_host,"agent_port":a.agent_port,"secret":"(held server-side)","cwd":state["cwd"],"ws_url":"ws://%s:%d/ws"%(lan,a.port),"ws_path":"/ws","ui":"http://%s:%d/%s"%(lan,a.port,keyq),"watch":"http://%s:%d/watch%s"%(lan,a.port,keyq),"lan_ip":lan,"proxy":True,"hub":True,"ide":True,"auth":bool(a.secret),"tailscale_ip":"","tailscale_url":"","https_url":"","away_url":"","serve":False,"public_url":"","public_origin":"","features":["fs","ide","review","multi-client-hub","skills-scan","git","project-context","stop-turn","todos","voice-tts","voice-go","xr-ar","watch-companion","msg-queue","remote-loop","effort","work-board","att-store","pwa","public-https","nostr-inbox"]}
+ cfg={"agent_host":agent_host,"agent_port":a.agent_port,"secret":"(held server-side)","cwd":state["cwd"],"fsRoot":state["fs_root"],"ws_url":"ws://%s:%d/ws"%(lan,a.port),"ws_path":"/ws","ui":"http://%s:%d/%s"%(lan,a.port,keyq),"watch":"http://%s:%d/watch%s"%(lan,a.port,keyq),"lan_ip":lan,"proxy":True,"hub":True,"ide":True,"auth":bool(a.secret),"tailscale_ip":"","tailscale_url":"","https_url":"","away_url":"","serve":False,"public_url":"","public_origin":"","features":["fs","ide","review","multi-client-hub","skills-scan","git","project-context","stop-turn","todos","voice-tts","voice-go","xr-ar","watch-companion","msg-queue","remote-loop","effort","work-board","att-store","pwa","public-https","nostr-inbox"]}
  try:(ROOT/"runtime-config.json").write_text(json.dumps(cfg,indent=2),encoding="utf-8")
  except Exception:pass
  def root_path():
-  return Path(state["cwd"]).expanduser().resolve()
+  return Path(state["fs_root"]).expanduser().resolve()
  def safe_path(raw):
   root=root_path()
   if not raw or raw in (".","/"):return root
@@ -1818,11 +2544,12 @@ async def main_async(a):
   return web.json_response({"ok":True,"models":out},headers={"Cache-Control":"no-store"})
  async def xr_braid(request):
   out={"ok":False}
+  braid=str(os.environ.get("BRAID_URL") or "http://127.0.0.1:12100").rstrip("/")
   try:
    async with aiohttp.ClientSession() as s:
-    async with s.get("http://127.0.0.1:8788/api/state",timeout=aiohttp.ClientTimeout(total=4)) as r:
+    async with s.get(braid+"/api/state",timeout=aiohttp.ClientTimeout(total=4)) as r:
      st=await r.json()
-    async with s.get("http://127.0.0.1:8788/api/sessions",timeout=aiohttp.ClientTimeout(total=4)) as r:
+    async with s.get(braid+"/api/sessions",timeout=aiohttp.ClientTimeout(total=4)) as r:
      se=await r.json()
    tr=st.get("transcript") or []
    out={"ok":True,"transcript":[{"who":t.get("who",""),"text":str(t.get("text",""))[:220]} for t in tr[-10:]],"sessions":len(se.get("sessions") or []),"live":True}
@@ -1892,7 +2619,7 @@ async def main_async(a):
   cfg["tailscale_dns"]=dns
   return snap
  async def config(request):
-  cfg["cwd"]=state["cwd"];cfg["clients"]=len(hub.clients)
+  cfg["cwd"]=state["cwd"];cfg["fsRoot"]=state["fs_root"];cfg["clients"]=len(hub.clients)
   try:
    from remote_auth import tailscale_snapshot
    _apply_net_cfg(tailscale_snapshot(a.port,wait=False))
@@ -1909,10 +2636,15 @@ async def main_async(a):
   if name.endswith(".webmanifest"):ctype="application/manifest+json"
   if name.endswith(".woff2"):ctype="font/woff2"
   elif name.endswith(".woff"):ctype="font/woff"
-  cc="no-cache" if name.endswith(".js") and (name.startswith("xr-") or name=="chat-runtime.js") else "public, max-age=86400"
+  if request.query.get("v"):cc="public, max-age=604800"
+  elif name.endswith((".js",".mjs",".css",".html",".json",".webmanifest")):cc="no-cache"
+  else:cc="public, max-age=86400"
   return web.FileResponse(p,headers={"Content-Type":ctype,"Cache-Control":cc})
  def _peer_loopback(request):
-  return request_is_loopback(request)
+  if not request_is_loopback(request):return False
+  hosts,origins=allowed_hosts()
+  o=request.headers.get("Origin")
+  return host_allowed(request.host,hosts) and (o is None or origin_allowed(o,hosts,origins))
  async def health(request):
   ag=port_open(a.agent_port)
   hub_up=hub._agent is not None and not getattr(hub._agent,"closed",True)
@@ -1939,6 +2671,9 @@ async def main_async(a):
  async def pair(request):
   if not _peer_loopback(request):
    raise web.HTTPForbidden(text="pair is loopback-only")
+  html=await asyncio.get_event_loop().run_in_executor(None,_pair_html)
+  return web.Response(text=html,content_type="text/html",headers={"Cache-Control":"no-store"})
+ def _pair_html():
   try:
    from pairing import addresses,page,ensure_segno
    from remote_auth import tailscale_snapshot
@@ -1955,12 +2690,13 @@ async def main_async(a):
    except Exception:pass
    try:
     from nostr_bridge import status as nostr_status
-    npub=str((nostr_status() or {}).get("npub") or "")
+    ns=nostr_status() or {}
+    npub=str(ns.get("npub") or "") if ns.get("enabled") else ""
    except Exception:pass
    html=page(addrs,cwd=state.get("cwd") or "",have_qr=ensure_segno(),port=a.port,net=net,pin=pin,npub=npub)
   except Exception as e:
    html="<!doctype html><meta charset=utf-8><title>Pair</title><p>Pairing unavailable: %s</p>"%str(e)[:240]
-  return web.Response(text=html,content_type="text/html",headers={"Cache-Control":"no-store"})
+  return html
  async def pwa_manifest(_):
   p=WEB/"manifest.webmanifest"
   if not p.is_file():raise web.HTTPNotFound()
@@ -2009,6 +2745,11 @@ async def main_async(a):
    ok,err,snap=False,str(e)[:240],{}
   try:_apply_net_cfg(snap)
   except Exception:pass
+  if ok:
+   try:
+    from public_net import set_away_mode
+    set_away_mode("tailscale")
+   except Exception:pass
   body=_net_public(snap,include_key=True)
   body["ok"]=bool(ok)
   if err:body["error"]=err
@@ -2043,7 +2784,7 @@ async def main_async(a):
   try:
    from public_net import start_quick_tunnel,stop_quick_tunnel,tunnel_status
    if action in ("stop","off"):
-    st=stop_quick_tunnel();ok=True;err=""
+    st=stop_quick_tunnel(forget=True);ok=True;err=""
    else:
     loop=asyncio.get_event_loop()
     ok,err,st=await loop.run_in_executor(None,lambda:start_quick_tunnel(a.port))
@@ -2107,7 +2848,7 @@ async def main_async(a):
    return web.json_response({"ok":False,"error":str(e)[:200]},status=500,headers={"Cache-Control":"no-store"})
  async def fs_root(_):
   r=root_path()
-  return web.json_response({"root":str(r),"exists":r.is_dir()})
+  return web.json_response({"root":str(r),"exists":r.is_dir(),"cwd":state["cwd"]})
  async def fs_set_root(request):
   try:body=await request.json()
   except Exception:body={}
@@ -2115,8 +2856,8 @@ async def main_async(a):
   if not raw:raise web.HTTPBadRequest(text="path required")
   p=Path(raw).expanduser().resolve()
   if not p.is_dir():raise web.HTTPBadRequest(text="not a directory")
-  state["cwd"]=str(p);cfg["cwd"]=state["cwd"]
-  return web.json_response({"ok":True,"root":state["cwd"]})
+  state["fs_root"]=str(p);cfg["fsRoot"]=state["fs_root"]
+  return web.json_response({"ok":True,"root":state["fs_root"],"cwd":state["cwd"]})
  async def fs_list(request):
   rel=request.rel_url.query.get("path") or "."
   p=safe_path(rel)
@@ -2192,29 +2933,46 @@ async def main_async(a):
   cwd=request.rel_url.query.get("cwd") or state["cwd"]
   items=scan_skills(cwd)
   return web.json_response({"ok":True,"cwd":cwd,"count":len(items),"skills":items},headers={"Cache-Control":"no-store"})
+ def _sid_or_400(raw):
+  sid,err=resolve_sid(raw,hub._known_sids())
+  if err:raise web.HTTPBadRequest(text=err)
+  return sid
+ def _session_row(sid,d,mrow):
+  mtime=0
+  try:
+   up=d/"updates.jsonl"
+   if up.is_file():mtime=int(up.stat().st_mtime*1000)
+   else:mtime=int((d/"summary.json").stat().st_mtime*1000)
+  except Exception:pass
+  info=read_session_info(d)
+  agent_title=info.get("title") or ""
+  manual=str(mrow.get("title") or "")
+  return {"sessionId":sid,"title":manual or agent_title,"agentTitle":agent_title,"titleIsManual":bool(manual),"archived":bool(mrow.get("archived")),"cwd":info.get("cwd") or "","updatedAt":mtime,"lastChangeUnixMs":mtime,"resident":False,"activity":"disk","pending":False,"kind":session_kind(d)}
  async def session_list_http(request):
-  try:limit=min(200,max(20,int(request.rel_url.query.get("limit") or "80")))
-  except Exception:limit=80
+  try:limit=min(5000,max(1,int(request.rel_url.query.get("limit") or "500")))
+  except Exception:limit=500
+  created=dict(hub._created)
   def _go():
    idx=_sid_index() or {}
-   rows=[]
-   for sid,dirs in idx.items():
+   mall=meta.all()
+   rows=[];seen=set()
+   for sid,dirs in list(idx.items()):
     if not sid or not dirs:continue
     hits=[d for d in dirs if _session_dir_ok(d)]
     if not hits:continue
     hits.sort(key=lambda d:(d/"updates.jsonl").stat().st_mtime if (d/"updates.jsonl").is_file() else 0,reverse=True)
-    d=hits[0]
-    mtime=0
-    try:
-     up=d/"updates.jsonl"
-     if up.is_file():mtime=int(up.stat().st_mtime*1000)
-    except Exception:pass
-    info=read_session_info(d)
-    rows.append({"sessionId":sid,"title":info.get("title") or "","cwd":info.get("cwd") or "","lastChangeUnixMs":mtime,"resident":False,"activity":"disk"})
-   rows.sort(key=lambda x:int(x.get("lastChangeUnixMs") or 0),reverse=True)
-   return rows[:limit]
+    rows.append(_session_row(sid,hits[0],mall.get(sid) or {}));seen.add(sid)
+   for sid,c in created.items():
+    if sid in seen:continue
+    mrow=mall.get(sid) or {}
+    ms=int(float(c.get("created_at") or time.time())*1000)
+    rows.append({"sessionId":sid,"title":str(mrow.get("title") or ""),"agentTitle":"","titleIsManual":bool(mrow.get("title")),"archived":bool(mrow.get("archived")),"cwd":c.get("cwd") or "","updatedAt":ms,"lastChangeUnixMs":ms,"resident":True,"activity":"new","pending":True,"kind":"human"})
+   rows.sort(key=lambda x:int(x.get("updatedAt") or 0),reverse=True)
+   return rows
   rows=await asyncio.get_event_loop().run_in_executor(None,_go)
-  return web.json_response({"ok":True,"sessions":rows,"count":len(rows)},headers={"Cache-Control":"no-store"})
+  total=len(rows)
+  out=rows[:limit]
+  return web.json_response({"ok":True,"sessions":out,"count":len(out),"total":total,"limit":limit},headers={"Cache-Control":"no-store"})
  async def session_history(request):
   sid=(request.rel_url.query.get("sessionId") or request.rel_url.query.get("id") or "").strip()
   cwd=(request.rel_url.query.get("cwd") or state["cwd"] or "").strip()
@@ -2232,40 +2990,18 @@ async def main_async(a):
   except Exception:max_bytes=512000 if live else 400000
   chat_only=str(request.rel_url.query.get("chat_only") or request.rel_url.query.get("messages") or "").lower() in ("1","true","yes")
   if not sid:raise web.HTTPBadRequest(text="sessionId required")
+  sid=_sid_or_400(sid)
   sdir=find_session_dir(sid,cwd or None)
   if not sdir:
    return web.json_response({"ok":False,"error":"session dir not found","sessionId":sid,"cwd":cwd,"events":[],"meta":{"has_more":False}},status=404,headers={"Cache-Control":"no-store"})
   events,meta=await asyncio.get_event_loop().run_in_executor(None,lambda:read_session_updates(sdir,limit=limit,max_bytes=max_bytes,since_bytes=since_bytes,live=live,before_bytes=before_bytes,chat_only=chat_only))
   info=read_session_info(sdir)
-  title=info.get("title") or ""
+  title=str(hub.meta.get(sid).get("title") or "") or info.get("title") or ""
   meta=dict(meta or {})
   meta["resolvedSid"]=sid
   meta["resolvedDir"]=str(sdir)
   if info.get("cwd"):meta["resolvedCwd"]=info.get("cwd")
   return web.json_response({"ok":True,"sessionId":sid,"cwd":cwd,"title":title,"dir":str(sdir),"events":events,"meta":meta,"count":len(events)},headers={"Cache-Control":"no-store"})
- _kind_cache={}
- def session_kind(sdir):
-  key=str(sdir)
-  v=_kind_cache.get(key)
-  if v is not None:return v
-  kind="human";settled=False
-  try:
-   sp=sdir/"system_prompt.txt"
-   if sp.is_file():
-    settled=True
-    if "no human operator" in sp.read_text(encoding="utf-8",errors="replace")[:4000]:kind="auto"
-  except Exception:pass
-  if kind=="human":
-   try:
-    ch=sdir/"chat_history.jsonl"
-    if ch.is_file():
-     settled=True
-     with open(ch,encoding="utf-8",errors="replace") as f:
-      head=f.read(12000)
-     if "Your hologram body" in head:kind="auto"
-   except Exception:pass
-  if settled:_kind_cache[key]=kind
-  return kind
  async def session_titles(request):
   body={}
   try:body=await request.json()
@@ -2273,25 +3009,22 @@ async def main_async(a):
   ids=body.get("ids") or body.get("sessionIds") or []
   if isinstance(ids,str):ids=[ids]
   cwd=str(body.get("cwd") or state["cwd"] or "")
+  known=hub._known_sids()
   def _titles():
    out={}
+   mall=meta.all()
    for raw in list(ids)[:250]:
-    sid=str(raw or "").strip()
-    if not sid or sid in out:continue
+    key=str(raw or "").strip()
+    if not key or key in out:continue
+    sid,err=resolve_sid(key,known)
+    if err:continue
     sdir=find_session_dir(sid,cwd or None)
     if not sdir:sdir=find_session_dir(sid,None)
     if not sdir:continue
-    info=read_session_info(sdir)
-    mtime=0
-    try:
-     up=sdir/"updates.jsonl"
-     if up.is_file():mtime=int(up.stat().st_mtime*1000)
-     else:
-      sm=sdir/"summary.json"
-      if sm.is_file():mtime=int(sm.stat().st_mtime*1000)
-    except Exception:pass
-    if info.get("title") or info.get("cwd") or mtime:
-     out[sid]={"title":info.get("title") or "","cwd":info.get("cwd") or "","dir":str(sdir),"mtime":mtime,"updatedAt":mtime,"kind":session_kind(sdir)}
+    row=_session_row(sid,sdir,mall.get(sid) or {})
+    if row["title"] or row["cwd"] or row["updatedAt"]:
+     row.update({"dir":str(sdir),"mtime":row["updatedAt"]})
+     out[key]=row
    return out
   out=await asyncio.get_event_loop().run_in_executor(None,_titles)
   return web.json_response({"ok":True,"titles":out,"count":len(out)},headers={"Cache-Control":"no-store"})
@@ -2299,6 +3032,7 @@ async def main_async(a):
   sid=(request.rel_url.query.get("sessionId") or request.rel_url.query.get("id") or "").strip()
   cwd=(request.rel_url.query.get("cwd") or state["cwd"] or "").strip()
   if not sid:raise web.HTTPBadRequest(text="sessionId required")
+  sid=_sid_or_400(sid)
   sdir=find_session_dir(sid,cwd or None)
   if not sdir:
    return web.json_response({"ok":False,"error":"session dir not found","sessionId":sid},status=404,headers={"Cache-Control":"no-store"})
@@ -2346,64 +3080,70 @@ async def main_async(a):
   if room_store is None:return web.json_response({"ok":False,"error":"room module unavailable"},status=503)
   return web.json_response(room_store.clear())
  async def session_archived_get(_):
-  ids=load_archived_ids()
-  return web.json_response({"ok":True,"ids":ids,"count":len(ids),"path":str(archive_store_path())},headers={"Cache-Control":"no-store"})
+  ids=meta.archived_ids()
+  return web.json_response({"ok":True,"ids":ids,"count":len(ids),"path":str(meta.path)},headers={"Cache-Control":"no-store"})
  async def session_archived_set(request):
   try:body=await request.json()
   except Exception:body={}
-  ids=load_archived_ids()
-  if "ids" in body and isinstance(body.get("ids"),list):
-   ids=save_archived_ids(body.get("ids"))
-  elif body.get("id") or body.get("sessionId"):
-   sid=str(body.get("id") or body.get("sessionId") or "").strip()
-   if not sid:raise web.HTTPBadRequest(text="id required")
-   want=body.get("archived")
-   if want is None:want=sid not in ids
-   else:want=bool(want)
-   s=set(ids)
-   if want:s.add(sid)
-   else:s.discard(sid)
-   ids=save_archived_ids(sorted(s))
-  else:
-   raise web.HTTPBadRequest(text="ids[] or id required")
-  return web.json_response({"ok":True,"ids":ids,"count":len(ids)},headers={"Cache-Control":"no-store"})
+  if not isinstance(body,dict):body={}
+  raw_sid=body.get("sessionId") or body.get("id")
+  try:
+   if raw_sid:
+    sid=_sid_or_400(raw_sid)
+    want=body.get("archived")
+    if want is None:want=not bool(meta.get(sid).get("archived"))
+    ent=await meta.update(sid,archived=bool(want))
+    await hub.sessions_changed(sid,"archive")
+    ids=meta.archived_ids()
+    return web.json_response({"ok":True,"sessionId":sid,"archived":bool(want),"ids":ids,"count":len(ids),"entry":ent},headers={"Cache-Control":"no-store"})
+   if isinstance(body.get("ids"),list):
+    cur=meta.all();ch={}
+    for x in body.get("ids") or []:
+     sid,err=resolve_sid(x,hub._known_sids())
+     if sid and not err and not (cur.get(sid) or {}).get("archived"):ch[sid]={"archived":True}
+    if ch:
+     await meta.update_many(ch)
+     await hub.sessions_changed(None,"archive")
+    ids=meta.archived_ids()
+    return web.json_response({"ok":True,"ids":ids,"count":len(ids),"migrated":len(ch)},headers={"Cache-Control":"no-store"})
+  except web.HTTPException:raise
+  except Exception as e:
+   return web.json_response({"ok":False,"error":str(e)[:240]},status=500,headers={"Cache-Control":"no-store"})
+  raise web.HTTPBadRequest(text="sessionId (+archived) required")
  async def session_rename(request):
   try:body=await request.json()
   except Exception:raise web.HTTPBadRequest(text="json required")
-  sid=str(body.get("sessionId") or body.get("id") or "").strip()
-  title=str(body.get("title") or body.get("name") or "").strip()
-  cwd=str(body.get("cwd") or state.get("cwd") or "").strip()
-  if not sid:raise web.HTTPBadRequest(text="sessionId required")
-  if not title:raise web.HTTPBadRequest(text="title required")
-  if len(title)>160:title=title[:160].rstrip()
-  sdir=find_session_dir(sid,cwd or None)
-  if not sdir:
-   return web.json_response({"ok":False,"error":"session dir not found","sessionId":sid},status=404,headers={"Cache-Control":"no-store"})
-  summ_path=sdir/"summary.json"
-  summ={}
-  try:
-   if summ_path.is_file():
-    summ=json.loads(summ_path.read_text(encoding="utf-8",errors="replace")) or {}
-    if not isinstance(summ,dict):summ={}
-  except Exception:summ={}
-  prev=str(summ.get("remote_title") or summ.get("generated_title") or summ.get("session_summary") or "")
-  summ["remote_title"]=title
-  summ["generated_title"]=title
-  summ["session_summary"]=title
-  try:
-   from datetime import datetime,timezone
-   summ["updated_at"]=datetime.now(timezone.utc).isoformat().replace("+00:00","Z")
-  except Exception:pass
-  try:
-   summ_path.write_text(json.dumps(summ,ensure_ascii=False,indent=2),encoding="utf-8")
+  if not isinstance(body,dict):raise web.HTTPBadRequest(text="json object required")
+  raw=body.get("sessionId") or body.get("id")
+  if not raw:raise web.HTTPBadRequest(text="sessionId required")
+  sid=_sid_or_400(raw)
+  t=body.get("title") if "title" in body else body.get("name")
+  title=" ".join(str(t or "").split())[:160].strip() or None
+  prev=str(meta.get(sid).get("title") or "")
+  try:ent=await meta.update(sid,title=title)
   except Exception as e:
-   return web.json_response({"ok":False,"error":str(e),"sessionId":sid},status=500,headers={"Cache-Control":"no-store"})
-  return web.json_response({"ok":True,"sessionId":sid,"title":title,"previous":prev,"dir":str(sdir)},headers={"Cache-Control":"no-store"})
+   return web.json_response({"ok":False,"error":str(e)[:240],"sessionId":sid},status=500,headers={"Cache-Control":"no-store"})
+  async def _agent_rename():
+   if not title or not hub._agent_ok():return
+   for m in ("x.ai/session/rename","_x.ai/session/rename"):
+    try:
+     r=await hub.call_rpc(m,{"sessionId":sid,"title":title},timeout=5.0)
+     if isinstance(r,dict) and "error" not in r:return
+    except Exception:pass
+  asyncio.create_task(_agent_rename())
+  await hub.sessions_changed(sid,"rename")
+  agent_title=""
+  try:
+   d=find_session_dir(sid)
+   if d:agent_title=read_session_info(d).get("title") or ""
+  except Exception:pass
+  return web.json_response({"ok":True,"sessionId":sid,"title":title or agent_title,"manualTitle":title,"agentTitle":agent_title,"titleIsManual":bool(title),"previous":prev,"entry":ent},headers={"Cache-Control":"no-store"})
  async def session_prompt_http(request):
   try:body=await request.json()
   except Exception:raise web.HTTPBadRequest(text="json required")
   sid=str(body.get("sessionId") or body.get("id") or "").strip()
   if not sid:raise web.HTTPBadRequest(text="sessionId required")
+  sid=_sid_or_400(sid)
   prompt=body.get("prompt")
   blocks=[]
   if isinstance(prompt,list):
@@ -2420,34 +3160,31 @@ async def main_async(a):
   t=str(body.get("text") or body.get("message") or "").strip()
   if t and not any(isinstance(x,dict) and x.get("text") for x in blocks):blocks=[{"type":"text","text":t}]+blocks
   if not blocks:raise web.HTTPBadRequest(text="prompt required")
-  if not await hub.ensure(retries=8,delay=0.35):
-   return web.json_response({"ok":False,"error":"agent offline"},status=503,headers={"Cache-Control":"no-store"})
-  try:await hub._load_wait(sid,8)
-  except Exception:pass
+  gr_pid=str(body.get("_grPromptId") or "").strip()
   try:
-   hub.work.ingest_prompt(sid,blocks)
-   hub.work.note_prompt(sid,"\n".join(str(b.get("text") or "") for b in blocks if isinstance(b,dict)))
-  except Exception:pass
-  hub._nid+=1
-  nid=hub._nid
-  payload={"jsonrpc":"2.0","id":nid,"method":"session/prompt","params":{"sessionId":sid,"prompt":blocks}}
-  try:
-   await hub._agent.send_str(json.dumps(payload,separators=(",",":")))
+   obj=await hub.send_prompt(sid,blocks,gr_pid=gr_pid,cid=str(body.get("cid") or ""),client_id=body.get("requestId") if body.get("requestId") is not None else body.get("rpcId"),wait=8.0,via="http")
   except Exception as e:
-   return web.json_response({"ok":False,"error":str(e)},status=502,headers={"Cache-Control":"no-store"})
-  return web.json_response({"ok":True,"id":nid,"sessionId":sid},headers={"Cache-Control":"no-store"})
+   return web.json_response({"ok":False,"error":str(e)[:240],"sessionId":sid},status=503,headers={"Cache-Control":"no-store"})
+  if obj.get("duplicate"):
+   return web.json_response({"ok":True,"duplicate":True,"duplicateOf":gr_pid,"sessionId":sid},headers={"Cache-Control":"no-store"})
+  if obj.get("running"):
+   return web.json_response({"ok":True,"running":True,"id":obj.get("id"),"sessionId":sid,"promptId":gr_pid or None},headers={"Cache-Control":"no-store"})
+  if obj.get("error"):
+   err=obj.get("error");msg=err.get("message") if isinstance(err,dict) else str(err)
+   return web.json_response({"ok":False,"error":str(msg)[:240],"sessionId":sid,"promptId":gr_pid or None},status=502,headers={"Cache-Control":"no-store"})
+  res=obj.get("result") if isinstance(obj.get("result"),dict) else {}
+  return web.json_response({"ok":True,"sessionId":sid,"done":True,"stopReason":res.get("stopReason"),"result":res,"promptId":gr_pid or None},headers={"Cache-Control":"no-store"})
  async def session_new_http(request):
   try:body=await request.json()
   except Exception:raise web.HTTPBadRequest(text="json required")
-  cwd=str(body.get("cwd") or body.get("path") or "").strip()
-  if not cwd:raise web.HTTPBadRequest(text="cwd required")
+  cwd=str(body.get("cwd") or body.get("path") or "").strip() or state["cwd"]
+  gr_req=str(body.get("_grReq") or "").strip()
   if not await hub.ensure(retries=8,delay=0.35):
    return web.json_response({"ok":False,"error":"agent offline"},status=503,headers={"Cache-Control":"no-store"})
   try:
-   obj=await hub.call_rpc("session/new",{"cwd":cwd,"mcpServers":body.get("mcpServers") if isinstance(body.get("mcpServers"),list) else []},timeout=45.0)
+   obj=await hub.new_session({"cwd":cwd,"mcpServers":body.get("mcpServers") if isinstance(body.get("mcpServers"),list) else []},gr_req=gr_req,timeout=60.0)
   except Exception as e:
-   hub._hung_agent=True
-   return web.json_response({"ok":False,"error":str(e)[:240]},status=504,headers={"Cache-Control":"no-store"})
+   return web.json_response({"ok":False,"error":(str(e) or "timeout")[:240]},status=504,headers={"Cache-Control":"no-store"})
   if not isinstance(obj,dict):
    return web.json_response({"ok":False,"error":"bad agent reply"},status=502,headers={"Cache-Control":"no-store"})
   if obj.get("error"):
@@ -2455,7 +3192,7 @@ async def main_async(a):
    msg=err.get("message") if isinstance(err,dict) else str(err)
    return web.json_response({"ok":False,"error":str(msg)[:240]},status=502,headers={"Cache-Control":"no-store"})
   res=obj.get("result") if isinstance(obj.get("result"),dict) else {}
-  return web.json_response({"ok":True,**res},headers={"Cache-Control":"no-store"})
+  return web.json_response({"ok":True,**res,"cwd":cwd},headers={"Cache-Control":"no-store"})
  async def session_react_get(_):
   return web.json_response({"ok":True,"data":load_reacts()},headers={"Cache-Control":"no-store"})
  async def session_react_set(request):
@@ -2496,7 +3233,7 @@ async def main_async(a):
   try:
    import companion_env as ce
    jobs=[]
-   try:jobs=hub.work.snapshot()
+   try:jobs=hub._work_snapshot()
    except Exception:pass
    snap=await asyncio.get_event_loop().run_in_executor(None,ce.snapshot,jobs)
    return web.json_response(snap,headers={"Cache-Control":"no-store"})
@@ -2675,7 +3412,58 @@ async def main_async(a):
   await client.prepare(request)
   await hub.handle_client(client)
   return client
- app=web.Application(client_max_size=32*1024*1024,middlewares=[make_auth_middleware(a.secret)])
+ _allow={"t":0.0,"v":(set(),set()),"static":None}
+ def allowed_hosts():
+  now=time.time()
+  if now-_allow["t"]<20 and _allow["static"] is not None:return _allow["v"]
+  port=int(a.port)
+  if _allow["static"] is None:
+   names={"127.0.0.1","localhost","[::1]",lan}
+   if a.bind and a.bind not in ("0.0.0.0","::"):names.add(a.bind)
+   try:
+    from pairing import _hostips
+    names.update(_hostips())
+   except Exception:pass
+   if os.name!="nt" and shutil.which("ip"):
+    try:
+     out=subprocess.run(["ip","-o","addr","show"],capture_output=True,text=True,timeout=3).stdout or ""
+     for m in re.finditer(r"\binet6?\s+([0-9a-fA-F:.]+)/",out):
+      ip=m.group(1)
+      if ip.lower().startswith("fe80"):continue
+      names.add("[%s]"%ip if ":" in ip else ip)
+    except Exception:pass
+   _allow["static"]={n for n in names if n}
+  names=set(_allow["static"])
+  dns=str(cfg.get("tailscale_dns") or "")
+  try:
+   from remote_auth import tailscale_snapshot
+   snap=tailscale_snapshot(port,wait=False) or {}
+   if snap.get("ip"):names.add(str(snap["ip"]))
+   dns=str(snap.get("dns") or dns)
+  except Exception:pass
+  if cfg.get("tailscale_ip"):names.add(str(cfg["tailscale_ip"]))
+  hosts=set();origins=set()
+  for n in names:
+   h=("%s:%d"%(n,port)).lower()
+   hosts.add(h);origins.add("http://"+h);origins.add("https://"+h)
+  dns=dns.strip().lower().rstrip(".")
+  if dns:hosts.add(dns);origins.add("https://"+dns)
+  try:
+   from public_net import named_public_raw,live_tunnel_url,parse_public_origin,load_plugin_cfg
+   saved_tunnel=str(load_plugin_cfg().get("tunnel_url") or "")
+   for raw in (named_public_raw(),live_tunnel_url(),saved_tunnel,getattr(a,"public_host","") or "",os.environ.get("GROK_REMOTE_PUBLIC_HOST","")):
+    pp=parse_public_origin(raw,default_port=port) if raw else None
+    if not pp:continue
+    origins.add(pp["origin"].lower())
+    hp=pp["host"].lower()
+    hosts.add(hp if (pp["https"] and pp["port"]==443) or (not pp["https"] and pp["port"]==80) else "%s:%d"%(hp,pp["port"]))
+  except Exception:pass
+  for extra in str(os.environ.get("GROK_REMOTE_ALLOWED_ORIGINS") or "").split(","):
+   e=extra.strip().lower().rstrip("/")
+   if e:origins.add(e)
+  _allow["v"]=(hosts,origins);_allow["t"]=now
+  return _allow["v"]
+ app=web.Application(client_max_size=32*1024*1024,middlewares=[make_auth_middleware(a.secret,allow=allowed_hosts)])
  app.router.add_get("/",index)
  app.router.add_get("/index.html",index)
  app.router.add_get("/watch",watch_page)
@@ -2748,6 +3536,7 @@ async def main_async(a):
   prompt=str(body.get("prompt") or "").strip()
   interval=body.get("interval") or body.get("interval_sec") or body.get("every")
   if not sid or not prompt:raise web.HTTPBadRequest(text="sessionId and prompt required")
+  sid=_sid_or_400(sid)
   if isinstance(interval,(int,float)):
    sec=max(60,min(7*86400,int(interval)))
    lab=("%dm"%(sec//60)) if sec%60==0 else ("%ds"%sec)
@@ -2775,6 +3564,7 @@ async def main_async(a):
   effort=str(body.get("effort") or body.get("reasoningEffort") or "").strip().lower()
   model=str(body.get("modelId") or body.get("model") or "grok-4.5").strip()
   if not sid or not effort:raise web.HTTPBadRequest(text="sessionId and effort required")
+  sid=_sid_or_400(sid)
   try:
    res=await hub.set_model_effort(sid,model,effort)
   except Exception as e:
@@ -2917,6 +3707,7 @@ async def main_async(a):
  async def att_list(request):
   sid=str(request.rel_url.query.get("sessionId") or request.rel_url.query.get("sid") or "").strip()
   if not sid:raise web.HTTPBadRequest(text="sessionId required")
+  sid=_sid_or_400(sid)
   return web.json_response({"ok":True,"items":hub.work.list_atts(sid)},headers={"Cache-Control":"no-store"})
  async def att_get(request):
   aid=str(request.match_info.get("aid") or "").strip()
@@ -2950,12 +3741,13 @@ async def main_async(a):
   if not rec:return web.json_response({"ok":False,"error":"rejected"},status=400)
   return web.json_response({"ok":True,"item":rec},headers={"Cache-Control":"no-store"})
  async def work_list(_):
-  return web.json_response({"ok":True,"jobs":hub.work.snapshot()},headers={"Cache-Control":"no-store"})
+  return web.json_response({"ok":True,"jobs":hub._work_snapshot(),"busy":hub._busy_sids()},headers={"Cache-Control":"no-store"})
  async def work_cancel(request):
   try:body=await request.json()
   except Exception:body={}
   sid=str((body or {}).get("sessionId") or (body or {}).get("sid") or "").strip()
   if not sid:raise web.HTTPBadRequest(text="sessionId required")
+  sid=_sid_or_400(sid)
   try:hub.work.mark_cancel(sid)
   except Exception as e:return web.json_response({"ok":False,"error":str(e)},status=500)
   try:
@@ -3002,7 +3794,7 @@ async def main_async(a):
    async with ClientSession(timeout=ClientTimeout(total=4,connect=2)) as _s:
     async with _s.get("http://127.0.0.1:%d/health"%a.port) as _r:
      if _r.status==200 and "ok" in (await _r.text())[:200]:
-      print("[bind] :%d already served by a HEALTHY grok-remote — standing down"%a.port,flush=True)
+      print("[bind] :%d already served by a HEALTHY grok-remote — standing down (exit 97; the systemd unit's RestartPreventExitStatus=97 stops the restart loop)"%a.port,flush=True)
       sys.exit(97)
   except SystemExit:raise
   except Exception:pass
@@ -3011,62 +3803,105 @@ async def main_async(a):
   await asyncio.sleep(0.6)
   site=web.TCPSite(runner,a.bind,a.port)
   await site.start()
- if getattr(a,"ensure_agent",False) or not listen_pids(a.agent_port):
+ local_agent=str(a.agent_host) in ("127.0.0.1","localhost","::1")
+ if local_agent:
+  hub.spawn_agent=lambda force=False:start_agent_process(a.secret,a.agent_port,state["cwd"],force=force)
+ async def _boot_agent():
   try:
-   if not listen_pids(a.agent_port):
+   if port_open(a.agent_port,timeout=0.5):
+    print("[boot] agent already on :%d — reattaching"%a.agent_port,flush=True)
+   elif local_agent and getattr(a,"ensure_agent",False):
     print("[boot] agent not on :%d — starting"%a.agent_port,flush=True)
-    start_agent_process(a.secret,a.agent_port,state["cwd"])
-    await asyncio.get_event_loop().run_in_executor(None,lambda:wait_port(a.agent_port,18))
+    await asyncio.get_event_loop().run_in_executor(None,lambda:start_agent_process(a.secret,a.agent_port,state["cwd"]))
+    await asyncio.get_event_loop().run_in_executor(None,lambda:wait_port(a.agent_port,20))
    await hub.ensure(retries=5,delay=0.35)
   except Exception as e:
    print("[boot] agent ensure failed:",e,flush=True)
- if str(a.agent_host) in ("127.0.0.1","localhost","::1"):
-  hub.spawn_agent=lambda force=False:start_agent_process(a.secret,a.agent_port,state["cwd"],force=force)
+ stop_ev=asyncio.Event()
  try:
+  import signal as _signal
+  for _sg in (_signal.SIGTERM,_signal.SIGINT):
+   try:asyncio.get_event_loop().add_signal_handler(_sg,stop_ev.set)
+   except (NotImplementedError,RuntimeError,ValueError):pass
+ except Exception:pass
+ try:
+  asyncio.create_task(_boot_agent())
   loops.start_all()
   hub.start_watch()
   print("[loop] restored %d job(s)"%len(loops.jobs),flush=True)
   print("[hub] wireless watch · client heartbeat 12s · upstream keepalive",flush=True)
   try:
-   from nostr_bridge import start_inbox
+   from nostr_bridge import start_inbox,allowed_senders
+   nostr_store=plugin_data_dir()/"nostr_session.json"
+   nostr_lock=asyncio.Lock()
+   async def _nostr_sid():
+    try:sid=str(json.loads(nostr_store.read_text(encoding="utf-8")).get("sessionId") or "")
+    except Exception:sid=""
+    if sid and (sid in hub._created or find_session_dir(sid)):return sid
+    obj=await hub.new_session({"cwd":state["cwd"],"mcpServers":[]},timeout=60.0)
+    res=obj.get("result") if isinstance(obj,dict) and isinstance(obj.get("result"),dict) else {}
+    sid=str(res.get("sessionId") or "")
+    if not sid:raise RuntimeError("session/new returned no sessionId: %s"%str(obj)[:160])
+    atomic_write_json(nostr_store,{"sessionId":sid,"created":time.time()})
+    try:await meta.update(sid,title="Nostr inbox")
+    except Exception:pass
+    return sid
    async def _nostr_text(text,pub):
-    sid=str(getattr(hub,"_last_sid","") or "")
-    note="[nostr]\n"+str(text or "").strip()
-    if not note.strip():return
-    if not sid:
-     try:
-      r=await hub.call_rpc("session/new",{"cwd":state["cwd"]},timeout=25.0)
-      if isinstance(r,dict):sid=str((r.get("result") or r).get("sessionId") or r.get("sessionId") or "")
-      if sid:hub._last_sid=sid
+    note="[nostr from %s]\n%s"%(str(pub or "")[:12],str(text or "").strip())
+    if not str(text or "").strip():return
+    async with nostr_lock:
+     try:sid=await _nostr_sid()
      except Exception as e:
-      print("[nostr] session/new failed:",e,flush=True);return
-    if sid:
-     try:await hub.inject_prompt(sid,note)
-     except Exception as e:print("[nostr] inject failed:",e,flush=True)
-   start_inbox(asyncio.get_event_loop(),_nostr_text)
-   print("[nostr] inbox listening",flush=True)
+      print("[nostr] no inbox session:",e,flush=True);return
+    try:await hub.inject_prompt(sid,note,timeout=30.0)
+    except Exception as e:print("[nostr] inject failed:",e,flush=True)
+   if start_inbox(asyncio.get_event_loop(),_nostr_text):
+    print("[nostr] inbox listening · %d allowed sender(s)"%len(allowed_senders()),flush=True)
+   else:
+    print("[nostr] inbox off (no allowed senders: set GROK_REMOTE_NOSTR_ALLOW or nostr_allow in plugin config)",flush=True)
   except Exception as e:
    print("[nostr] skipped:",e,flush=True)
   try:
+   from public_net import away_mode,start_away_supervisor
+   start_away_supervisor(a.port)
+   print("[away] supervisor on (%s)"%(away_mode() or "off"),flush=True)
+  except Exception as e:
+   print("[away] supervisor skipped:",e,flush=True)
+  try:
    _apply_net_cfg()
   except Exception:pass
-  try:
-   from pairing import addresses,banner,ensure_segno,utf8_stdout
-   from public_net import named_public_raw,live_tunnel_url
-   utf8_stdout();banner(addresses(a.port,a.secret,public_host=named_public_raw() or live_tunnel_url() or getattr(a,"public_host","") or ""),a.port,have_qr=ensure_segno())
-  except Exception as e:
-   print("[pair] banner skipped:",e,flush=True)
-  try:
-   if cfg.get("public_url"):print("Internet (HTTPS)     %s"%cfg["public_url"],flush=True)
-   elif cfg.get("https_url"):print("HTTPS (PWA / away)   %s"%cfg["https_url"],flush=True)
-   elif cfg.get("tailscale_url"):print("Tailscale / Meshnet  %s"%cfg["tailscale_url"],flush=True)
-  except Exception:pass
-  while True:await asyncio.sleep(3600)
+  def _banner():
+   try:
+    from pairing import addresses,banner,ensure_segno,utf8_stdout
+    from public_net import named_public_raw,live_tunnel_url
+    utf8_stdout();banner(addresses(a.port,a.secret,public_host=named_public_raw() or live_tunnel_url() or getattr(a,"public_host","") or ""),a.port,have_qr=ensure_segno())
+   except Exception as e:
+    print("[pair] banner skipped:",e,flush=True)
+   try:
+    if cfg.get("public_url"):print("Internet (HTTPS)     %s"%cfg["public_url"],flush=True)
+    elif cfg.get("https_url"):print("HTTPS (PWA / away)   %s"%cfg["https_url"],flush=True)
+    elif cfg.get("tailscale_url"):print("Tailscale / Meshnet  %s"%cfg["tailscale_url"],flush=True)
+   except Exception:pass
+  asyncio.get_event_loop().run_in_executor(None,_banner)
+  await stop_ev.wait()
+  print("[hub] shutdown requested",flush=True)
  finally:
   for t in list(loops._tasks.values()):
    try:t.cancel()
    except Exception:pass
-  await hub.close()
+  busy=hub._inflight_prompt_sids()
+  try:await asyncio.wait_for(hub.close(),5)
+  except Exception:pass
+  if local_agent and os.environ.get("GROK_REMOTE_KEEP_AGENT")!="1":
+   mine=AGENT_PROC.get("proc") is not None or agent_pidfile_pid()>0
+   if mine and not busy:
+    try:
+     k=await asyncio.get_event_loop().run_in_executor(None,lambda:stop_agent_process(a.agent_port))
+     if k:print("[hub] stopped agent %s"%k,flush=True)
+    except Exception as e:print("[hub] agent stop:",e,flush=True)
+   elif mine:print("[hub] leaving agent running · %d turn(s) in flight · next start reattaches"%len(busy),flush=True)
+  try:await asyncio.wait_for(runner.cleanup(),5)
+  except Exception:pass
 def main():
  ap=argparse.ArgumentParser()
  ap.add_argument("--port",type=int,default=2421);ap.add_argument("--bind",default="0.0.0.0")
