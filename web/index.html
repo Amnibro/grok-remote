@@ -7,8 +7,8 @@
 <meta name="apple-mobile-web-app-title" content="Grok Remote"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
 <meta name="mobile-web-app-capable" content="yes"/>
-<meta name="theme-color" content="#0a0b0e" id="themeColor"/>
-<meta name="grok-remote-ui-build" content="2026-09-23-audit"/>
+<meta name="theme-color" content="#08090B" id="themeColor"/>
+<meta name="grok-remote-ui-build" content="2026-10-06-scient"/>
 <title>Grok Remote · GROK BUILD</title>
 <meta http-equiv="Cache-Control" content="no-store"/>
 <link rel="manifest" href="/manifest.webmanifest"/>
@@ -37,20 +37,21 @@
     var mode=p.get("mode")||localStorage.getItem("grok_remote_mode")||"";
     if(!variant&&raw)variant=raw==="light"?"grok":raw.split("-")[0];
     if(!mode&&raw)mode=raw==="light"||/-light$/.test(raw)?"light":"dark";
-    if(!variant||variant==="prayer")variant="grok";
+    if(!variant||variant==="prayer")variant="scient";
     if(mode!=="light")mode="dark";
     root.setAttribute("data-layout",layout);
     root.setAttribute("data-variant",variant);
     root.setAttribute("data-mode",mode);
     var meta=document.getElementById("themeColor");
-    if(meta)meta.setAttribute("content",variant==="grok"?(mode==="light"?"#f4f4f5":"#111113"):(mode==="light"?"#f7f7f8":"#0b0d12"));
+    if(meta)meta.setAttribute("content",variant==="grok"?(mode==="light"?"#fafafa":"#111113"):variant==="scient"?(mode==="light"?"#F3F2EF":"#08090B"):(mode==="light"?"#f7f7f8":"#0b0d12"));
   }catch(e){
     root.setAttribute("data-layout","braid");
-    root.setAttribute("data-variant","grok");
+    root.setAttribute("data-variant","scient");
     root.setAttribute("data-mode","dark");
   }
 })();</script>
-<link rel="stylesheet" href="/static/braid-layout.css?v=1.8.29"/>
+<link rel="stylesheet" href="/static/theme-tokens.css?v=2026-10-06-scient"/>
+<link rel="stylesheet" href="/static/braid-layout.css?v=1.8.31"/>
 <style>
 :root{
   --comp-h:48px;
@@ -58,148 +59,26 @@
   --z-content:1;
   --z-footer:20;
   --z-inline-popover:30;
+  --z-banner:80;
   --z-edge-chrome:40;
   --z-app-chrome:100;
   --z-modal:1000;
+  --z-dock:1000;
   --z-voice:1100;
   --z-tour:1200;
   --z-menu:1300;
   --z-popover:1310;
+  --z-dialog:1400;
   --z-debug:9999
 }
-/* Surfaces: dark / light. Accents: product variant (Amni-Scient + grey Grok). */
-html[data-mode="dark"]{
-  --bg:#0b0d12;--bg2:#10131a;--panel:#161a22;--panel2:#1c212b;--line:#2a3140;--line2:#3a4254;
-  --tx:#eef1f6;--mut:#9aa3b2;--soft:#c8d0dc;
-  --ok:#3dd68c;--bad:#ff6b6b;--you:#7ec8ff;--gold:#d4c4a8;
-  --in:#0e1218;
-  --font:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-  --font-mono:"SF Mono","JetBrains Mono","Fira Code",Consolas,monospace;
-  --radius:12px;
-  --ease:cubic-bezier(.22,1,.36,1);--ease-out:cubic-bezier(.16,1,.3,1);--dur:.22s;--dur-slow:.4s;
-  --elev-1:0 1px 2px rgba(0,0,0,.35);--elev-2:0 8px 24px -12px rgba(0,0,0,.55);--elev-3:0 16px 48px -16px rgba(0,0,0,.65);
-  --glass:color-mix(in srgb,var(--panel) 88%,transparent);--hairline:color-mix(in srgb,#fff 9%,transparent)
-}
-html[data-mode="light"]{
-  --bg:#f7f7f8;--bg2:#efeff1;--panel:#ffffff;--panel2:#f4f4f5;--line:#e4e4e7;--line2:#d4d4d8;
-  --tx:#09090b;--mut:#71717a;--soft:#3f3f46;
-  --ok:#15803d;--bad:#dc2626;--you:#52525b;--gold:#71717a;
-  --in:#f4f4f5;
-  --font:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-  --font-mono:"SF Mono","JetBrains Mono","Fira Code",Consolas,monospace;
-  --radius:12px;
-  --ease:cubic-bezier(.22,1,.36,1);--ease-out:cubic-bezier(.16,1,.3,1);--dur:.22s;--dur-slow:.4s;
-  --elev-1:0 1px 2px rgba(0,0,0,.04);--elev-2:0 8px 24px -12px rgba(0,0,0,.1);--elev-3:0 16px 40px -16px rgba(0,0,0,.12);
-  --glass:color-mix(in srgb,var(--panel) 82%,transparent);--hairline:color-mix(in srgb,#000 5%,transparent)
-}
-/* Product accents — dark */
-html[data-variant="scient"][data-mode="dark"]{--acc:#00ff9d;--acc-soft:#2ce8a0;--acc-dim:rgba(0,255,157,.12);--acc-glow:rgba(0,255,157,.32);--me-bg:#0c1f18;--me-line:#14532d}
-html[data-variant="grok"][data-mode="dark"]{--acc:#c4c4c8;--acc-soft:#e4e4e7;--acc-dim:rgba(255,255,255,.08);--acc-glow:rgba(255,255,255,.12);--you:#d4d4d8;--ok:#a1a1aa;--bad:#71717a;--gold:#8a8a92;--me-bg:#26262b;--me-line:#52525b;--bg:#111113;--bg2:#161618;--panel:#18181b;--panel2:#1c1c1f;--line:#2a2a2e;--line2:#3f3f46;--tx:#e4e4e7;--mut:#a1a1aa;--soft:#d4d4d8;--in:#161618}
-html[data-variant="ai"][data-mode="dark"]{--acc:#ffb74d;--acc-soft:#ffc970;--acc-dim:rgba(255,183,77,.13);--acc-glow:rgba(255,183,77,.3);--me-bg:#1a1408;--me-line:#5a4a1a}
-html[data-variant="explore"][data-mode="dark"]{--acc:#00b4ff;--acc-soft:#48c8ff;--acc-dim:rgba(0,180,255,.13);--acc-glow:rgba(0,180,255,.3);--you:#48c8ff;--me-bg:#0a1520;--me-line:#0d47a1}
-html[data-variant="calc"][data-mode="dark"]{--acc:#ff6b35;--acc-soft:#ff8a5e;--acc-dim:rgba(255,107,53,.13);--acc-glow:rgba(255,107,53,.3);--me-bg:#1a0e08;--me-line:#bf360c}
-html[data-variant="learn"][data-mode="dark"]{--acc:#2ecc71;--acc-soft:#54d98c;--acc-dim:rgba(46,204,113,.13);--acc-glow:rgba(46,204,113,.3);--me-bg:#0a1a10;--me-line:#1e8449}
-html[data-variant="crypt"][data-mode="dark"]{--acc:#2979ff;--acc-soft:#5b9bff;--acc-dim:rgba(41,121,255,.13);--acc-glow:rgba(41,121,255,.3);--me-bg:#0a1220;--me-line:#1565c0}
-html[data-variant="haven"][data-mode="dark"]{--acc:#7c5cfc;--acc-soft:#9a82ff;--acc-dim:rgba(124,92,252,.13);--acc-glow:rgba(124,92,252,.3);--me-bg:#120f1c;--me-line:#5e35b1}
-html[data-variant="core"][data-mode="dark"]{--acc:#ef5350;--acc-soft:#f47572;--acc-dim:rgba(239,83,80,.13);--acc-glow:rgba(239,83,80,.3);--me-bg:#1a0a0a;--me-line:#c62828}
-/* Product accents — light */
-html[data-variant="scient"][data-mode="light"]{--acc:#00875a;--acc-soft:#0a8f63;--acc-dim:rgba(0,135,90,.09);--acc-glow:rgba(0,135,90,.22);--me-bg:#e8f5e9;--me-line:#a5d6a7}
-html[data-variant="grok"][data-mode="light"]{--acc:#3f3f46;--acc-soft:#18181b;--acc-dim:rgba(24,24,27,.1);--acc-glow:rgba(24,24,27,.16);--you:#52525b;--ok:#52525b;--bad:#71717a;--gold:#71717a;--me-bg:#f4f4f5;--me-line:#d4d4d8;--bg:#fafafa;--bg2:#f4f4f5;--panel:#ffffff;--panel2:#f4f4f5;--line:#e4e4e7;--tx:#09090b;--mut:#71717a;--soft:#3f3f46;--in:#f4f4f5}
-html[data-variant="ai"][data-mode="light"]{--acc:#e65100;--acc-soft:#ef6c00;--acc-dim:rgba(230,81,0,.1);--acc-glow:rgba(230,81,0,.2);--me-bg:#fff3e0;--me-line:#ffcc80}
-html[data-variant="explore"][data-mode="light"]{--acc:#0277bd;--acc-soft:#0288d1;--acc-dim:rgba(2,119,189,.1);--acc-glow:rgba(2,119,189,.2);--you:#0288d1;--me-bg:#e1f5fe;--me-line:#81d4fa}
-html[data-variant="calc"][data-mode="light"]{--acc:#d84315;--acc-soft:#e64a19;--acc-dim:rgba(216,67,21,.1);--acc-glow:rgba(216,67,21,.2);--me-bg:#fbe9e7;--me-line:#ffab91}
-html[data-variant="learn"][data-mode="light"]{--acc:#1e8449;--acc-soft:#239b56;--acc-dim:rgba(30,132,73,.1);--acc-glow:rgba(30,132,73,.2);--me-bg:#e8f8f0;--me-line:#82e0aa}
-html[data-variant="crypt"][data-mode="light"]{--acc:#1565c0;--acc-soft:#1976d2;--acc-dim:rgba(21,101,192,.1);--acc-glow:rgba(21,101,192,.2);--me-bg:#e3f2fd;--me-line:#90caf9}
-html[data-variant="haven"][data-mode="light"]{--acc:#5e35b1;--acc-soft:#7e57c2;--acc-dim:rgba(94,53,177,.1);--acc-glow:rgba(94,53,177,.2);--me-bg:#ede7f6;--me-line:#b39ddb}
-html[data-variant="core"][data-mode="light"]{--acc:#c62828;--acc-soft:#d32f2f;--acc-dim:rgba(198,40,40,.1);--acc-glow:rgba(198,40,40,.2);--me-bg:#ffebee;--me-line:#ef9a9a}
-/* Legacy themes — full surface + accent palettes */
-html[data-variant="aim"][data-mode="dark"]{
-  --bg:#0a1f4a;--bg2:#0d2758;--panel:#14357a;--panel2:#1a408c;--line:#2f5fad;--line2:#4a7bc4;
-  --tx:#f2f6ff;--mut:#8aa6d4;--soft:#c5d4f0;--ok:#3ddc84;--bad:#ff5c5c;--you:#7ec8ff;--gold:#ffcc00;--in:#081838;
-  --acc:#ffcc00;--acc-soft:#ffe066;--acc-dim:rgba(255,204,0,.16);--acc-glow:rgba(255,204,0,.38);--me-bg:#1c478f;--me-line:#ffcc00;
-  --font:Tahoma,Geneva,Verdana,sans-serif;--font-mono:Consolas,"Courier New",monospace;--radius:8px}
-html[data-variant="aim"][data-mode="light"]{
-  --bg:#c8def5;--bg2:#b5d0ef;--panel:#eef5fc;--panel2:#dceaf8;--line:#7aa0cc;--line2:#5a86bc;
-  --tx:#0a1a3a;--mut:#4a668f;--soft:#243a5c;--ok:#1e8449;--bad:#c0392b;--you:#0055aa;--gold:#cc8800;--in:#dbe9f8;
-  --acc:#ff9900;--acc-soft:#ffb84d;--acc-dim:rgba(255,153,0,.14);--acc-glow:rgba(255,153,0,.28);--me-bg:#fff4d6;--me-line:#ff9900;
-  --font:Tahoma,Geneva,Verdana,sans-serif;--font-mono:Consolas,"Courier New",monospace;--radius:8px}
-html[data-variant="win95"][data-mode="dark"]{
-  --bg:#1e1e1e;--bg2:#2a2a2a;--panel:#3a3a3a;--panel2:#484848;--line:#6a6a6a;--line2:#808080;
-  --tx:#f0f0f0;--mut:#a0a0a0;--soft:#d0d0d0;--ok:#00c800;--bad:#ff4040;--you:#80c0ff;--gold:#c0c0c0;--in:#121212;
-  --acc:#000080;--acc-soft:#4169e1;--acc-dim:rgba(65,105,225,.2);--acc-glow:rgba(65,105,225,.35);--me-bg:#000060;--me-line:#8080ff;
-  --font:"MS Sans Serif",Tahoma,"Segoe UI",sans-serif;--font-mono:"Fixedsys",Consolas,monospace;--radius:0}
-html[data-variant="win95"][data-mode="light"]{
-  --bg:#008080;--bg2:#007070;--panel:#c0c0c0;--panel2:#d4d0c8;--line:#808080;--line2:#404040;
-  --tx:#000000;--mut:#404040;--soft:#202020;--ok:#008000;--bad:#800000;--you:#000080;--gold:#808000;--in:#ffffff;
-  --acc:#000080;--acc-soft:#0000aa;--acc-dim:rgba(0,0,128,.12);--acc-glow:rgba(0,0,128,.25);--me-bg:#ffffee;--me-line:#000080;
-  --font:"MS Sans Serif",Tahoma,"Segoe UI",sans-serif;--font-mono:"Fixedsys",Consolas,monospace;--radius:0}
-html[data-variant="commodore"][data-mode="dark"]{
-  --bg:#40318d;--bg2:#35297a;--panel:#7869c4;--panel2:#6a5bb8;--line:#a99fe0;--line2:#c0b8f0;
-  --tx:#a4e4fc;--mut:#7ec8e8;--soft:#d0f0ff;--ok:#6dff6d;--bad:#ff6d6d;--you:#ffff6d;--gold:#ffcc66;--in:#2b2166;
-  --acc:#a4e4fc;--acc-soft:#d0f4ff;--acc-dim:rgba(164,228,252,.18);--acc-glow:rgba(164,228,252,.4);--me-bg:#5040a0;--me-line:#ffff6d;
-  --font:"Courier New",Courier,monospace;--font-mono:"Courier New",Courier,monospace;--radius:2px}
-html[data-variant="commodore"][data-mode="light"]{
-  --bg:#b8aef0;--bg2:#a89ce8;--panel:#e8e4ff;--panel2:#d8d0f8;--line:#7869c4;--line2:#5040a0;
-  --tx:#2b2166;--mut:#5040a0;--soft:#40318d;--ok:#1a7a1a;--bad:#a02020;--you:#5050a0;--gold:#886600;--in:#f4f0ff;
-  --acc:#40318d;--acc-soft:#7869c4;--acc-dim:rgba(64,49,141,.12);--acc-glow:rgba(64,49,141,.28);--me-bg:#fffde8;--me-line:#40318d;
-  --font:"Courier New",Courier,monospace;--font-mono:"Courier New",Courier,monospace;--radius:2px}
-html[data-variant="atari"][data-mode="dark"]{
-  --bg:#0a0a0a;--bg2:#141210;--panel:#1c1814;--panel2:#2a2218;--line:#5a4030;--line2:#8a6040;
-  --tx:#f5e6d0;--mut:#a08060;--soft:#d0b090;--ok:#70d050;--bad:#e04040;--you:#f0a040;--gold:#e8c060;--in:#100c08;
-  --acc:#e25303;--acc-soft:#ff7a30;--acc-dim:rgba(226,83,3,.16);--acc-glow:rgba(226,83,3,.4);--me-bg:#2a1408;--me-line:#e25303;
-  --font:"Segoe UI",Tahoma,sans-serif;--font-mono:Consolas,"Courier New",monospace;--radius:4px}
-html[data-variant="atari"][data-mode="light"]{
-  --bg:#f4e8d0;--bg2:#e8d8b8;--panel:#fff8ec;--panel2:#f0e4cc;--line:#c0a080;--line2:#a08060;
-  --tx:#2a1810;--mut:#6a5040;--soft:#403020;--ok:#2a8020;--bad:#b02020;--you:#c04000;--gold:#886000;--in:#efe0c8;
-  --acc:#e25303;--acc-soft:#ff6a20;--acc-dim:rgba(226,83,3,.12);--acc-glow:rgba(226,83,3,.28);--me-bg:#ffe8d0;--me-line:#e25303;
-  --font:"Segoe UI",Tahoma,sans-serif;--font-mono:Consolas,"Courier New",monospace;--radius:4px}
-html[data-variant="ubuntu"][data-mode="dark"]{
-  --bg:#1d1d1d;--bg2:#242424;--panel:#2c2c2c;--panel2:#333333;--line:#3d3d3d;--line2:#4e4e4e;
-  --tx:#f7f7f7;--mut:#c7c7c7;--soft:#e0e0e0;--ok:#0e8420;--bad:#c7162b;--you:#19b6ee;--gold:#f99b11;--in:#181818;
-  --acc:#e95420;--acc-soft:#f3743d;--acc-dim:rgba(233,84,32,.18);--acc-glow:rgba(233,84,32,.4);--me-bg:#3a2018;--me-line:#e95420;
-  --font:system-ui,"Segoe UI","Ubuntu",sans-serif;--font-mono:Consolas,"Ubuntu Mono",monospace;--radius:12px}
-html[data-variant="ubuntu"][data-mode="light"]{
-  --bg:#fafafa;--bg2:#f0f0f0;--panel:#ffffff;--panel2:#f7f7f7;--line:#d9d9d9;--line2:#c7c7c7;
-  --tx:#111111;--mut:#5d5d5d;--soft:#333333;--ok:#0e8420;--bad:#c7162b;--you:#0e76a8;--gold:#c59d0c;--in:#f2f2f2;
-  --acc:#e95420;--acc-soft:#d44415;--acc-dim:rgba(233,84,32,.12);--acc-glow:rgba(233,84,32,.28);--me-bg:#fff4ee;--me-line:#e95420;
-  --font:system-ui,"Segoe UI","Ubuntu",sans-serif;--font-mono:Consolas,"Ubuntu Mono",monospace;--radius:12px}
-html[data-variant="matrix"][data-mode="dark"]{
-  --bg:#020805;--bg2:#05140c;--panel:#0a1f14;--panel2:#0f2a1c;--line:#1a4a30;--line2:#2a6a44;
-  --tx:#00ff66;--mut:#1a9944;--soft:#66ff99;--ok:#33ff77;--bad:#ff3344;--you:#00cc55;--gold:#99ffbb;--in:#010604;
-  --acc:#00ff41;--acc-soft:#66ff88;--acc-dim:rgba(0,255,65,.12);--acc-glow:rgba(0,255,65,.4);--me-bg:#052a14;--me-line:#00ff41;
-  --font:"Courier New",Courier,monospace;--font-mono:"Courier New",Courier,monospace;--radius:2px}
-html[data-variant="matrix"][data-mode="light"]{
-  --bg:#e8fff0;--bg2:#d0f5e0;--panel:#f4fff8;--panel2:#e0faec;--line:#80c0a0;--line2:#509070;
-  --tx:#003318;--mut:#1a6640;--soft:#004422;--ok:#007733;--bad:#aa0022;--you:#006633;--gold:#556600;--in:#d8f8e8;
-  --acc:#008833;--acc-soft:#00aa44;--acc-dim:rgba(0,136,51,.1);--acc-glow:rgba(0,136,51,.25);--me-bg:#d0ffe0;--me-line:#008833;
-  --font:"Courier New",Courier,monospace;--font-mono:"Courier New",Courier,monospace;--radius:2px}
-html[data-variant="dos"][data-mode="dark"]{
-  --bg:#0000aa;--bg2:#000088;--panel:#0000cc;--panel2:#1111dd;--line:#5555ff;--line2:#8888ff;
-  --tx:#aaaaaa;--mut:#8888cc;--soft:#ccccff;--ok:#55ff55;--bad:#ff5555;--you:#55ffff;--gold:#ffff55;--in:#000066;
-  --acc:#ffff55;--acc-soft:#ffff88;--acc-dim:rgba(255,255,85,.14);--acc-glow:rgba(255,255,85,.35);--me-bg:#000088;--me-line:#ffff55;
-  --font:"IBM Plex Mono",Consolas,"Courier New",monospace;--font-mono:"IBM Plex Mono",Consolas,"Courier New",monospace;--radius:0}
-html[data-variant="dos"][data-mode="light"]{
-  --bg:#0000aa;--bg2:#0000bb;--panel:#c0c0c0;--panel2:#d8d8d8;--line:#000080;--line2:#0000aa;
-  --tx:#000000;--mut:#000080;--soft:#000040;--ok:#008000;--bad:#aa0000;--you:#0000aa;--gold:#808000;--in:#ffffff;
-  --acc:#0000aa;--acc-soft:#0000ff;--acc-dim:rgba(0,0,170,.12);--acc-glow:rgba(0,0,170,.28);--me-bg:#ffffcc;--me-line:#0000aa;
-  --font:"IBM Plex Mono",Consolas,"Courier New",monospace;--font-mono:"IBM Plex Mono",Consolas,"Courier New",monospace;--radius:0}
-html[data-variant="amiga"][data-mode="dark"]{
-  --bg:#0055aa;--bg2:#004488;--panel:#003366;--panel2:#004477;--line:#ff8800;--line2:#ffaa44;
-  --tx:#ffffff;--mut:#aaccff;--soft:#ddeeff;--ok:#00cc66;--bad:#ff4444;--you:#ffcc00;--gold:#ffaa00;--in:#002244;
-  --acc:#ff8800;--acc-soft:#ffaa44;--acc-dim:rgba(255,136,0,.16);--acc-glow:rgba(255,136,0,.38);--me-bg:#003355;--me-line:#ff8800;
-  --font:Tahoma,"Segoe UI",sans-serif;--font-mono:Consolas,"Courier New",monospace;--radius:6px}
-html[data-variant="amiga"][data-mode="light"]{
-  --bg:#aaaaaa;--bg2:#999999;--panel:#ffffff;--panel2:#eeeeee;--line:#0055aa;--line2:#003388;
-  --tx:#000000;--mut:#333366;--soft:#111133;--ok:#008800;--bad:#cc0000;--you:#0055aa;--gold:#aa6600;--in:#e8e8f0;
-  --acc:#ff8800;--acc-soft:#ee7700;--acc-dim:rgba(255,136,0,.12);--acc-glow:rgba(255,136,0,.28);--me-bg:#fff4e0;--me-line:#ff8800;
-  --font:Tahoma,"Segoe UI",sans-serif;--font-mono:Consolas,"Courier New",monospace;--radius:6px}
 /* Legacy chrome extras */
+html[data-layout="legacy"]{--pop-shadow:var(--elev-3),0 0 40px -16px var(--acc-glow)}
 html[data-variant="win95"] .bub,html[data-variant="win95"] .tool,html[data-variant="win95"] .sess .item,html[data-variant="win95"] .cmd,html[data-variant="win95"] .collapsible,html[data-variant="win95"] .panel input,html[data-variant="win95"] textarea,html[data-variant="win95"] .hdrbtn{
   border-radius:0;border-width:2px;border-style:solid;border-color:#ffffff #808080 #808080 #ffffff;box-shadow:none}
 html[data-variant="win95"][data-mode="dark"] .bub,html[data-variant="win95"][data-mode="dark"] .tool,html[data-variant="win95"][data-mode="dark"] .sess .item{
   border-color:#808080 #202020 #202020 #808080}
 html[data-variant="win95"] button.send,html[data-variant="win95"] .rowbtns button.pri{
-  border-radius:0;border:2px solid;border-color:#ffffff #404040 #404040 #ffffff;box-shadow:none;color:#000;background:#c0c0c0}
+  --on-acc:#000;border-radius:0;border:2px solid;border-color:#ffffff #404040 #404040 #ffffff;box-shadow:none;color:#000;background:#c0c0c0}
 html[data-variant="win95"][data-mode="light"] button.send,html[data-variant="win95"][data-mode="light"] .rowbtns button.pri{background:#c0c0c0;color:#000}
 html[data-variant="win95"] header{background:linear-gradient(90deg,#000080,#1084d0);color:#fff;border:none}
 html[data-variant="win95"] header .logo,html[data-variant="win95"] header .logo b,html[data-variant="win95"] header .sub,html[data-variant="win95"] header .brand{color:#fff!important}
@@ -231,14 +110,18 @@ html[data-variant="win95"] button.send{color:#000!important}
 html[data-variant="aim"] button.send,html[data-variant="atari"] button.send,html[data-variant="ubuntu"] button.send,html[data-variant="amiga"] button.send{color:#fff}
 html[data-variant="commodore"] button.send,html[data-variant="matrix"] button.send,html[data-variant="dos"] button.send{color:#000}
 .theme-sep{width:100%;font-size:10px;font-family:var(--font-mono);color:var(--mut);letter-spacing:.8px;text-transform:uppercase;margin:8px 0 4px;opacity:.85}
-/* default if attrs missing */
-:root{--acc:#00ff9d;--acc-soft:#2ce8a0;--acc-dim:rgba(0,255,157,.12);--acc-glow:rgba(0,255,157,.32);--me-bg:#0c1f18;--me-line:#14532d;
-  --bg:#0a0b0e;--bg2:#0d0f13;--panel:#13161c;--panel2:#171a21;--line:#23262e;--line2:#2d313b;
-  --tx:#e7e9ec;--mut:#727884;--soft:#aab0b9;--ok:#34d399;--bad:#ff5a5a;--you:#00b4ff;--gold:#c0c4cc;--in:#0f131b;
-  --font:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;--font-mono:'JetBrains Mono','Fira Code','SF Mono',Consolas,monospace;--radius:14px}
 *{box-sizing:border-box}
 html{height:100%;width:100%;overflow:hidden;height:100dvh}
-html,body{margin:0;background:var(--bg);color:var(--tx);font:clamp(14px,.35vw + 13px,17px)/1.45 var(--font);overscroll-behavior-y:none}
+html,body{margin:0;background:var(--bg);color:var(--tx);font:400 var(--fs-body)/1.5 var(--font);letter-spacing:var(--ls-body);overscroll-behavior-y:none;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-rendering:optimizeLegibility;font-synthesis:none;-webkit-tap-highlight-color:transparent}
+button,input,textarea,select{font-family:inherit;letter-spacing:inherit}
+:focus-visible{outline:2px solid var(--ring);outline-offset:2px}
+::selection{background:color-mix(in srgb,var(--acc) 30%,transparent);color:var(--tx)}
+::placeholder{color:var(--mut);opacity:1}
+*{scrollbar-width:thin;scrollbar-color:var(--line2) transparent}
+::-webkit-scrollbar{width:8px;height:8px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--line2);border-radius:999px;border:2px solid transparent;background-clip:padding-box}
+::-webkit-scrollbar-thumb:hover{background:var(--mut);border:2px solid transparent;background-clip:padding-box}
 body{height:100%;height:100dvh;width:100%;display:flex;flex-direction:column;margin:0;overflow:hidden;background-image:radial-gradient(min(900px,80vw) min(420px,40vh) at 50% -60px,var(--acc-dim),transparent 60%);position:fixed;inset:0;transition:none}
 body.kb-open{height:var(--vv-h,100dvh)!important;max-height:var(--vv-h,100dvh)!important;top:var(--vv-top,0px)!important;bottom:auto!important;left:0;right:0;width:100%}
 body.orienting{pointer-events:none}
@@ -285,7 +168,7 @@ header.was-chrome{padding:clamp(8px,1.2vw,14px) clamp(10px,1.5vw,18px);border-bo
 .orbit-status[data-state="error"]{color:var(--bad);border-color:color-mix(in srgb,var(--bad) 40%,var(--line));background:color-mix(in srgb,var(--bad) 10%,var(--panel2))}
 .orbit-status[data-state="error"] .orbit-dot{background:var(--bad);box-shadow:0 0 8px color-mix(in srgb,var(--bad) 50%,transparent)}
 @keyframes orbit-dot-pulse{0%,100%{opacity:.55;transform:scale(.9)}50%{opacity:1;transform:scale(1.15)}}
-.orbit-menu{display:none;position:fixed;z-index:var(--z-menu);min-width:220px;padding:6px;border-radius:12px;background:color-mix(in srgb,var(--panel) 98%,transparent);border:1px solid color-mix(in srgb,var(--acc) 28%,var(--line));box-shadow:var(--elev-3,0 14px 40px rgba(0,0,0,.5));backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+.orbit-menu{display:none;position:fixed;z-index:var(--z-menu);min-width:220px;padding:var(--pop-pad);border-radius:var(--pop-r);background:var(--pop-bg);border:1px solid var(--pop-line);box-shadow:var(--pop-shadow);backdrop-filter:var(--pop-blur);-webkit-backdrop-filter:var(--pop-blur)}
 .orbit-menu.on{display:flex;flex-direction:column;gap:4px}
 .orbit-menu button{display:block;width:100%;text-align:left;border:1px solid transparent;background:transparent;color:var(--tx);border-radius:8px;padding:9px 11px;font:inherit;font-size:12px;font-weight:700;cursor:pointer}
 .orbit-menu button:hover{background:var(--acc-dim);border-color:color-mix(in srgb,var(--acc) 35%,var(--line));color:var(--acc)}
@@ -419,20 +302,20 @@ a.path-link:hover,.loc.path-link:hover,.file-chip.path-link:hover{color:var(--tx
 .collapsible .code-body{padding:0;margin:0;overflow:auto;max-height:min(360px,46vh);font-family:var(--font-mono);font-size:12px;line-height:1.55;white-space:pre;color:var(--soft);border-top:1px solid var(--line);tab-size:2}
 .collapsible.collapsed .code-body{display:none}
 .code-with-lines .tok,.collapsible .code-body .tok,.tool .tool-body .tok{font-style:normal}
-.code-with-lines .tok-kw,.collapsible .code-body .tok-kw,.tool .tool-body .tok-kw{color:#c792ea;font-weight:600}
-.code-with-lines .tok-type,.collapsible .code-body .tok-type,.tool .tool-body .tok-type{color:#ffcb6b}
-.code-with-lines .tok-fn,.collapsible .code-body .tok-fn,.tool .tool-body .tok-fn{color:#82aaff}
-.code-with-lines .tok-str,.collapsible .code-body .tok-str,.tool .tool-body .tok-str{color:#c3e88d}
-.code-with-lines .tok-num,.collapsible .code-body .tok-num,.tool .tool-body .tok-num{color:#f78c6c}
-.code-with-lines .tok-cmt,.collapsible .code-body .tok-cmt,.tool .tool-body .tok-cmt{color:#546e7a;font-style:italic}
-.code-with-lines .tok-op,.collapsible .code-body .tok-op,.tool .tool-body .tok-op{color:#89ddff}
-.code-with-lines .tok-punc,.collapsible .code-body .tok-punc,.tool .tool-body .tok-punc{color:#89ddff}
-.code-with-lines .tok-prop,.collapsible .code-body .tok-prop,.tool .tool-body .tok-prop{color:#f07178}
-.code-with-lines .tok-bool,.collapsible .code-body .tok-bool,.tool .tool-body .tok-bool{color:#ff9cac;font-weight:600}
+.code-with-lines .tok-kw,.collapsible .code-body .tok-kw,.tool .tool-body .tok-kw{color:var(--syn-kw);font-weight:600}
+.code-with-lines .tok-type,.collapsible .code-body .tok-type,.tool .tool-body .tok-type{color:var(--syn-type)}
+.code-with-lines .tok-fn,.collapsible .code-body .tok-fn,.tool .tool-body .tok-fn{color:var(--syn-fn)}
+.code-with-lines .tok-str,.collapsible .code-body .tok-str,.tool .tool-body .tok-str{color:var(--syn-str)}
+.code-with-lines .tok-num,.collapsible .code-body .tok-num,.tool .tool-body .tok-num{color:var(--syn-num)}
+.code-with-lines .tok-cmt,.collapsible .code-body .tok-cmt,.tool .tool-body .tok-cmt{color:var(--syn-cmt);font-style:italic}
+.code-with-lines .tok-op,.collapsible .code-body .tok-op,.tool .tool-body .tok-op{color:var(--syn-op)}
+.code-with-lines .tok-punc,.collapsible .code-body .tok-punc,.tool .tool-body .tok-punc{color:var(--syn-op)}
+.code-with-lines .tok-prop,.collapsible .code-body .tok-prop,.tool .tool-body .tok-prop{color:var(--syn-prop)}
+.code-with-lines .tok-bool,.collapsible .code-body .tok-bool,.tool .tool-body .tok-bool{color:var(--syn-bool);font-weight:600}
 
 .code-with-lines{display:block;padding:6px 0 8px}
 .code-line{display:grid;grid-template-columns:minmax(2.6em,auto) minmax(0,1fr);gap:0;align-items:start;min-width:min-content}
-.code-line .ln{user-select:none;-webkit-user-select:none;text-align:right;padding:0 10px 0 8px;color:color-mix(in srgb,var(--mut) 85%,transparent);border-right:1px solid color-mix(in srgb,var(--line) 80%,transparent);font-variant-numeric:tabular-nums;opacity:.75}
+.code-line .ln{user-select:none;-webkit-user-select:none;text-align:right;padding:0 10px 0 8px;color:var(--mut);border-right:1px solid color-mix(in srgb,var(--line) 80%,transparent);font-variant-numeric:tabular-nums;opacity:.75}
 .code-line .lc{padding:0 12px 0 10px;white-space:pre;min-width:0;overflow-wrap:normal}
 .code-line:hover{background:color-mix(in srgb,var(--acc) 6%,transparent)}
 .code-line:hover .ln{color:var(--acc);opacity:1}
@@ -473,7 +356,7 @@ body.page-chat #chatTop{display:flex}
 #btnMore.on .mm-trig i:nth-child(8),#btnMore[aria-expanded="true"] .mm-trig i:nth-child(8){animation-delay:.28s}
 #btnMore.on .mm-trig i:nth-child(9),#btnMore[aria-expanded="true"] .mm-trig i:nth-child(9){animation-delay:.4s}
 @keyframes mm-dot{0%,100%{opacity:.35;transform:scale(.85)}50%{opacity:1;transform:scale(1.15)}}
-.more-menu{display:none;position:fixed;z-index:var(--z-menu);width:min(320px,94vw);max-height:min(78dvh,calc(100dvh - 16px));overflow:hidden;padding:0;border-radius:16px;background:linear-gradient(165deg,color-mix(in srgb,var(--panel) 92%,var(--acc) 6%),color-mix(in srgb,var(--panel) 98%,transparent) 40%,var(--panel));border:1px solid color-mix(in srgb,var(--acc) 32%,var(--line));box-shadow:var(--elev-3),0 0 0 1px color-mix(in srgb,#fff 4%,transparent),0 0 48px -12px var(--acc-glow),inset 0 1px 0 color-mix(in srgb,#fff 8%,transparent);backdrop-filter:blur(20px) saturate(1.25);-webkit-backdrop-filter:blur(20px) saturate(1.25);font-family:var(--font);font-size:inherit;line-height:inherit;transform-origin:top right}
+.more-menu{display:none;position:fixed;z-index:var(--z-menu);width:min(320px,94vw);max-height:min(78dvh,calc(100dvh - 16px));overflow:hidden;padding:0;border-radius:var(--pop-r);background:var(--pop-bg);border:1px solid var(--pop-line);box-shadow:var(--pop-shadow);backdrop-filter:var(--pop-blur);-webkit-backdrop-filter:var(--pop-blur);font-family:var(--font);font-size:inherit;line-height:inherit;transform-origin:top right}
 .more-menu.on{display:flex;flex-direction:column;animation:mm-pop .22s var(--ease-out,cubic-bezier(.16,1,.3,1)) both}
 @keyframes mm-pop{from{opacity:0;transform:translateY(-8px) scale(.96)}to{opacity:1;transform:translateY(0) scale(1)}}
 .more-menu .mm-head,.more-menu .mm-foot{flex:none}
@@ -522,12 +405,12 @@ body.page-chat #chatTop{display:flex}
 .composer-sendcol{display:flex;flex-direction:column;align-items:stretch;gap:4px;flex:none}
 .ctx-meter.ctx-send{min-width:64px;justify-content:center;cursor:pointer;user-select:none}
 .ctx-meter.ctx-send:hover{border-color:var(--acc);color:var(--acc)}
-.btn-plus{flex:none;height:var(--comp-h);min-height:var(--comp-h);width:var(--comp-h);min-width:var(--comp-h);border:1px solid var(--line);background:var(--panel2);color:var(--tx);border-radius:12px;font-weight:800;cursor:pointer;font-size:20px;line-height:1}
+.btn-plus{flex:none;height:var(--comp-h);min-height:var(--comp-h);width:var(--comp-h);min-width:var(--comp-h);border:1px solid var(--line);background:var(--panel2);color:var(--tx);border-radius:var(--r-md);font-weight:500;cursor:pointer;font-size:20px;line-height:1}
 .btn-plus:hover{border-color:var(--acc);color:var(--acc);background:var(--acc-dim)}
-.btn-voice-comp,.btn-xr-comp,.btn-msg-mode{flex:none;height:var(--comp-h);min-height:var(--comp-h);min-width:var(--comp-h);border:1px solid var(--line);background:var(--panel2);color:var(--tx);border-radius:12px;font-weight:800;cursor:pointer;font-size:12px;font-family:var(--font-mono);letter-spacing:.02em;padding:0 10px}
+.btn-voice-comp,.btn-xr-comp,.btn-msg-mode{flex:none;height:var(--comp-h);min-height:var(--comp-h);min-width:var(--comp-h);border:1px solid var(--line);background:var(--panel2);color:var(--tx);border-radius:var(--r-md);font:600 var(--fs-sm)/1 var(--font);letter-spacing:-.01em;cursor:pointer;padding:0 12px}
 .btn-msg-mode[data-mode="interject"]{border-color:color-mix(in srgb,var(--bad) 50%,var(--line));color:var(--bad)}
 .btn-msg-mode[data-mode="fyi"]{border-color:color-mix(in srgb,var(--gold) 50%,var(--line));color:var(--gold)}
-.btn-msg-mode[data-mode="queue"]{border-color:color-mix(in srgb,var(--acc) 40%,var(--line));color:var(--acc)}
+.btn-msg-mode[data-mode="queue"]{border-color:color-mix(in srgb,var(--acc) 40%,var(--line));color:var(--acc-ink)}
 .msg-mode-row{display:none!important}
 .rail-hint{flex:none;padding:6px 12px;font:600 11px/1.3 var(--font-mono);color:var(--mut);border-top:1px solid var(--line)}
 .rail-hint[hidden]{display:none!important}
@@ -692,10 +575,10 @@ button.cancel-turn:hover{background:var(--bad);transform:translateY(-1px)}
 .ctx-meter span{position:relative;z-index:1}
 .ctx-meter.warn{border-color:var(--gold);color:var(--gold)}
 .ctx-meter.hot{border-color:var(--bad);color:var(--bad)}
-.slash-menu{display:none;position:fixed;left:8px;top:8px;width:min(720px,calc(100vw - 16px));z-index:var(--z-menu);max-height:220px;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:12px;box-shadow:var(--elev-2);padding:4px}
+.slash-menu{display:none;position:fixed;left:8px;top:8px;width:min(720px,calc(100vw - 16px));z-index:var(--z-menu);max-height:220px;overflow:auto;padding:4px;border-radius:var(--pop-r);background:var(--pop-bg);border:1px solid var(--pop-line);box-shadow:var(--pop-shadow);backdrop-filter:var(--pop-blur);-webkit-backdrop-filter:var(--pop-blur)}
 .slash-menu.on{display:block}
-.slash-item{padding:8px 10px;cursor:pointer;display:flex;flex-direction:column;gap:2px;border-radius:8px}
-.slash-item:hover{background:var(--acc-dim)}
+.slash-item{padding:8px 10px;cursor:pointer;display:flex;flex-direction:column;gap:2px;border-radius:var(--r-xs)}
+.slash-item:hover,.slash-item.on{background:var(--acc-dim)}
 .slash-item b{color:var(--acc);font-family:var(--font-mono);font-size:12px}
 .slash-item span{color:var(--mut);font-size:11px}
 .todo-item{display:flex;gap:8px;align-items:flex-start;padding:8px 10px;border-bottom:1px solid var(--line);font-size:12px;cursor:pointer}
@@ -707,7 +590,7 @@ button.cancel-turn:hover{background:var(--bad);transform:translateY(-1px)}
 .row-copy:hover{border-color:var(--acc);color:var(--acc)}
 @media (pointer:coarse){.row-acts{display:none!important}}
 .rx-got{display:inline-flex;margin-top:2px;font-size:15px;opacity:.85}
-#rxPop{position:fixed;z-index:var(--z-popover);display:none!important;align-items:center;gap:4px;padding:6px 8px;border-radius:14px;background:var(--panel);border:1px solid var(--line);box-shadow:var(--elev-3,0 12px 40px rgba(0,0,0,.45));flex-wrap:nowrap}
+#rxPop{position:fixed;z-index:var(--z-popover);display:none!important;align-items:center;gap:4px;padding:6px 8px;flex-wrap:nowrap;border-radius:var(--pop-r);background:var(--pop-bg);border:1px solid var(--pop-line);box-shadow:var(--pop-shadow);backdrop-filter:var(--pop-blur);-webkit-backdrop-filter:var(--pop-blur)}
 #rxPop.on{display:flex!important}
 #rxPop[hidden]{display:none!important}
 #rxPop button{border:1px solid var(--line);background:var(--panel2);color:var(--tx);border-radius:10px;padding:6px 9px;font-size:13px;font-weight:700;cursor:pointer}
@@ -752,7 +635,7 @@ button.cancel-turn:hover{background:var(--bad);transform:translateY(-1px)}
 .sess-empty{color:var(--mut);font-size:12px;padding:16px 4px;text-align:center}
 .rowbtns{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
 .rowbtns button{flex:1;min-width:90px;border:1px solid var(--line);background:var(--panel2);color:var(--tx);border-radius:10px;padding:clamp(10px,.9vw,14px);font-weight:700;cursor:pointer}
-.rowbtns button.pri{background:var(--acc);color:#05070a;border:none;box-shadow:0 6px 18px -8px var(--acc-glow)}
+.rowbtns button.pri{background:var(--acc);color:var(--on-acc);border:none;box-shadow:none}
 .themes{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
 .mode-row{display:flex;gap:6px;margin:6px 0 10px;flex-wrap:wrap}
 .mode-chip{border:1px solid var(--line);background:var(--panel2);color:var(--mut);border-radius:999px;padding:6px 12px;font-size:11px;font-weight:700;font-family:var(--font-mono);cursor:pointer}
@@ -764,9 +647,84 @@ button.cancel-turn:hover{background:var(--bad);transform:translateY(-1px)}
 .badge.live{color:var(--ok);border-color:color-mix(in srgb,var(--ok) 50%,var(--line));background:color-mix(in srgb,var(--ok) 12%,transparent)}
 .badge.idle{color:var(--acc)}
 .hint{color:var(--mut);font-size:clamp(11px,.2vw + 10px,13px);margin-top:6px}
-.phone-qr-wrap{display:none;background:#fff;padding:16px;border-radius:12px;border:1px solid var(--line);width:fit-content;overflow:visible}
+.phone-qr-wrap{display:none;background:#fff;padding:12px;border-radius:var(--r-lg);border:1px solid var(--line);width:fit-content;overflow:visible}
 .phone-qr-wrap:not([hidden]){display:block}
-.phone-qr-wrap img{display:block;width:220px;height:220px;border-radius:0;background:#fff}
+.phone-qr-wrap svg{display:block;width:216px;height:216px;image-rendering:pixelated;shape-rendering:crispEdges}
+:root{--ico-phone:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='6.5' y='2.5' width='11' height='19' rx='2.6'/%3E%3Cpath d='M10.5 18h3'/%3E%3C/svg%3E")}
+.cn-ico{display:inline-block;width:18px;height:18px;flex:none;background:currentColor;-webkit-mask:var(--ico-phone) center/contain no-repeat;mask:var(--ico-phone) center/contain no-repeat}
+.cn-dot{display:inline-block;width:8px;height:8px;border-radius:50%;flex:none;background:var(--mut)}
+[data-tone="ok"]>.cn-dot,.cn-btn[data-state="online"] .cn-dot{background:var(--ok);box-shadow:0 0 0 3px color-mix(in srgb,var(--ok) 20%,transparent)}
+[data-tone="warn"]>.cn-dot,.cn-btn[data-state="connecting"] .cn-dot{background:var(--warn)}
+[data-tone="bad"]>.cn-dot,.cn-btn[data-state="offline"] .cn-dot{background:var(--bad)}
+.cn-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;flex:none;min-height:36px;padding:0 14px 0 12px;border-radius:var(--r-pill);border:1px solid color-mix(in srgb,var(--acc) 34%,var(--line));background:color-mix(in srgb,var(--acc) 12%,var(--panel));color:var(--tx);font:600 var(--fs-sm)/1 var(--font);letter-spacing:-.01em;white-space:nowrap;cursor:pointer;transition:background var(--dur) var(--ease),border-color var(--dur) var(--ease)}
+.cn-btn .cn-ico{color:var(--acc)}
+.cn-btn:hover{background:color-mix(in srgb,var(--acc) 20%,var(--panel));border-color:color-mix(in srgb,var(--acc) 55%,var(--line))}
+.cn-btn .cn-dot,.cn-btn.cn-status .cn-ico{display:none}
+.cn-btn.cn-status .cn-dot{display:inline-block}
+.cn-btn.cn-status{background:var(--panel2);border-color:var(--line)}
+.btn-rail.btn-connect{color:var(--acc)}
+.cn-cta{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:14px;align-items:center;margin:0 0 18px;padding:16px;border-radius:var(--r-lg);border:1px solid color-mix(in srgb,var(--acc) 30%,var(--line));background:color-mix(in srgb,var(--acc) 7%,var(--panel))}
+.cn-cta-ico{display:grid;place-items:center;width:44px;height:44px;border-radius:var(--r-md);background:color-mix(in srgb,var(--acc) 16%,var(--panel2));color:var(--acc)}
+.cn-cta-ico .cn-ico{width:22px;height:22px}
+.cn-cta-t{display:flex;flex-direction:column;gap:3px;min-width:0}
+.cn-cta-t b{font-size:1rem;font-weight:var(--fw-head);letter-spacing:var(--ls-head)}
+.cn-cta-t span{color:var(--soft);font-size:var(--fs-sm);line-height:1.45}
+.cn-cta button{min-height:44px;padding:0 18px;border:0;border-radius:var(--r-md);background:var(--acc);color:var(--on-acc);font:600 var(--fs-sm)/1 var(--font);cursor:pointer;white-space:nowrap}
+.cn-cta button:hover{background:var(--acc-soft)}
+@media (max-width:599px){.cn-cta{grid-template-columns:auto minmax(0,1fr)}.cn-cta button{grid-column:1/-1}}
+.cn-sheet .card{--sheet-w:540px;padding:20px 22px 22px}
+.cn-sheet .card h3{font-size:1.125rem;margin:0 0 4px}
+.cn-sub{margin:0 0 16px;color:var(--soft);font-size:var(--fs-sm);line-height:1.5}
+.cn-seg{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:4px;margin:0 0 12px;border-radius:var(--r-md);background:var(--bg2);border:1px solid var(--line)}
+.cn-seg button{min-height:40px;border:1px solid transparent;border-radius:var(--r-sm);background:transparent;color:var(--soft);font:600 var(--fs-sm)/1 var(--font);cursor:pointer;transition:background var(--dur) var(--ease),color var(--dur) var(--ease)}
+.cn-seg button:hover{color:var(--tx)}
+.cn-seg button[aria-selected="true"]{background:var(--panel);color:var(--tx);border-color:var(--line2);box-shadow:var(--elev-1)}
+.cn-reach{display:flex;gap:10px;align-items:flex-start;margin:0 0 16px;padding:10px 12px;border-radius:var(--r-md);border:1px solid var(--line);background:var(--panel2);font-size:var(--fs-sm);line-height:1.45}
+.cn-reach>.cn-dot{margin-top:6px}
+.cn-reach-b{flex:1;min-width:0}
+.cn-reach b{font-weight:600}
+.cn-reach[data-tone="ok"]{border-color:color-mix(in srgb,var(--ok) 32%,var(--line));background:color-mix(in srgb,var(--ok) 7%,var(--panel))}
+.cn-reach[data-tone="warn"]{border-color:color-mix(in srgb,var(--warn) 40%,var(--line));background:color-mix(in srgb,var(--warn) 8%,var(--panel))}
+.cn-reach[data-tone="bad"]{border-color:color-mix(in srgb,var(--bad) 40%,var(--line));background:color-mix(in srgb,var(--bad) 7%,var(--panel))}
+.cn-fix{margin-top:8px}
+.cn-fix-row{display:flex;gap:6px;align-items:stretch}
+.cn-fix-row code{flex:1;min-width:0;display:block;padding:8px 10px;border-radius:var(--r-sm);background:var(--in);border:1px solid var(--line);color:var(--tx);font:12px/1.5 var(--font-mono);white-space:pre-wrap;overflow-wrap:anywhere}
+.cn-fix-row button,.cn-link-col .rowbtns button,.cn-away .rowbtns button{flex:0 1 auto;min-width:0;min-height:40px;padding:0 14px;font-size:var(--fs-sm)}
+.cn-fix-row button{border:1px solid var(--line2);background:var(--panel);color:var(--tx);border-radius:var(--r-sm);font-weight:600;cursor:pointer}
+.cn-fix-row button:hover{border-color:var(--field-focus)}
+.cn-fix-alt{display:block;margin-top:6px;color:var(--mut);font-size:var(--fs-xs)}
+.cn-fix-alt code{font:11.5px/1.4 var(--font-mono);color:var(--soft);padding:1px 6px;border-radius:var(--r-xs);background:var(--in);border:1px solid var(--line)}
+.cn-main{display:grid;grid-template-columns:auto minmax(0,1fr);gap:20px;align-items:center}
+.cn-main .phone-qr-wrap{box-shadow:var(--elev-1)}
+.cn-empty{display:grid;place-items:center;width:240px;height:240px;padding:20px;border-radius:var(--r-lg);border:1px dashed var(--line2);color:var(--mut);font-size:var(--fs-sm);text-align:center}
+.cn-empty[hidden]{display:none}
+.cn-link-col{display:flex;flex-direction:column;min-width:0}
+.cn-sheet label{display:block;margin:0 0 6px;color:var(--mut);font:650 var(--fs-label)/1.2 var(--font);letter-spacing:.13em;text-transform:uppercase}
+.cn-sheet input{width:100%;min-height:42px;padding:9px 12px;border-radius:var(--r-sm);border:1px solid var(--line);background:var(--in);color:var(--tx);font:var(--fs-sm)/1.4 var(--font-mono);text-overflow:ellipsis}
+.cn-sheet input:focus{outline:none;border-color:var(--field-focus);box-shadow:var(--field-ring)}
+.cn-link-col .rowbtns,.cn-away .rowbtns{margin-top:10px;gap:6px}
+.cn-link-col .rowbtns button.pri{flex:1 1 auto}
+.cn-devices{display:flex;align-items:center;gap:8px;margin:14px 0 0;color:var(--soft);font-size:var(--fs-sm)}
+.cn-away{margin-top:18px;padding-top:16px;border-top:1px solid var(--line)}
+.cn-away[hidden]{display:none}
+.cn-away-h{margin:0 0 2px;color:var(--mut);font:650 var(--fs-label)/1.2 var(--font);letter-spacing:.13em;text-transform:uppercase}
+.cn-own{margin-top:12px}
+.cn-own summary{cursor:pointer;color:var(--soft);font-size:var(--fs-sm);padding:6px 0}
+.cn-away-p{margin:4px 0 0;color:var(--mut);font-size:var(--fs-xs);line-height:1.5}
+.cn-own input{margin-top:6px}
+@media (max-width:599px){.cn-sheet .card{padding:18px 16px calc(18px + env(safe-area-inset-bottom))}.cn-main{grid-template-columns:1fr;justify-items:center;gap:16px}.cn-link-col{width:100%}.cn-main .phone-qr-wrap svg{width:min(216px,56vw);height:min(216px,56vw)}}
+.cn-hint{display:none;position:fixed;z-index:var(--z-popover);width:min(300px,calc(100vw - 24px));flex-direction:column;gap:6px;padding:14px;border-radius:var(--r-md);background:var(--pop-bg);border:1px solid color-mix(in srgb,var(--acc) 40%,var(--line));box-shadow:var(--pop-shadow);font-size:var(--fs-sm);line-height:1.45}
+.cn-hint.on{display:flex;margin-top:6px}
+.cn-hint::before{content:"";position:absolute;top:-6px;left:calc(var(--ax,50%) - 5px);width:10px;height:10px;background:var(--pop-bg);border-left:1px solid color-mix(in srgb,var(--acc) 40%,var(--line));border-top:1px solid color-mix(in srgb,var(--acc) 40%,var(--line));transform:rotate(45deg)}
+.cn-hint b{font-weight:var(--fw-head);font-size:.875rem}
+.cn-hint span{color:var(--soft)}
+.cn-hint .rowbtns{margin-top:6px}
+.cn-hint .rowbtns button{min-height:36px;padding:0 12px;font-size:var(--fs-sm)}
+.more-menu .mm-connect{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:10px;width:100%;margin:0 0 6px;padding:10px 12px;border-radius:var(--r-md);border:1px solid color-mix(in srgb,var(--acc) 32%,var(--line));background:color-mix(in srgb,var(--acc) 9%,var(--panel));color:var(--tx);text-align:left;cursor:pointer}
+.more-menu .mm-connect:hover{background:color-mix(in srgb,var(--acc) 16%,var(--panel))}
+.more-menu .mm-connect .mm-ico{display:grid;place-items:center;width:32px;height:32px;border-radius:var(--r-sm);background:color-mix(in srgb,var(--acc) 18%,var(--panel2));color:var(--acc)}
+.more-menu .mm-connect .mm-lab{display:flex;flex-direction:column;gap:2px;font-weight:650}
+.more-menu .mm-connect small{font-weight:500;color:var(--mut);font-size:var(--fs-xs)}
 .spoiler,.spoiler-path{border-radius:4px;transition:filter .12s ease,background .12s}
 body.privacy .spoiler,body.privacy .spoiler-path,body.privacy .sess .m,body.privacy .sess .item .t,body.privacy .sess .item .body .t,body.privacy .tool .loc,body.privacy .file-chip,body.privacy #hint,body.privacy .lb-sess,body.privacy .tool .inblock,body.privacy .tool .out,body.privacy .tool .tt,body.privacy .att-chip b,body.privacy .collapsible .code-head span:last-child,body.privacy .panel input,body.privacy #wsurl,body.privacy #cwd,body.privacy #log,body.privacy .git-strip,body.privacy .ide-tree-head span,body.privacy #ideStatus{
   filter:blur(9px);user-select:none;-webkit-user-select:none;cursor:default
@@ -785,25 +743,35 @@ body.privacy.touch-ui::after{content:"SPOILER ON · private screen"}
 .perm button{margin:6px 6px 0 0;padding:8px 12px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);color:var(--tx);cursor:pointer}
 .perm button.ok{background:color-mix(in srgb,var(--ok) 35%,var(--panel));border-color:var(--ok)}
 .loading{text-align:center;color:var(--mut);padding:18px;font-size:13px}
-.sheet{display:none;position:fixed;inset:0;z-index:var(--z-modal);background:rgba(0,0,0,.28);backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px);justify-content:flex-start;align-items:flex-start;padding:calc(8px + env(safe-area-inset-top)) 10px 12px;pointer-events:none}
-.sheet.on{display:flex;pointer-events:auto}
-.sheet .card{
-  margin-left:auto;margin-right:0;margin-top:0;
-  width:min(400px,94vw);max-height:min(92dvh,760px);overflow:auto;
-  padding:14px 14px calc(14px + env(safe-area-inset-bottom));
-  border-radius:0 0 0 18px;
-  background:color-mix(in srgb,var(--panel) 72%,transparent);
-  border:1px solid color-mix(in srgb,var(--acc) 28%,var(--line));
-  border-top:none;border-right:none;
-  box-shadow:-12px 16px 40px -12px color-mix(in srgb,var(--bg) 70%,transparent),0 0 0 1px color-mix(in srgb,var(--acc) 12%,transparent),0 0 32px -16px var(--acc-glow);
-  backdrop-filter:blur(20px) saturate(1.25);-webkit-backdrop-filter:blur(20px) saturate(1.25);
-  transform:translate(28px,-24px);opacity:0;pointer-events:auto;
-  transition:transform .28s cubic-bezier(.2,.8,.2,1),opacity .22s ease
-}
-.sheet.on .card{transform:translate(0,0);opacity:1;animation:fly-tr .3s cubic-bezier(.2,.8,.2,1)}
-@keyframes fly-tr{from{transform:translate(48px,-36px);opacity:0}to{transform:translate(0,0);opacity:1}}
+.sheet{display:none;position:fixed;inset:0;z-index:var(--z-modal);background:var(--scrim);justify-content:center;align-items:center;padding:calc(12px + env(safe-area-inset-top)) 12px calc(12px + env(safe-area-inset-bottom))}
+.sheet.on{display:flex}
+.sheet .card{width:min(var(--sheet-w),100%);max-height:min(88dvh,760px);overflow:auto;padding:16px;border-radius:var(--sheet-r);background:var(--pop-bg);border:1px solid var(--pop-line);box-shadow:var(--pop-shadow);backdrop-filter:var(--pop-blur);-webkit-backdrop-filter:var(--pop-blur);animation:gr-in .2s var(--ease-out,ease) both}
+@keyframes gr-in{from{opacity:0;transform:translateY(6px) scale(.985)}to{opacity:1;transform:none}}
+@media (max-width:599px){.sheet{align-items:flex-end;padding:calc(12px + env(safe-area-inset-top)) 0 0}.sheet .card{max-height:90dvh;border-radius:var(--sheet-r) var(--sheet-r) 0 0;border-bottom:0;padding-bottom:calc(16px + env(safe-area-inset-bottom))}}
+.gr-pop{display:none;position:fixed;z-index:var(--z-popover);min-width:200px;max-width:min(320px,94vw);padding:var(--pop-pad);flex-direction:column;gap:2px;border-radius:var(--pop-r);background:var(--pop-bg);border:1px solid var(--pop-line);box-shadow:var(--pop-shadow);backdrop-filter:var(--pop-blur);-webkit-backdrop-filter:var(--pop-blur)}
+.gr-pop.on{display:flex}
+.gr-pop button{display:flex;align-items:center;gap:10px;width:100%;text-align:left;border:0;background:transparent;color:var(--tx);border-radius:var(--r-sm);padding:9px 10px;font:inherit;font-size:13px;font-weight:600;cursor:pointer}
+.gr-pop button:hover,.gr-pop button:focus-visible{background:var(--acc-dim);outline:none}
+.gr-pop button.danger{color:var(--bad)}
+.gr-pop [hidden]{display:none!important}
+.rowbtns button.pri.danger{background:var(--bad)!important;border-color:var(--bad)!important;color:#fff!important}
+.gr-pop .gp-ico{width:18px;flex:none;text-align:center;color:var(--mut)}
+.gr-pop .gp-sep{height:1px;margin:4px 6px;background:var(--line)}
+#grDialog{z-index:var(--z-dialog)}
+#grDialog .card{--sheet-w:400px}
+#grDialog .gd-body{margin:0 0 12px;color:var(--soft);white-space:pre-wrap;word-break:break-word;font-size:.94em;line-height:1.45}
+.inst-steps code{font-family:var(--font-mono);font-size:.92em;background:var(--in);border:1px solid var(--line);border-radius:var(--r-xs);padding:1px 5px}
+#grDialog input,#grDialog textarea{width:100%;margin:0 0 12px}
+#grDialog .rowbtns{justify-content:flex-end}
+.inst-state{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px}
+.inst-state span{font:600 11px/1 var(--font-mono);padding:5px 8px;border-radius:var(--r-pill);border:1px solid var(--line);color:var(--mut)}
+.inst-state span.on{color:var(--ok);border-color:color-mix(in srgb,var(--ok) 45%,var(--line))}
+.inst-opt{display:flex;align-items:center;gap:10px;padding:8px 0;font-size:.94em;cursor:pointer}
+.inst-opt input{width:18px;height:18px;margin:0;accent-color:var(--acc)}
+.inst-opt[aria-disabled="true"]{opacity:.55;cursor:default}
+.inst-steps{margin:10px 0 0;padding-left:18px;color:var(--soft);font-size:.92em;line-height:1.5}
 .sheet .card h3{margin:0 0 8px;font-size:clamp(15px,.4vw + 14px,18px);display:flex;align-items:center;justify-content:space-between;gap:8px}
-.sheet .card .sheet-x{border:1px solid var(--line);background:var(--panel2);color:var(--mut);border-radius:8px;width:32px;height:32px;font-size:16px;cursor:pointer;flex:none}
+.sheet .card .sheet-x{border:1px solid var(--line);background:var(--panel2);color:var(--soft);border-radius:8px;width:32px;height:32px;font-size:16px;cursor:pointer;flex:none}
 .sheet .card .sheet-x:hover{border-color:var(--acc);color:var(--acc)}
 .cmd{border:1px solid var(--line);border-radius:10px;padding:10px;margin:6px 0;background:color-mix(in srgb,var(--in) 80%,transparent);cursor:pointer}
 .cmd:hover{border-color:var(--acc)}
@@ -894,7 +862,6 @@ footer#foot{padding-top:6px!important}
 html[data-mode="light"] .bub.thought{color:#4a3f6b}
 html[data-mode="light"] button.send{color:#fff}
 html[data-variant="grok"][data-mode="light"] button.send{color:#fff}
-html[data-variant="scient"][data-mode="light"] button.send{color:#fff}
 /* Wide / desktop / Electron: side session rail + chat column — independent scrolls */
 @media (min-width:900px){
   body.desktop,body.electron{position:fixed;inset:0;height:100%;max-height:100%;height:100dvh;max-height:100dvh}
@@ -906,7 +873,7 @@ html[data-variant="scient"][data-mode="light"] button.send{color:#fff}
   body.desktop #chatStage .chat-mid,body.electron #chatStage .chat-mid{min-height:0;max-height:100%}
   body.desktop #chatStage main#feed,body.electron #chatStage main#feed{min-height:0;max-height:100%;overflow-y:auto;overflow-x:hidden}
   body.desktop footer,body.electron footer{grid-area:foot;min-height:0}
-  body.desktop #setup.panel.on,body.electron #setup.panel.on{grid-column:1/-1;grid-row:2/-1;max-width:min(720px,90vw);margin:0 auto;width:100%;overflow:auto}
+  body.desktop #setup.panel.on,body.electron #setup.panel.on{grid-column:1/-1;grid-row:1/-1;max-width:min(720px,90vw);margin:0 auto;width:100%;overflow:auto}
   body.desktop .bub,body.electron .bub{max-width:min(85%,820px)}
   body.desktop #btnSess,body.electron #btnSess{display:none!important}
   body.desktop #btnBack,body.electron #btnBack{display:none!important}
@@ -1016,6 +983,8 @@ body.privacy #ideStatus,body.privacy .ide-tree-head span{filter:blur(5px)}
 .perm .always{font-size:11px;color:var(--mut);display:flex;gap:6px;align-items:center;margin-top:6px}
 .search-hit{outline:2px solid var(--acc);outline-offset:2px;border-radius:8px}
 .sess .item .acts button.pin{color:var(--gold)}
+.sess .item .acts .sess-kebab{display:none}
+@media (hover:none),(pointer:coarse){.sess .item .acts .sess-kebab{display:inline-grid;place-items:center;min-width:34px;min-height:34px;font-size:16px!important;padding:0!important}.sess .item .acts button:not(.sess-kebab){display:none!important}html[data-layout] .sess .item .acts{opacity:1!important;pointer-events:auto!important;background:transparent!important;border:0!important;box-shadow:none!important}html[data-layout="braid"] .sess .item .body{padding-right:34px}}
 .ide-touched{border-bottom:1px solid var(--line);margin-bottom:6px;padding-bottom:6px}
 .ide-sec-label{font:700 10px/1 var(--font-mono);color:var(--acc);letter-spacing:.5px;text-transform:uppercase;padding:4px 8px 6px}
 .ide-item.ide-agent{border-left:2px solid var(--acc)}
@@ -1079,7 +1048,7 @@ button.send:active:not(:disabled){transform:scale(.98)}
 .btn-attach:hover{transform:translateY(-1px);background:var(--acc-dim)!important}
 .rowbtns button{border-radius:999px!important;border:1px solid var(--hairline)!important;transition:transform var(--dur) var(--ease),border-color var(--dur) var(--ease),background var(--dur) var(--ease),box-shadow var(--dur) var(--ease),color var(--dur) var(--ease)!important}
 .rowbtns button:hover{transform:translateY(-1px);border-color:color-mix(in srgb,var(--acc) 45%,var(--line))!important;color:var(--acc);box-shadow:var(--elev-1)}
-.rowbtns button.pri:hover{color:#05070a!important;filter:brightness(1.05);box-shadow:0 8px 24px -8px var(--acc-glow)!important}
+.rowbtns button.pri:hover{color:var(--on-acc);background:var(--acc-soft);filter:none;box-shadow:none}
 .rowbtns button:active{transform:scale(.98)}
 .mode-chip,.theme-chip,.persona-chip,.pin-chip,.btn-rail,.ide-toolbar button,.cockpit-tools button,.diff-acts button,.plan-actions button,.sess .item .acts button{transition:transform var(--dur) var(--ease),border-color var(--dur) var(--ease),background var(--dur) var(--ease),color var(--dur) var(--ease),box-shadow var(--dur) var(--ease)!important}
 .mode-chip:hover,.theme-chip:hover,.persona-chip:hover,.pin-chip:hover,.btn-rail:hover,.ide-toolbar button:hover,.cockpit-tools button:hover{transform:translateY(-1px);border-color:color-mix(in srgb,var(--acc) 50%,var(--line))!important;color:var(--acc)!important;box-shadow:0 0 0 1px var(--acc-dim)}
@@ -1093,9 +1062,7 @@ button.send:active:not(:disabled){transform:scale(.98)}
 .badge.live{box-shadow:0 0 8px -2px color-mix(in srgb,var(--ok) 50%,transparent)}
 .cmd{transition:transform var(--dur) var(--ease),border-color var(--dur) var(--ease),background var(--dur) var(--ease),box-shadow var(--dur) var(--ease)!important;border:1px solid var(--hairline)!important}
 .cmd:hover{transform:translateX(3px);border-color:var(--acc)!important;box-shadow:var(--elev-1);background:var(--acc-dim)!important}
-.sheet{background:rgba(0,0,0,.4)!important;backdrop-filter:blur(6px) saturate(1.1)!important;-webkit-backdrop-filter:blur(6px) saturate(1.1)!important}
-.sheet .card{border:1px solid color-mix(in srgb,var(--acc) 18%,var(--hairline))!important;background:color-mix(in srgb,var(--panel) 78%,transparent)!important;box-shadow:var(--elev-3),0 0 40px -20px var(--acc-glow)!important;transition:transform .32s var(--ease-out),opacity .24s ease!important}
-.sheet .card .sheet-x{border-radius:999px!important;transition:transform var(--dur) var(--ease),border-color var(--dur) var(--ease),color var(--dur) var(--ease)!important}
+.sheet .card .sheet-x{border-radius:var(--r-pill)!important;transition:transform var(--dur) var(--ease),border-color var(--dur) var(--ease),color var(--dur) var(--ease)!important}
 .sheet .card .sheet-x:hover{transform:rotate(90deg) scale(1.05);border-color:var(--acc)!important;color:var(--acc)!important}
 .jump{transition:transform var(--dur) var(--ease),opacity var(--dur) var(--ease),background var(--dur) var(--ease),box-shadow var(--dur) var(--ease)!important;backdrop-filter:blur(8px)}
 .jump:hover{transform:translateY(-2px) scale(1.03);box-shadow:0 12px 32px -8px var(--acc-glow)!important}
@@ -1139,7 +1106,7 @@ html[data-variant="grok"] .diff-del{background:rgba(255,255,255,.03)!important;c
 html[data-variant="grok"] .git-clean{color:var(--soft)!important}
 html[data-variant="grok"] .recap{color:var(--soft)!important;border-color:var(--line)!important;background:var(--panel)!important;box-shadow:none!important}
 .bub .md-p,.bub .md-li,.bub span{color:inherit}
-.bub code.ic{color:var(--acc-soft)!important;background:var(--in)!important;border-color:var(--line)!important}
+.bub code.ic{color:var(--acc-ink)!important;background:var(--in)!important;border-color:var(--line)!important}
 .tool{color:var(--acc-soft)}
 .tool .tool-body .out,.tool .tool-body .inblock{color:var(--soft)}
 .collapsible .code-body{color:var(--soft)}
@@ -1182,7 +1149,7 @@ body.loading-chat #jumpBottom{display:none!important}
 #linkBanner.on{display:flex}
 #linkBanner .lb-msg{flex:1;min-width:140px}
 #linkBanner button{border-radius:10px;padding:8px 12px;font-weight:700;border:1px solid var(--line);background:var(--panel2);color:var(--tx);cursor:pointer}
-#linkBanner button.pri{background:var(--acc);color:#05070a;border-color:transparent}
+#linkBanner button.pri{background:var(--acc);color:var(--on-acc);border-color:transparent}
 .btn-term-hot{border-color:var(--acc)!important;color:var(--acc)!important;box-shadow:0 0 0 1px var(--acc-dim)}
 @media (prefers-reduced-motion:reduce){
   .horizon-disk,.horizon-disk::after,.horizon-core,.horizon-ring{animation:none!important}
@@ -1236,46 +1203,49 @@ body.touring header,body.touring footer,body.touring main,body.touring .panel,bo
 body.voice-xr #feed .row .bub,body.voice-xr #feed .tool,body.voice-xr #feed .thought-row{font-size:1.05em}
 body.voice-xr footer .composer textarea{font-size:16px}
 body.voice-go #voiceHud,body.voice-xr #voiceHud{bottom:calc(var(--stack-h,120px) + 16px)}
-.pwa-banner{display:none;position:sticky;top:0;z-index:80;align-items:center;gap:8px;padding:8px 10px 8px 12px;background:color-mix(in srgb,var(--panel) 92%,transparent);border-bottom:1px solid var(--line);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+.pwa-banner{display:none;position:sticky;top:0;z-index:var(--z-banner);align-items:center;flex-wrap:wrap;gap:8px;padding:calc(8px + env(safe-area-inset-top)) max(10px,env(safe-area-inset-right)) 8px max(12px,env(safe-area-inset-left));background:color-mix(in srgb,var(--panel) 92%,transparent);border-bottom:1px solid var(--line);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
 .pwa-banner.on{display:flex}
 .pwa-banner-t{flex:1;min-width:0;font-size:12px;font-weight:650;line-height:1.3}
-.pwa-banner button{flex:none;border:1px solid var(--line);background:var(--panel2);color:var(--tx);border-radius:8px;padding:6px 10px;font:700 12px/1 system-ui;cursor:pointer}
-.pwa-banner #btnPwaInstall{background:var(--acc);color:var(--on-acc,#0a0a0a);border-color:var(--acc)}
-.pwa-banner #btnPwaDismiss{width:32px;padding:6px 0}
-.pwa-sheet{position:fixed;inset:0;z-index:90;background:rgba(0,0,0,.55);display:flex;align-items:flex-end;justify-content:center;padding:16px}
-.pwa-sheet[hidden]{display:none!important}
-.pwa-sheet .pwa-card{width:min(420px,100%);background:var(--panel);color:var(--tx);border:1px solid var(--line);border-radius:16px 16px 12px 12px;padding:16px 16px 18px;box-shadow:0 16px 40px rgba(0,0,0,.4)}
-.pwa-sheet h3{margin:0 0 8px;font-size:16px}
-.pwa-sheet ol{margin:0 0 12px;padding-left:18px;color:var(--mut);font-size:.92em;line-height:1.45}
-.pwa-sheet .rowbtns{display:flex;gap:8px;flex-wrap:wrap}
-html.pwa-standalone .pwa-banner,body.desktop .pwa-banner,body.electron .pwa-banner{display:none!important}
+.pwa-banner button{flex:none;border:1px solid var(--line);background:var(--panel2);color:var(--tx);border-radius:var(--r-xs);padding:6px 10px;font:700 12px/1 var(--font);cursor:pointer}
+.pwa-banner .pb-go{background:var(--acc);color:var(--on-acc);border-color:var(--acc)}
+.pwa-banner .pb-x{width:32px;padding:6px 0}
+.sheet ol.steps{margin:0 0 12px;padding-left:18px;color:var(--mut);font-size:.92em;line-height:1.45}
+html.pwa-standalone #pwaBanner,body.desktop #pwaBanner,body.electron #pwaBanner{display:none!important}
+#installBanner{position:fixed;top:auto;left:auto;right:16px;bottom:calc(16px + env(safe-area-inset-bottom));width:min(560px,calc(100vw - 32px));padding:10px 10px 10px 14px;border:1px solid var(--pop-line);border-radius:var(--pop-r);background:var(--pop-bg);box-shadow:var(--pop-shadow);z-index:var(--z-edge-chrome)}
+#installBanner .pwa-banner-t{min-width:200px}
 @media (max-width:720px){
 #voiceHud{bottom:calc(var(--stack-h,130px) + 8px)}
 #voiceHud.xr .vh-line{font-size:18px}
 }
 </style>
-<link rel="stylesheet" href="/static/grok-archive-skin.css?v=19"/>
-<link rel="stylesheet" href="/static/vendor/katex/katex.min.css?v=2026-09-23-audit"/>
-<script defer src="/static/vendor/katex/katex.min.js?v=2026-09-23-audit"></script>
-<script src="/static/md.js?v=4-2026-09-23-audit"></script>
-<script src="/static/presets.js?v=2026-09-23-audit"></script>
-<script src="/static/chat-runtime.js?v=2026-09-23-audit"></script>
-<script src="/static/work-dock.js?v=2026-09-23-audit" defer></script>
-<script src="/static/voice-mode.js?v=2026-09-23-audit" defer></script>
-<script src="/static/cockpit-features.js?v=rx8-2026-09-23-audit" defer></script>
-<script src="/static/ide.js?v=2026-09-23-audit" defer></script>
+<link rel="stylesheet" href="/static/grok-archive-skin.css?v=20"/>
+<link rel="stylesheet" href="/static/vendor/katex/katex.min.css?v=2026-10-06-overlay"/>
+<script defer src="/static/vendor/katex/katex.min.js?v=2026-10-06-overlay"></script>
+<script src="/static/md.js?v=4-2026-10-06-overlay"></script>
+<script src="/static/presets.js?v=2026-10-06-overlay"></script>
+<script src="/static/chat-runtime.js?v=2026-10-06-overlay"></script>
+<script src="/static/work-dock.js?v=2026-10-06-overlay" defer></script>
+<script src="/static/voice-mode.js?v=2026-10-06-overlay" defer></script>
+<script src="/static/cockpit-features.js?v=rx8-2026-10-06-overlay" defer></script>
+<script src="/static/ide.js?v=2026-10-06-overlay" defer></script>
 </head>
 <body>
 <div id="app">
 <div id="pwaBanner" class="pwa-banner" hidden>
   <span class="pwa-banner-t" id="pwaBannerT">Add Grok Remote to your Home Screen</span>
-  <button type="button" id="btnPwaInstall">Install</button>
-  <button type="button" id="btnPwaDismiss" aria-label="Dismiss">×</button>
+  <button type="button" class="pb-go" id="btnPwaInstall">Install</button>
+  <button type="button" class="pb-x" id="btnPwaDismiss" aria-label="Dismiss">×</button>
 </div>
-<div id="pwaSheet" class="pwa-sheet" hidden>
-  <div class="pwa-card" role="dialog" aria-labelledby="pwaSheetTitle">
+<div id="installBanner" class="pwa-banner" role="region" aria-label="Install Grok Remote" hidden>
+  <span class="pwa-banner-t">Install Grok Remote? Add it to your app menu and pin it to the taskbar.</span>
+  <button type="button" class="pb-go" id="btnInstBannerGo">Install</button>
+  <button type="button" id="btnInstBannerLater">Not now</button>
+  <button type="button" id="btnInstBannerNever">Don't ask again</button>
+</div>
+<div id="pwaSheet" class="sheet">
+  <div class="card" role="dialog" aria-labelledby="pwaSheetTitle">
     <h3 id="pwaSheetTitle">Install Grok Remote</h3>
-    <ol id="pwaSheetSteps">
+    <ol class="steps" id="pwaSheetSteps">
       <li>Open this page in Safari or Chrome on your phone.</li>
       <li>iPhone: Share → Add to Home Screen.</li>
       <li>Android: Chrome menu → Install app.</li>
@@ -1285,11 +1255,58 @@ html.pwa-standalone .pwa-banner,body.desktop .pwa-banner,body.electron .pwa-bann
     </div>
   </div>
 </div>
+<div id="connectSheet" class="sheet cn-sheet">
+  <div class="card" role="dialog" aria-labelledby="cnTitle">
+    <h3><span id="cnTitle">Connect your phone</span> <button type="button" class="sheet-x" id="closeConnect" aria-label="Close">×</button></h3>
+    <p class="cn-sub" id="cnSub">Point your phone's camera at the code. Grok Remote opens signed in.</p>
+    <div class="cn-seg" role="tablist" aria-label="Where is the phone?">
+      <button type="button" role="tab" id="cnTabWifi" data-tab="wifi" aria-selected="true">Same Wi‑Fi</button>
+      <button type="button" role="tab" id="cnTabAway" data-tab="away" aria-selected="false">Away from home</button>
+    </div>
+    <div class="cn-reach" id="cnReach" data-tone="mut" role="status" aria-live="polite">
+      <i class="cn-dot" aria-hidden="true"></i>
+      <div class="cn-reach-b"><b id="cnReachT">Checking this PC…</b>
+        <div class="cn-fix" id="cnFix" hidden><div class="cn-fix-row"><code id="cnFixCmd"></code><button type="button" id="cnFixCopy">Copy</button></div><span class="cn-fix-alt">or run <code>grok-remote firewall --open</code></span></div>
+      </div>
+    </div>
+    <div class="cn-main">
+      <div id="phoneQrWrap" class="phone-qr-wrap cn-qr" hidden><div id="phoneQr" class="phone-qr"></div></div>
+      <div class="cn-empty" id="cnEmpty" hidden></div>
+      <div class="cn-link-col">
+        <label for="phoneUrl" id="cnLinkLab">Wi‑Fi link</label>
+        <input id="phoneUrl" readonly placeholder="loading…" spellcheck="false"/>
+        <div class="rowbtns cn-acts">
+          <button class="pri" type="button" id="btnCopyPhone">Copy link</button>
+          <button type="button" id="btnSharePhone" hidden>Share</button>
+          <button type="button" id="btnOpenPhonePc">Open on this PC</button>
+        </div>
+        <p class="cn-devices" id="cnDevices" aria-live="polite"><i class="cn-dot" aria-hidden="true"></i><span>Checking devices…</span></p>
+      </div>
+    </div>
+    <div id="awayHome" class="cn-away" hidden>
+      <div class="cn-away-h">Away access from this PC</div>
+      <p class="cn-away-p">A Cloudflare quick tunnel gives a free HTTPS link that works anywhere (new address each start). Tailscale or NordVPN Meshnet keep it private to your devices.</p>
+      <div class="rowbtns">
+        <button type="button" id="btnCfTunnel">Start Cloudflare tunnel</button>
+        <button type="button" id="btnEnableHttps">Enable Tailscale HTTPS</button>
+      </div>
+      <details class="cn-own"><summary>Use your own HTTPS hostname</summary>
+        <input id="publicUrl" placeholder="https://your-hostname.example" autocomplete="off" spellcheck="false"/>
+        <div class="rowbtns"><button class="pri" type="button" id="btnSavePublic">Save hostname</button></div>
+      </details>
+    </div>
+  </div>
+</div>
+<div class="cn-hint" id="cnHint" role="dialog" aria-label="Connect your phone" hidden>
+  <b>Use Grok Remote on your phone</b>
+  <span>Scan a QR code here to pair it. Works on Wi‑Fi or away from home.</span>
+  <div class="rowbtns"><button type="button" class="pri" id="cnHintGo" data-connect>Show me</button><button type="button" id="cnHintX">Later</button></div>
+</div>
 <header class="pulse-frame">
   <button class="hdrbtn" id="btnBack" style="display:none" title="Sessions">‹</button>
   <button class="hdrbtn" id="btnRail" style="display:none" title="Toggle sessions sidebar">☰</button>
   <button class="hdrbtn" id="btnRoom" title="Agent room (beta) — short messages between agents">◇</button>
-  <div class="logo" id="logo"><img class="mark" src="/static/img/rikku-bench.jpg" width="56" height="32" alt="Rikku at the bench"><span class="word"><span class="brand">GROK BUILD</span>Grok <b>Remote</b></span></div>
+  <div class="logo" id="logo"><img class="mark" src="/static/icon-192.png" width="32" height="32" alt=""><span class="word"><span class="brand">GROK BUILD</span>Grok <b>Remote</b></span></div>
   <div class="sub" id="status" hidden aria-hidden="true">offline</div>
 
   <div class="hdr-right">
@@ -1304,18 +1321,19 @@ html.pwa-standalone .pwa-banner,body.desktop .pwa-banner,body.electron .pwa-bann
         </div>
         <div class="mm-body">
         <div class="mm-layer on" data-layer="home">
+          <button type="button" class="mm-connect" id="btnConnectDeck" data-connect><span class="mm-ico" aria-hidden="true"><i class="cn-ico"></i></span><span class="mm-lab">Connect your phone<small>QR code · Wi‑Fi or away</small></span><span class="mm-k">▸</span></button>
           <button type="button" class="mm-nav" data-goto="chat"><span class="mm-ico" aria-hidden="true">✎</span><span class="mm-lab">Chat</span><span class="mm-k">▸</span></button>
           <button type="button" class="mm-nav" data-goto="feed"><span class="mm-ico" aria-hidden="true">☰</span><span class="mm-lab">Feed</span><span class="mm-k">▸</span></button>
           <button type="button" class="mm-nav" data-goto="look"><span class="mm-ico" aria-hidden="true">▣</span><span class="mm-lab">Appearance</span><span class="mm-k">▸</span></button>
-          <button type="button" class="mm-nav" data-goto="apps"><span class="mm-ico" aria-hidden="true">◇</span><span class="mm-lab">Apps</span><span class="mm-k">▸</span></button>
-          <button type="button" class="mm-nav" data-goto="link"><span class="mm-ico" aria-hidden="true">◈</span><span class="mm-lab">Connection</span><span class="mm-k">▸</span></button>
+          <button type="button" class="mm-nav" data-goto="apps"><span class="mm-ico" aria-hidden="true">⊞</span><span class="mm-lab">Apps</span><span class="mm-k">▸</span></button>
+          <button type="button" class="mm-nav" data-goto="link"><span class="mm-ico" aria-hidden="true">⇄</span><span class="mm-lab">Connection</span><span class="mm-k">▸</span></button>
         </div>
         <div class="mm-layer" data-layer="chat">
           <button type="button" class="mm-back" data-goto="home">‹ Chat</button>
           <button type="button" id="btnRenameChat" role="menuitem"><span class="mm-ico" aria-hidden="true">✎</span><span class="mm-lab">Rename chat</span></button>
           <button type="button" id="btnSkills" role="menuitem"><span class="mm-ico" aria-hidden="true">✦</span><span class="mm-lab">Skills</span></button>
           <button type="button" id="btnMsgModeMenu" role="menuitem"><span class="mm-ico" aria-hidden="true">⇉</span><span class="mm-lab">Delivery</span><span class="mm-k">queue</span></button>
-          <button type="button" class="mm-tog" id="btnPermCycle" role="menuitem" title="Tap to cycle Always → Ask → Plan"><span class="mm-ico" aria-hidden="true">◈</span><span class="mm-lab">Permission</span><span class="mm-k">always</span></button>
+          <button type="button" class="mm-tog" id="btnPermCycle" role="menuitem" title="Tap to cycle Always → Ask → Plan"><span class="mm-ico" aria-hidden="true">⚑</span><span class="mm-lab">Permission</span><span class="mm-k">always</span></button>
           <button type="button" class="mm-tog" id="btnEffortCycle" role="menuitem" title="Tap to cycle reasoning effort"><span class="mm-ico" aria-hidden="true">⚡</span><span class="mm-lab">Effort</span><span class="mm-k">low</span></button>
           <button type="button" id="btnActor" role="menuitem" title="Grok Actor · local /actor, no agent turn"><span class="mm-ico" aria-hidden="true">🎭</span><span class="mm-lab">Actor</span><span class="mm-k">voice</span></button>
           <div id="moreToolsHost"></div>
@@ -1345,24 +1363,20 @@ html.pwa-standalone .pwa-banner,body.desktop .pwa-banner,body.electron .pwa-bann
         </div>
         <div class="mm-layer" data-layer="apps">
           <button type="button" class="mm-back" data-goto="home">‹ Apps</button>
-          <button type="button" id="btnWork" role="menuitem"><span class="mm-ico" aria-hidden="true">☰</span><span class="mm-lab">Work</span></button>
+          <button type="button" id="btnWork" role="menuitem"><span class="mm-ico" aria-hidden="true">▤</span><span class="mm-lab">Work</span></button>
           <button type="button" id="btnIde" role="menuitem"><span class="mm-ico" aria-hidden="true">&lt;/&gt;</span><span class="mm-lab">IDE</span></button>
           <button type="button" id="btnPersona" role="menuitem"><span class="mm-ico" aria-hidden="true">◎</span><span class="mm-lab">Persona</span></button>
           <button type="button" id="btnWatch" role="menuitem"><span class="mm-ico" aria-hidden="true">⌚</span><span class="mm-lab">Watch</span></button>
-          <button type="button" id="btnWatchPin" role="menuitem" title="6-digit code so the watch never types the key"><span class="mm-ico" aria-hidden="true">⌚</span><span class="mm-lab">Watch PIN</span></button>
-          <button type="button" class="mm-tog" id="togCompanion" role="menuitem" data-ux="companion" title="Hologram companion on /xr — off until you turn it on"><span class="mm-ico" aria-hidden="true">◈</span><span class="mm-lab">Companion</span><span class="mm-k">–</span></button>
-          <button type="button" id="btnOpenCompanion" role="menuitem" title="Open hologram companion" hidden><span class="mm-ico" aria-hidden="true">◈</span><span class="mm-lab">Open companion</span></button>
+          <button type="button" id="btnWatchPin" role="menuitem" title="6-digit code so the watch never types the key"><span class="mm-ico" aria-hidden="true">#</span><span class="mm-lab">Watch PIN</span></button>
+          <button type="button" class="mm-tog" id="togCompanion" role="menuitem" data-ux="companion" title="Hologram companion on /xr — off until you turn it on"><span class="mm-ico" aria-hidden="true">✧</span><span class="mm-lab">Companion</span><span class="mm-k">–</span></button>
+          <button type="button" id="btnOpenCompanion" role="menuitem" title="Open hologram companion" hidden><span class="mm-ico" aria-hidden="true">↗</span><span class="mm-lab">Open companion</span></button>
+          <button type="button" id="btnInstallApp" role="menuitem" title="Add Grok Remote to the app menu, taskbar or Home Screen"><span class="mm-ico" aria-hidden="true">⤓</span><span class="mm-lab">Install app…</span></button>
         </div>
         <div class="mm-layer" data-layer="link">
           <button type="button" class="mm-back" data-goto="home">‹ Connection</button>
-          <button type="button" id="btnInstallApp" role="menuitem" title="Add Grok Remote to the phone Home Screen"><span class="mm-ico" aria-hidden="true">▢</span><span class="mm-lab">Install app</span></button>
-          <button type="button" id="btnAwayHome" role="menuitem" title="Cloudflare / open 443, or Tailscale"><span class="mm-ico" aria-hidden="true">◈</span><span class="mm-lab">Away from home</span></button>
-          <button type="button" id="btnPairPhoneMore" role="menuitem" title="Pair a phone — QR on this PC"><span class="mm-ico" aria-hidden="true">▦</span><span class="mm-lab">Pair phone</span></button>
-          <button type="button" id="btnHealthMore" role="menuitem" title="Check the UI hub and agent connection"><span class="mm-ico" aria-hidden="true">◇</span><span class="mm-lab">Health check</span></button>
-          <button type="button" id="btnStartRemoteMore" role="menuitem" title="Start / restart agent serve"><span class="mm-ico" aria-hidden="true">►</span><span class="mm-lab">Start server</span></button>
-          <button type="button" id="btnStopRemoteMore" role="menuitem" title="Stop remote UI + agent serve"><span class="mm-ico" aria-hidden="true">■</span><span class="mm-lab">Stop remote</span></button>
+          <button type="button" id="btnLinkControls" role="menuitem" title="Start, stop, pair a phone, health check"><span class="mm-ico" aria-hidden="true">⏻</span><span class="mm-lab">Server &amp; pairing…</span><span class="mm-k">▸</span></button>
+          <button type="button" id="btnAwayHome" role="menuitem" title="Cloudflare tunnel, Tailscale or Meshnet"><span class="mm-ico" aria-hidden="true">⌂</span><span class="mm-lab">Away from home</span><span class="mm-k">▸</span></button>
           <button type="button" id="btnTour" role="menuitem"><span class="mm-ico" aria-hidden="true">?</span><span class="mm-lab">Feature tour</span></button>
-          <button type="button" id="btnPin" role="menuitem"><span class="mm-ico" aria-hidden="true">★</span><span class="mm-lab">Pin shortcuts</span></button>
         </div>
         </div>
         <div class="mm-foot" id="moreMenuFoot"></div>
@@ -1382,62 +1396,25 @@ html.pwa-standalone .pwa-banner,body.desktop .pwa-banner,body.electron .pwa-bann
       <div class="orbit-menu" id="orbitMenu" role="menu" hidden>
         <div class="om-meta" id="orbitMenuMeta">link · standby</div>
         <button type="button" id="btnStartRemote" role="menuitem" title="Start / restart agent serve on :2419">Start server</button>
-        <button type="button" class="danger" id="btnStopRemote" role="menuitem" title="Stop Grok Remote UI + agent serve (keeps desktop TUI)">Stop remote</button>
-        <button type="button" id="btnPairPhone" role="menuitem" title="Pair a phone — QR codes on this PC">Pair phone</button>
+        <button type="button" id="btnPairPhone" role="menuitem" title="Connect your phone — QR code, Wi‑Fi or away">Connect phone…</button>
         <button type="button" id="btnOrbitHealth" role="menuitem">Health check…</button>
+        <button type="button" class="danger" id="btnStopRemote" role="menuitem" title="Stop Grok Remote UI + agent serve (keeps desktop TUI)">Stop remote…</button>
       </div>
     </div>
   </div>
 </header>
 
 <div class="panel on pulse-frame" id="setup">
-  <div id="easyConnect" style="margin:0 0 14px;padding:12px 14px;border:1px solid var(--line);border-radius:14px;background:var(--panel2)">
-    <div style="font-weight:700;margin:0 0 6px">Phone setup (3 steps)</div>
-    <ol style="margin:0 0 10px;padding-left:18px;color:var(--mut);font-size:.92em;line-height:1.45">
-      <li>Same Wi‑Fi as this PC, or the Internet / Cloudflare link when away</li>
-      <li>Copy the link (or scan QR)</li>
-      <li>Open it, then Add to Home Screen</li>
-    </ol>
-    <label>Phone link</label>
-    <input id="phoneUrl" readonly placeholder="loading…" style="font-size:13px"/>
-    <div class="rowbtns" style="margin-top:8px">
-      <button class="pri" type="button" id="btnCopyPhone">Copy link</button>
-      <button type="button" id="btnOpenPhonePc">Open on this PC</button>
-      <button type="button" id="btnRefreshPhone">Refresh</button>
-    </div>
-    <div style="display:flex;gap:12px;align-items:flex-start;margin-top:10px;flex-wrap:wrap">
-      <div id="phoneQrWrap" class="phone-qr-wrap" hidden><img id="phoneQr" alt="QR code for phone" width="220" height="220"/></div>
-      <p class="hint" style="margin:0;flex:1;min-width:160px">Bookmark or Add to Home Screen. If it 401s, re-copy after Start Server — the key rotates when the stack restarts. Away from home: public HTTPS (Cloudflare / open 443) or Tailscale.</p>
-    </div>
-    <div id="awayHome" hidden style="margin-top:12px;padding-top:10px;border-top:1px solid var(--line)">
-      <div style="font-weight:700;margin:0 0 4px">Away from home</div>
-      <p class="hint" style="margin:0 0 8px">Same pattern as Amni-Chat: HTTPS in front of this PC (Cloudflare tunnel or forwarded 443). Tailscale still works if you want a private tailnet instead of a public hostname.</p>
-      <label>Public HTTPS hostname</label>
-      <input id="publicUrl" placeholder="https://your-hostname.example" autocomplete="off" style="font-size:13px"/>
-      <div class="rowbtns" style="margin-top:8px">
-        <button class="pri" type="button" id="btnSavePublic">Save public URL</button>
-        <button type="button" id="btnCfTunnel">Start Cloudflare tunnel</button>
-      </div>
-      <label style="margin-top:10px">Away link</label>
-      <input id="awayUrl" readonly placeholder="set a hostname or start a tunnel" style="font-size:13px"/>
-      <div class="rowbtns" style="margin-top:8px">
-        <button class="pri" type="button" id="btnCopyAway">Copy away link</button>
-        <button type="button" id="btnEnableHttps">Enable Tailscale HTTPS</button>
-      </div>
-    </div>
+  <div id="easyConnect" class="cn-cta">
+    <span class="cn-cta-ico" aria-hidden="true"><i class="cn-ico"></i></span>
+    <span class="cn-cta-t"><b>Connect your phone</b><span>Scan a QR code to use Grok Remote from your phone, on Wi‑Fi or away from home.</span></span>
+    <button type="button" class="pri" id="btnConnectSetup" data-connect>Connect phone</button>
   </div>
   <p style="margin:0 0 8px">Live controller for Grok Build on this PC.</p>
   <details id="setupAdvanced" style="margin:0 0 8px">
-    <summary style="cursor:pointer;color:var(--mut);font-size:.92em">Advanced (theme, websocket, cwd)</summary>
+    <summary style="cursor:pointer;color:var(--mut);font-size:.92em">Advanced (websocket, cwd, theme)</summary>
     <div style="margin-top:10px">
-  <label>Layout</label>
-  <div class="mode-row" id="layoutChips"></div>
-  <label>Mode</label>
-  <div class="mode-row" id="modeChips"></div>
-  <label>Theme</label>
-  <div class="themes" id="themeChips"></div>
-  <label>UI / UX</label>
-  <div class="mode-row" id="uxChips"></div>
+  <div class="rowbtns"><button type="button" id="btnThemeSetup">Theme, layout &amp; fonts…</button></div>
   <label>WebSocket</label>
   <input id="wsurl" placeholder="ws://192.168.x.x:2421/ws"/>
   <label>Default cwd for new sessions / tasks</label>
@@ -1446,12 +1423,10 @@ html.pwa-standalone .pwa-banner,body.desktop .pwa-banner,body.electron .pwa-bann
   </details>
   <div class="rowbtns">
     <button class="pri" id="connect">Connect</button>
-    <button class="pri" id="btnStartSetup" title="Start/restart agent serve (:2419)">Start Server</button>
+    <button type="button" id="btnLinkSetup" title="Start, stop, pair a phone, health check" aria-haspopup="menu" aria-expanded="false" aria-controls="orbitMenu">Server &amp; pairing…</button>
     <button id="reloadCfg">Config</button>
-    <button id="pingHealth">Health</button>
-    <button id="btnPinSetup" title="Desktop + Start Menu shortcuts">Pin shortcuts</button>
+    <button type="button" id="btnPinSetup" title="App menu, taskbar pin, start at login">Install app…</button>
     <button id="btnTourSetup" title="Interactive feature tour">Feature tour</button>
-    <button id="btnStopSetup" class="danger" title="Stop remote stack">Stop Remote</button>
   </div>
   <p class="hint">Easiest: double‑click Desktop <b>Grok Remote</b> (opens browser). Phone uses the link above.</p>
   <div id="log"></div>
@@ -1462,6 +1437,7 @@ html.pwa-standalone .pwa-banner,body.desktop .pwa-banner,body.electron .pwa-bann
     <div class="rail-tools">
       <p><b>Sessions</b></p>
       <div class="rail-head-acts">
+        <button type="button" class="btn-rail btn-connect" id="btnConnectRail" data-connect title="Connect your phone" aria-label="Connect your phone"><i class="cn-ico"></i></button>
         <button type="button" class="btn-rail btn-sess-filter" id="btnSessFilter" title="Search &amp; filter" aria-haspopup="true" aria-expanded="false" aria-controls="sessFilterPop">⌕</button>
         <button type="button" class="btn-rail" id="btnCollapseRail" title="Collapse sidebar">«</button>
       </div>
@@ -1502,6 +1478,7 @@ html.pwa-standalone .pwa-banner,body.desktop .pwa-banner,body.electron .pwa-bann
   <button class="hdrbtn" id="btnChatSess" style="display:none" title="Show conversations">☰</button>
   <button type="button" class="chat-title" id="chatTitle" title="Rename chat">Chat</button>
   <input type="search" id="chatTopSearch" placeholder="Search" autocomplete="off" enterkeyhint="search"/>
+  <button type="button" class="cn-btn" id="btnConnectTop" data-connect title="Connect your phone"><i class="cn-dot" aria-hidden="true"></i><i class="cn-ico" aria-hidden="true"></i><span class="cn-lab">Connect phone</span></button>
 </div>
 <div class="chat-mid" id="chatMid">
 <main id="feed" class="pulse-frame"></main>
@@ -1533,8 +1510,8 @@ html.pwa-standalone .pwa-banner,body.desktop .pwa-banner,body.electron .pwa-bann
   <div class="attach-bar" id="attachBar"></div>
   <div class="composer-tools" id="composerTools" aria-hidden="true"></div>
   <div class="composer">
-    <input type="file" id="filePick" multiple accept="image/*,video/*,.gif,.webp,.mp4,.webm,.mov,.m4v" style="display:none"/>
-    <button type="button" class="btn-plus" id="btnPlus" title="Attach files">+</button>
+    <input type="file" id="filePick" multiple accept="*/*" style="display:none"/>
+    <button type="button" class="btn-plus" id="btnPlus" title="Attach" aria-haspopup="menu" aria-expanded="false" aria-controls="attachMenu">+</button>
     <button type="button" class="btn-voice-comp" id="btnComposerVoice" title="Voice / Go mode">Mic</button>
     <button type="button" class="btn-xr-comp" id="btnComposerXr" title="XR / AR (auto-detect)">XR</button>
     <textarea id="box" rows="1" placeholder="Message"></textarea>
@@ -1704,6 +1681,38 @@ html.pwa-standalone .pwa-banner,body.desktop .pwa-banner,body.electron .pwa-bann
     </div>
   </div>
 </div>
+<div class="sheet" id="installSheet">
+  <div class="card" role="dialog" aria-labelledby="installTitle">
+    <h3 id="installTitle">Install Grok Remote <button type="button" class="sheet-x" data-close aria-label="Close">×</button></h3>
+    <div class="inst-state" id="instState"></div>
+    <label class="inst-opt" aria-disabled="true"><input type="checkbox" id="instMenu" checked disabled/>Add to app menu</label>
+    <label class="inst-opt" id="instPinRow"><input type="checkbox" id="instPin" checked/>Pin to taskbar / dock</label>
+    <p class="hint" id="instPinHint" hidden></p>
+    <label class="inst-opt"><input type="checkbox" id="instAuto"/>Start at login</label>
+    <div class="rowbtns"><button type="button" class="pri" id="instGo">Install</button></div>
+    <ol class="inst-steps" id="instSteps" hidden></ol>
+    <p class="hint" id="instHint" hidden></p>
+  </div>
+</div>
+<div class="sheet" id="grDialog">
+  <div class="card" role="alertdialog" aria-labelledby="grDialogT" aria-describedby="grDialogB">
+    <h3 id="grDialogT">Grok Remote</h3>
+    <p class="gd-body" id="grDialogB"></p>
+    <input id="grDialogIn" autocomplete="off" hidden/>
+    <textarea class="field" id="grDialogTa" rows="8" hidden></textarea>
+    <div class="rowbtns"><button type="button" id="grDialogNo">Cancel</button><button type="button" class="pri" id="grDialogOk">OK</button></div>
+  </div>
+</div>
+<div class="gr-pop" id="attachMenu" role="menu" aria-label="Attach" hidden>
+  <button type="button" role="menuitem" data-att="files"><span class="gp-ico" aria-hidden="true">⎘</span>Files…</button>
+  <button type="button" role="menuitem" data-att="media"><span class="gp-ico" aria-hidden="true">▣</span>Photo or video…</button>
+  <button type="button" role="menuitem" data-att="path"><span class="gp-ico" aria-hidden="true">@</span>Workspace file…</button>
+</div>
+<div class="gr-pop" id="rowMenu" role="menu" aria-label="Chat actions" hidden>
+  <button type="button" role="menuitem" data-row="rename"><span class="gp-ico" aria-hidden="true">✎</span>Rename</button>
+  <button type="button" role="menuitem" data-row="pin"><span class="gp-ico" aria-hidden="true">★</span>Pin to bar</button>
+  <button type="button" role="menuitem" data-row="arch"><span class="gp-ico" aria-hidden="true">▾</span>Archive</button>
+</div>
 </div><!-- #app -->
 <div id="tourOverlay" aria-live="polite" aria-modal="true" role="dialog">
   <div id="tourDim"></div>
@@ -1724,6 +1733,70 @@ html.pwa-standalone .pwa-banner,body.desktop .pwa-banner,body.electron .pwa-bann
 </div>
 
 <script>
+const Overlay=(()=>{
+  const stack=[],FOC='button:not([disabled]),[href],input:not([type="hidden"]):not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
+  const seen=x=>!!(x&&x.getClientRects&&x.getClientRects().length);
+  const items=el=>[...el.querySelectorAll(FOC)].filter(seen);
+  const idx=el=>stack.findIndex(r=>r.el===el);
+  const top=()=>stack[stack.length-1];
+  const owns=(r,t)=>r.el.contains(t)||[].concat(r.keep||[],r.trigger||[],r.anchor||[]).some(k=>k&&k.contains&&k.contains(t));
+  const aria=(r,on)=>{if(r.trigger&&r.trigger.hasAttribute&&r.trigger.hasAttribute("aria-haspopup"))r.trigger.setAttribute("aria-expanded",on?"true":"false")};
+  const place=r=>{if(r.anchor&&r.el.classList.contains("on"))placeFixedMenu(r.el,r.anchor)};
+  function open(el,o){
+    if(!el)return null;
+    const i=idx(el);if(i>=0)stack.splice(i,1);
+    const ae=document.activeElement,r=Object.assign({el,ret:ae&&ae.tagName==="BUTTON"?ae:null},o||{});
+    stack.push(r);el.hidden=false;el.classList.add("on");aria(r,true);
+    if(r.modal){el.setAttribute("aria-modal","true");if(!el.querySelector('[role="dialog"],[role="alertdialog"]'))el.setAttribute("role","dialog")}
+    if(r.anchor){place(r);requestAnimationFrame(()=>place(r))}
+    if(r.focus!==false)requestAnimationFrame(()=>{if(top()!==r)return;const f=r.focus&&r.focus.focus?r.focus:items(el).find(x=>!x.matches(".sheet-x,.mm-head-x,.mm-back"))||items(el)[0];if(f)try{f.focus({preventScroll:true})}catch(e){}});
+    return r;
+  }
+  function close(el,how){
+    const i=idx(el);if(i<0)return false;
+    const r=stack.splice(i,1)[0],back=r.trigger&&!Array.isArray(r.trigger)?r.trigger:r.ret;
+    el.classList.remove("on");el.hidden=true;aria(r,false);
+    if(how!=="silent"&&seen(back)&&(el.contains(document.activeElement)||document.activeElement===document.body))try{back.focus({preventScroll:true})}catch(e){}
+    if(r.onClose)try{r.onClose(how)}catch(e){}
+    return true;
+  }
+  const closeAll=how=>{while(stack.length)close(top().el,how||"silent")};
+  document.addEventListener("pointerdown",e=>{for(let i=stack.length-1;i>=0;i--){const r=stack[i];if(!r||owns(r,e.target)||r.modal)return;close(r.el,"outside")}},true);
+  document.addEventListener("click",e=>{const r=top();if(r&&r.modal&&e.target===r.el)close(r.el,"scrim")},true);
+  document.addEventListener("keydown",e=>{
+    const r=top();if(!r)return;
+    if(e.key==="Escape"){e.preventDefault();e.stopImmediatePropagation();if(!(r.onEsc&&r.onEsc()))close(r.el,"esc");return}
+    const ae=document.activeElement,inside=r.el.contains(ae);
+    if(e.key==="Tab"&&r.modal){const f=items(r.el);if(!f.length)return;const a=f[0],z=f[f.length-1],to=!inside?a:e.shiftKey&&ae===a?z:!e.shiftKey&&ae===z?a:null;if(to){e.preventDefault();to.focus()}return}
+    if(!/^(ArrowDown|ArrowUp|Home|End)$/.test(e.key)||r.el.getAttribute("role")!=="menu"||!(inside||ae===r.trigger))return;
+    const f=items(r.el).filter(x=>x.tagName==="BUTTON"),k=f.indexOf(ae);if(!f.length)return;
+    e.preventDefault();f[e.key==="Home"?0:e.key==="End"?f.length-1:e.key==="ArrowDown"?(k+1)%f.length:(k<=0?f.length-1:k-1)].focus();
+  },true);
+  window.addEventListener("resize",()=>stack.forEach(place));
+  return {open,close,closeAll,top,isOpen:el=>idx(el)>=0,contains:t=>stack.some(r=>owns(r,t)),place:el=>{const i=idx(el);if(i>=0)place(stack[i])}};
+})();
+window.grokOverlay=Overlay;
+function uiDialog(o){
+  o=typeof o==="string"?{body:o}:(o||{});
+  const d=document.getElementById("grDialog"),ask=o.input!=null;
+  if(!d)return Promise.resolve(ask?window.prompt(o.body||"",o.value||""):o.cancel?window.confirm(o.body||""):(window.alert(o.body||""),true));
+  if(Overlay.isOpen(d))Overlay.close(d,"silent");
+  return new Promise(res=>{
+    const $d=id=>document.getElementById(id),t=$d("grDialogT"),b=$d("grDialogB"),ta=$d("grDialogTa"),inp=o.multiline&&ta?ta:$d("grDialogIn"),ok=$d("grDialogOk"),no=$d("grDialogNo");
+    let val=null;
+    t.textContent=o.title||"Grok Remote";b.textContent=o.body||"";b.hidden=!o.body;
+    [$d("grDialogIn"),ta].forEach(x=>{if(x)x.hidden=!ask||x!==inp});inp.value=o.value||"";inp.placeholder=o.placeholder||"";if(inp.tagName==="INPUT")inp.type=o.secret?"password":"text";
+    ok.textContent=o.ok||"OK";ok.classList.toggle("danger",!!o.danger);no.hidden=!o.cancel&&!ask;no.textContent=o.cancel||"Cancel";
+    ok.onclick=()=>{val=ask?inp.value:true;Overlay.close(d)};
+    no.onclick=()=>{val=ask?null:false;Overlay.close(d)};
+    inp.onkeydown=e=>{if(e.key==="Enter"&&!e.isComposing&&(inp.tagName==="INPUT"||e.ctrlKey||e.metaKey)){e.preventDefault();ok.click()}};
+    Overlay.open(d,{modal:true,focus:ask?inp:(o.cancel&&o.danger?no:ok),onClose:()=>res(val!=null?val:(ask?null:!o.cancel))});
+  });
+}
+const uiAlert=(body,title)=>uiDialog({body:String(body==null?"":body),title});
+const uiConfirm=(body,o)=>uiDialog(Object.assign({body,cancel:"Cancel"},o||{}));
+const uiPrompt=(body,value,o)=>uiDialog(Object.assign({body,input:true,value:value||""},o||{}));
+window.grokDialog={dialog:uiDialog,alert:uiAlert,confirm:uiConfirm,prompt:uiPrompt};
 const feed=document.getElementById("feed"),box=document.getElementById("box"),send=document.getElementById("send");
 const orbit=document.getElementById("orbit"),statusEl=document.getElementById("status"),logEl=document.getElementById("log");
 const setup=document.getElementById("setup"),picker=document.getElementById("picker"),foot=document.getElementById("foot");
@@ -1758,7 +1831,7 @@ let linkRtt=null,linkLastPong=0;
 let hubUp=true,hubReinitBusy=false;
 Object.defineProperty(window,"replaying",{get:()=>replaying,set:v=>{replaying=!!v},configurable:true});
 Object.defineProperty(window,"sessionSwitching",{get:()=>sessionSwitching,set:v=>{sessionSwitching=!!v},configurable:true});
-let variant="grok",mode="dark";
+let variant="scient",mode="dark";
 let ux={borders:true,collapseThink:true,collapseCode:true,collapseTools:false,autoScroll:true,privacy:false,hideThink:false,hideTools:false,hideCode:false,hideEdit:false,hideRead:false,companion:false};
 let archived=new Set(),sessScope="active",sessArchiveReady=false;
 let sessListSig="",sessListPaintSig="",workBoardSig="";
@@ -1781,8 +1854,8 @@ let personaId="default",directionId="none",personaApplied=new Set(),lastSetupQue
 let currentModelId="grok-4.5",reasoningEffort="low",effortLevels=["low","medium","high"];
 const personaSheet=document.getElementById("personaSheet"),btnPersona=document.getElementById("btnPersona");
 const VARIANTS=[
-  {id:"scient",label:"Scient",sw:"#00ff9d",swLight:"#00875a",brand:"AMNI-SCIENT"},
-  {id:"grok",label:"Grok",sw:"#e4e4e7",swLight:"#18181b",brand:"GROK BUILD",metaDark:"#000000",metaLight:"#fafafa"},
+  {id:"scient",label:"Amni-Scient",sw:"#C89B4E",swLight:"#8A6318",brand:"AMNI-SCIENT"},
+  {id:"grok",label:"Grok",sw:"#e4e4e7",swLight:"#18181b",brand:"GROK BUILD"},
   {id:"ai",label:"AI",sw:"#ffb74d",swLight:"#e65100",brand:"AMNI-AI"},
   {id:"explore",label:"Explore",sw:"#00b4ff",swLight:"#0277bd",brand:"AMNI-EXPLORE"},
   {id:"calc",label:"Calc",sw:"#ff6b35",swLight:"#d84315",brand:"AMNI-CALC"},
@@ -1790,38 +1863,35 @@ const VARIANTS=[
   {id:"crypt",label:"Crypt",sw:"#2979ff",swLight:"#1565c0",brand:"AMNI-CRYPT"},
   {id:"haven",label:"Haven",sw:"#7c5cfc",swLight:"#5e35b1",brand:"AMNI-HAVEN"},
   {id:"core",label:"Core",sw:"#ef5350",swLight:"#c62828",brand:"AMNI-CORE"},
-  {id:"aim",label:"AIM-like",sw:"#ffcc00",swLight:"#ff9900",brand:"AIM-LIKE",legacy:true,metaDark:"#0a1f4a",metaLight:"#c8def5"},
-  {id:"win95",label:"Win95-like",sw:"#000080",swLight:"#000080",brand:"WIN95-LIKE",legacy:true,metaDark:"#1e1e1e",metaLight:"#008080"},
-  {id:"commodore",label:"C64-like",sw:"#a4e4fc",swLight:"#40318d",brand:"C64-LIKE",legacy:true,metaDark:"#40318d",metaLight:"#b8aef0"},
-  {id:"atari",label:"Atari-like",sw:"#e25303",swLight:"#e25303",brand:"ATARI-LIKE",legacy:true,metaDark:"#0a0a0a",metaLight:"#f4e8d0"},
-  {id:"ubuntu",label:"Ubuntu-like",sw:"#e95420",swLight:"#e95420",brand:"UBUNTU-LIKE",legacy:true,metaDark:"#1d1d1d",metaLight:"#fafafa"},
-  {id:"matrix",label:"Matrix-like",sw:"#00ff41",swLight:"#008833",brand:"MATRIX-LIKE",legacy:true,metaDark:"#020805",metaLight:"#e8fff0"},
-  {id:"dos",label:"DOS-like",sw:"#ffff55",swLight:"#0000aa",brand:"DOS-LIKE",legacy:true,metaDark:"#0000aa",metaLight:"#0000aa"},
-  {id:"amiga",label:"Amiga-like",sw:"#ff8800",swLight:"#ff8800",brand:"AMIGA-LIKE",legacy:true,metaDark:"#0055aa",metaLight:"#aaaaaa"}
+  {id:"aim",label:"AIM-like",sw:"#ffcc00",swLight:"#ff9900",brand:"AIM-LIKE",legacy:true},
+  {id:"win95",label:"Win95-like",sw:"#000080",swLight:"#000080",brand:"WIN95-LIKE",legacy:true},
+  {id:"commodore",label:"C64-like",sw:"#a4e4fc",swLight:"#40318d",brand:"C64-LIKE",legacy:true},
+  {id:"atari",label:"Atari-like",sw:"#e25303",swLight:"#e25303",brand:"ATARI-LIKE",legacy:true},
+  {id:"ubuntu",label:"Ubuntu-like",sw:"#e95420",swLight:"#e95420",brand:"UBUNTU-LIKE",legacy:true},
+  {id:"matrix",label:"Matrix-like",sw:"#00ff41",swLight:"#008833",brand:"MATRIX-LIKE",legacy:true},
+  {id:"dos",label:"DOS-like",sw:"#ffff55",swLight:"#0000aa",brand:"DOS-LIKE",legacy:true},
+  {id:"amiga",label:"Amiga-like",sw:"#ff8800",swLight:"#ff8800",brand:"AMIGA-LIKE",legacy:true}
 ];
 function esc(t){return String(t||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;")}
-const DEAD_VARIANTS=new Set(["prayer"]);
+const DEAD_VARIANTS=new Set(["prayer"]),DEFAULT_VARIANT="scient";
 function migrateTheme(raw){
-  if(!raw)return{variant:"grok",mode:"dark"};
+  if(!raw)return{variant:DEFAULT_VARIANT,mode:"dark"};
   if(raw==="light")return{variant:"grok",mode:"light"};
   let variant=raw,mode="dark";
   if(raw.indexOf("-")>=0){const p=raw.split("-");variant=p[0];mode=p[1]==="light"?"light":"dark"}
-  if(DEAD_VARIANTS.has(variant)||!VARIANTS.some(v=>v.id===variant))variant="grok";
+  if(DEAD_VARIANTS.has(variant)||!VARIANTS.some(v=>v.id===variant))variant=DEFAULT_VARIANT;
   return{variant,mode};
 }
 function applyTheme(v,m,persist){
-  if(DEAD_VARIANTS.has(v))v="grok";
-  const vv=VARIANTS.find(x=>x.id===v&&!DEAD_VARIANTS.has(x.id))||VARIANTS.find(x=>x.id==="grok")||VARIANTS[0];
+  if(DEAD_VARIANTS.has(v))v=DEFAULT_VARIANT;
+  const vv=VARIANTS.find(x=>x.id===v&&!DEAD_VARIANTS.has(x.id))||VARIANTS.find(x=>x.id===DEFAULT_VARIANT)||VARIANTS[0];
   variant=vv.id;mode=(m==="light")?"light":"dark";
   document.documentElement.setAttribute("data-variant",variant);
   document.documentElement.setAttribute("data-mode",mode);
   document.body.classList.toggle("legacy-theme",!!vv.legacy);
   const meta=document.getElementById("themeColor");
-  if(meta){
-    const c=mode==="light"?(vv.metaLight||"#f5f6f7"):(vv.metaDark||"#0a0b0e");
-    meta.setAttribute("content",c);
-  }
-  if(logoEl)logoEl.innerHTML='<img class="mark" src="/static/img/rikku-bench.jpg" width="56" height="32" alt="Rikku at the bench"><span class="word"><span class="brand">'+esc(vv.brand)+"</span>Grok <b>Remote</b></span>";
+  if(meta)meta.setAttribute("content",getComputedStyle(document.documentElement).getPropertyValue("--bg").trim()||(mode==="light"?"#fafafa":"#111113"));
+  if(logoEl)logoEl.innerHTML='<img class="mark" src="/static/icon-192.png" width="32" height="32" alt=""><span class="word"><span class="brand">'+esc(vv.brand)+"</span>Grok <b>Remote</b></span>";
   try{document.title="Grok Remote · "+(vv.brand||"GROK BUILD")}catch(e){}
   if(persist!==false){
     try{
@@ -1833,7 +1903,7 @@ function applyTheme(v,m,persist){
   if(!applyTheme._painting){applyTheme._painting=true;try{paintThemeChips()}finally{applyTheme._painting=false}}
   else{
     document.querySelectorAll(".theme-chip").forEach(el=>{el.classList.toggle("on",el.dataset.variant===variant)});
-    document.querySelectorAll(".mode-chip").forEach(el=>{el.classList.toggle("on",el.dataset.mode===mode)});
+    document.querySelectorAll("#modeChipsSheet .mode-chip").forEach(el=>{el.classList.toggle("on",el.dataset.mode===mode)});
   }
 }
 function paintThemeChips(){
@@ -1868,9 +1938,7 @@ function paintThemeChips(){
       leg.forEach(t=>host.appendChild(paintChip(t)));
     }
   };
-  paintMode(document.getElementById("modeChips"));
   paintMode(document.getElementById("modeChipsSheet"));
-  paintVar(document.getElementById("themeChips"));
   paintVar(document.getElementById("themeChipsSheet"));
   paintUxChips();
 }
@@ -1923,7 +1991,6 @@ function paintLayoutChips(){
       host.appendChild(b);
     });
   };
-  paint(document.getElementById("layoutChips"));
   paint(document.getElementById("layoutChipsSheet"));
 }
 function loadUx(){
@@ -1970,7 +2037,9 @@ function applyUx(){
 function setPrivacy(on){ux.privacy=!!on;saveUx();applyUx()}
 function togglePrivacy(){setPrivacy(!ux.privacy)}
 const FONT_PRESETS=[
-  {id:"system",label:"System",css:"system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif"},
+  {id:"system",label:"Theme default",css:"system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif"},
+  {id:"sysui",label:"System UI",css:"system-ui,-apple-system,\"Segoe UI\",Roboto,Helvetica,Arial,sans-serif"},
+  {id:"archivo",label:"Archivo",css:"Archivo,\"Segoe UI Variable Display\",\"Segoe UI\",system-ui,sans-serif"},
   {id:"inter",label:"Inter",css:"\"Inter\",system-ui,sans-serif",url:"https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap"},
   {id:"ibm",label:"IBM Plex",css:"\"IBM Plex Sans\",system-ui,sans-serif",url:"https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;600;700&display=swap"},
   {id:"source",label:"Source Sans",css:"\"Source Sans 3\",system-ui,sans-serif",url:"https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700&display=swap"},
@@ -2002,18 +2071,14 @@ function applyFont(){
     url=fontState.url||"";
   }
   ensureFontLink(url);
-  document.documentElement.style.setProperty("--font",css);
-  document.documentElement.style.setProperty("--font-mono",/mono|code|consolas|courier/i.test(css)?css:"ui-monospace,SFMono-Regular,Menlo,Consolas,monospace");
-  document.body.style.fontFamily=css;
-  ["moreMenu","orbitMenu"].forEach(id=>{
-    const el=document.getElementById(id);
-    if(el){el.style.fontFamily=css;el.style.fontSize=""}
-  });
+  const rs=document.documentElement.style,sys=fontState.id==="system"&&!fontState.css;
+  sys?rs.removeProperty("--font"):rs.setProperty("--font",css);
+  !sys&&/mono|code|consolas|courier/i.test(css)?rs.setProperty("--font-mono",css):rs.removeProperty("--font-mono");
   paintFontChips();
   const h=document.getElementById("fontHint"),h2=document.getElementById("fontHint2");
   const lab=fontState.id==="custom"?(fontState.name||"Custom"):(preset.label||fontState.id);
   if(h)h.textContent="Active: "+lab+(url?" · webfont":"");
-  if(h2)h2.textContent="Active: "+lab+(url?" · loaded from URL":" · system stack");
+  if(h2)h2.textContent="Active: "+lab+(url?" · loaded from URL":sys?" · follows the theme":" · local stack");
 }
 function setFontPreset(id){
   if(id==="custom"){openSheet(document.getElementById("fontSheet"),document.getElementById("btnTheme"));return}
@@ -2024,7 +2089,7 @@ function setFontPreset(id){
 function applyCustomFont(){
   const name=(document.getElementById("fontCustomName")&&document.getElementById("fontCustomName").value||"").trim();
   const url=(document.getElementById("fontCustomUrl")&&document.getElementById("fontCustomUrl").value||"").trim();
-  if(!name){alert("Enter a font family name");return}
+  if(!name){uiAlert("Enter a font family name first.","Custom font");return}
   fontState={id:"custom",css:"",name:name,url:url};
   saveFontState();applyFont();closeAllSheets();chip("font · "+name);
 }
@@ -2065,7 +2130,7 @@ function paintViewToggles(){
     ["collapseThink","Think","▾",false],
     ["collapseTools","Tools","▾",false],
     ["collapseCode","Code","▾",false],
-    ["companion","Companion","◈",false]
+    ["companion","Companion","✧",false]
   ];
   map.forEach(([k,lab,ico,inv])=>{
     const el=document.querySelector('.mm-tog[data-ux="'+k+'"]');
@@ -2118,7 +2183,6 @@ function paintUxChips(){
       host.appendChild(b);
     });
   };
-  paint(document.getElementById("uxChips"));
   paint(document.getElementById("uxChipsSheet"));
 }
 window.grokCompanionOn=()=>!!(ux&&ux.companion);
@@ -2237,6 +2301,18 @@ function setArchiveUi(k,want){
     return false;
   });
 }
+function rowAct(k,id){
+  const s=sessions.find(x=>String(x.sessionId)===String(id));
+  k==="rename"?renameSession(id).catch(err=>chip(String(err))):k==="arch"?toggleArchive(id):s&&window.grokCockpit?(window.grokCockpit.pinSession(s),chip("pinned "+sessionTitle(s))):0;
+}
+function openRowMenu(id,anchor){
+  const m=document.getElementById("rowMenu");if(!m)return;
+  if(Overlay.isOpen(m)&&m.dataset.sid===String(id))return Overlay.close(m);
+  m.dataset.sid=String(id);
+  const a=m.querySelector('[data-row="arch"]');if(a)a.lastChild.textContent=isArchived(String(id))?"Unarchive":"Archive";
+  Overlay.open(m,{anchor,trigger:anchor.matches("button")?anchor:null,keep:[anchor]});
+}
+(function(){const m=document.getElementById("rowMenu");if(m)m.addEventListener("click",e=>{const b=e.target.closest("[data-row]");if(!b)return;Overlay.close(m);rowAct(b.getAttribute("data-row"),m.dataset.sid)})})();
 function toggleArchive(id,e){
   if(e){e.stopPropagation();e.preventDefault()}
   const k=String(id||"");if(!k)return;
@@ -2416,6 +2492,9 @@ function syncSessFilterChrome(){
 }
 function setSessFilterOpen(on){
   sessFilterOpen=!!on;
+  const pop=document.getElementById("sessFilterPop");
+  if(pop&&sessFilterOpen&&isBraidLayout())Overlay.open(pop,{trigger:document.getElementById("btnSessFilter"),focus:false,onClose:()=>{if(sessFilterOpen)setSessFilterOpen(false)}});
+  else if(pop&&Overlay.isOpen(pop))Overlay.close(pop,"silent");
   document.body.classList.toggle("sess-filter-open",!!sessFilterOpen&&isBraidLayout());
   syncSessFilterChrome();
   if(sessFilterOpen){
@@ -2804,7 +2883,7 @@ function paintPermChip(){
   if(pc){
     pc.classList.toggle("on",level!=="always");
     pc.dataset.level=level;
-    pc.innerHTML='<span class="mm-ico" aria-hidden="true">◈</span><span class="mm-lab">Permission</span><span class="mm-k">'+level+"</span>";
+    pc.innerHTML='<span class="mm-ico" aria-hidden="true">⚑</span><span class="mm-lab">Permission</span><span class="mm-k">'+level+"</span>";
     pc.title="Permission: "+(PERM_LABEL[level]||level)+" — tap to cycle Always → Ask → Plan";
   }
   document.querySelectorAll("[data-perm]").forEach(b=>{
@@ -3219,6 +3298,7 @@ function paintOrbitStatus(){
   }
   paintWorkNow();
   paintRadioChip();
+  paintConnectChip();
   if(statusEl){statusEl.textContent=lab;statusEl.hidden=true;statusEl.setAttribute("aria-hidden","true")}
   if(orbit){
     orbit.classList.toggle("on",!!on&&agentPhase!=="error");
@@ -3252,18 +3332,18 @@ window.paintFootQuiet=paintFootQuiet;
 function closeStatusDebug(){
   const d=document.getElementById("statusDebug");
   const b=document.getElementById("btnStatusDebug");
-  if(d){d.classList.remove("on");d.hidden=true}
+  if(d){Overlay.close(d);d.classList.remove("on");d.hidden=true}
   if(b){b.classList.remove("on");b.setAttribute("aria-expanded","false")}
 }
 function toggleStatusDebug(e){
-  if(e){e.preventDefault();e.stopPropagation()}
+  if(e)e.preventDefault();
   const d=document.getElementById("statusDebug");
   const b=document.getElementById("btnStatusDebug");
   if(!d)return;
   const open=!d.classList.contains("on");
   if(open){
-    d.hidden=false;d.classList.add("on");
-    if(b){b.classList.add("on");b.setAttribute("aria-expanded","true")}
+    Overlay.open(d,{trigger:b,focus:false,onClose:closeStatusDebug});
+    if(b)b.classList.add("on");
     try{paintRadioChip();paintLivebar();paintFootQuiet()}catch(err){}
   }else closeStatusDebug();
 }
@@ -4202,22 +4282,23 @@ function setSidebarCollapsed(v){
 }
 function toggleSidebar(){setSidebarCollapsed(!sidebarCollapsed)}
 function closeAllSheets(){
-  document.querySelectorAll(".sheet.on").forEach(el=>el.classList.remove("on"));
-  if(btnTheme)btnTheme.classList.remove("on");
-  if(btnSkills)btnSkills.classList.remove("on");
-  if(btnNewTask)btnNewTask.classList.remove("on");
-  if(btnPersona)btnPersona.classList.remove("on");
+  document.querySelectorAll(".sheet.on").forEach(el=>{if(!Overlay.close(el,"silent"))el.classList.remove("on")});
+  [btnTheme,btnSkills,btnNewTask,btnPersona,document.getElementById("btnActor")].forEach(b=>b&&b.classList.remove("on"));
   closeMoreMenu();
+  Overlay.closeAll();
 }
-function openSheet(el,btn){
+function openSheet(el,btn,o){
   if(!el)return;
   if(typeof tourOpen!=="undefined"&&tourOpen)return;
   const was=el.classList.contains("on");
   closeAllSheets();
   if(was)return;
-  el.classList.add("on");
+  Overlay.open(el,{modal:true,ret:btn&&btn.getClientRects().length?btn:moreMenuAnchor,onClose:h=>{if(btn)btn.classList.remove("on");if(o&&o.onClose)o.onClose(h)}});
   if(btn)btn.classList.add("on");
 }
+window.openSheet=openSheet;
+window.closeAllSheets=closeAllSheets;
+document.addEventListener("click",e=>{const x=e.target.closest&&e.target.closest(".sheet [data-close]");if(x)Overlay.close(x.closest(".sheet"))});
 function settingsAnchors(){return [document.getElementById("btnSettings"),document.getElementById("btnSettingsFoot"),document.getElementById("btnMore")].filter(Boolean)}
 let moreMenuAnchor=null;
 const MORE_LAYER_TITLES={home:"Settings",chat:"Chat",feed:"Feed",look:"Appearance",apps:"Apps",link:"Connection"};
@@ -4235,6 +4316,8 @@ function showMoreLayer(name){
     if(body)body.scrollTop=0;
     placeFixedMenu(m,a);
     requestAnimationFrame(()=>placeFixedMenu(m,a));
+    const f=m.querySelector(".mm-layer.on button:not(.mm-back)");
+    if(f&&m.contains(document.activeElement))try{f.focus({preventScroll:true})}catch(e){}
   }
 }
 function bindMoreLayers(){
@@ -4245,33 +4328,28 @@ function bindMoreLayers(){
     const go=e.target.closest("[data-goto]");
     if(!go||!m.contains(go))return;
     e.preventDefault();
-    e.stopPropagation();
     showMoreLayer(go.getAttribute("data-goto"));
   });
 }
 function closeMoreMenu(){
   const m=document.getElementById("moreMenu");
-  if(m){m.classList.remove("on");m.hidden=true;try{showMoreLayer("home")}catch(e){}}
+  if(m){Overlay.close(m);m.classList.remove("on");m.hidden=true;try{showMoreLayer("home")}catch(e){}}
   settingsAnchors().forEach(b=>{b.classList.remove("on");b.setAttribute("aria-expanded","false")});
 }
 window.closeMoreMenu=closeMoreMenu;
 window.showMoreLayer=showMoreLayer;
 function toggleMoreMenu(e){
-  if(e){e.preventDefault();e.stopPropagation()}
+  if(e)e.preventDefault();
   const m=document.getElementById("moreMenu");
   if(!m)return;
+  if(m.classList.contains("on"))return closeMoreMenu();
   const anchor=(e&&e.currentTarget)||document.getElementById("btnSettings")||document.getElementById("btnMore");
+  closeAllSheets();
   moreMenuAnchor=anchor;
-  const open=!m.classList.contains("on");
-  closeOrbitMenu();
-  if(open){
-    closeAllSheets();
-    m.hidden=false;m.classList.add("on");
-    settingsAnchors().forEach(b=>{b.classList.add("on");b.setAttribute("aria-expanded","true")});
-    try{paintMoreMenuChrome()}catch(err){}
-    placeFixedMenu(m,anchor);
-    requestAnimationFrame(()=>{placeFixedMenu(m,anchor);try{paintMoreMenuChrome()}catch(err){}});
-  }else closeMoreMenu();
+  settingsAnchors().forEach(b=>{b.classList.add("on");b.setAttribute("aria-expanded","true")});
+  try{paintMoreMenuChrome()}catch(err){}
+  Overlay.open(m,{anchor,trigger:anchor,keep:settingsAnchors(),onClose:closeMoreMenu,onEsc:()=>m.dataset.layer&&m.dataset.layer!=="home"?(showMoreLayer("home"),true):false});
+  requestAnimationFrame(()=>{try{paintMoreMenuChrome()}catch(err){}});
 }
 function looksLikeShell(t){return/^\s*(\$|>|#|PS\s|cd\s|git\s|npm\s|pip\s|python\s|node\s|cargo\s|dir\s|ls\s)/im.test(String(t||""))}
 function looksLikeJson(t){const s=String(t||"").trim();return (s.startsWith("{")&&s.endsWith("}"))||(s.startsWith("[")&&s.endsWith("]"))}
@@ -4313,7 +4391,8 @@ function showPage(name,fromPop){
   const wide=isWideLayout(),on=isLinked();
   const chatStage=document.getElementById("chatStage");
   setup.classList.toggle("on",name==="setup");
-  document.body.classList.toggle("page-chat",name==="chat");
+  document.body.classList.toggle("page-chat",name==="chat");document.body.classList.toggle("page-setup",name==="setup");
+  if(name!=="setup"&&CN&&!CN.hinted)setTimeout(()=>maybeConnectHint().catch(()=>{}),1200);
   const showRail=name==="sessions"||(wide&&on&&name==="chat"&&!sidebarCollapsed);
   picker.classList.toggle("on",!!showRail);
   if(name==="sessions"){sidebarCollapsed=false;applySidebar();picker.classList.add("on")}
@@ -4433,7 +4512,7 @@ function paintRxChip(row){
 }
 function hideRxPop(){
   const p=document.getElementById("rxPop");
-  if(p){p.classList.remove("on");p.setAttribute("hidden","");p.hidden=true;p.style.display="none"}
+  if(p){Overlay.close(p,"silent");p.classList.remove("on");p.setAttribute("hidden","");p.hidden=true;p.style.display="none"}
   rxPopRow=null;rxHeld=false;rxIgnoreClick=0;
 }
 function showRxPop(row){
@@ -4449,10 +4528,10 @@ function showRxPop(row){
       q.appendChild(b);
     });
   }
-  if(q)q.querySelectorAll(".rx-q").forEach(b=>{b.onclick=e=>{e.stopPropagation();applyRx(rxPopRow,b.textContent);hideRxPop()}});
+  if(q)q.querySelectorAll(".rx-q").forEach(b=>{b.onclick=()=>{applyRx(rxPopRow,b.textContent);hideRxPop()}});
   const hit=(rxStore()[rxKey()]||{})[rxHash(bubText(row))];
   p.querySelectorAll(".rx-q").forEach(b=>b.classList.toggle("on",!!(hit&&b.textContent===hit.emoji)));
-  p.hidden=false;p.classList.add("on");
+  Overlay.open(p,{focus:false,onClose:hideRxPop});
   const r=bub.getBoundingClientRect();
   const pw=p.offsetWidth||240,ph=p.offsetHeight||48;
   let left=Math.min(Math.max(8,r.right-pw),window.innerWidth-pw-8);
@@ -4512,21 +4591,18 @@ function wireRx(row){bindMsgPress(row)}
 (function wireRxPopChrome(){
   const p=document.getElementById("rxPop");if(!p)return;
   const copy=document.getElementById("rxCopy");
-  if(copy)copy.onclick=e=>{
-    e.stopPropagation();
+  if(copy)copy.onclick=()=>{
     const t=bubText(rxPopRow);
     navigator.clipboard.writeText(t).then(()=>chip("copied")).catch(()=>chip("copy failed"));
     hideRxPop();
   };
   const more=document.getElementById("rxMore");
   const inn=document.getElementById("rxEmojiIn");
-  if(more&&inn)more.onclick=e=>{
-    e.stopPropagation();
+  if(more&&inn)more.onclick=()=>{
     inn.value="";
     try{inn.focus()}catch(err){}
   };
   if(inn){
-    inn.addEventListener("click",e=>e.stopPropagation());
     inn.addEventListener("input",()=>{
       const em=(inn.value||"").trim();
       if(!em||!rxPopRow)return;
@@ -4534,13 +4610,7 @@ function wireRx(row){bindMsgPress(row)}
     });
   }
   const closer=document.getElementById("rxClose");
-  if(closer)closer.onclick=e=>{e.preventDefault();e.stopPropagation();hideRxPop()};
-  p.addEventListener("click",e=>e.stopPropagation());
-  p.addEventListener("touchstart",e=>e.stopPropagation(),{passive:true});
-  const maybeHide=()=>{if(Date.now()<rxIgnoreClick)return;hideRxPop()};
-  document.addEventListener("click",maybeHide);
-  document.addEventListener("touchstart",maybeHide,{passive:true});
-  document.addEventListener("keydown",e=>{if(e.key==="Escape")hideRxPop()});
+  if(closer)closer.onclick=e=>{e.preventDefault();hideRxPop()};
 })();
 function drainRxNote(){
   const k=rxKey();const all=rxStore();const bag=all[k]||{};
@@ -5536,9 +5606,9 @@ function appendPlan(u){
     sendPrompt().catch(e=>chip(String(e)));
   };
   const edit=document.createElement("button");edit.type="button";edit.textContent="Edit as text";
-  edit.onclick=()=>{
+  edit.onclick=async()=>{
     const t=bound.map(s=>(s.cb.checked?"[x] ":"[ ] ")+s.text).join("\n");
-    const n=prompt("Edit plan checklist",t);if(n===null)return;
+    const n=await uiPrompt("","",{title:"Edit plan checklist",value:t,multiline:true,ok:"Send"});if(n===null)return;
     box.value="Updated plan — follow only checked items:\n"+n+"\nProceed.";
     sendPrompt().catch(e=>chip(String(e)));
   };
@@ -6390,7 +6460,7 @@ async function renameSession(sessionId,opts){
   const manual=s.titleIsManual?String(s.title||"").trim():"";
   let next=opts.title;
   if(next==null){
-    next=window.prompt("Rename chat (empty = use the agent's title)",manual||(isPlaceholderTitle(shown,id)?"":shown));
+    next=await uiPrompt("Leave empty to use the agent's title.",manual||(isPlaceholderTitle(shown,id)?"":shown),{title:"Rename chat",ok:"Rename"});
     if(next==null)return false;
   }
   next=String(next||"").trim().replace(/\s+/g," ");
@@ -6709,9 +6779,13 @@ function renderSessions(){
     const ab=document.createElement("button");ab.type="button";ab.dataset.act="arch";ab.textContent=st.arch?"Unarchive":"Archive";
     ab.onclick=e=>toggleArchive(id,e);
     acts.appendChild(ab);
-    const pb=document.createElement("button");pb.type="button";pb.className="pin";pb.textContent="Pin";
-    pb.onclick=e=>{e.stopPropagation();if(window.grokCockpit)window.grokCockpit.pinSession(s);chip("pinned "+sessionTitle(s))};
+    const pb=document.createElement("button");pb.type="button";pb.className="pin";pb.textContent="Pin";pb.title="Pin to the bar";
+    pb.onclick=e=>{e.stopPropagation();rowAct("pin",id)};
     acts.appendChild(pb);
+    const mb=document.createElement("button");mb.type="button";mb.className="sess-kebab";mb.textContent="⋯";mb.title="Chat actions";mb.setAttribute("aria-label","Chat actions");mb.setAttribute("aria-haspopup","menu");mb.setAttribute("aria-expanded","false");
+    mb.onclick=e=>{e.stopPropagation();openRowMenu(id,mb)};
+    acts.appendChild(mb);
+    d.oncontextmenu=e=>{if(selectionIn(d))return;e.preventDefault();openRowMenu(id,d)};
     d.appendChild(body);d.appendChild(acts);
     d.onpointerdown=e=>{d._sx=e.clientX;d._sy=e.clientY};
     d.onclick=e=>{
@@ -6836,9 +6910,7 @@ function paintLinkBanner(reason){
   const el=document.getElementById("linkBanner");
   const msg=document.getElementById("linkBannerMsg");
   if(!el)return;
-  const linked=!!(ws&&ws.readyState===1);
-  const offline=!linked;
-  if(!offline){el.classList.remove("on");return}
+  if(isLinked()){el.classList.remove("on");return}
   el.classList.add("on");
   if(authBlocked)return;
   if(msg){
@@ -6998,7 +7070,7 @@ async function openSession(s){
     if(rh){rh.hidden=false;rh.textContent=painted?"recent · "+painted+" · "+openId.slice(0,8)+more:("no disk · "+openId.slice(0,8))}
   }catch(e){
     if(gen!==sessionGen)return;
-    chip("load failed: "+e);alert(e);
+    chip("load failed: "+e);uiAlert(String(e),"Could not open chat");
   }finally{
     if(gen===sessionGen&&String(sid)===openId){
       try{setBusy(false,openId)}catch(e){}
@@ -7116,7 +7188,7 @@ async function newSessionRun(cwd,firstMsg,reqId){
   sid=null;window.sid=null;selectedSid=null;loadExpectSid=null;
   paintSessionCurrent();
   const c=String(cwd||"").trim()||newChatCwd();
-  if(!c){sessionSwitching=false;sessionFresh=false;alert("cwd required");return}
+  if(!c){sessionSwitching=false;sessionFresh=false;uiAlert("Set a working directory (Setup → Advanced) first.","New chat");return}
   sidCwd=c;
   clearSessionFeed();
   try{box.value="";composerBoundSid=null;pendingFiles=[];paintAttachBar();onComposerInputLayout()}catch(e){}
@@ -7178,7 +7250,7 @@ async function newSessionRun(cwd,firstMsg,reqId){
       try{setBusy(false)}catch(x){}
       loadExpectSid=null;sessionFresh=false;
       paintSessionCurrent();
-      chip("new session failed: "+e);alert(e);
+      chip("new session failed: "+e);uiAlert(String(e),"New chat failed");
     }
   }finally{
     if(gen===sessionGen){
@@ -7258,9 +7330,9 @@ function renderCommands(){
     const d=document.createElement("div");d.className="cmd";
     const inv=c.invoke||("/"+(c.name||""));
     d.innerHTML='<div class="n">'+esc(inv)+' <span class="badge">'+esc(c.source||"?")+'</span></div><div class="d">'+esc(c.description||c.when||"")+"</div>";
-    d.onclick=()=>{
+    d.onclick=async()=>{
       const hint=c.hint||"";
-      const extra=hint?prompt((c.name||"")+"\n"+hint,""):"";
+      const extra=hint?await uiPrompt(hint,"",{title:inv,ok:"Use"}):"";
       if(extra===null)return;
       closeAllSheets();
       if(c.userInvocable!==false){
@@ -7446,9 +7518,9 @@ async function startRemoteStack(opts){
       setConn(false,"start failed");setPhase("error",String(err).slice(0,50));
       try{chip("start failed: "+String(err).slice(0,180))}catch(e){}
       if(/404|not found|method/i.test(String(err)+r.status)){
-        alert("Start API missing (old UI server).\nRestart stack:\n  scripts\\launch-remote.cmd\nor /remote from Grok.\n\n"+String(err).slice(0,200));
+        uiAlert("This hub has no start API (old server). Restart the stack on the PC:\n  "+stackCmd("start")+"\nor run /remote from Grok.\n\n"+String(err).slice(0,200),"Start failed");
       }else{
-        alert("Could not start agent serve.\n\n"+String(err).slice(0,280)+"\n\nTip: orbit menu → Start server again, or run scripts\\launch-remote.cmd");
+        uiAlert("Could not start agent serve.\n\n"+String(err).slice(0,280)+"\n\nTry Server & pairing… → Start server again, or run on the PC:\n  "+stackCmd("start"),"Start failed");
       }
       return false;
     }
@@ -7468,8 +7540,8 @@ async function startRemoteStack(opts){
         continue;
       }
       setConn(false,"hub down");setPhase("error","hub down");
-      try{chip("hub still down after 160s — on the PC run scripts\\launch-remote.cmd")}catch(x){}
-      alert("The remote hub (:2421) is not running and did not come back within 160s.\n\nOn the PC: run scripts\\launch-remote.cmd, start a Grok session, or wait for the GrokRemoteKeepalive task (every 2 min).");
+      try{chip("hub still down after 160s — on the PC run "+stackCmd("start"))}catch(x){}
+      uiAlert("The remote hub (:2421) is not running and did not come back within 160s.\n\nOn the PC run "+stackCmd("start")+", start a Grok session"+(hostPlatform()==="win"?", or wait for the GrokRemoteKeepalive task (every 2 min).":"."),"Hub down");
       return false;
     }
     setConn(false,"start error");setPhase("error");
@@ -7844,7 +7916,7 @@ window.clearLoadingChrome=clearLoadingChrome;
   const s=document.getElementById("btnBannerSetup");
   if(r)r.onclick=()=>{r.textContent="Reconnect";authBlocked=0;reconnectArmed=true;wantReconnect=true;connectAttempt=0;clearLoadingChrome("manual reconnect");connect({fromReconnect:true}).catch(()=>{})};
   if(s)s.onclick=()=>{
-    if(s.dataset.repair==="1"){try{openPairPhone()}catch(e){showPage("setup",true)}return}
+    if(s.dataset.repair==="1"){try{openConnect()}catch(e){showPage("setup",true)}return}
     clearLoadingChrome();showPage("setup",true);loadCfg().catch(()=>{});
   };
 })();
@@ -8120,7 +8192,7 @@ function agentSetupFor(userText,sessionKey){
   return {text:pre+"\n\n---\n"+t,key};
 }
 async function injectPersonaNow(){
-  if(!sid||!ws||ws.readyState!==1){alert("Connect / open a session first");return}
+  if(!sid||!ws||ws.readyState!==1){uiAlert("Connect and open a chat first.","Persona");return}
   const pre=agentSetupText();
   if(!pre){chip("default persona · nothing to inject");return}
   personaApplied.delete(sid);savePersonaApplied();
@@ -8239,8 +8311,8 @@ window.pending=pending;
 window.getMsgMode=()=>msgMode;
 window.setMsgMode=m=>{if(["interject","queue","fyi"].includes(m)){msgMode=m;saveMsgMode();paintMsgModeChips()}};
 document.getElementById("connect").onclick=connect;
-document.getElementById("newSess").onclick=()=>newSession().catch(e=>alert(e));
-document.getElementById("refreshSess").onclick=()=>fetchSessions().catch(e=>alert(e));
+document.getElementById("newSess").onclick=()=>newSession().catch(e=>uiAlert(String(e),"New chat failed"));
+document.getElementById("refreshSess").onclick=()=>fetchSessions().catch(e=>uiAlert(String(e),"Refresh failed"));
 document.getElementById("sessFilter").oninput=()=>{
   const hasQ=!!(document.getElementById("sessFilter").value||"").trim();
   if(hasQ)sessListExpanded=true;
@@ -8248,20 +8320,9 @@ document.getElementById("sessFilter").oninput=()=>{
   syncSessFilterChrome();
 };
 const btnSessFilter=document.getElementById("btnSessFilter");
-if(btnSessFilter)btnSessFilter.onclick=e=>{e.preventDefault();e.stopPropagation();toggleSessFilter()};
-document.addEventListener("click",e=>{
-  if(!isBraidLayout()||!sessFilterOpen)return;
-  const pop=document.getElementById("sessFilterPop");
-  const btn=document.getElementById("btnSessFilter");
-  if(pop&&!pop.contains(e.target)&&btn&&!btn.contains(e.target))setSessFilterOpen(false);
-});
-document.addEventListener("keydown",e=>{
-  if(e.key==="Escape"&&sessFilterOpen&&isBraidLayout()){setSessFilterOpen(false);e.preventDefault()}
-});
+if(btnSessFilter)btnSessFilter.onclick=e=>{e.preventDefault();toggleSessFilter()};
 const btnStatusDebug=document.getElementById("btnStatusDebug");
 if(btnStatusDebug)btnStatusDebug.onclick=toggleStatusDebug;
-const statusDebug=document.getElementById("statusDebug");
-if(statusDebug)statusDebug.addEventListener("click",e=>e.stopPropagation());
 if(btnSess)btnSess.onclick=()=>{closeMoreMenu();goSessions()};
 btnBack.onclick=()=>goSessions();
 const btnChatBack=document.getElementById("btnChatBack");
@@ -8283,9 +8344,8 @@ if(btnSkills)btnSkills.onclick=async()=>{
   openSheet(skillsSheet,btnSkills);
 };
 document.getElementById("closeSkills").onclick=()=>closeAllSheets();
-document.getElementById("refreshCmds").onclick=()=>loadCommands().catch(e=>alert(e));
+document.getElementById("refreshCmds").onclick=()=>loadCommands().catch(e=>uiAlert(String(e),"Skills"));
 const cmdFilter=document.getElementById("cmdFilter");if(cmdFilter)cmdFilter.oninput=()=>renderCommands();
-skillsSheet.addEventListener("click",e=>{if(e.target===skillsSheet)closeAllSheets()});
 
 function openTaskSheet(){
   if(!taskSheet)return;
@@ -8299,14 +8359,13 @@ const btnTaskFromList=document.getElementById("btnTaskFromList");
 if(btnTaskFromList)btnTaskFromList.onclick=openTaskSheet;
 const closeTask=document.getElementById("closeTask");
 if(closeTask)closeTask.onclick=()=>closeAllSheets();
-if(taskSheet)taskSheet.addEventListener("click",e=>{if(e.target===taskSheet)closeAllSheets()});
 const taskGo=document.getElementById("taskGo");
 if(taskGo)taskGo.onclick=async()=>{
   const c=(document.getElementById("taskCwd")&&document.getElementById("taskCwd").value.trim())||"";
   const m=(document.getElementById("taskMsg")&&document.getElementById("taskMsg").value.trim())||"";
-  if(!c){alert("cwd required");return}
+  if(!c){uiAlert("Pick a working directory first.","New task");return}
   closeAllSheets();
-  try{await newSession(c,m)}catch(e){alert(e)}
+  try{await newSession(c,m)}catch(e){uiAlert(String(e),"New task failed")}
 };
 const btnRail=document.getElementById("btnRail"),btnCollapseRail=document.getElementById("btnCollapseRail"),railTab=document.getElementById("railTab");
 if(btnRail)btnRail.onclick=()=>toggleSidebar();
@@ -8315,10 +8374,7 @@ if(railTab)railTab.onclick=()=>setSidebarCollapsed(false);
 const btnChatSess=document.getElementById("btnChatSess");
 if(btnChatSess)btnChatSess.onclick=e=>{if(e){e.preventDefault();e.stopPropagation()}toggleSidebar()};
 document.addEventListener("keydown",e=>{
-  if(e.key==="Escape"){
-    if(typeof tourOpen!=="undefined"&&tourOpen){e.preventDefault();endTour(true);return}
-    closeAllSheets();
-  }
+  if(e.key==="Escape"&&typeof tourOpen!=="undefined"&&tourOpen){e.preventDefault();endTour(true);return}
   if(e.altKey)document.body.classList.add("privacy-reveal");
   if((e.ctrlKey||e.metaKey)&&e.shiftKey&&(e.key==="H"||e.key==="h")){e.preventDefault();togglePrivacy()}
 });
@@ -8337,14 +8393,29 @@ if(btnSettings)btnSettings.onclick=toggleMoreMenu;
 const btnSettingsFoot=document.getElementById("btnSettingsFoot");
 if(btnSettingsFoot)btnSettingsFoot.onclick=toggleMoreMenu;
 const btnMoreClose=document.getElementById("btnMoreClose");
-if(btnMoreClose)btnMoreClose.onclick=e=>{e.preventDefault();e.stopPropagation();closeMoreMenu()};
-const moreMenu=document.getElementById("moreMenu");
-if(moreMenu)moreMenu.addEventListener("click",e=>e.stopPropagation());
+if(btnMoreClose)btnMoreClose.onclick=e=>{e.preventDefault();closeMoreMenu()};
 bindMoreLayers();
 bindAgentRail();
 bindPathOpens();
 const btnPlus=document.getElementById("btnPlus");
-if(btnPlus)btnPlus.onclick=e=>{e.stopPropagation();const pick=document.getElementById("filePick");if(pick)pick.click()};
+function openAttachMenu(e){
+  const m=document.getElementById("attachMenu"),btn=document.getElementById("btnPlus");if(!m||!btn)return;
+  if(e)e.preventDefault();
+  if(m.classList.contains("on"))return Overlay.close(m);
+  const cp=window.grokCockpit&&window.grokCockpit.openAtPicker,pb=m.querySelector('[data-att="path"]');
+  if(pb)pb.hidden=!cp||isDemoMode();
+  Overlay.open(m,{anchor:btn,trigger:btn});
+}
+function pickAttach(kind){
+  const pick=document.getElementById("filePick");Overlay.close(document.getElementById("attachMenu"),"silent");
+  if(kind==="path")return window.grokCockpit&&window.grokCockpit.openAtPicker&&window.grokCockpit.openAtPicker();
+  if(!pick)return;
+  pick.accept=kind==="media"?"image/*,video/*,.gif,.webp,.mp4,.webm,.mov,.m4v":"*/*";
+  pick.click();
+}
+window.openAttachMenu=openAttachMenu;
+(function(){const m=document.getElementById("attachMenu");if(m)m.addEventListener("click",e=>{const b=e.target.closest("[data-att]");if(b)pickAttach(b.getAttribute("data-att"))})})();
+if(btnPlus)btnPlus.onclick=openAttachMenu;
 const btnComposerVoice=document.getElementById("btnComposerVoice");
 if(btnComposerVoice)btnComposerVoice.onclick=()=>{
   if(window.grokVoice){
@@ -8361,7 +8432,6 @@ if(chatTopSearch)chatTopSearch.oninput=e=>{if(window.grokCockpit&&window.grokCoc
 const closeFont=document.getElementById("closeFont");
 if(closeFont)closeFont.onclick=()=>closeAllSheets();
 const fontSheet=document.getElementById("fontSheet");
-if(fontSheet)fontSheet.addEventListener("click",e=>{if(e.target===fontSheet)closeAllSheets()});
 const fontApplyCustom=document.getElementById("fontApplyCustom");
 if(fontApplyCustom)fontApplyCustom.onclick=()=>applyCustomFont();
 const fontReset=document.getElementById("fontReset");
@@ -8370,7 +8440,7 @@ const ctxMeterEl=document.getElementById("ctxMeter");
 if(ctxMeterEl)ctxMeterEl.onclick=()=>{
   const t=ctxMeterEl.title||"Context";
   const detail=(window.grokCockpit&&window.grokCockpit.S)?("turns "+(window.grokCockpit.S.budget.turns||0)+" · est tokens "+(window.grokCockpit.S.budget.estTokens||0)):"";
-  alert(t+(detail?"\n"+detail:"")+"\n\nTip: open + tray → $ to set budgets.");
+  uiAlert(t+(detail?"\n"+detail:"")+"\n\nSet limits in Settings → Chat → Limits.","Context");
 };
 
 
@@ -8478,7 +8548,6 @@ box.addEventListener("blur",()=>{
   const ca=document.getElementById("closeActor");
   if(ca)ca.onclick=()=>closeAllSheets();
   const as=document.getElementById("actorSheet");
-  if(as)as.addEventListener("click",e=>{if(e.target===as)closeAllSheets()});
   const asel=document.getElementById("actorSelect");
   if(asel)asel.onchange=()=>onActorSelectChange();
   const scs=document.getElementById("actorScopeSelect");
@@ -8587,60 +8656,84 @@ function isPublicView(){
   if(h==="127.0.0.1"||h==="localhost"||h==="::1")return false;
   return location.protocol==="https:";
 }
-function paintPhoneConnect(cfg){
-  const publicView=isPublicView();
-  const easy=document.getElementById("easyConnect");
-  if(easy)easy.hidden=!!publicView;
-  const urlEl=document.getElementById("phoneUrl");
-  const qr=document.getElementById("phoneQr");
-  const wrap=document.getElementById("phoneQrWrap");
-  if(publicView){
-    if(urlEl)urlEl.value="";
-    if(wrap)wrap.hidden=true;
-    const awayEl=document.getElementById("awayUrl");
-    const pubEl=document.getElementById("publicUrl");
-    if(awayEl)awayEl.value="";
-    if(pubEl){pubEl.value="";pubEl.readOnly=true}
-    const awayWrap=document.getElementById("awayHome");
-    if(awayWrap)awayWrap.hidden=true;
-    return "";
-  }
-  let url="";
-  try{
-    if(cfg&&cfg.ui)url=String(cfg.ui);
-    else if(location.origin&&location.origin.indexOf("http")===0){
-      const sp=new URLSearchParams(location.search);sp.delete("session");
-      const qs=sp.toString();
-      url=location.origin+"/"+(qs?"?"+qs:"");
-    }
-  }catch(e){}
-  if(url&&url.indexOf("auto=")===-1)url+=(url.indexOf("?")>=0?"&":"?")+"auto=1";
-  if(urlEl)urlEl.value=url||"";
-  const host=(location.hostname||"").toLowerCase();
-  const local=host==="127.0.0.1"||host==="localhost";
-  if(qr&&url&&local){
-    if(wrap)wrap.hidden=false;
-    qr.removeAttribute("src");
-    fetch("/api/qr",{cache:"no-store"}).then(r=>r.text()).then(svg=>{
-      if(!svg||svg.indexOf("<svg")<0){if(wrap)wrap.hidden=true;return}
-      qr.outerHTML='<div id="phoneQr" class="phone-qr">'+svg+"</div>";
-    }).catch(()=>{if(wrap)wrap.hidden=true});
-  }else if(wrap)wrap.hidden=true;
-  const awayEl=document.getElementById("awayUrl");
-  const awayWrap=document.getElementById("awayHome");
-  const away=local?String((cfg&&(cfg.public_url||cfg.https_url||cfg.away_url||cfg.tailscale_url))||""):"";
-  if(awayEl)awayEl.value=away;
-  if(awayWrap)awayWrap.hidden=!local;
-  const pubEl=document.getElementById("publicUrl");
-  if(pubEl&&local&&cfg&&cfg.public_origin&&!pubEl.value)pubEl.value=cfg.public_origin;
-  const httpsBtn=document.getElementById("btnEnableHttps");
-  if(httpsBtn)httpsBtn.hidden=!!(cfg&&cfg.https_url)||!local;
-  const savePub=document.getElementById("btnSavePublic");
-  const cfBtn=document.getElementById("btnCfTunnel");
-  if(savePub)savePub.hidden=!local;
-  if(cfBtn)cfBtn.hidden=!local;
-  if(pubEl)pubEl.readOnly=!local;
-  return url;
+var CN={tab:"wifi",net:null,health:null,cfg:null,qr:"",timer:0,busy:false};
+const CN_AWAY=[["public_url","Public HTTPS"],["https_url","Tailscale HTTPS"],["tailscale_url","Tailscale"],["mesh_url","Meshnet / VPN"]];
+function cnLocal(){return !isPublicView()&&/^(127\.0\.0\.1|localhost|\[::1\]|::1)$/.test(location.hostname)}
+async function copyText(v,what){
+  if(!v)return chip("nothing to copy yet");
+  try{await navigator.clipboard.writeText(v);return chip(what+" copied")}catch(e){}
+  const t=document.createElement("textarea");t.value=v;t.setAttribute("readonly","");t.style.cssText="position:fixed;opacity:0;top:0;left:0";document.body.appendChild(t);t.select();
+  let ok=false;try{ok=document.execCommand("copy")}catch(e){}t.remove();
+  ok?chip(what+" copied"):uiPrompt("Copy this:",v,{title:what[0].toUpperCase()+what.slice(1),cancel:"Close"});
+}
+function cnLinks(){
+  const n=CN.net||{},c=CN.cfg||{},a=CN_AWAY.find(([k])=>n[k])||null;
+  return {wifi:n.lan_url||c.ui||(cnLocal()?"":location.origin+"/?auto=1"),away:a?n[a[0]]:"",awayKind:a?a[0]:"",awayLab:a?a[1]:"Away link"};
+}
+function cnReach(L){
+  const n=CN.net||{},r=n.reach||{},kind=r.kind||"unknown",fw=/^(ufw|firewalld)$/.test(kind)?kind:"firewall",away=CN.tab==="away",mesh=away&&/^(mesh_url|tailscale_url)$/.test(L.awayKind),ok=mesh?r.mesh_allowed:r.lan_allowed;
+  return !CN.net?["mut","Checking this PC…"]:away&&!L.away?["warn","No away link yet. Start a Cloudflare tunnel or Tailscale below."]:away&&!mesh?["ok","Works from anywhere over HTTPS"]:ok===true?["ok",mesh?"Meshnet / VPN devices can reach this PC":"Phones on "+(r.lan_net||"this Wi‑Fi")+" can reach this PC"]:ok===false?["bad","Your firewall ("+fw+") is blocking phones",r.fix||""]:kind==="windows"?["warn","If Windows asks, allow Grok Remote on private networks"]:["mut","Couldn't check the firewall. If the phone can't load, allow port "+(n.port||location.port)+"."];
+}
+function paintConnect(){
+  const $=id=>document.getElementById(id),el=$("connectSheet");if(!el)return;
+  const L=cnLinks(),away=CN.tab==="away",url=away?L.away:L.wifi,loc=cnLocal(),n=CN.net||{},h=CN.health,same=(()=>{try{return new URL(url).host===location.host}catch(e){return false}})(),R=!loc&&same?["ok","This device is connected through this link"]:cnReach(L);
+  [["cnTabWifi","wifi"],["cnTabAway","away"]].forEach(([id,t])=>{const b=$(id);b.setAttribute("aria-selected",String(CN.tab===t));b.tabIndex=CN.tab===t?0:-1});
+  $("cnTitle").textContent=loc?"Connect your phone":"Pair another device";
+  $("cnSub").textContent=!loc?"Scan or share this link on another phone or tablet, or switch to the away link before you leave Wi‑Fi.":away?"Use this link when your phone is off your Wi‑Fi.":"Point your phone's camera at the code. Grok Remote opens signed in.";
+  $("cnReach").dataset.tone=R[0];$("cnReachT").textContent=R[1]+(R[2]&&!loc?" · fix it from Connect phone on the PC, or run grok-remote firewall --open there":"");$("cnFix").hidden=!R[2]||!loc;$("cnFixCmd").textContent=R[2]||"";
+  $("cnLinkLab").textContent=away?L.awayLab:"Wi‑Fi link"+(n.lan_ip?" · "+n.lan_ip:"");
+  const u=$("phoneUrl");u.value=url||"";u.placeholder=away?"No away link yet":"Waiting for this PC's address…";
+  $("btnCopyPhone").disabled=!url;$("btnSharePhone").hidden=!navigator.share||!url;
+  const op=$("btnOpenPhonePc");op.textContent=loc?"Open on this PC":"Switch to this link";op.hidden=!url||!loc&&same;
+  const wrap=$("phoneQrWrap"),em=$("cnEmpty");em.hidden=!!url;em.textContent=away?"No away link yet":"Looking for this PC on your network…";
+  if(!url){wrap.hidden=true;CN.qr=""}
+  else if(url!==CN.qr){CN.qr=url;fetch("/api/qr?u="+encodeURIComponent(url),{cache:"no-store"}).then(r=>r.ok?r.text():"").then(svg=>{if(CN.qr!==url)return;const ok=/<svg[\s\S]*<(path|rect)/.test(svg||"");$("phoneQr").innerHTML=ok?svg:"";wrap.hidden=!ok}).catch(()=>{wrap.hidden=true})}
+  const rc=h?(+h.remote_clients||0):0,tot=h?(+h.hub_clients||0):0,dv=$("cnDevices");
+  dv.dataset.tone=!h?"mut":rc||!loc&&tot?"ok":"mut";
+  dv.lastElementChild.textContent=!h?"Checking devices…":loc?(rc?rc+(rc>1?" phones":" phone")+" connected now":"No phone connected yet"):tot+(tot===1?" device":" devices")+" connected to this PC";
+  const ah=$("awayHome"),tun=n.tunnel||{},cf=$("btnCfTunnel"),hs=$("btnEnableHttps"),pub=$("publicUrl");
+  ah.hidden=!(loc&&away);cf.textContent=tun.running?"Cloudflare tunnel on":"Start Cloudflare tunnel";cf.disabled=!!tun.running||tun.available===false;cf.title=tun.error||(tun.available===false?"cloudflared is not installed":"Free quick tunnel · new hostname each start");
+  hs.hidden=!!n.https_url||!n.tailscale_ip;
+  if(pub&&n.public_origin&&!pub.value)pub.value=n.public_origin;
+}
+async function refreshConnect(){
+  if(CN.busy)return CN;CN.busy=true;
+  const j=u=>fetch(u,{cache:"no-store"}).then(r=>r.ok?r.json():null).catch(()=>null);
+  const [n,h]=await Promise.all([j("/api/net"),j("/health")]);
+  CN.busy=false;CN.net=n&&n.ok!==false?n:CN.net;CN.health=h&&!h.demo?h:CN.health;
+  paintConnect();paintConnectChip();
+  return CN;
+}
+function paintConnectChip(){
+  const b=document.getElementById("btnConnectTop");if(!b)return;
+  const loc=cnLocal(),on=isLinked(),st=linkState==="connecting"?"connecting":on?"online":"offline",lab=b.querySelector(".cn-lab");
+  b.classList.toggle("cn-status",!loc);b.dataset.state=st;
+  lab.textContent=loc?"Connect phone":st==="online"?"Connected":st==="connecting"?"Connecting…":"Offline";
+  b.title=loc?"Connect your phone":"Connection · pair another device or switch to the away link";
+}
+function openConnect(tab){
+  try{closeOrbitMenu();closeMoreMenu()}catch(e){}
+  hideConnectHint(true);
+  CN.tab=tab==="away"?"away":"wifi";
+  const el=document.getElementById("connectSheet");
+  if(el.classList.contains("on"))return paintConnect();
+  openSheet(el,null,{onClose:()=>{clearInterval(CN.timer);CN.timer=0}});
+  paintConnect();refreshConnect();
+  clearInterval(CN.timer);CN.timer=setInterval(()=>{if(!document.hidden)refreshConnect()},4000);
+}
+window.openConnect=openConnect;
+function hideConnectHint(done){
+  const el=document.getElementById("cnHint");if(el&&Overlay.isOpen(el))Overlay.close(el,"silent");
+  if(done)try{localStorage.setItem("grok_remote_cn_hint","1")}catch(e){}
+}
+async function maybeConnectHint(){
+  let seen=false;try{seen=localStorage.getItem("grok_remote_cn_hint")==="1"}catch(e){}
+  if(seen||isDemoMode()||!cnLocal()||typeof tourOpen!=="undefined"&&tourOpen||Overlay.top())return;
+  const h=await fetch("/health",{cache:"no-store"}).then(r=>r.json()).catch(()=>null);
+  const a=["btnConnectTop","btnConnectRail"].map(id=>document.getElementById(id)).find(x=>x&&x.getClientRects().length);
+  if(!h||h.remote_seen||h.remote_clients||!a||Overlay.top()||CN.hinted)return;
+  const el=document.getElementById("cnHint");CN.hinted=true;Overlay.open(el,{anchor:a,focus:false});
+  requestAnimationFrame(()=>{const r=a.getBoundingClientRect(),e=el.getBoundingClientRect();el.style.overflowY="visible";el.style.setProperty("--ax",Math.max(14,Math.min(e.width-14,r.left+r.width/2-e.left))+"px")});
 }
 async function openAppUrl(url,opts){
   opts=opts||{};
@@ -8672,61 +8765,25 @@ async function loadCfg(){
     else if(c.ws_url&&!isPublicView())document.getElementById("wsurl").value=c.ws_url;
     if(c.cwd){defaultCwd=String(c.cwd);if(!cwdOverride)document.getElementById("cwd").value=c.cwd}
     if(c.fsRoot)window.__grokFsRoot=String(c.fsRoot);
-    paintPhoneConnect(c);
-    if(!isPublicView())refreshAwayNet();
+    CN.cfg=c;refreshConnect();
     log("cfg ok");return c;
-  }catch(e){document.getElementById("wsurl").value=defaultWs();paintPhoneConnect(null);return null}
+  }catch(e){document.getElementById("wsurl").value=defaultWs();refreshConnect();return null}
 }
 (function wirePhoneConnect(){
-  const copy=document.getElementById("btnCopyPhone");
-  const openPc=document.getElementById("btnOpenPhonePc");
-  const refresh=document.getElementById("btnRefreshPhone");
-  if(copy)copy.onclick=async()=>{
-    const v=(document.getElementById("phoneUrl")||{}).value||"";
-    if(!v){chip("no link yet · Start Server");return}
-    try{await navigator.clipboard.writeText(v);chip("phone link copied")}catch(e){
-      try{const el=document.getElementById("phoneUrl");el&&el.select();document.execCommand("copy");chip("phone link copied")}catch(x){alert(v)}
-    }
-  };
-  if(openPc)openPc.onclick=()=>{const v=(document.getElementById("phoneUrl")||{}).value||location.href;openAppUrl(v,{sameWindowFallback:true}).catch(()=>{})};
-  if(refresh)refresh.onclick=()=>loadCfg().then(()=>chip("link refreshed")).catch(()=>{});
-  const copyAway=document.getElementById("btnCopyAway");
-  if(copyAway)copyAway.onclick=async()=>{
-    const v=(document.getElementById("awayUrl")||{}).value||"";
-    if(!v){chip("no away link yet · save a hostname or start a Cloudflare tunnel");return}
-    try{await navigator.clipboard.writeText(v);chip("away link copied")}catch(e){alert(v)}
-  };
-  const enHttps=document.getElementById("btnEnableHttps");
-  if(enHttps)enHttps.onclick=()=>enableTailscaleHttps();
-  const savePub=document.getElementById("btnSavePublic");
-  if(savePub)savePub.onclick=()=>savePublicUrl();
-  const cfBtn=document.getElementById("btnCfTunnel");
-  if(cfBtn)cfBtn.onclick=()=>startCloudflareTunnel();
+  const $=id=>document.getElementById(id);
+  document.addEventListener("click",e=>{const b=e.target.closest&&e.target.closest("[data-connect]");if(b){e.preventDefault();openConnect(b.dataset.connect)}});
+  $("closeConnect").onclick=()=>closeAllSheets();
+  $("cnHintX").onclick=()=>hideConnectHint(true);
+  [["cnTabWifi","wifi"],["cnTabAway","away"]].forEach(([id,t])=>{$(id).onclick=()=>{CN.tab=t;paintConnect()}});
+  $("cnTabWifi").parentElement.onkeydown=e=>{if(!/^Arrow(Left|Right)$/.test(e.key))return;e.preventDefault();CN.tab=CN.tab==="wifi"?"away":"wifi";paintConnect();$(CN.tab==="wifi"?"cnTabWifi":"cnTabAway").focus()};
+  $("btnCopyPhone").onclick=()=>copyText($("phoneUrl").value,CN.tab==="away"?"away link":"phone link");
+  $("cnFixCopy").onclick=()=>copyText($("cnFixCmd").textContent,"firewall command");
+  $("btnSharePhone").onclick=()=>{const v=$("phoneUrl").value;if(v&&navigator.share)navigator.share({title:"Grok Remote",text:"Open Grok Remote",url:v}).catch(()=>{})};
+  $("btnOpenPhonePc").onclick=()=>{const v=$("phoneUrl").value||location.href;cnLocal()?openAppUrl(v,{sameWindowFallback:true}).catch(()=>{}):location.assign(v)};
+  $("btnEnableHttps").onclick=()=>enableTailscaleHttps();
+  $("btnSavePublic").onclick=()=>savePublicUrl();
+  $("btnCfTunnel").onclick=()=>startCloudflareTunnel();
 })();
-async function refreshAwayNet(){
-  try{
-    const r=await fetch("/api/net",{cache:"no-store"});
-    const j=await r.json();
-    if(!j)return;
-    const awayEl=document.getElementById("awayUrl");
-    const wrap=document.getElementById("awayHome");
-    const u=j.public_url||j.away_url||j.https_url||j.tailscale_url||"";
-    if(awayEl&&u)awayEl.value=u;
-    if(wrap)wrap.hidden=false;
-    const pubEl=document.getElementById("publicUrl");
-    if(pubEl&&(j.public_origin||j.public_url)&&!pubEl.value)pubEl.value=j.public_origin||"";
-    const httpsBtn=document.getElementById("btnEnableHttps");
-    if(httpsBtn)httpsBtn.hidden=!!j.https_url;
-    const cfBtn=document.getElementById("btnCfTunnel");
-    const tun=j.tunnel||{};
-    if(cfBtn)cfBtn.textContent=tun.running?"Cloudflare tunnel on":"Start Cloudflare tunnel";
-    if(awayEl&&!u&&tun.error)awayEl.placeholder=String(tun.error);
-  }catch(e){}
-}
-setInterval(function(){
-  const h=(location.hostname||"").toLowerCase();
-  if(h==="127.0.0.1"||h==="localhost")refreshAwayNet();
-},30000);
 async function savePublicUrl(){
   const inp=document.getElementById("publicUrl");
   const v=(inp&&inp.value||"").trim();
@@ -8765,15 +8822,15 @@ async function enableTailscaleHttps(){
   if(st)st.disabled=false;
 }
 document.getElementById("reloadCfg").onclick=loadCfg;
-document.getElementById("pingHealth").onclick=async()=>{
+async function checkHealth(){
   try{
     const r=await fetch("/health",{cache:"no-store"});
     const text=await r.text();
     let j=null;try{j=JSON.parse(String(text).replace(/^\uFEFF/,"").trim())}catch(e){j=null}
-    if(!j){alert("Health not JSON (is the UI server up?)\\n"+text.slice(0,120));return}
-    alert(j.ok?"Agent OK":"Agent down: "+(j.detail||""));
-  }catch(e){alert(e)}
-};
+    if(!j)return uiAlert("The UI hub answered, but not with JSON. Is it up?\n\n"+text.slice(0,120),"Health check");
+    uiAlert(j.ok?"Agent OK · hub "+(j.hub_up===false?"down":"up"):"Agent down: "+(j.detail||j.hub_err||""),"Health check");
+  }catch(e){uiAlert(String(e),"Health check failed")}
+}
 if(btnPersona)btnPersona.onclick=()=>{closeMoreMenu();loadPersonas();openSheet(personaSheet,btnPersona)};
 const btnWatch=document.getElementById("btnWatch");
 if(btnWatch)btnWatch.onclick=()=>{closeMoreMenu();openAppUrl("/watch",{sameWindowFallback:true}).catch(()=>{})};
@@ -8786,7 +8843,7 @@ if(btnWatchPin)btnWatchPin.onclick=async()=>{
     const j=await r.json();
     if(!j||!j.ok)throw new Error((j&&j.error)||"HTTP "+r.status);
     closeMoreMenu();
-    alert("Watch PIN: "+j.pin+"\n\nOn the watch browser open:\n"+j.open+"\n\nEnter the PIN there. Valid 5 minutes, single use.");
+    uiAlert("On the watch browser open:\n"+j.open+"\n\nEnter the PIN there. Valid 5 minutes, single use.","Watch PIN · "+j.pin);
   }catch(e){chip("watch pin failed: "+e)}
 };
 const btnWork=document.getElementById("btnWork");
@@ -8797,96 +8854,112 @@ const btnMsgMode=document.getElementById("btnMsgMode");
 if(btnMsgMode)btnMsgMode.onclick=e=>{e.preventDefault();e.stopPropagation();cycleMsgMode()};
 const closePersona=document.getElementById("closePersona");
 if(closePersona)closePersona.onclick=()=>closeAllSheets();
-if(personaSheet)personaSheet.addEventListener("click",e=>{if(e.target===personaSheet)closeAllSheets()});
 const personaApplyChat=document.getElementById("personaApplyChat");
 if(personaApplyChat)personaApplyChat.onclick=()=>{window.grokPresets&&window.grokPresets.savePresetState(personaId,directionId);if(sid){personaApplied.delete(sid);savePersonaApplied()}closeAllSheets();chip("persona ready · "+personaId+" · "+directionId)};
 const personaInject=document.getElementById("personaInject");
-if(personaInject)personaInject.onclick=()=>injectPersonaNow().catch(e=>alert(e));
+if(personaInject)personaInject.onclick=()=>injectPersonaNow().catch(e=>uiAlert(String(e),"Persona"));
 if(btnTheme)btnTheme.onclick=()=>{closeMoreMenu();openSheet(themeSheet,btnTheme)};
+let installInfo=null;
+const isLocalDesk=()=>/^(127\.0\.0\.1|localhost|\[::1\]|::1)$/.test(location.hostname)||/[?&]desktop=1/.test(location.search);
+const isTauri=()=>!!(window.__TAURI__||window.__TAURI_INTERNALS__);
+function hostPlatform(){const u=navigator.userAgent||"";return installInfo&&installInfo.platform||(/Windows/i.test(u)?"win":/Macintosh|Mac OS X/i.test(u)?"mac":"linux")}
+function stackCmd(k){return hostPlatform()==="win"?{start:"scripts\\launch-remote.cmd",stop:".\\scripts\\stop-remote.ps1",install:".\\scripts\\install-shortcut.ps1"}[k]:"grok-remote "+k}
+async function fetchInstallInfo(){
+  try{const r=await fetch("/api/stack/install",{cache:"no-store"});const j=r.ok?await r.json():null;installInfo=j&&j.ok!==false?j:null}catch(e){installInfo=null}
+  return installInfo;
+}
 async function stopRemoteStack(){
-  if(!confirm("Stop Grok Remote?\n\n• Closes this UI (port 2421)\n• Stops remote agent serve (2419)\n• Does NOT kill desktop Grok TUI\n\nStart again from any Grok chat with /remote"))return;
+  if(!await uiConfirm("Closes this UI hub (port 2421) and the remote agent serve (2419). Your desktop Grok session keeps running.\n\nStart again from any Grok chat with /remote, or run "+stackCmd("start")+" on the PC.",{title:"Stop Grok Remote?",ok:"Stop",danger:true}))return;
   stopReconnectLoop();reconnectArmed=false;
   try{
     const r=await fetch("/api/stack/stop",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({keep_agent:false})});
     const text=await r.text();
-    let j=null;try{j=JSON.parse(String(text).replace(/^\uFEFF/,"").trim())}catch(e){j=null}
-    if(!r.ok){
-      alert("Stop API missing or failed (old server?).\nRun in PowerShell:\n  .\\scripts\\stop-remote.ps1\n\n"+(text||"").slice(0,200));
-      return;
-    }
+    if(!r.ok)return uiAlert("The stop API is missing or failed (old server?). Run on the PC:\n  "+stackCmd("stop")+"\n\n"+(text||"").slice(0,200),"Stop failed");
     setConn(false,"stopping…");
     chip("remote stopping · agent+ui");
     setTimeout(()=>{try{statusEl.textContent="offline · stopped"}catch(e){}},500);
   }catch(e){
-    alert("Could not reach stop API. Use /remote stop in Grok Build, or:\n.\\scripts\\stop-remote.ps1\n\n"+e);
+    uiAlert("Could not reach the stop API. Use /remote stop in Grok Build, or run on the PC:\n  "+stackCmd("stop")+"\n\n"+e,"Stop failed");
   }
 }
-async function installShortcuts(){
-  try{
-    const r=await fetch("/api/stack/shortcut",{method:"POST",headers:{"Content-Type":"application/json"},body:"{}"});
-    const text=await r.text();
-    let j=null;try{j=JSON.parse(String(text).replace(/^\uFEFF/,"").trim())}catch(e){j=null}
-    if(!r.ok||!j||!j.ok){
-      alert("Shortcut install failed (need updated server).\nOr run:\n  .\\scripts\\install-shortcut.ps1\n\n"+(j&&j.error||text||"").slice(0,300));
-      return;
-    }
-    alert("Shortcuts created:\n• Desktop: Grok Remote + Grok Remote Stop\n• Start Menu: Grok Remote folder\n\nPin to taskbar: right-click the Desktop shortcut → Pin to taskbar.\n\nFrom any Grok chat: /remote");
-  }catch(e){alert("Shortcut API failed: "+e+"\nRun scripts\\install-shortcut.ps1 locally.")}
+function paintInstall(note){
+  const $i=id=>document.getElementById(id),i=installInfo||{},can=!installInfo||i.can_pin!==false;
+  const st=$i("instState"),pin=$i("instPin"),ph=$i("instPinHint"),go=$i("instGo");if(!st)return;
+  st.innerHTML=installInfo?[["App menu",i.installed],["Taskbar pin",i.pinned],["Starts at login",i.autostart]].map(([l,v])=>'<span class="'+(v?"on":"")+'">'+(v?"✓ ":v===false?"– ":"? ")+esc(l)+"</span>").join(""):"<span>"+esc(note||"checking…")+"</span>";
+  pin.disabled=!can;pin.checked=can;$i("instPinRow").setAttribute("aria-disabled",can?"false":"true");
+  ph.textContent=can?"":(i.hint||"Pinning is not supported on this desktop.");ph.hidden=can;
+  $i("instAuto").checked=!!i.autostart;
+  go.textContent=i.installed?"Update":"Install";
 }
+async function openInstall(){
+  if(!isLocalDesk()&&!window.grokRemote&&!isTauri())return window.showPwaHelp&&window.showPwaHelp(true);
+  const sh=document.getElementById("installSheet");if(!sh)return;
+  ["instSteps","instHint"].forEach(id=>{document.getElementById(id).hidden=true});
+  paintInstall("checking…");openSheet(sh);
+  await fetchInstallInfo();paintInstall("install status unavailable on this hub");
+}
+async function runInstall(){
+  const $i=id=>document.getElementById(id),go=$i("instGo");
+  go.disabled=true;go.textContent="Installing…";
+  let j=null,err="";
+  try{
+    const r=await fetch("/api/stack/shortcut",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({pin:$i("instPin").checked&&!$i("instPin").disabled,autostart:$i("instAuto").checked})});
+    const t=await r.text();try{j=JSON.parse(String(t).replace(/^﻿/,"").trim())}catch(e){j=null}
+    if(!r.ok||!j||j.ok===false)err=(j&&(j.error||j.message))||String(t).slice(0,300)||"HTTP "+r.status;
+  }catch(e){err=String(e)}
+  const steps=err?["Install failed: "+err,"Or run on the PC: "+stackCmd("install")]:(j.steps&&j.steps.length?j.steps:["Shortcuts created."]);
+  $i("instSteps").innerHTML=steps.map(x=>"<li>"+esc(x)+"</li>").join("");$i("instSteps").hidden=false;
+  $i("instHint").textContent=j&&j.hint||"";$i("instHint").hidden=!(j&&j.hint);
+  go.disabled=false;
+  if(!err){try{localStorage.setItem("grok_remote_install_prompt","done")}catch(e){}hideInstallBanner()}
+  await fetchInstallInfo();paintInstall("install status unavailable on this hub");
+}
+function hideInstallBanner(){const b=document.getElementById("installBanner");if(b){b.hidden=true;b.classList.remove("on")}}
+async function maybeInstallPrompt(){
+  let pref="",done=false;
+  try{pref=localStorage.getItem("grok_remote_install_prompt")||"";done=isLinked()||localStorage.getItem("grok_remote_tour_done")==="1"||!!localStorage.getItem("grok_remote_last")}catch(e){}
+  const snoozed=/^later:\d+$/.test(pref)&&Date.now()-(+pref.slice(6))<6048e5;
+  if(pref&&!/^later:/.test(pref)||snoozed||isDemoMode()||!done||!isLocalDesk()&&!isTauri()&&!window.grokRemote||!matchMedia("(pointer:fine) and (min-width:700px)").matches)return;
+  const i=await fetchInstallInfo();
+  if(!i||isTauri()&&i.installed||i.installed&&!(i.pinned===false&&i.can_pin))return;
+  const b=document.getElementById("installBanner");if(b){b.hidden=false;b.classList.add("on")}
+}
+(function wireInstall(){
+  const $i=id=>document.getElementById(id),set=v=>{try{localStorage.setItem("grok_remote_install_prompt",v)}catch(e){}hideInstallBanner()};
+  if($i("instGo"))$i("instGo").onclick=()=>runInstall();
+  if($i("btnInstBannerGo"))$i("btnInstBannerGo").onclick=()=>{hideInstallBanner();openInstall()};
+  if($i("btnInstBannerLater"))$i("btnInstBannerLater").onclick=()=>set("later:"+Date.now());
+  if($i("btnInstBannerNever"))$i("btnInstBannerNever").onclick=()=>set("never");
+})();
 function closeOrbitMenu(){
   const m=document.getElementById("orbitMenu");
-  if(m){m.classList.remove("on");m.hidden=true}
+  if(m){Overlay.close(m);m.classList.remove("on");m.hidden=true}
   if(orbit){orbit.setAttribute("aria-expanded","false");orbit.classList.remove("menu-open")}
 }
 function toggleOrbitMenu(e){
-  if(e){e.preventDefault();e.stopPropagation()}
+  if(e)e.preventDefault();
   const m=document.getElementById("orbitMenu");if(!m)return;
-  const open=!m.classList.contains("on");
-  closeMoreMenu();
-  if(open){
-    closeAllSheets();
-    m.hidden=false;m.classList.add("on");
-    if(orbit){orbit.setAttribute("aria-expanded","true");orbit.classList.add("menu-open")}
-    paintLivebar();
-    placeFixedMenu(m,orbit);
-    requestAnimationFrame(()=>placeFixedMenu(m,orbit));
-  }else closeOrbitMenu();
+  if(m.classList.contains("on"))return closeOrbitMenu();
+  const vis=x=>x&&x.getClientRects().length&&!x.closest("#moreMenu")?x:null,src=e&&e.currentTarget;
+  const a=vis(src)||vis(orbit)||vis(moreMenuAnchor)||settingsAnchors().find(vis)||src;
+  closeAllSheets();
+  if(orbit)orbit.classList.add("menu-open");
+  paintLivebar();
+  Overlay.open(m,{anchor:a,trigger:a,onClose:closeOrbitMenu});
 }
 if(orbit){
   orbit.style.cursor="pointer";
   orbit.onclick=toggleOrbitMenu;
 }
-const orbitMenu=document.getElementById("orbitMenu");
-if(orbitMenu)orbitMenu.addEventListener("click",e=>e.stopPropagation());
-document.addEventListener("click",()=>{closeOrbitMenu();closeMoreMenu();closeStatusDebug();if(!agentRailWide())setAgentRailOpen(false)});
-document.addEventListener("keydown",e=>{if(e.key==="Escape"){closeOrbitMenu();closeMoreMenu();closeStatusDebug();if(!agentRailWide())setAgentRailOpen(false)}});
-window.addEventListener("resize",()=>{
-  const mm=document.getElementById("moreMenu"),bm=document.getElementById("btnSettings")||document.getElementById("btnSettingsFoot")||document.getElementById("btnMore");
-  if(mm&&mm.classList.contains("on"))placeFixedMenu(mm,bm);
-  const om=document.getElementById("orbitMenu");
-  if(om&&om.classList.contains("on"))placeFixedMenu(om,orbit);
-});
-function openPairPhone(hash){
-  closeOrbitMenu();closeMoreMenu();
-  const host=(location.hostname||"").toLowerCase();
-  const local=host==="127.0.0.1"||host==="localhost";
-  const dest="/pair"+(hash||"");
-  if(local){openAppUrl(dest,{sameWindowFallback:true}).catch(()=>chip("phone pairing could not open"));return}
-  try{showPage("setup",true)}catch(e){}
-  loadCfg().then(()=>{
-    const el=document.getElementById(hash==="#away"?"awayHome":"easyConnect");
-    if(el)try{el.scrollIntoView({block:"nearest",behavior:"smooth"})}catch(x){}
-    chip(hash==="#away"?"away from home · Cloudflare / 443":"phone pairing · copy the link or scan the QR");
-  }).catch(()=>{chip("phone pairing")});
-}
+["btnLinkControls","btnLinkSetup"].forEach(id=>{const b=document.getElementById(id);if(b)b.onclick=toggleOrbitMenu});
+document.addEventListener("click",e=>{if(!agentRailWide()&&!Overlay.contains(e.target))setAgentRailOpen(false)});
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!agentRailWide())setAgentRailOpen(false)});
 const btnPairPhone=document.getElementById("btnPairPhone");
-if(btnPairPhone)btnPairPhone.onclick=()=>openPairPhone();
-const btnPairPhoneMore=document.getElementById("btnPairPhoneMore");
-if(btnPairPhoneMore)btnPairPhoneMore.onclick=()=>openPairPhone();
+if(btnPairPhone)btnPairPhone.onclick=()=>openConnect();
 const btnAwayHome=document.getElementById("btnAwayHome");
-if(btnAwayHome)btnAwayHome.onclick=()=>openPairPhone("#away");
+if(btnAwayHome)btnAwayHome.onclick=()=>openConnect("away");
 const btnInstallApp=document.getElementById("btnInstallApp");
-if(btnInstallApp)btnInstallApp.onclick=()=>{closeMoreMenu();showPwaHelp(true)};
+if(btnInstallApp)btnInstallApp.onclick=()=>{closeMoreMenu();openInstall()};
 (function wirePwa(){
   const standalone=window.matchMedia("(display-mode: standalone)").matches||window.navigator.standalone===true;
   if(standalone)try{document.documentElement.classList.add("pwa-standalone")}catch(e){}
@@ -8918,12 +8991,12 @@ if(btnInstallApp)btnInstallApp.onclick=()=>{closeMoreMenu();showPwaHelp(true)};
     const steps=document.getElementById("pwaSheetSteps");
     if(steps){
       steps.innerHTML=ios
-        ?"<li>Tap the Share button in Safari.</li><li>Choose Add to Home Screen, then Add.</li><li>Away from Wi-Fi: Settings → Connection → Away from home, then scan the Internet (Cloudflare / 443) code.</li>"
+        ?"<li>Tap the Share button in Safari.</li><li>Choose Add to Home Screen, then Add.</li><li>Away from Wi-Fi: Connect phone → Away from home, then scan that code.</li>"
         :(secure
           ?"<li>Open the Chrome menu (⋮).</li><li>Tap Install app or Add to Home Screen.</li><li>The icon opens Grok Remote without the browser chrome.</li>"
-          :"<li>Chrome menu → Add to Home Screen still works on this Wi-Fi link.</li><li>For a full PWA (HTTPS, works off-LAN): Settings → Connection → Away from home, save a public hostname or start a Cloudflare tunnel, then scan that code.</li>");
+          :"<li>Chrome menu → Add to Home Screen still works on this Wi-Fi link.</li><li>For a full PWA (HTTPS, works off-LAN): Connect phone → Away from home, save a public hostname or start a Cloudflare tunnel, then scan that code.</li>");
     }
-    if(sheet)sheet.hidden=false;
+    openSheet(sheet);
   };
   window.addEventListener("beforeinstallprompt",e=>{
     e.preventDefault();
@@ -8940,8 +9013,7 @@ if(btnInstallApp)btnInstallApp.onclick=()=>{closeMoreMenu();showPwaHelp(true)};
     };
   }
   const ok=document.getElementById("btnPwaSheetOk");
-  if(ok)ok.onclick=()=>{if(sheet)sheet.hidden=true};
-  if(sheet)sheet.addEventListener("click",e=>{if(e.target===sheet)sheet.hidden=true});
+  if(ok)ok.onclick=()=>closeAllSheets();
   if(!standalone&&!isDesk()&&!dismissed){
     const ios=/iphone|ipad|ipod/i.test(navigator.userAgent||"");
     if(ios||!secure)showBanner();
@@ -8952,38 +9024,18 @@ const btnStopRemote=document.getElementById("btnStopRemote");
 if(btnStopRemote)btnStopRemote.onclick=()=>{closeOrbitMenu();stopRemoteStack()};
 const btnStartRemote=document.getElementById("btnStartRemote");
 if(btnStartRemote)btnStartRemote.onclick=()=>{closeOrbitMenu();startRemoteStack({force:true})};
-const btnStartRemoteMore=document.getElementById("btnStartRemoteMore");
-if(btnStartRemoteMore)btnStartRemoteMore.onclick=()=>{closeMoreMenu();startRemoteStack({force:true})};
-const btnStopRemoteMore=document.getElementById("btnStopRemoteMore");
-if(btnStopRemoteMore)btnStopRemoteMore.onclick=()=>{closeMoreMenu();stopRemoteStack()};
-const btnHealthMore=document.getElementById("btnHealthMore");
-if(btnHealthMore)btnHealthMore.onclick=()=>{closeMoreMenu();const b=document.getElementById("pingHealth");if(b)b.click()};
 const btnOrbitHealth=document.getElementById("btnOrbitHealth");
-if(btnOrbitHealth)btnOrbitHealth.onclick=async()=>{
-  closeOrbitMenu();
-  try{
-    const r=await fetch("/health",{cache:"no-store"});
-    const text=await r.text();
-    let j=null;try{j=JSON.parse(String(text).replace(/^\uFEFF/,"").trim())}catch(e){j=null}
-    if(!j){alert("Health not JSON\\n"+text.slice(0,120));return}
-    alert(j.ok?"Agent OK · hub "+(j.hub_up?"up":"down"):"Agent down: "+(j.detail||j.hub_err||""));
-  }catch(e){alert(e)}
-};
-const btnPin=document.getElementById("btnPin");
-if(btnPin)btnPin.onclick=()=>{closeMoreMenu();installShortcuts()};
-const btnStopSetup=document.getElementById("btnStopSetup");
-if(btnStopSetup)btnStopSetup.onclick=()=>stopRemoteStack();
-const btnStartSetup=document.getElementById("btnStartSetup");
-if(btnStartSetup)btnStartSetup.onclick=()=>startRemoteStack({force:true});
+if(btnOrbitHealth)btnOrbitHealth.onclick=()=>{closeOrbitMenu();checkHealth()};
 const btnPinSetup=document.getElementById("btnPinSetup");
-if(btnPinSetup)btnPinSetup.onclick=()=>installShortcuts();
+if(btnPinSetup)btnPinSetup.onclick=()=>openInstall();
+const btnThemeSetup=document.getElementById("btnThemeSetup");
+if(btnThemeSetup)btnThemeSetup.onclick=()=>openSheet(themeSheet,btnThemeSetup);
 const closeTheme=document.getElementById("closeTheme");
 if(closeTheme)closeTheme.onclick=()=>closeAllSheets();
-if(themeSheet)themeSheet.addEventListener("click",e=>{if(e.target===themeSheet)closeAllSheets()});
 const TOUR_PROMPT="Give me a short, friendly walkthrough of Grok Remote after I connect. Cover only what I can try now: sessions list, sending a message, the + tools tray (attach / todos / git), Spoiler for screenshots, and how to stop remote without killing my desktop Grok chat.";
 const TOUR_STEPS=[
   {title:"Welcome",body:"Grok Remote is your phone + browser remote for Grok Build on this PC. A few short stops — Skip anytime. Nothing here changes your agent until you Connect.",sel:null,prep:()=>{try{showPage("setup",true)}catch(e){}}},
-  {title:"1 · Connect",body:"Choose Grok (default greyscale) or another theme, set your project folder if needed, then hit Connect. Health checks the agent; Start Server wakes it if it’s down.",sel:"#setup .rowbtns,#connect,#btnStartSetup",prep:()=>{try{showPage("setup",true);closeAllSheets()}catch(e){}}},
+  {title:"1 · Connect",body:"Set your project folder under Advanced if needed, then hit Connect. Server & pairing… starts or stops the agent, pairs a phone and runs a health check.",sel:"#setup .rowbtns,#connect,#btnLinkSetup",prep:()=>{try{showPage("setup",true);closeAllSheets()}catch(e){}}},
   {title:"2 · Sessions",body:"After connect, the left rail (or Sessions on phone) lists chats. New chat starts clean. Search filters titles. Archive only hides on this device.",sel:"#picker,#newSess",prep:()=>{try{if(isLinked())showPage("sessions",true);else showPage("setup",true)}catch(e){}}},
   {title:"3 · Chat",body:"The feed is the conversation. The right rail is this chat's agent — thinking and tools live inside that one card. Other live chats stay in Sessions.",sel:"#chatStage,#feed,#agentRail",prep:()=>{try{if(isLinked()&&sid)showPage("chat",true);else if(isLinked())showPage("sessions",true)}catch(e){}}},
   {title:"4 · Composer",body:"+ attaches files. Mic sits next to the box for Go voice. When busy: Interject / Queue / FYI. Cancel is its own button next to Send.",sel:"#foot .composer,#box,#send,#btnPlus,#btnComposerVoice,#msgModeRow,#btnCancelTurn",prep:()=>{try{if(isLinked())showPage("chat",true)}catch(e){}}},
@@ -9076,7 +9128,7 @@ function pasteTourPrompt(){
   try{navigator.clipboard&&navigator.clipboard.writeText(TOUR_PROMPT)}catch(e){}
   endTour(true);
   try{chip("tutorial prompt ready · send when a session is open")}catch(e){}
-  if(!sid)try{alert("Tutorial prompt pasted into the composer (and clipboard).\n\nConnect + open a session, then Send for a live walkthrough.")}catch(e){}
+  if(!sid)uiAlert("Tutorial prompt pasted into the composer (and clipboard).\n\nConnect and open a chat, then Send for a live walkthrough.","Feature tour");
 }
 const btnTour=document.getElementById("btnTour");
 if(btnTour)btnTour.onclick=()=>{closeMoreMenu();startTour("header")};
@@ -9105,9 +9157,9 @@ window.addEventListener("resize",()=>{
     const raw=localStorage.getItem("grok_remote_theme");
     const v=localStorage.getItem("grok_remote_variant");
     const m=localStorage.getItem("grok_remote_mode");
-    if(v||m){variant=v||"grok";mode=m||"dark"}
+    if(v||m){variant=v||DEFAULT_VARIANT;mode=m||"dark"}
     else{const mig=migrateTheme(raw);variant=mig.variant;mode=mig.mode}
-  }catch(e){variant="grok";mode="dark"}
+  }catch(e){variant=DEFAULT_VARIANT;mode="dark"}
   loadLayout();
   loadUx();
   loadDraftStore();
@@ -9148,7 +9200,7 @@ window.addEventListener("resize",()=>{
   if(q.get("demo")==="1"){
     window.__demoMode=true;
     try{localStorage.setItem("grok_remote_tour_done","1")}catch(e){}
-    applyTheme(q.get("variant")||"grok",q.get("mode")||"dark",false);
+    applyTheme(q.get("variant")||DEFAULT_VARIANT,q.get("mode")||"dark",false);
     ux.privacy=q.get("privacy")!=="0";
     saveUx();
   }
@@ -9223,10 +9275,12 @@ window.addEventListener("resize",()=>{
         if(!(h2&&h2.ok))chip("offline · use Copy link / Start Server");
       }catch(e){chip("offline · use Copy link / Start Server")}
     }
-  }else{
+  }else if(!isDemoMode()){
     showPage("setup",true);
     paintLinkBanner("Tap Connect when ready");
   }
+  setTimeout(()=>maybeInstallPrompt().catch(()=>{}),4500);
+  setTimeout(()=>maybeConnectHint().catch(()=>{}),2600);
   const forceTour=q.get("tour")==="1"||q.get("tour")==="force";
   let tourDone=false;try{tourDone=localStorage.getItem("grok_remote_tour_done")==="1"}catch(e){}
   if(!isDemoMode()&&forceTour){

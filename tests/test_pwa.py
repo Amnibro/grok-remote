@@ -25,7 +25,7 @@ def test_pwa_html_and_hub():
     assert 'id="btnAwayHome"' in html
     assert 'id="awayHome"' in html
     assert "navigator.serviceWorker.register(\"/sw.js\"" in html
-    assert "2026-09-12-quiet-copy" in html
+    assert "2026-10-06-scient" in html
     assert 'id="publicUrl"' in html
     assert 'id="btnCfTunnel"' in html
     assert "amni-scient" not in html
@@ -43,7 +43,7 @@ def test_pwa_html_and_hub():
     assert "request_is_proxied" in srv
     assert '"pwa"' in srv
     lib=(ROOT/"desktop-tauri"/"src-tauri"/"src"/"lib.rs").read_text(encoding="utf-8")
-    assert "2026-09-12-quiet-copy" in lib
+    assert 'name="grok-remote-ui-build"' in lib and 'join("web").join("index.html")' in lib
 def test_https_card():
     from pairing import addresses,page,url_for
     net={"ip":"100.64.0.10","dns":"pc.tailnet.ts.net","serve":True,"ok":True}

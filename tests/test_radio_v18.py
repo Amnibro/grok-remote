@@ -47,7 +47,7 @@ def test_ui_radio_surface():
     assert 'id="chatMeta"' in html
     assert "linkRtt" in html
     assert "stale link" in html
-    assert "silent>45000" in html
+    assert "silent>90000" in html
     assert 'req("session/load"' in html
     assert "90000" in html
     assert "softCatchup" in html

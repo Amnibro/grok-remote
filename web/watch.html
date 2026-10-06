@@ -3,24 +3,27 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"/>
-<meta name="theme-color" content="#0a0a0a"/>
+<meta name="theme-color" content="#111113" id="themeColor"/>
 <meta name="mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <title>Grok Remote · Watch</title>
 <link rel="manifest" href="/static/watch.webmanifest"/>
+<link rel="icon" type="image/png" sizes="192x192" href="/static/icon-192.png"/>
+<script>(function(){var r=document.documentElement,p=new URLSearchParams(location.search),g=function(k){try{return localStorage.getItem(k)||""}catch(e){return""}},raw=p.get("theme")||g("grok_remote_theme"),v=p.get("variant")||g("grok_remote_variant")||(raw?(raw==="light"?"grok":raw.split("-")[0]):""),m=p.get("mode")||g("grok_remote_mode")||(raw==="light"||/-light$/.test(raw)?"light":"dark");r.setAttribute("data-variant",!v||v==="prayer"?"scient":v);r.setAttribute("data-mode",m==="light"?"light":"dark")})();</script>
+<link rel="stylesheet" href="/static/theme-tokens.css?v=2026-10-06-scient"/>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-html,body{height:100%;background:#0a0a0a;color:#e8e8e8;font:600 14px/1.25 system-ui,Segoe UI,sans-serif;overflow:hidden}
+html,body{height:100%;background:var(--bg);color:var(--tx);font:600 14px/1.25 var(--font);overflow:hidden}
 body{display:flex;align-items:center;justify-content:center;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
-#app{width:min(100vw,100vh);height:min(100vw,100vh);max-width:360px;max-height:360px;border-radius:50%;border:2px solid #333;background:radial-gradient(circle at 40% 30%,#1a1a1a,#050505 70%);display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:14% 12% 12%;text-align:center}
-#phase{font:700 11px/1 ui-monospace,Consolas,monospace;letter-spacing:.08em;text-transform:uppercase;color:#8a8a8a}
-#phase.on{color:#7dffa0}#phase.busy{color:#ffb86b}#phase.err{color:#ff6b6b}
+#app{width:min(100vw,100vh);height:min(100vw,100vh);max-width:360px;max-height:360px;border-radius:50%;border:2px solid var(--line);background:radial-gradient(circle at 40% 30%,var(--panel2),var(--bg) 70%);display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:14% 12% 12%;text-align:center}
+#phase{font:700 11px/1 var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--mut)}
+#phase.on{color:var(--ok)}#phase.busy{color:var(--gold)}#phase.err{color:var(--bad)}
 #line{flex:1;display:flex;align-items:center;justify-content:center;padding:6px;font-size:13px;line-height:1.3;overflow:hidden;word-break:break-word;max-width:100%}
-#mic{width:42%;aspect-ratio:1;border-radius:50%;border:2px solid #555;background:#141414;color:#fff;font:800 13px/1 system-ui;cursor:pointer}
-#mic.on{border-color:#ff5c5c;background:#2a1010;box-shadow:0 0 0 6px rgba(255,92,92,.18)}
+#mic{width:42%;aspect-ratio:1;border-radius:50%;border:2px solid var(--line2);background:var(--panel2);color:var(--tx);font:800 13px/1 var(--font);cursor:pointer}
+#mic.on{border-color:var(--bad);background:color-mix(in srgb,var(--bad) 16%,var(--panel));box-shadow:0 0 0 6px color-mix(in srgb,var(--bad) 18%,transparent)}
 #row{display:flex;gap:8px;width:100%;justify-content:center}
-#row button,#row a{flex:1;max-width:46%;border:1px solid #444;background:#151515;color:#ccc;border-radius:999px;padding:8px 6px;font:700 11px/1 system-ui;text-decoration:none;text-align:center}
-#row button.pri{border-color:#888;color:#fff}
+#row button,#row a{flex:1;max-width:46%;border:1px solid var(--line2);background:var(--panel2);color:var(--soft);border-radius:var(--r-pill);padding:8px 6px;font:700 11px/1 var(--font);text-decoration:none;text-align:center}
+#row button.pri{border-color:var(--acc);color:var(--tx)}
 @media (min-width:400px){#app{border-radius:28px}}
 </style>
 </head>
@@ -36,6 +39,7 @@ body{display:flex;align-items:center;justify-content:center;padding:env(safe-are
 </div>
 <script>
 (function(){
+try{document.getElementById("themeColor").content=getComputedStyle(document.documentElement).getPropertyValue("--bg").trim()||"#111113"}catch(e){}
 const phase=document.getElementById("phase"),line=document.getElementById("line"),mic=document.getElementById("mic");
 let rec=null,listening=false,finalBuf="",ws=null,sid=null,secret="",nid=1,pendingText="";
 function setPhase(t,cls){phase.textContent=t;phase.className=cls||""}

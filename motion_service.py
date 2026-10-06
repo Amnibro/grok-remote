@@ -1,6 +1,7 @@
 import asyncio, time, json, os, random, re
 from aiohttp import web, WSMsgType
-PORT = 2423
+PORT = int(os.environ.get("MOTION_PORT") or 2423)
+HOST = os.environ.get("MOTION_HOST") or "0.0.0.0"
 CLIP_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "clips")
 os.makedirs(CLIP_DIR, exist_ok=True)
 def custom_clips():
@@ -50,10 +51,14 @@ def clip_dur(name):
     return v
 recent = {}
 pending = []
+TRAVEL = {"start_walking", "walk_strafe_left", "jumping_down", "jump_loop", "jump_land", "crouch_to_stand", "crouch_turn_to_stand", "standing_up", "situp_to_idle", "sitting_enter", "sitting_exit", "roll", "crawling", "push_loop", "swim_fwd_loop", "sprint_loop", "driving_loop", "punch_enter", "spell_simple_enter", "spell_simple_exit"}
+GROUND = ("sit", "lay", "crouch", "plank", "walk", "run", "jog", "sprint", "dance", "twerk", "shuffle", "kneel", "pray", "squat", "angry", "jump", "jab_cross", "beckon", "punch")
+def playable(clip):
+    return clip not in TRAVEL and not any(x in clip for x in GROUND)
 async def fire(clip, layer, fade, note=""):
     state["seq"] += 1
     if layer == "base":
-        if state.get("base") != clip:state.update(base=clip, base_at=time.time())
+        if state.get("base") != clip:state.update(base=clip, base_at=time.time(), drift=random.uniform(*DRIFT))
         else:state["base"] = clip
     else:
         state.update(gesture=clip, gesture_at=time.time())
@@ -88,9 +93,8 @@ async def play(req):
     if clip == "acknowledging":clip = "agree"
     if clip not in CLIPS and clip not in custom_clips():
         return cors(web.json_response({"ok": False, "err": "unknown clip", "clips": CLIPS + custom_clips()}, status=400))
-    TRAVEL = {"start_walking", "walk_strafe_left", "jumping_down", "jump_loop", "jump_land", "crouch_to_stand", "crouch_turn_to_stand", "standing_up", "situp_to_idle", "sitting_enter", "sitting_exit", "roll", "crawling", "push_loop", "swim_fwd_loop", "sprint_loop", "driving_loop", "punch_enter", "spell_simple_enter", "spell_simple_exit"}
     layer = d.get("layer") or ("base" if clip in BASE else "gesture")
-    if clip in TRAVEL or any(x in clip for x in ("sit", "lay", "crouch", "plank", "walk", "run", "jog", "sprint", "dance", "twerk", "shuffle", "kneel", "pray", "squat", "angry", "jump", "jab_cross", "beckon", "punch")):
+    if not playable(clip):
         return cors(web.json_response({"ok": True, "clip": clip, "layer": "skipped", "note": "ground/travel clips leave the standing stage - stay standing"}))
     remapped = False
     if state.get("base") == HOME and clip in ARM_HOME:
@@ -157,7 +161,12 @@ async def opt(req):
 HOME = "standing_w_briefcase_idle"
 IDLES = ["standing_w_briefcase_idle", "talking_on_phone", "guitar_playing"]
 IDLE_W = {"standing_w_briefcase_idle": 3, "talking_on_phone": 3, "guitar_playing": 3}
-IDLE_DWELL = {"standing_w_briefcase_idle": 271.0, "talking_on_phone": 271.0, "guitar_playing": 271.0}
+IDLE_DWELL = {"standing_w_briefcase_idle": 28.0, "talking_on_phone": 24.0, "guitar_playing": 32.0}
+WAKE = (4.0, 30.0)
+GAZE = (18.0, 40.0)
+DRIFT = (70.0, 150.0)
+def wake():
+    return random.uniform(*WAKE)
 LIFE = ["look_over_shoulder", "waist_side_stretch", "dismissing_gesture", "point_ahead", "salute", "module_check", "sun_salute", "bow_apology", "machinamachina_spark", "chin_think", "hand_on_heart", "interact", "wave_hello", "blow_kiss"]
 LIFE_SOFT = ["module_check", "machinamachina_spark", "chin_think", "waist_side_stretch", "sun_salute", "interact", "bow_apology"]
 LIFE_HEAD = ["module_check", "machinamachina_spark", "bow_apology"]
@@ -237,11 +246,11 @@ def pick_chain(cur):
 async def get_alive(req):
     return cors(web.json_response({"home": HOME, "idles": IDLES, "life": LIFE, "life_soft": LIFE_SOFT, "life_head": LIFE_HEAD, "guitar_life": GUITAR_LIFE, "arm_right": list(ARM_RIGHT), "arm_left": list(ARM_LEFT), "hold_gaze": HOLD_GAZE, "idle_w": IDLE_W}))
 async def alive_loop(app):
-    nxt = random.uniform(4, 536)
+    nxt = wake()
     since = 0.0
     while True:
         now = time.time()
-        nap = random.uniform(4, 536)
+        nap = min(wake(), max(0.5, state.get("gaze_next", 0) - now))
         if state.get("follow_base"):
             nap = min(nap, max(0.35, state.get("follow_at", now) - now))
         gu = state.get("gesture_until", 0) + fade_pad()
@@ -254,7 +263,7 @@ async def alive_loop(app):
         await asyncio.sleep(nap)
         if not clients:
             since = 0.0
-            nxt = random.uniform(4, 536)
+            nxt = wake()
             continue
         since += time.time() - t0
         now = time.time()
@@ -267,28 +276,28 @@ async def alive_loop(app):
                 state.pop("follow_at", None)
                 if nb:
                     await fire(nb, "base", random.uniform(0.5, 0.9), "idle chain")
-                nxt = random.uniform(4, 536)
+                nxt = wake()
                 since = 0.0
                 continue
         if busy:
             continue
-        if since < nxt:
+        if now >= state.get("gaze_next", 0):
+            state["gaze_next"] = now + random.uniform(*GAZE)
             g = random.choices(["user", "left", "right", "down", "up", "away", "left", "right"], k=1)[0]
             await bcast({"type": "gaze", "target": g, "seq": state["seq"]})
+        if since < nxt:
             continue
         since = 0.0
         if state.get("base") not in IDLES:
             if time.time() - state.get("base_at", 0) > 8:
                 await fire(HOME, "base", random.uniform(0.5, 0.9), "idle recover")
-                nxt = random.uniform(4, 536)
-            else:
-                nxt = random.uniform(4, 536)
+            nxt = wake()
             continue
         quiet = time.time() - state.get("gesture_at", 0)
         pool = GUITAR_LIFE if state.get("base") == "guitar_playing" else (LIFE_SOFT if state.get("base") != HOME else [c for c in LIFE if c not in ARM_LEFT])
         did = False
         life_clip = None
-        if quiet >= IDLE_DWELL.get(state.get("base"), 271.0):
+        if quiet >= IDLE_DWELL.get(state.get("base"), WAKE[1]):
             win = REPEAT_WINDOW
             def ok(c, rec=True):
                 if c == state.get("gesture") or (rec and time.time() - recent.get(c, 0) <= win):
@@ -305,7 +314,7 @@ async def alive_loop(app):
                 if clip not in HOLD_GAZE:
                     await bcast({"type": "gaze", "target": "user", "seq": state["seq"]})
                 did = True
-                nxtb = pick_chain(state.get("base"))
+                nxtb = pick_chain(state.get("base")) if time.time() - state.get("base_at", 0) >= state.get("drift", DRIFT[0]) else state.get("base")
                 stay = nxtb == state.get("base")
                 if stay:
                     state["rephase_at"] = time.time()
@@ -314,9 +323,9 @@ async def alive_loop(app):
         if not did:
             cur = state.get("base")
             dwell = time.time() - state.get("base_at", 0)
-            need = IDLE_DWELL.get(cur, 20)
+            need = state.get("drift", DRIFT[0])
             if dwell < need:
-                nxt = random.uniform(4, 536)
+                nxt = wake()
                 continue
             pick = pick_chain(cur)
             if pick == cur:
@@ -326,7 +335,7 @@ async def alive_loop(app):
             else:
                 await fire(pick, "base", random.uniform(0.5, 0.9), "idle home" if pick == HOME else "idle chain")
                 did = True
-        nxt = random.uniform(4, 536)
+        nxt = wake()
 async def start_bg(app):
     app["alive"] = asyncio.create_task(alive_loop(app))
     app["drain"] = asyncio.create_task(drain_loop(app))
@@ -341,4 +350,5 @@ app.router.add_get("/motion/alive", get_alive)
 app.router.add_post("/motion/clip", save_clip)
 app.router.add_get("/motion/clipdata/{name}", clip_data)
 app.router.add_route("OPTIONS", "/motion/{tail:.*}", opt)
-web.run_app(app, port=PORT)
+if __name__ == "__main__":
+    web.run_app(app, host=HOST, port=PORT)

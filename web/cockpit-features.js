@@ -3,6 +3,7 @@ const S={pinned:[],bgTasks:[],termLines:[],alwaysPerm:{},budget:{maxTurns:0,maxE
 function $(id){return document.getElementById(id)}
 function esc(t){return String(t||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")}
 function chip(t){if(typeof window.chip==="function")window.chip(t);else console.log(t)}
+function dlg(k,a,b,o){const D=window.grokDialog;return D?D[k](a,b,o):Promise.resolve(k==="prompt"?prompt(a,b||""):k==="confirm"?confirm(a):(alert(a),true))}
 function safeParse(raw,fallback){
  try{
   if(raw==null||raw==="")return fallback;
@@ -134,7 +135,7 @@ function renderDiffBlock(text,pathHint){
  try{
  await applyHunkToFile(p,h);
  acc.textContent="Applied";acc.disabled=true;chip("diff applied - "+p);
- }catch(e){alert(e)}
+ }catch(e){dlg("alert",String(e))}
  };
  const rej=document.createElement("button");rej.type="button";rej.textContent="Reject";
  rej.onclick=()=>{box.classList.add("rejected");acc.disabled=true;rej.disabled=true};
@@ -245,7 +246,7 @@ async function cancelBg(id){
 }
 function openAtPicker(){
  const sheet=$("atSheet");if(!sheet)return;
- sheet.classList.add("on");
+ window.openSheet?window.openSheet(sheet):sheet.classList.add("on");
  loadAtList(".");
 }
 async function loadAtList(rel){
@@ -277,8 +278,8 @@ async function attachAtFile(f){
  paintAtChips();
  insertAtMention(f.rel);
  chip("attached @"+f.rel);
- }catch(e){alert(e)}
- const sheet=$("atSheet");if(sheet)sheet.classList.remove("on");
+ }catch(e){dlg("alert",String(e))}
+ const sheet=$("atSheet");if(sheet)window.grokOverlay&&window.grokOverlay.isOpen(sheet)?window.grokOverlay.close(sheet):sheet&&sheet.classList.remove("on");
 }
 function insertAtMention(rel){
  const box=$("box");if(!box)return;
@@ -355,7 +356,7 @@ function exportChat(kind){
 }
 function startVoice(){
  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
- if(!SR){alert("Speech recognition not supported in this browser");return}
+ if(!SR){dlg("alert","Speech recognition is not supported in this browser.","Voice");return}
  if(S.voice){try{S.voice.stop()}catch(e){}S.voice=null;paintVoice(false);return}
  const r=new SR();r.lang="en-US";r.continuous=true;r.interimResults=true;
  let final="";
@@ -485,7 +486,7 @@ async function showGitDiff(){
  row.appendChild(nm);row.appendChild(bub);feed.appendChild(row);
  try{feed.scrollTop=feed.scrollHeight}catch(e){}
  chip("git diff loaded");
- }catch(e){alert(e)}
+ }catch(e){dlg("alert",String(e))}
 }
 function paintCtxMeter(){
  const el=$("ctxMeter");if(!el)return;
@@ -562,11 +563,13 @@ async function injectProjectContext(){
  const f=files[0];
  box.value=(box.value?box.value+"\n\n":"")+"Project instructions from `"+f.name+"`:\n```\n"+(f.preview||"").slice(0,6000)+"\n```\nFollow these unless I override.";
  chip("injected "+f.name);box.focus();
- }catch(e){alert(e)}
+ }catch(e){dlg("alert",String(e))}
 }
 function bindSlashComplete(){
  const box=$("box");const menu=$("slashMenu");if(!box||!menu)return;
- const hide=()=>{menu.classList.remove("on");menu.innerHTML=""};
+ const O=()=>window.grokOverlay;
+ const hide=()=>{if(O()&&O().isOpen(menu))return O().close(menu,"silent");menu.classList.remove("on");menu.innerHTML=""};
+ const act=d=>{const it=[...menu.querySelectorAll(".slash-item")];if(!it.length)return null;const k=it.findIndex(x=>x.classList.contains("on"));if(d){const n=it[(k+d+it.length)%it.length];it.forEach(x=>x.classList.toggle("on",x===n));n.scrollIntoView({block:"nearest"})}return it[k]||null};
  box.addEventListener("input",()=>{
  const v=box.value;
  if(!v.startsWith("/")||v.includes(" ")||v.includes("\n")){hide();return}
@@ -596,11 +599,18 @@ function bindSlashComplete(){
  const n=(c.name||"").replace(/^(\[file\]\s*|file\s*)/, "");
  const d=document.createElement("div");d.className="slash-item";
  d.innerHTML="<b>/"+esc(n)+"</b><span>"+esc(c.description||"")+"</span>";
- d.onclick=()=>{box.value="/"+n+" ";menu.classList.remove("on");box.focus();box.dispatchEvent(new Event("input"))};
+ d.setAttribute("role","option");
+ d.onclick=()=>{hide();box.value="/"+n+" ";box.focus();box.dispatchEvent(new Event("input"))};
  menu.appendChild(d);
  });
- menu.classList.add("on");
+ menu.setAttribute("role","listbox");
+ O()?O().open(menu,{focus:false,keep:[box],onClose:()=>{menu.classList.remove("on");menu.innerHTML=""}}):menu.classList.add("on");
  });
+ box.addEventListener("keydown",e=>{
+ if(!menu.classList.contains("on"))return;
+ if(e.key==="ArrowDown"||e.key==="ArrowUp"){e.preventDefault();act(e.key==="ArrowDown"?1:-1);return}
+ if((e.key==="Enter"||e.key==="Tab")&&!e.shiftKey&&!e.isComposing&&act(0)){e.preventDefault();e.stopImmediatePropagation();act(0).click()}
+ },true);
  box.addEventListener("keydown",e=>{
  if(e.key==="Escape"){hide();return}
  if(e.key!=="Enter"||e.shiftKey)return;
@@ -619,7 +629,7 @@ function bindSlashComplete(){
  box.value="Compact this session: summarize durable decisions, open tasks, and key file paths. Drop redundant chat. Keep actionable next steps.";
  }
  });
- document.addEventListener("click",e=>{if(!menu.contains(e.target)&&e.target!==box)hide()});
+ if(!O())document.addEventListener("click",e=>{if(!menu.contains(e.target)&&e.target!==box)hide()});
 }
 function enhanceBubbles(){
  const feed=$("feed");if(!feed)return;
@@ -647,10 +657,10 @@ function injectChrome(){
       '<button type="button" id="btnTerm" role="menuitem"><span class="mm-ico" aria-hidden="true">〉</span><span class="mm-lab">Terminal</span></button>'+
       '<button type="button" id="btnGitDiff" role="menuitem"><span class="mm-ico" aria-hidden="true">±</span><span class="mm-lab">Git diff</span></button>'+
       '<button type="button" id="btnBg" role="menuitem"><span class="mm-ico" aria-hidden="true">⋯</span><span class="mm-lab">Background</span></button>'+
-      '<button type="button" id="btnCp" role="menuitem"><span class="mm-ico" aria-hidden="true">◇</span><span class="mm-lab">Save point</span></button>'+
+      '<button type="button" id="btnCp" role="menuitem"><span class="mm-ico" aria-hidden="true">⚐</span><span class="mm-lab">Save point</span></button>'+
       '<button type="button" id="btnExport" role="menuitem"><span class="mm-ico" aria-hidden="true">↓</span><span class="mm-lab">Export chat</span></button>'+
       '<button type="button" id="btnAgents" role="menuitem"><span class="mm-ico" aria-hidden="true">⌘</span><span class="mm-lab">Project MD</span></button>'+
-      '<button type="button" id="btnBudget" role="menuitem"><span class="mm-ico" aria-hidden="true">◎</span><span class="mm-lab">Limits</span></button>';
+      '<button type="button" id="btnBudget" role="menuitem"><span class="mm-ico" aria-hidden="true">⊘</span><span class="mm-lab">Limits</span></button>';
     if(toolsHost.id==="moreToolsHost")toolsHost.appendChild(wrap);
     else toolsHost.insertBefore(wrap,toolsHost.firstChild);
   }
@@ -677,14 +687,14 @@ function injectChrome(){
     }
   }
   const atSheet=document.createElement("div");atSheet.className="sheet";atSheet.id="atSheet";
-  atSheet.innerHTML='<div class="card"><h3>@ workspace file <button type="button" class="sheet-x" id="atClose">x</button></h3><p class="hint">Browse PC workspace and attach to the next prompt.</p><div id="atTree" class="ide-tree" style="max-height:50vh"></div></div>';
+  atSheet.innerHTML='<div class="card"><h3>Workspace file <button type="button" class="sheet-x" id="atClose" aria-label="Close">×</button></h3><p class="hint">Browse PC workspace and attach to the next prompt.</p><div id="atTree" class="ide-tree" style="max-height:50vh"></div></div>';
   document.body.appendChild(atSheet);
   const reflow=()=>{if(window.updateJump)window.updateJump();if(window.measureBottomStack)window.measureBottomStack()};
   const closeMore=()=>{if(typeof window.closeMoreMenu==="function")window.closeMoreMenu()};
   const topSearch=$("chatTopSearch")||$("chatSearch");
   if(topSearch)topSearch.oninput=e=>searchChat(e.target.value);
   const pick=$("filePick");
-  if($("btnPlus")&&pick)$("btnPlus").onclick=e=>{e.stopPropagation();pick.click()};
+  if($("btnPlus")&&pick)$("btnPlus").onclick=e=>window.openAttachMenu?window.openAttachMenu(e):pick.click();
   if($("btnAttach")&&pick)$("btnAttach").onclick=()=>pick.click();
   if($("btnAt"))$("btnAt").onclick=()=>{closeMore();openAtPicker()};
   if($("btnComposerVoice"))$("btnComposerVoice").onclick=()=>{
@@ -707,16 +717,16 @@ function injectChrome(){
   if($("btnBg"))$("btnBg").onclick=()=>{closeMore();$("bgPane").classList.toggle("on");paintBg();paintCheckpoints();reflow()};
   if($("btnTodo"))$("btnTodo").onclick=()=>{closeMore();$("todoPane").classList.toggle("on");paintTodos();reflow()};
   if($("todoClose"))$("todoClose").onclick=()=>{$("todoPane").classList.remove("on");reflow()};
-  if($("todoAdd"))$("todoAdd").onclick=()=>{const t=prompt("Todo");if(t)upsertTodo({text:t,status:"pending"})};
+  if($("todoAdd"))$("todoAdd").onclick=async()=>{const t=await dlg("prompt","What needs doing?","",{title:"New todo",ok:"Add"});if(t)upsertTodo({text:t,status:"pending"})};
   if($("todoClearDone"))$("todoClearDone").onclick=()=>{S.todos=S.todos.filter(t=>t.status!=="done");paintTodos()};
   if($("btnGitDiff"))$("btnGitDiff").onclick=()=>{closeMore();showGitDiff()};
   if($("btnAgents"))$("btnAgents").onclick=()=>{closeMore();injectProjectContext()};
   if($("gitStrip"))$("gitStrip").onclick=()=>refreshGit();
-  if($("btnBudget"))$("btnBudget").onclick=()=>{
+  if($("btnBudget"))$("btnBudget").onclick=async()=>{
     closeMore();
-    const t=prompt("Max turns (0=off)",String(S.budget.maxTurns||0));
+    const t=await dlg("prompt","Max turns (0 = off)",String(S.budget.maxTurns||0),{title:"Limits"});
     if(t===null)return;
-    const k=prompt("Max est. tokens (0=off)",String(S.budget.maxEstTokens||0));
+    const k=await dlg("prompt","Max estimated tokens (0 = off)",String(S.budget.maxEstTokens||0),{title:"Limits"});
     if(k===null)return;
     S.budget.maxTurns=+t||0;S.budget.maxEstTokens=+k||0;saveBudget();paintBudget();paintCtxMeter();
   };
@@ -724,15 +734,14 @@ function injectChrome(){
   wireDelve();
   if($("termClose"))$("termClose").onclick=()=>{$("termPane").classList.remove("on");reflow()};
   if($("bgClose"))$("bgClose").onclick=()=>{$("bgPane").classList.remove("on");reflow()};
-  if($("atClose"))$("atClose").onclick=()=>$("atSheet").classList.remove("on");
-  atSheet.addEventListener("click",e=>{if(e.target===atSheet)$("atSheet").classList.remove("on")});
+  if($("atClose"))$("atClose").onclick=()=>window.closeAllSheets?window.closeAllSheets():$("atSheet").classList.remove("on");
   const ctx=$("ctxMeter");
   if(ctx&&!ctx._wired){
     ctx.onclick=()=>{
       refreshSessionContext().finally(()=>{
         const used=S.ctx.used||0,win=S.ctx.window||500000;
         const pct=win?Math.round(100*used/win):(S.ctx.usage||0);
-        alert("Context window\n\n"+fmtTok(used)+" / "+fmtTok(win)+" tokens ("+pct+"%)\nSource: "+(S.ctx.source||"?")+(S.ctx.model?"\nModel: "+S.ctx.model:"")+"\nTurns: "+(S.budget.turns||0)+"\n\nUses session signals.json (same as Grok Build), not feed-length guesses.");
+        dlg("alert","Context window\n\n"+fmtTok(used)+" / "+fmtTok(win)+" tokens ("+pct+"%)\nSource: "+(S.ctx.source||"?")+(S.ctx.model?"\nModel: "+S.ctx.model:"")+"\nTurns: "+(S.budget.turns||0)+"\n\nUses session signals.json (same as Grok Build), not feed-length guesses.");
       });
     };
     ctx._wired=true;

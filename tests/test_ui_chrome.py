@@ -3,15 +3,20 @@ ROOT=Path(__file__).resolve().parents[1]
 def test_pair_in_upper_right_menus():
     html=(ROOT/"web"/"index.html").read_text(encoding="utf-8")
     assert 'id="btnPairPhone"' in html
-    assert 'id="btnPairPhoneMore"' in html
-    assert "function openPairPhone(" in html
+    assert 'id="btnPairPhoneMore"' not in html
+    assert "function openConnect(" in html
     assert "async function openAppUrl(" in html
-    assert 'openAppUrl(dest,{sameWindowFallback:true})' in html
-    assert 'id="btnHealthMore"' in html
+    assert 'btnPairPhone.onclick=()=>openConnect()' in html
+    assert 'id="connectSheet"' in html and 'id="btnConnectTop"' in html and 'id="btnConnectRail"' in html and 'id="btnConnectDeck"' in html
+    assert 'id="btnHealthMore"' not in html
     orbit=html[html.find('id="orbitMenu"'):html.find('id="setup"')]
     assert 'id="btnPairPhone"' in orbit
+    assert 'id="btnOrbitHealth"' in orbit
+    assert 'id="btnStopRemote"' in orbit
     more=html[html.find('id="moreMenu"'):html.find('id="orbitMenu"')]
-    assert 'id="btnPairPhoneMore"' in more
+    assert 'id="btnLinkControls"' in more
+    assert 'id="btnStartRemoteMore"' not in more
+    assert "Pin shortcuts" not in html
     assert 'data-layer="home"' in more
     assert 'data-goto="chat"' in more
     assert "function showMoreLayer" in html
@@ -112,12 +117,27 @@ def test_overlay_layers_and_portals_are_consistent():
     assert 'pop.style.zIndex="var(--z-popover)"' in sess
     rx=html[html.find("function showRxPop"):html.find("function bindMsgPress")]
     assert "document.body.appendChild(p)" in rx
+    assert "const Overlay=(()=>{" in html
+    assert "Overlay.open(m,{anchor,trigger:anchor" in html
+    assert "e.stopPropagation()" not in html[html.find("function toggleMoreMenu"):html.find("function looksLikeShell")]
+    assert "rikku-bench" not in html
+    assert "z-index:20040" not in (ROOT/"web"/"work-dock.js").read_text(encoding="utf-8")
 def test_theme_is_bootstrapped_before_styles_load():
     html=(ROOT/"web"/"index.html").read_text(encoding="utf-8")
     head=html[:html.find('<link rel="stylesheet"')]
     assert 'root.setAttribute("data-variant",variant)' in head
     assert 'root.setAttribute("data-mode",mode)' in head
-    assert 'variant==="grok"?(mode==="light"?"#f4f4f5":"#111113")' in head
+    assert 'variant==="grok"?(mode==="light"?"#fafafa":"#111113")' in head
+    assert head.find('href="/static/theme-tokens.css') < html.find('href="/static/braid-layout.css')
+    tokens=(ROOT/"web"/"theme-tokens.css").read_text(encoding="utf-8")
+    assert 'html[data-variant="win95"][data-mode="light"]{' in tokens
+    assert "--on-acc" in tokens and "--pop-shadow" in tokens and "--scrim" in tokens
+    assert 'html[data-variant="grok"][data-mode="dark"]{' not in html
+    font=html[html.find("function applyFont"):html.find("function setFontPreset")]
+    assert "body.style.fontFamily" not in font
+    assert 'removeProperty("--font")' in font
+    watch=(ROOT/"web"/"watch.html").read_text(encoding="utf-8")
+    assert "/static/theme-tokens.css" in watch and "#0a0a0a" not in watch
 def test_agent_restart_reattaches_active_session():
     html=(ROOT/"web"/"index.html").read_text(encoding="utf-8")
     fn=html[html.find("async function reattachSessionAfterHubRestart"):html.find("(function(){var f=document.getElementById")]
@@ -129,7 +149,7 @@ def test_archive_skin_supports_braid_and_legacy():
     html=(ROOT/"web"/"index.html").read_text(encoding="utf-8")
     skin=(ROOT/"web"/"grok-archive-skin.css").read_text(encoding="utf-8")
     cockpit=(ROOT/"web"/"cockpit-features.js").read_text(encoding="utf-8")
-    link='<link rel="stylesheet" href="/static/grok-archive-skin.css?v=19"/>'
+    link='<link rel="stylesheet" href="/static/grok-archive-skin.css?v=20"/>'
     assert link in html
     assert html.find("</style>") < html.find(link) < html.find("katex.min.css")
     assert 'html[data-layout="braid"][data-variant="grok"]' in skin
@@ -216,14 +236,14 @@ def test_agent_bar_and_session_rail_stay_put():
     assert "placeAgentView(row)" in html
     assert "clearAgentRail()" in html
     assert ".agent-rail" in skin
-    assert "2026-09-12-quiet-copy" in html
+    assert "2026-10-06-scient" in html
     assert "else showPage(\"setup\",true)" not in html[html.find("const doAuto="):html.find("const forceTour=")]
     assert "const linking=connecting||!!(ws&&(ws.readyState===0||ws.readyState===1))" in html
     assert "#chatStage:not(.on){display:none!important" in html
     assert "#chatStage:not(.on){display:none!important" in braid
-    assert 'src="/static/chat-runtime.js?v=2026-09-23-audit"' in html
-    assert "braid-layout.css?v=1.8.29" in html
-    assert "grok-archive-skin.css?v=19" in html
+    assert 'src="/static/chat-runtime.js?v=2026-10-06-overlay"' in html
+    assert "braid-layout.css?v=1.8.31" in html
+    assert "grok-archive-skin.css?v=20" in html
     assert "function stampMsgRow" in html
     assert "className=\"msg-at\"" in html
     assert "_x.ai/remote/loop_fire" in html
@@ -281,7 +301,7 @@ def test_agent_bar_and_session_rail_stay_put():
     assert "sess-dot" in html[html.find("function sessTitleHtml"):html.find("function sessMetaHtml")]
     assert "open-mark" not in html[html.find("function sessTitleHtml"):html.find("function sessMetaHtml")]
     assert "open-mark" not in html[html.find("function paintSessionCurrent"):html.find("function setSelectedSession")]
-    assert "2026-09-12-quiet-copy" in html
+    assert "2026-10-06-scient" in html
     assert ">debug</button>" not in html
     assert "Esc closes" not in html
     assert 'placeholder="Search this chat' not in html
@@ -373,12 +393,12 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "def prop_ok(" in srv
     assert "prop idle keeps the arms" in srv
     assert "idle recover" in alive
-    assert "uniform(4, 536)" in alive[alive.find('"idle recover"'):alive.find("quiet =")]
+    assert "wake()" in alive[alive.find('"idle recover"'):alive.find("quiet =")]
     assert "dwell0 >= need0" not in alive[alive.find("nxtb = pick_chain"):alive.find("if not did")]
     assert "stay = nxtb == state.get(\"base\")" in alive[alive.find("nxtb = pick_chain"):alive.find("if not did")]
     assert "if stay:" in alive[alive.find("nxtb = pick_chain"):alive.find("if not did")]
     assert "dwell < need" in alive
-    assert "uniform(4, 536)" in alive[alive.find("if dwell < need"):alive.find("pick = pick_chain")]
+    assert "wake()" in alive[alive.find("if dwell < need"):alive.find("pick = pick_chain")]
     em=srv[srv.find("EMOTES"):srv.find("state =")]
     assert '"talk": "chin_think"' in em
     assert "sitting_talking" not in em
@@ -406,16 +426,16 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "pendingBase" in js
     assert "actGesture!==a" in js.replace(" ","")
     assert "c in lasts" not in srv
-    assert "uniform(4, 536)" in alive[alive.find('"idle chain"'):alive.find("if busy")]
-    assert "nxt = random.uniform(4, 536)" in alive[:alive.find("while True")]
-    assert "nxt = random.uniform(4, 536)" in alive[alive.find("if not clients"):alive.find("since += ")]
-    assert "nap = random.uniform(4, 536)" in alive[alive.find("while True"):alive.find("if state.get(\"follow_base\")")]
+    assert "wake()" in alive[alive.find('"idle chain"'):alive.find("if busy")]
+    assert "nxt = wake()" in alive[:alive.find("while True")]
+    assert "nxt = wake()" in alive[alive.find("if not clients"):alive.find("since += ")]
+    assert "nap = min(wake()," in alive[alive.find("while True"):alive.find("if state.get(\"follow_base\")")]
     assert "min(1, len(pool) - 1)" not in srv
     assert "win = REPEAT_WINDOW" in srv
     assert "REPEAT_WINDOW = 10.0" in srv
     assert alive.find("follow_base") < alive.find("if since < nxt")
     assert "since += time.time() - t0" in alive or "since+=time.time()-t0" in alive.replace(" ","")
-    assert '"walk"' in srv[srv.find("if clip in TRAVEL"):srv.find("if clip in TRAVEL")+280]
+    assert '"walk"' in srv[srv.find("GROUND = "):srv.find("def playable")]
     assert '"up"' in alive[alive.find("random.choices"):alive.find("random.choices")+180]
     assert '"user", "user", "user"' not in alive[alive.find("random.choices"):alive.find("random.choices")+180]
     assert '"left", "right"' in alive[alive.find("random.choices"):alive.find("random.choices")+180]
@@ -436,7 +456,7 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "if(idl.timeScale===0)idl.timeScale" not in js.replace(" ","")
     assert "idle after gesture" in srv
     assert "since = 0.0" in alive or "since=0.0" in alive.replace(" ","")
-    assert '"dance"' in srv[srv.find("if clip in TRAVEL"):srv.find("if clip in TRAVEL")+360]
+    assert '"dance"' in srv[srv.find("GROUND = "):srv.find("def playable")]
     assert "random.random() < 0.66" in pc
     assert "c != HOME]" in pc
     assert "return weighted(alts, [IDLE_W.get(c, 1) for c in alts])" in pc
@@ -457,7 +477,7 @@ def test_idle_chain_uses_seamless_mixamo():
     assert '"excited": "excited_bounce"' in em
     assert '"jump": "excited_bounce"' in em
     assert "a.timeScale=0.86" in js.replace(" ","")
-    assert '"jump"' in srv[srv.find("if clip in TRAVEL"):srv.find("if clip in TRAVEL")+480]
+    assert '"jump"' in srv[srv.find("GROUND = "):srv.find("def playable")]
     assert "fade>=1.05" not in js.replace(" ","")
     assert "getActIdle()===a" in js.replace(" ","")
     jsIdle=js.replace(" ","")
@@ -466,12 +486,15 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "state.get(\"base\") != clip" in srv or "state.get('base')!=clip" in srv.replace(" ","")
     assert "function endGesture(" in js
     assert 'addEventListener("finished"' in js
-    assert '"standing_w_briefcase_idle": 271.0' in srv[srv.find("IDLE_DWELL"):srv.find("LIFE =")]
-    assert '"talking_on_phone": 271.0' in srv[srv.find("IDLE_DWELL"):srv.find("LIFE =")]
-    assert '"guitar_playing": 271.0' in srv[srv.find("IDLE_DWELL"):srv.find("LIFE =")]
-    assert '"kneel"' in srv[srv.find("if clip in TRAVEL"):srv.find("if clip in TRAVEL")+420]
+    import sys;sys.path.insert(0,str(ROOT));import motion_service as ms
+    assert set(ms.IDLE_DWELL)==set(ms.IDLES)
+    assert all(10<=v<=60 for v in ms.IDLE_DWELL.values()),"life beats must come within a minute of quiet or she looks frozen"
+    assert 0<ms.WAKE[0]<ms.WAKE[1]<=60 and max(ms.IDLE_DWELL.values())<ms.WAKE[1]*2
+    assert 10<=ms.GAZE[0]<ms.GAZE[1]<=60 and 30<=ms.DRIFT[0]<ms.DRIFT[1]<=180
+    assert "uniform(4, 536)" not in srv and "271.0" not in srv
+    assert '"kneel"' in srv[srv.find("GROUND = "):srv.find("def playable")]
     assert "gestureHold=performance.now()+480" in js.replace(" ","")
-    assert '"angry"' in srv[srv.find("if clip in TRAVEL"):srv.find("if clip in TRAVEL")+450]
+    assert '"angry"' in srv[srv.find("GROUND = "):srv.find("def playable")]
     assert "nxt - since" in alive or "nxt-since" in alive.replace(" ","")
     assert "clip not in HOLD_GAZE" in alive
     html=(ROOT/"web"/"xr.html").read_text(encoding="utf-8")
@@ -480,8 +503,8 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "gazeUntil=now+2800" in html.replace(" ","")
     assert "lookT=t+2.8" in html.replace(" ","")
     assert "motionState.gz" in html
-    assert "sitting_talking" not in html[html.find("You are in the room"):html.find("You are in the room")+800]
-    assert "Stay standing" in html
+    brief=(ROOT/"companion.py").read_text(encoding="utf-8")
+    assert "sitting_talking" not in brief and "Stay standing" in brief and "Stay standing" not in html
     assert 'if clip == "standing_greeting"' in srv
     assert "FADE_PAD" in srv
     assert 'if clip == "acknowledging"' in srv
@@ -494,7 +517,7 @@ def test_idle_chain_uses_seamless_mixamo():
     assert '"sneaky": "look_over_shoulder"' in em
     assert "busy = now < state.get(\"gesture_until\", 0) + fade_pad()" in srv or "busy=now<state.get(\"gesture_until\",0)+fade_pad()" in srv.replace(" ","")
     assert "def fade_pad(" in srv
-    assert "jab_cross" in srv[srv.find("if clip in TRAVEL"):srv.find("if clip in TRAVEL")+500]
+    assert "jab_cross" in srv[srv.find("GROUND = "):srv.find("def playable")]
     assert "if(pbTimer){clearTimeout(pbTimer)" in js.replace(" ","")
     assert "headBone" in html
     em=srv[srv.find("EMOTES"):srv.find("state =")]
@@ -513,7 +536,7 @@ def test_idle_chain_uses_seamless_mixamo():
     assert "curBase=HOME" in js.replace(" ","")
     assert "if(d.layer===\"base\")curBase=d.clip" in js.replace(" ","")
     assert "if(d.type===\"state\"&&d.base)" in js.replace(" ","")
-    assert '"beckon"' in srv[srv.find("if clip in TRAVEL"):srv.find("if clip in TRAVEL")+520]
+    assert '"beckon"' in srv[srv.find("GROUND = "):srv.find("def playable")]
     assert "life_head" in js
     assert "life_soft" in js
     assert "function keepIdle(" in js
@@ -547,7 +570,7 @@ def test_idle_chain_uses_seamless_mixamo():
     assert '"dance": "excited_bounce"' in em
     assert '"angry": "dismissing_gesture"' in em
     assert '"punch": "dismissing_gesture"' in em
-    assert '"punch"' in srv[srv.find("if clip in TRAVEL"):srv.find("if clip in TRAVEL")+560]
+    assert '"punch"' in srv[srv.find("GROUND = "):srv.find("def playable")]
     assert "clip not in HOLD_GAZE" in alive
     assert "getClip().name" in js.replace(" ","")
     assert "nm!==String(d.base)" in js.replace(" ","")
@@ -638,7 +661,7 @@ def test_idle_chain_uses_seamless_mixamo():
     assert '"thank": "bow_apology"' in em
     assert "rephase_at\", 0) < 4" not in srv and "rephase_at', 0)<4" not in srv.replace(" ","")
     assert "rephase_at\", 0) >= 4" not in srv and "rephase_at', 0)>=4" not in srv.replace(" ","")
-    assert "uniform(4, 536)" in srv[srv.find("rephase_at"):srv.find("idle rephase")]
+    assert "wake()" in srv[srv.find("rephase_at"):srv.find("idle rephase")]
     assert '"standing_clap": "wave_hello"' in srv[srv.find("ARM_HOME"):srv.find("def extra_life")]
     em=srv[srv.find("EMOTES"):srv.find("state =")]
     assert '"love": "hand_on_heart"' in em
@@ -646,6 +669,22 @@ def test_idle_chain_uses_seamless_mixamo():
     assert '"guitar_playing": 3' in srv[srv.find("IDLE_W"):srv.find("IDLE_DWELL")]
     assert '"talking_on_phone": 3' in srv[srv.find("IDLE_W"):srv.find("IDLE_DWELL")]
     assert "standing_clap" in js[js.find("curBase===HOME"):js.find("function holdGaze")]
+def test_amni_scient_default_and_connect_sheet():
+    html=(ROOT/"web"/"index.html").read_text(encoding="utf-8")
+    tokens=(ROOT/"web"/"theme-tokens.css").read_text(encoding="utf-8")
+    head=html[:html.find('<link rel="stylesheet"')]
+    assert 'if(!variant||variant==="prayer")variant="scient";' in head
+    assert 'DEFAULT_VARIANT="scient"' in html and '{id:"scient",label:"Amni-Scient"' in html
+    sd=tokens[tokens.find('html[data-variant="scient"][data-mode="dark"]{'):]
+    assert "--bg:#08090B" in sd and "--acc:#C89B4E" in sd and "--on-acc:#120C03" in sd
+    sl=tokens[tokens.find('html[data-variant="scient"][data-mode="light"]{'):]
+    assert "--bg:#F3F2EF" in sl and "--acc:#8A6318" in sl
+    assert "font-family:Archivo" in tokens and "/static/fonts/archivo-var.woff2" in tokens and "font-stretch:62% 125%" in tokens
+    fn=html[html.find("function paintConnect"):html.find("async function refreshConnect")]
+    assert "/api/qr?u=" in fn and "reach" in html[html.find("function cnReach"):html.find("function paintConnect")]
+    assert "grok-remote firewall --open" in html
+    src=(ROOT/"server.py").read_text(encoding="utf-8")
+    assert 'request.query.get("u")' in src and '"remote_clients"' in src
 if __name__=="__main__":
     test_pair_in_upper_right_menus()
     test_sess_filters_core_only_single_line()

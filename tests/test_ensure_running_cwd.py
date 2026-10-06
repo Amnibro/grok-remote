@@ -1,11 +1,12 @@
-import os,subprocess,sys,unittest
+import os,shutil,subprocess,sys,unittest
 from pathlib import Path
 REPO=Path(__file__).resolve().parents[1]
 SCRIPT=REPO/"scripts"/"ensure-running.ps1"
 def resolve(cwd,extra=()):
  env=dict(os.environ);env.pop("GROK_PROJECT_DIR",None)
- out=subprocess.run(["powershell","-NoProfile","-ExecutionPolicy","Bypass","-File",str(SCRIPT),"-IgnoreConfig","-PrintCwd",*extra],cwd=str(cwd),env=env,capture_output=True,text=True,timeout=60)
+ out=subprocess.run([shutil.which("powershell") or shutil.which("pwsh"),"-NoProfile","-ExecutionPolicy","Bypass","-File",str(SCRIPT),"-IgnoreConfig","-PrintCwd",*extra],cwd=str(cwd),env=env,capture_output=True,text=True,timeout=60)
  return out.stdout.strip().rstrip("\\")
+@unittest.skipUnless(shutil.which("powershell") or shutil.which("pwsh"),"PowerShell not installed")
 class EnsureRunningCwd(unittest.TestCase):
  def test_repo_root_is_never_the_workspace(self):
   got=resolve(REPO)

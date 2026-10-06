@@ -85,7 +85,7 @@ export function initCompose(ctx){
       try{onStats&&onStats(name,Object.assign(measure(clip,skeleton,restQ),{skipped:[...skipped]}))}catch(e3){}
       setClips(getClips().filter(c=>c.name!==name).concat([clip]));
       motionPlay(name,"gesture",0.45);
-      fetch("http"+(location.protocol==="https:"?"s":"")+"://"+location.hostname+":2423/motion/clip",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({name,data:THREE.AnimationClip.toJSON(clip)})}).catch(()=>{});
+      fetch((ctx.motionBase?ctx.motionBase():location.origin)+"/motion/clip",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({name,data:THREE.AnimationClip.toJSON(clip)})}).catch(()=>{});
       setTimeout(()=>{
         try{
           const shot=solidShot&&solidShot();

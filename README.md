@@ -53,7 +53,7 @@ grok plugin enable grok-remote
 Pin a release:
 
 ```bash
-grok plugin install Amnibro/grok-remote@v1.9.21 --trust
+grok plugin install Amnibro/grok-remote@v1.11.0 --trust
 ```
 
 In the TUI, reload plugins if needed (`/plugins` → `r`), then:
@@ -64,7 +64,25 @@ In the TUI, reload plugins if needed (`/plugins` → `r`), then:
 
 Open the printed URL on your phone (same Wi‑Fi), e.g. `http://192.168.x.x:2421/?auto=1`.
 
-**Linux / macOS:** unpack the [source tarball](https://github.com/Amnibro/grok-remote/releases/latest), run `./start.sh` (Python 3.10+), open the printed URL.
+**Linux (Arch, Debian/Ubuntu, Fedora, openSUSE…) / macOS:**
+
+```bash
+git clone https://github.com/Amnibro/grok-remote && cd grok-remote
+python3 grok_remote_ctl.py doctor          # checks python, aiohttp, grok, firewall, voice; prints the fix for your distro
+python3 grok_remote_ctl.py install --pin   # app-menu launcher + icon + `grok-remote` CLI, pinned to the taskbar/dock
+grok-remote autostart boot                 # optional: start at login (systemd user unit / LaunchAgent)
+grok-remote open                           # starts the hub if needed and opens the desktop window
+grok-remote url --qr                       # phone pairing link + QR in the terminal
+```
+
+`./start.sh` still works on its own. On distros whose system Python is externally managed (Arch, Debian 12+, Fedora), it uses `python-aiohttp` from your package manager when present, otherwise it builds a private venv under `~/.grok/plugin-data/grok-remote/venv` and leaves the system Python alone. Pinning is automatic on KDE Plasma, GNOME and Cinnamon; other desktops get instructions. If phones can't connect, `doctor` prints the `ufw`/`firewalld` line that opens port 2421.
+
+| `grok-remote …` | |
+|---|---|
+| `start` · `stop` · `restart` · `status` | hub lifecycle (`stop` never touches other grok processes) |
+| `install [--pin] [--autostart]` · `uninstall` · `pin [--off]` | launcher, taskbar/dock pin |
+| `autostart on\|boot\|off\|status` | Grok SessionStart hook, start at login |
+| `url [--qr]` · `open [--browser]` · `doctor` | pairing, window, diagnostics |
 
 ---
 
@@ -143,7 +161,8 @@ Blur titles, paths, and IDs for safe sharing. Desktop: hold **Alt** to peek. Pho
 | **Skills** | Agent + disk skill palette |
 | **Themes** | Grok greyscale default + Scient + retro gallery |
 | **Spoiler** | Privacy blur for screenshots |
-| **Desktop app** | Optional Tauri window (`GrokRemote.exe`) wrapping the same hub as the phone |
+| **Desktop app** | Optional Tauri window (`GrokRemote.exe`, or `grok-remote-desktop` on Linux) wrapping the same hub as the phone |
+| **Install & pin** | Command deck → **Install app…** or `grok-remote install --pin`: app menu, taskbar/dock pin, start at login |
 
 ---
 
@@ -198,6 +217,8 @@ powershell -File .\scripts\install-autostart.ps1 -Cwd path\to\project
 powershell -File .\scripts\install-autostart.ps1 -Boot -Cwd path\to\project
 powershell -File .\scripts\install-autostart.ps1 -Disable
 ```
+
+Linux / macOS: `grok-remote autostart on|boot|off|status` (`boot` installs a systemd user unit or LaunchAgent).
 
 Or in TUI: `/remote-autostart on` · `boot` · `off` · `status`
 

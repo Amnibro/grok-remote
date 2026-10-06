@@ -1,16 +1,23 @@
 #!/usr/bin/env bash
-CHROME="${CHROME:-/c/Users/antho/.cache/puppeteer/chrome/win64-131.0.6778.204/chrome-win64/chrome.exe}"
-KEY="${XR_KEY:-$(cat "$(dirname "$0")/../.ui-secret" 2>/dev/null)}"
+ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+PLUG="${PLUG:-$ROOT_DIR}"
+MIRROR="${MIRROR:-}"
+pick_chrome(){ for c in "$CHROME" google-chrome-stable google-chrome chromium chromium-browser brave-browser microsoft-edge "/c/Program Files/Google/Chrome/Application/chrome.exe" "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"; do [ -n "$c" ] && command -v "$c" >/dev/null 2>&1 && { command -v "$c"; return; }; [ -n "$c" ] && [ -x "$c" ] && { echo "$c"; return; }; done; }
+CHROME="$(pick_chrome)"
+PY="$(command -v python3 || command -v python)"
+KEY="${XR_KEY:-$(cat "$PLUG/.ui-secret" 2>/dev/null)}"
 HUB="${HUB:-http://127.0.0.1:2421}"
-MS="${MS:-http://127.0.0.1:2423}"
-PLUG="${PLUG:-/c/Users/antho/.grok/plugins/grok-remote}"
-MIRROR="${MIRROR:-/c/Users/antho/Documents/ai/grok-remote}"
+HPORT="${HUB##*:}"
+MS="${MS:-$HUB}"
+MQ="${KEY:+?key=$KEY}"
 TAG="suite$$"
+PROFILE="$(mktemp -d "${TMPDIR:-/tmp}/$TAG.XXXX")"
 PORT=9401
 PASS=0
 FAIL=0
 T0=$(date +%s)
 LAP=$T0
+CPID=""
 phase(){ N=$(date +%s); [ "$LAP" != "$T0" ] && printf '        (%ds)\n' "$((N-LAP))"; LAP=$N; echo "$1"; }
 ok(){ PASS=$((PASS+1)); printf '  PASS  %s\n' "$1"; }
 no(){ FAIL=$((FAIL+1)); printf '  FAIL  %s\n' "$1"; }
@@ -19,44 +26,51 @@ has(){ case "$2" in *"$3"*) ok "$1";; *) no "$1 (missing '$3' in: $(printf '%.90
 lt(){ N=$(printf '%s' "$2" | grep -o "\"$3\":[0-9]*" | head -1 | cut -d: -f2); [ -n "$N" ] && [ "$N" -lt "$4" ] && ok "$1 ($3=$N < $4)" || no "$1 ($3=${N:-none}, want < $4)"; }
 gt(){ N=$(printf '%s' "$2" | grep -o "\"$3\":[0-9]*" | head -1 | cut -d: -f2); [ -n "$N" ] && [ "$N" -gt "$4" ] && ok "$1 ($3=$N > $4)" || no "$1 ($3=${N:-none}, want > $4)"; }
 cleanup(){
-  powershell -NoProfile -Command "Get-CimInstance Win32_Process -Filter \"Name='chrome.exe'\" | Where-Object { \$_.CommandLine -like '*$TAG*' } | ForEach-Object { Stop-Process -Id \$_.ProcessId -Force -ErrorAction SilentlyContinue }" >/dev/null 2>&1
-  sleep 3
-  rm -rf "/c/Users/antho/AppData/Local/Temp/$TAG" 2>/dev/null
+  [ -n "$CPID" ] && kill "$CPID" 2>/dev/null
+  pkill -f -- "--user-data-dir=$PROFILE" 2>/dev/null
+  sleep 1
+  rm -rf "$PROFILE" 2>/dev/null
 }
 trap cleanup EXIT
+[ -n "$CHROME" ] || { echo "no Chrome/Chromium found - set CHROME=/path/to/chrome"; exit 2; }
 live(){ CDP_PORT=$PORT CDP_PAGE="$2" node "$PLUG/tests/xr-live.mjs" "$1"; }
 
 phase "== services =="
 chk "hub /xr" "$(curl -s -m 8 -o /dev/null -w '%{http_code}' "$HUB/xr?key=$KEY")" "200"
 chk "hub /health" "$(curl -s -m 8 -o /dev/null -w '%{http_code}' "$HUB/health")" "200"
-MSTATE=$(curl -s -m 6 "$MS/motion/state")
+MSTATE=$(curl -s -m 6 "$MS/motion/state$MQ")
 has "motion service state" "$MSTATE" '"base"'
-CI=$(python "$PLUG/tools/clip-invariants.py" 2>/dev/null)
+CI=$("$PY" "$PLUG/tools/clip-invariants.py" 2>/dev/null)
 case "$CI" in *'"parsed_ok": true'*) ok "clip invariant scan actually ran";; *) no "clip invariant scan actually ran ($CI)";; esac
 case "$CI" in *'"root_motion": []'*) ok "no clip carries root motion";; *) no "no clip carries root motion ($CI)";; esac
 case "$CI" in *'"empty_or_broken": []'*) ok "no empty or unparseable clip";; *) no "no empty or unparseable clip ($CI)";; esac
 case "$CI" in *'"idles_with_loop_seam": []'*) ok "idle clips loop seamlessly";; *) no "idle clips loop seamlessly ($CI)";; esac
 
-SA=$(python "$PLUG/tools/service-audit.py" 2>/dev/null)
+SA=$(MOTION_CLIPS_URL="$MS/motion/clips$MQ" "$PY" "$PLUG/tools/service-audit.py" 2>/dev/null)
 case "$SA" in *'"parsed_ok": true'*) ok "service list scan actually ran";; *) no "service list scan actually ran ($SA)";; esac
 case "$SA" in *'"BASE_missing": []'*) ok "service clip lists all exist";; *) no "service clip lists all exist ($SA)";; esac
 case "$SA" in *'"idles_not_base": []'*) ok "idle clips classify as base";; *) no "idle clips classify as base ($SA)";; esac
 
-BA=$(python "$PLUG/tools/brief-audit.py" 2>/dev/null)
+BRIEF=$(curl -s -m 8 "$HUB/api/companion/briefing$MQ")
+BA=$(printf '%s' "$BRIEF" | "$PY" -c 'import sys,json,re,urllib.request;b=json.load(sys.stdin)["text"];d=json.load(urllib.request.urlopen(sys.argv[1],timeout=8));live=set(d["clips"])|set(d.get("emotes",{}));names=set(re.findall(r"\b[a-z][a-z0-9]*(?:_[a-z0-9]+)+\b",b));print(json.dumps({"referenced":len(names),"missing":sorted(n for n in names if n not in live),"parsed_ok":len(names)>5}))' "$MS/motion/clips$MQ" 2>/dev/null)
 case "$BA" in *'"parsed_ok": true'*) ok "briefing scan actually ran";; *) no "briefing scan actually ran ($BA)";; esac
 case "$BA" in *'"missing": []'*) ok "briefing names all exist";; *) no "briefing names all exist ($BA)";; esac
-case "$BA" in *'"fallback_missing": []'*) ok "fallback clip list all exist";; *) no "fallback clip list all exist ($BA)";; esac
+has "briefing carries clip tiers" "$BRIEF" 'explosive - '
+has "briefing carries reach tag" "$BRIEF" '[[reach:'
+CUSER=$(curl -s -m 6 "$HUB/api/companion/config$MQ" | "$PY" -c 'import sys,json;print(json.load(sys.stdin)["user"])' 2>/dev/null)
+has "briefing addresses the configured user (${CUSER:-?})" "$BRIEF" "You are ${CUSER:-?}'s companion"
 grep -q "^IDLES = " "$PLUG/motion_service.py" && ok "idle drift set present" || no "idle drift set present"
 grep -q "^LIFE = " "$PLUG/motion_service.py" && ok "life beat set present" || no "life beat set present"
-curl -s -m 6 -X POST -H "content-type: application/json" -d '{"clip":"salute"}' "$MS/motion/play" >/dev/null
-chk "gesture state set on play" "$(curl -s -m 6 "$MS/motion/state" | python -c 'import sys,json;print(json.load(sys.stdin)["gesture"])')" "salute"
+curl -s -m 6 -X POST -H "content-type: application/json" -d '{"clip":"salute"}' "$MS/motion/play$MQ" >/dev/null
+chk "gesture state set on play" "$(curl -s -m 6 "$MS/motion/state$MQ" | "$PY" -c 'import sys,json;print(json.load(sys.stdin)["gesture"])')" "salute"
 sleep 13
-chk "gesture state clears when stale" "$(curl -s -m 6 "$MS/motion/state" | python -c 'import sys,json;print(json.load(sys.stdin)["gesture"])')" "None"
-curl -s -m 6 "$MS/motion/state" | grep -q gesture_at && no "gesture_at leaks into api" || ok "gesture_at hidden from api"
+chk "gesture state clears when stale" "$(curl -s -m 6 "$MS/motion/state$MQ" | "$PY" -c 'import sys,json;print(json.load(sys.stdin)["gesture"])')" "None"
+curl -s -m 6 "$MS/motion/state$MQ" | grep -q gesture_at && no "gesture_at leaks into api" || ok "gesture_at hidden from api"
 for m in xr-panels xr-compose xr-motion xr-brain xr-voice xr-ik; do
   chk "module $m.js" "$(curl -s -m 6 -o /dev/null -w '%{http_code}' "$HUB/static/$m.js")" "200"
 done
 
+if [ -n "$MIRROR" ] && [ -d "$MIRROR" ] && [ "$MIRROR" != "$PLUG" ]; then
 phase "== mirror parity =="
 for f in web/xr.html web/xr-panels.js web/xr-compose.js web/xr-motion.js web/xr-brain.js web/xr-voice.js web/xr-ik.js web/motion-lab.html web/pose-harvest.html web/index.html web/watch.html web/clip_index.json tools/clip-index.mjs motion_service.py docs/COMPANION_ARCHITECTURE.md; do
   A=$(md5sum "$PLUG/$f" 2>/dev/null | cut -d' ' -f1)
@@ -64,12 +78,15 @@ for f in web/xr.html web/xr-panels.js web/xr-compose.js web/xr-motion.js web/xr-
   [ -n "$A" ] && [ "$A" = "$B" ] && ok "mirrored $f" || no "mirrored $f ($A vs $B)"
 done
 
-CIX=$(curl -s -m 6 "$HUB/static/clip_index.json" | python -c 'import sys,json;d=json.load(sys.stdin);print(d["built"])' 2>/dev/null)
+else
+  printf '  SKIP  mirror parity (set MIRROR=/path/to/second/checkout)\n'
+fi
+CIX=$(curl -s -m 6 "$HUB/static/clip_index.json" | "$PY" -c 'import sys,json;d=json.load(sys.stdin);print(d["built"])' 2>/dev/null)
 [ "${CIX:-0}" -ge 90 ] && ok "clip index built ($CIX clips)" || no "clip index built (got ${CIX:-none})"
 
 phase "== static pages =="
-bash "$PLUG/tests/page-smoke.sh" motion-lab.html "lab ok" >/dev/null 2>&1 && ok "motion-lab boots" || no "motion-lab boots"
-bash "$PLUG/tests/page-smoke.sh" pose-harvest.html "harvest ok" >/dev/null 2>&1 && ok "pose-harvest boots" || no "pose-harvest boots"
+CHROME="$CHROME" HUB="$HUB" bash "$PLUG/tests/page-smoke.sh" motion-lab.html "lab ok" >/dev/null 2>&1 && ok "motion-lab boots" || no "motion-lab boots"
+CHROME="$CHROME" HUB="$HUB" bash "$PLUG/tests/page-smoke.sh" pose-harvest.html "harvest ok" >/dev/null 2>&1 && ok "pose-harvest boots" || no "pose-harvest boots"
 for f in motion-lab pose-harvest; do
   grep -q "window.__errors" "$PLUG/web/$f.html" && ok "$f has error bus" || no "$f has error bus"
   grep -q "companionModel" "$PLUG/web/$f.html" && ok "$f honours avatar choice" || no "$f honours avatar choice"
@@ -78,21 +95,24 @@ done
 phase "== live renderer =="
 "$CHROME" --headless=new --disable-gpu --enable-unsafe-swiftshader --autoplay-policy=no-user-gesture-required \
   --use-fake-device-for-media-stream --use-fake-ui-for-media-stream \
-  --remote-debugging-port=$PORT --user-data-dir="/c/Users/antho/AppData/Local/Temp/$TAG" \
-  "$HUB/xr?key=$KEY&auto=1" >/dev/null 2>&1 &
+  --remote-debugging-port=$PORT --user-data-dir="$PROFILE" \
+  "$HUB/health" >/dev/null 2>&1 &
+CPID=$!
+sleep 3
+CDP_PORT=$PORT CDP_PAGE="/health" node "$PLUG/tests/xr-live.mjs" '(()=>{localStorage.setItem("grok_remote_ux",JSON.stringify({companion:true}));location.href="/xr?key='"$KEY"'&auto=1";return "go"})()' >/dev/null 2>&1
 waitfor(){ for i in $(seq 1 "$2"); do R=$(live "$1" "auto=1" 2>/dev/null); case "$R" in *"$3"*) return 0;; esac; sleep 2; done; return 1; }
 sleep 8
 waitfor 'JSON.stringify({ready:!!(window.__xr&&__xr.brain()&&__xr.brain().ready())})' 25 '"ready":true' || printf '  note  renderer slow to become ready
 '
 R=$(live 'JSON.stringify({mods:__xr.mods().length,ready:!!(__xr.brain()&&__xr.brain().ready())})' "auto=1")
 has "renderer modules + brain session" "$R" '"ready":true'
-chk "renderer attached to motion ws" "$(curl -s -m 6 "$MS/motion/state" | python -c 'import sys,json;print(json.load(sys.stdin)["clients"])')" "1"
+chk "renderer attached to motion ws" "$(curl -s -m 6 "$MS/motion/state$MQ" | "$PY" -c 'import sys,json;print(json.load(sys.stdin)["clients"])')" "1"
 
-G0=$(curl -s -m 6 "$MS/motion/state" | python -c 'import sys,json;print(json.load(sys.stdin)["gesture"])')
+G0=$(curl -s -m 6 "$MS/motion/state$MQ" | "$PY" -c 'import sys,json;print(json.load(sys.stdin)["gesture"])')
 WANT=salute; [ "$G0" = "salute" ] && WANT=agree
 live "(()=>{const b=__xr.brain();b.B.accum='ok. [[motion:$WANT]] done.';b.B.spokenUpto=0;b.B.lastSpoken='';b.flushSentences(true);return 'sent'})()" "auto=1" >/dev/null
 sleep 3
-chk "brain tag → motion service" "$(curl -s -m 6 "$MS/motion/state" | python -c 'import sys,json;print(json.load(sys.stdin)["gesture"])')" "$WANT"
+chk "brain tag → motion service" "$(curl -s -m 6 "$MS/motion/state$MQ" | "$PY" -c 'import sys,json;print(json.load(sys.stdin)["gesture"])')" "$WANT"
 
 live '(()=>{const v=__xr.voice();v.speak("suite check");return "q"})()' "auto=1" >/dev/null
 sleep 10
@@ -100,10 +120,7 @@ has "tts queue drains to idle" "$(live 'JSON.stringify({q:__xr.voice().queued(),
 
 has "renderer error bus clean" "$(live 'JSON.stringify({n:__xr.errors().length,last:(__xr.errors().slice(-1)[0]||{}).msg||""})' "auto=1")" '"n":0'
 
-PROMPT=$(live '(async()=>{__xr.resetBraidSig();const b=__xr.brain();const real=b.req;let cap=null;b.req=async(m,p)=>{cap={m,p};return {result:{}}};await window.__ask("suite prompt probe");b.req=real;const t=cap&&cap.p&&cap.p.prompt&&cap.p.prompt[0]?cap.p.prompt[0].text:"";return JSON.stringify({len:t.length,braid:t.includes("Braid room is live"),tiers:t.includes("explosive (celebration only"),reach:t.includes("[[reach:SIDE TARGET]]"),hitch:t.includes("do NOT loop cleanly"),ail:t.includes("Your body is reporting problems")})})()' "auto=1")
-has "prompt carries clip tiers" "$PROMPT" '"tiers":true'
-has "prompt carries reach tag" "$PROMPT" '"reach":true'
-has "prompt warns about hitching loops" "$PROMPT" '"hitch":true'
+PROMPT=$(live '(async()=>{__xr.resetBraidSig();const b=__xr.brain();const real=b.ask;let cap=null;b.ask=async(t,o)=>{cap={t,...o};return {}};await window.__ask("suite prompt probe");b.ask=real;const t=cap?[cap.t,...(cap.percept||[])].join(" "):"";return JSON.stringify({len:t.length,braid:t.includes("Braid room is live"),ail:t.includes("body is reporting problems")})})()' "auto=1")
 BRAIDLIVE=$(curl -s -m 6 "$HUB/api/xr/braid?key=$KEY" | grep -o '"live": *true' | head -1)
 if [ -n "$BRAIDLIVE" ]; then
   has "prompt carries Braid context" "$PROMPT" '"braid":true'
@@ -111,20 +128,20 @@ else
   printf '  SKIP  prompt carries Braid context (Braid :8788 offline)
 '
 fi
-DELTA=$(live '(async()=>{const b=__xr.brain();const real=b.req;const s=[];b.req=async(m,p)=>{s.push(p.prompt[0].text.length);return{result:{}}};await window.__ask("d1");await window.__ask("d2");b.req=real;return JSON.stringify({second:s[1]})})()' "auto=1")
+DELTA=$(live '(async()=>{const b=__xr.brain();const real=b.ask;const s=[];b.ask=async(t,o)=>{s.push(JSON.stringify(o.percept).length+t.length);return {}};await window.__ask("d1");await window.__ask("d2");b.ask=real;return JSON.stringify({second:s[1]})})()' "auto=1")
 lt "steady-state turn stays small" "$DELTA" "second" 60
 has "no body-fault note when healthy" "$PROMPT" '"ail":false'
-has "body-fault note fires when broken" "$(live '(async()=>{__xr.noteErr("console","suite synthetic fault");const b=__xr.brain();const real=b.req;let cap=null;b.req=async(m,p)=>{cap={m,p};return{result:{}}};await window.__ask("suite fault probe");b.req=real;return JSON.stringify({ail:cap.p.prompt[0].text.includes("Your body is reporting problems")})})()' "auto=1")" '"ail":true'
+has "body-fault note fires when broken" "$(live '(async()=>{__xr.noteErr("console","suite synthetic fault");const b=__xr.brain();const real=b.ask;let cap=null;b.ask=async(t,o)=>{cap={t,...o};return {}};await window.__ask("suite fault probe");b.ask=real;return JSON.stringify({ail:[cap.t,...(cap.percept||[])].join(" ").includes("body is reporting problems")})})()' "auto=1")" '"ail":true'
 
 gt "clips drive real bones" "$(live 'JSON.stringify({d:__xr.rig().driven})' "auto=1")" "d" 10
 
-SELFN=$(live '(async()=>{__xr.vision().last=0;const b=__xr.brain();const real=b.req;let cap=null;b.req=async(m,p)=>{cap=p;return{result:{}}};await window.__ask("self note probe");b.req=real;const t=cap.prompt[0].text;return JSON.stringify({self:t.includes("render of YOUR OWN BODY"),cam:t.includes("camera eyes are ON"),src:__xr.vision().src})})()' "auto=1")
-has "self-view note when camera off" "$SELFN" '"self":true'
+SELFN=$(live '(async()=>{__xr.vision().last=0;const b=__xr.brain();const real=b.ask;let cap=null;b.ask=async(t,o)=>{cap={t,...o};return {}};await window.__ask("self note probe");b.ask=real;const t=[cap.t,...(cap.percept||[])].join(" ");return JSON.stringify({self:(cap.images||[]).some(i=>i.label==="self"),cam:(cap.images||[]).some(i=>i.label==="camera"),src:__xr.vision().src})})()' "auto=1")
+has "no self-view without an invented move" "$SELFN" '"self":false'
 has "no false camera claim" "$SELFN" '"cam":false'
 
 has "rig compatibility check" "$(live 'JSON.stringify(__xr.rig())' "auto=1")" '"pct":100'
 
-MOVE=$(live '(async()=>{const p=window.__panels;const b=__xr.brain();const real=b.req;let cap=null;b.req=async(m,pp)=>{cap=pp;return{result:{}}};for(let i=0;i<5;i++){p.addConvo("you","q"+i);p.addConvo("her","a"+i)}await window.__ask("calm");const calm=cap.prompt[0].text.includes("Body note");for(let i=0;i<6;i++){p.addConvo("move","motion: joyful_jump");p.addConvo("her","r"+i)}await window.__ask("busy");const busy=cap.prompt[0].text.includes("Body note");b.req=real;return JSON.stringify({calm,busy})})()' "auto=1")
+MOVE=$(live '(async()=>{const p=window.__panels;const b=__xr.brain();const real=b.ask;let cap=null;b.ask=async(t,o)=>{cap={t,...o};return {}};for(let i=0;i<5;i++){p.addConvo("you","q"+i);p.addConvo("her","a"+i)}await window.__ask("calm");const calm=[cap.t,...(cap.percept||[])].join(" ").includes("Body note");for(let i=0;i<6;i++){p.addConvo("move","motion: joyful_jump");p.addConvo("her","r"+i)}await window.__ask("busy");const busy=[cap.t,...(cap.percept||[])].join(" ").includes("Body note");b.ask=real;return JSON.stringify({calm,busy})})()' "auto=1")
 has "no pacing nudge when calm" "$MOVE" '"calm":false'
 has "pacing nudge when over-gesturing" "$MOVE" '"busy":true'
 
@@ -136,7 +153,7 @@ lt "widest panel fits phone width" "$PHONE" "widest" 391
 TOUCH=$(live '(()=>{const p=window.__panels;const hidden=p.touchBar.style.display||"none";dispatchEvent(new TouchEvent("touchstart",{bubbles:true}));return new Promise(r=>setTimeout(()=>{const shown=p.touchBar.style.display;const btn=[...p.touchBar.children].find(b=>b.getAttribute("data-key")==="h");btn.dispatchEvent(new PointerEvent("pointerdown",{bubbles:true}));setTimeout(()=>{const hud=[...document.querySelectorAll("div")].find(d=>/^base /.test(d.textContent||""));r(JSON.stringify({hidden,shown,btns:p.touchBar.children.length,hudOpen:hud?hud.style.display:"missing"}))},600)},600))})()' "auto=1")
 has "touch bar hidden on desktop" "$TOUCH" '"hidden":"none"'
 has "touch bar appears on touch" "$TOUCH" '"shown":"flex"'
-has "touch bar has all panel buttons" "$TOUCH" '"btns":7'
+has "touch bar has all panel buttons" "$TOUCH" '"btns":8'
 has "touch button opens its panel" "$TOUCH" '"hudOpen":"block"'
 MATRIX=$(CDP_PORT=$PORT node "$PLUG/tests/xr-mobile.mjs" 360 640 '(()=>{const p=window.__panels;p.showBar();return new Promise(r=>setTimeout(()=>{const ids=["cap","exit","talk","typeRow"];const els={};for(const k of ids){const e=document.getElementById(k);if(e){const b=e.getBoundingClientRect();if(b.width>0&&b.height>0)els[k]=b}}els.touchBar=p.touchBar.getBoundingClientRect();const names=Object.keys(els);const ov=(a,b)=>!(a.bottom<=b.top||a.top>=b.bottom||a.right<=b.left||a.left>=b.right);const hits=[];for(let i=0;i<names.length;i++)for(let j=i+1;j<names.length;j++){if(ov(els[names[i]],els[names[j]]))hits.push(names[i]+"~"+names[j])}const off=names.filter(n=>els[n].bottom>innerHeight+1);p.touchBar.style.display="none";r(JSON.stringify({n:names.length,overlaps:hits,offscreen:off}))},1000))})()')
 gt "chrome elements all measured" "$MATRIX" "n" 4
@@ -158,10 +175,8 @@ has "transcript annotates move energy" "$TIER" 'explosive 118.5'
 has "transcript flags hitching moves" "$TIER" 'hitches'
 
 MAP=$(live '(()=>{window.dispatchEvent(new KeyboardEvent("keydown",{key:"v",bubbles:true}));return new Promise(r=>setTimeout(()=>{const NL=String.fromCharCode(10);const d=[...document.querySelectorAll("div")].find(e=>/CODE MAP/.test(e.textContent||""));const rows=d?d.textContent.split(NL).filter(l=>l.indexOf("xr-")>=0):[];const mods=__xr.mods().filter(m=>m!=="core"&&m.indexOf("sid:")!==0);r(JSON.stringify({rows:rows.length,mods:mods.length,zero:rows.filter(l=>l.indexOf(" 0 lines")>=0).length}))},6000))})()' "auto=1")
-chk "xr modules revalidate instead of caching a day" "$(curl -s -m 6 -D- -o /dev/null "$HUB/static/xr-deform.js" | grep -i '^cache-control' | tr -d '
-' | cut -d' ' -f2)" "no-cache"
-has "big static assets still cache" "$(curl -s -m 6 -D- -o /dev/null "$HUB/static/three.module.js" | tr -d '
-')" "max-age=86400"
+chk "xr modules revalidate instead of caching a day" "$(curl -s -m 6 -D- -o /dev/null "$HUB/static/xr-deform.js" | grep -i '^cache-control' | tr -d '\r\n' | cut -d' ' -f2)" "no-cache"
+has "big static assets still cache" "$(curl -s -m 6 -D- -o /dev/null "$HUB/static/three.module.js" | tr -d '\r\n')" "max-age=86400"
 
 LAGH=$(node "$PLUG/tests/lag.mjs" 2>/dev/null)
 lf(){ printf '%s' "$LAGH" | grep -o "\"$1\":[0-9]*" | cut -d: -f2; }
@@ -194,7 +209,7 @@ lt "stray radius stays inside the elastic limit" "$DEF" "strayMm" 27
 grep -q "stepPhysics" "$PLUG/web/xr.html" && no "dead cloth sim removed from xr.html" || ok "dead cloth sim removed from xr.html"
 
 LAGV=$(live '(async()=>{const r=[];for(let i=0;i<30;i++){r.push(__xr.lagInfo());await new Promise(x=>setTimeout(x,110))}
-await fetch("http://"+location.hostname+":2423/motion/play",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({clip:"salute"})});
+await fetch(location.origin+"/motion/play",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({clip:"salute"})});
 await new Promise(x=>setTimeout(x,600));const g=[];for(let i=0;i<24;i++){g.push(__xr.lagInfo());await new Promise(x=>setTimeout(x,90))}
 const mx=a=>Math.max(...a),mn=a=>Math.min(...a),av=a=>a.reduce((p,c)=>p+c,0)/a.length;const c=__xr.cloth();const sp=__xr.strands();
 return JSON.stringify({pts:c.hair.pts,pct:c.hair.pct,lag:c.lag?1:0,w:c.w,maxFlex:Math.round(c.hair.max*100),span:Math.round(c.hair.span*1000),restRate:Math.round(av(r.slice(15).map(x=>x.rate))*100),gestRate:Math.round(mn(g.map(x=>x.rate))*100),restSpeed:Math.round(av(r.slice(15).map(x=>x.speed))*100),gestSpeed:Math.round(mx(g.map(x=>x.speed))*100),slowRate:Math.round((__xr.lagSlow().rate)*100),strandN:sp.sampled,strandWorst:Math.round(sp.worstMm),strandMean:Math.round(sp.meanMm)})})()' "auto=1")
@@ -283,9 +298,9 @@ has "look module loaded" "$LOOK" '"loaded":true'
 gt "look runs detection on camera" "$LOOK" "frames" 0
 
 has "vision loop captures" "$(live 'JSON.stringify(__xr.vision())' "auto=1")" '"on":true'
-has "camera note when camera on" "$(live '(async()=>{const b=__xr.brain();const real=b.req;let cap=null;b.req=async(m,p)=>{cap=p;return{result:{}}};await window.__ask("cam note probe");b.req=real;return JSON.stringify({cam:cap.prompt[0].text.includes("camera eyes are ON")})})()' "auto=1")" '"cam":true'
+has "camera note when camera on" "$(live '(async()=>{const b=__xr.brain();const real=b.ask;let cap=null;b.ask=async(t,o)=>{cap={t,...o};return {}};await window.__ask("cam note probe");b.ask=real;return JSON.stringify({cam:(cap.images||[]).some(i=>i.label==="camera")})})()' "auto=1")" '"cam":true'
 
-RECAP=$(live '(async()=>{const p=window.__panels;p.addConvo("you","suite seed question");p.addConvo("her","suite seed answer");p.addConvo("you","suite second");p.addConvo("her","suite second answer");window.__recapSent=false;const b=__xr.brain();const real=b.req;let cap=null;b.req=async(m,pp)=>{cap=pp;return{result:{}}};await window.__ask("suite current turn");b.req=real;const t=cap.prompt[0].text;const i=t.indexOf("[You and Anthony were");return JSON.stringify({has:i>=0,leaksCurrent:i>=0?t.slice(i,t.indexOf("]",i)).includes("suite current turn"):false})})()' "auto=1")
+RECAP=$(live '(async()=>{const p=window.__panels;p.addConvo("you","suite seed question");p.addConvo("her","suite seed answer");p.addConvo("you","suite second");p.addConvo("her","suite second answer");window.__recapSent=false;const b=__xr.brain();const real=b.ask;let cap=null;b.ask=async(t,o)=>{cap={t,...o};return {}};await window.__ask("suite current turn");b.ask=real;const t=[cap.t,...(cap.percept||[])].join(" ");const i=t.indexOf("[You and Anthony were");return JSON.stringify({has:i>=0,leaksCurrent:i>=0?t.slice(i,t.indexOf("]",i)).includes("suite current turn"):false})})()' "auto=1")
 has "convo recap survives reload" "$RECAP" '"has":true'
 has "recap excludes the current turn" "$RECAP" '"leaksCurrent":false'
 
@@ -306,19 +321,19 @@ live '(async()=>{const db=await new Promise((res,rej)=>{const r=indexedDB.open("
 fi
 
 phase "== chat surfaces =="
-curl -s -m 6 -X PUT "http://127.0.0.1:$PORT/json/new?http%3A%2F%2F127.0.0.1%3A2421%2F%3Fkey%3D$KEY" >/dev/null
+curl -s -m 6 -X PUT "http://127.0.0.1:$PORT/json/new?http%3A%2F%2F127.0.0.1%3A$HPORT%2F%3Fkey%3D$KEY" >/dev/null
 sleep 10
-STRIP=$(CDP_PORT=$PORT CDP_PAGE="2421/?key" node "$PLUG/tests/xr-live.mjs" '(()=>{const f=window.takeAgentRx;if(typeof f!=="function")return "NO_FN";return JSON.stringify({body:f("a [[motion:agree]] b").trim(),bare:f("a [[wave]] b").trim(),wiki:f("keep [[MyWiki]]").trim()})})()')
+STRIP=$(CDP_PORT=$PORT CDP_PAGE="$HPORT/?key" node "$PLUG/tests/xr-live.mjs" '(()=>{const f=window.takeAgentRx;if(typeof f!=="function")return "NO_FN";return JSON.stringify({body:f("a [[motion:agree]] b").trim(),bare:f("a [[wave]] b").trim(),wiki:f("keep [[MyWiki]]").trim()})})()')
 has "hub chat strips body tags" "$STRIP" '"body":"a b"'
 has "hub chat strips bare tags" "$STRIP" '"bare":"a b"'
 has "hub chat keeps wiki links" "$STRIP" '"wiki":"keep [[MyWiki]]"'
-curl -s -m 6 -X PUT "http://127.0.0.1:$PORT/json/new?http%3A%2F%2F127.0.0.1%3A2421%2Fstatic%2Fmotion-lab.html%3Fkey%3D$KEY" >/dev/null
+curl -s -m 6 -X PUT "http://127.0.0.1:$PORT/json/new?http%3A%2F%2F127.0.0.1%3A$HPORT%2Fstatic%2Fmotion-lab.html%3Fkey%3D$KEY" >/dev/null
 sleep 12
 LABSEAM=$(CDP_PORT=$PORT CDP_PAGE="motion-lab" node "$PLUG/tests/xr-live.mjs" '(()=>{const L=window.lab;if(!L)return JSON.stringify({err:"no lab"});L.setBone("RightArm",0,0,-60);L.snapKey();L.setBone("RightArm",0,0,-10);L.snapKey();const open=document.getElementById("seam").textContent;L.setBone("RightArm",0,0,-60);L.snapKey();const closed=document.getElementById("seam").textContent;return JSON.stringify({open,closed})})()')
 has "lab flags an open loop" "$LABSEAM" 'HITCHES hard'
 has "lab confirms a closed loop" "$LABSEAM" 'loops clean'
 
-BADGE=$(CDP_PORT=$PORT CDP_PAGE="2421/?key" node "$PLUG/tests/xr-live.mjs" '(async()=>{try{if(typeof compPoll==="function")await compPoll()}catch(e){}const b=document.getElementById("compBadge");const vis=b&&b.style&&b.style.display!=="none"&&b.getBoundingClientRect().width>0;return JSON.stringify({rendered:!!vis})})()')
+BADGE=$(CDP_PORT=$PORT CDP_PAGE="$HPORT/?key" node "$PLUG/tests/xr-live.mjs" '(async()=>{try{if(typeof compPoll==="function")await compPoll()}catch(e){}const b=document.getElementById("compBadge");const vis=b&&b.style&&b.style.display!=="none"&&b.getBoundingClientRect().width>0;return JSON.stringify({rendered:!!vis})})()')
 has "hub chat has no companion idle badge" "$BADGE" '"rendered":false'
 grep -q "function stripBody" "$PLUG/web/watch.html" && ok "watch page has stripBody" || no "watch page has stripBody"
 

@@ -4,8 +4,9 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
 <title>Grok Remote · Companion</title>
-<script>(function(){try{var v=localStorage.getItem("grok_remote_variant")||"grok";var m=localStorage.getItem("grok_remote_mode")||"dark";document.documentElement.setAttribute("data-variant",v);document.documentElement.setAttribute("data-mode",m);document.documentElement.setAttribute("data-layout",localStorage.getItem("grok_remote_layout")||"braid")}catch(e){document.documentElement.setAttribute("data-variant","grok");document.documentElement.setAttribute("data-mode","dark")}})();</script>
-<link rel="stylesheet" href="/static/theme-tokens.css"/>
+<link rel="icon" type="image/png" sizes="192x192" href="/static/icon-192.png"/>
+<script>(function(){var r=document.documentElement;try{var p=new URLSearchParams(location.search),raw=p.get("theme")||localStorage.getItem("grok_remote_theme")||"",v=p.get("variant")||localStorage.getItem("grok_remote_variant")||"",m=p.get("mode")||localStorage.getItem("grok_remote_mode")||"";if(!v&&raw)v=raw==="light"?"grok":raw.split("-")[0];if(!m&&raw)m=raw==="light"||/-light$/.test(raw)?"light":"dark";r.setAttribute("data-variant",!v||v==="prayer"?"scient":v);r.setAttribute("data-mode",m==="light"?"light":"dark");r.setAttribute("data-layout",localStorage.getItem("grok_remote_layout")==="legacy"?"legacy":"braid")}catch(e){r.setAttribute("data-variant","scient");r.setAttribute("data-mode","dark");r.setAttribute("data-layout","braid")}})();</script>
+<link rel="stylesheet" href="/static/theme-tokens.css?v=2026-10-06-scient"/>
 <style>
 html,body{margin:0;height:100%;background:var(--bg);color:var(--tx);font-family:var(--font);overflow:hidden}
 #gl{position:fixed;inset:0}
@@ -18,6 +19,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--tx);font-family:
 #hud{position:fixed;left:0;right:0;bottom:0;display:none;flex-direction:column;align-items:center;gap:8px;padding:0 12px calc(14px + env(safe-area-inset-bottom));z-index:5;pointer-events:none}
 #cap{display:none}
 #talk{pointer-events:auto;width:72px;height:72px;border-radius:50%;border:1px solid var(--line);background:var(--panel2);color:var(--acc);font-size:10px;letter-spacing:.08em;cursor:pointer;user-select:none;-webkit-user-select:none;touch-action:none;font-weight:700;z-index:12}
+#stopTalk{pointer-events:auto;display:none;font:700 11px var(--font);letter-spacing:.08em;padding:8px 14px;border-radius:999px;border:1px solid var(--bad);background:var(--panel2);color:var(--bad);cursor:pointer}
+#stopTalk.on{display:inline-block}
 #talk.rec{background:var(--acc);color:var(--bg);border-color:var(--acc);box-shadow:0 0 24px var(--acc-glow)}
 #state{display:none;position:fixed;top:calc(10px + env(safe-area-inset-top));left:88px;z-index:12;font:700 11px/1.2 var(--font);letter-spacing:.1em;text-transform:uppercase;color:var(--mut);padding:6px 10px;border-radius:999px;border:1px solid var(--line);background:var(--panel2);pointer-events:none}
 #state.on{display:inline-flex}
@@ -60,7 +63,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--tx);font-family:
   <button id="btnPrev">Preview on this screen</button>
   <div style="margin-top:10px"><select id="modelSel"><option value="">avatar: default</option></select></div>
   <div style="margin-top:6px"><label class="note" style="cursor:pointer">bring your own .glb <input type="file" id="glbFile" accept=".glb,model/gltf-binary" style="max-width:180px"></label> <button id="glbClear" style="display:none">clear</button></div>
-  <p class="note" id="landNote">Hologram companion — female or male body follows the active actor (override with ?body=female or ?body=male). Quest 3: headset browser, secure context. Preview works anywhere; mic wants localhost.</p>
+  <p class="note" id="landNote">Hologram companion — body and brain come from the companion settings (override the body with ?body=female or ?body=male; pick the brain from the brain chip). Quest 3: headset browser, secure context. Preview works anywhere; mic wants localhost.</p>
   <p class="note" style="font-size:9.5px;opacity:.7">Model: "High Poly Rikku" (skfb.ly/pIrZ9) by HumanContraband, CC Attribution 4.0</p>
 </div>
 <div id="xrui">
@@ -78,6 +81,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--tx);font-family:
   <div id="roomBar"></div>
   <div id="typeRow"><input id="typeBox" placeholder="say something…" autocomplete="off"/><button id="typeGo">Send</button></div>
   <button id="talk">HOLD·TALK</button>
+  <button id="stopTalk" title="Stop her (Esc)">STOP</button>
   <button id="senses" title="Let her notice you: camera presence, hands-free ears, what is on screen">SENSES</button>
 </div>
 <div id="desk"></div>
@@ -102,8 +106,9 @@ addEventListener("unhandledrejection",e=>noteErr("promise",e.reason&&e.reason.me
 const _ce=console.error.bind(console);
 console.error=(...a)=>{const m=a.map(x=>x&&x.message||x).join(" ");if(!/^INFO:|XNNPACK|TensorFlow Lite/i.test(m))noteErr("console",m);_ce(...a)};
 const Q=new URLSearchParams(location.search);
-const KEY=Q.get("key")||"";
-try{const _ux=JSON.parse(localStorage.getItem("grok_remote_ux")||"{}");if(!_ux.companion)location.replace("/"+(KEY?"?key="+encodeURIComponent(KEY):""))}catch(e){}
+const KEY=Q.get("key")||"",KQ=KEY?"?key="+encodeURIComponent(KEY):"";
+const ls={get:k=>{try{return localStorage.getItem(k)}catch(e){return null}},set:(k,v)=>{try{v==null?localStorage.removeItem(k):localStorage.setItem(k,String(v))}catch(e){}}};
+try{const _ux=JSON.parse(ls.get("grok_remote_ux")||"{}");if(!_ux.companion)location.replace("/"+KQ)}catch(e){}
 const stateEl=document.getElementById("state"),cap=document.getElementById("cap");
 const esc=s=>String(s||"").replace(/[<>&]/g,c=>({"<":"&lt;",">":"&gt;","&":"&amp;"}[c]));
 const say=(t,you)=>{cap.innerHTML=(you?'<span class="you">you said · '+esc(you)+"</span>":"")+esc(t||"")};
@@ -609,28 +614,18 @@ const _dtmp={pm:new THREE.Matrix4(),pmInv:new THREE.Matrix4(),pv:new THREE.Vecto
 const skinCtx=()=>({skeleton,bindPos,skinGeo,bindLocalInv,modelHolder,skelRoot,hinv:_hinv,boneMats:_boneMats});
 function cpuSkin(){return synthCpu?skinFrame(THREE,skinCtx()):null}
 function clothTick(dt,t){return clothStep(THREE,physState,modelHolder,dt,t,_dtmp)}
-let bodySex="female",bodyEnergy=1,actorLabel="";
+let bodySex="female",bodyEnergy=1,companionCfg={};
 async function resolveBody(){
   const q=(Q.get("body")||"").toLowerCase();
-  if(q==="male"||q==="m")return "male";
-  if(q==="female"||q==="f")return "female";
-  try{
-    const r=await (await fetch("/api/actor/show",{cache:"no-store"})).json();
-    const eff=r&&r.effective||{};
-    const id=String(eff.preset||eff.id||"").toLowerCase();
-    actorLabel=eff.name||eff.preset||id||"";
-    const male=/^(trump|cowboy|washington|lord|professor|sherlock|sports|pirate|yoda|boomer|drill|shakespeare|noir|peasant|silentgen)$/.test(id);
-    if(male)return "male";
-  }catch(e){}
-  return "female";
+  try{companionCfg=await (await fetch("/api/companion/config"+KQ,{cache:"no-store"})).json()||{}}catch(e){}
+  return /^(m|male)$/.test(q)||!/^(f|female)$/.test(q)&&companionCfg.body==="male"?"male":"female";
 }
-const CAMNOTE="\n\n[Your camera eyes are ON. A fresh frame of what you can see right now was just saved to companion_view.jpg in your working directory - view that image file whenever the user asks about the room, themselves, or what you can see, then react with your body too.]";
-const SELFNOTE="\n\n[Your camera is off, so instead a fresh render of YOUR OWN BODY as it stands right now was just saved to companion_view.jpg - solid, lit, framed head to toe. View that file whenever you want to check your own posture or a move you just invented.]";
-const MOVENOTE=t=>"\n\n[Body note: "+t+". This is a nudge about pacing, not something to mention out loud.]";
-const RECAP=r=>"[You and Anthony were already talking "+r.ageMin+" minutes ago, before this page reloaded. The tail of it: "+r.lines.join(" | ")+". Pick up naturally from there; do not greet him as if he just arrived and do not recap this back at him.]\n\n";
+const who=()=>(brainMod&&brainMod.B.user)||companionCfg.user||"";
+const MOVENOTE=t=>"[Body note: "+t+". This is a nudge about pacing, not something to mention out loud.]";
+const RECAP=r=>"[You and "+(who()||"your person")+" were already talking "+r.ageMin+" minutes ago, before this page reloaded. The tail of it: "+r.lines.join(" | ")+". Pick up naturally from there; do not greet them as if they just arrived and do not recap this back.]";
 let braidSig="";
-const BODYNOTE=a=>"\n\n[Your body is reporting problems right now: "+a.join("; ")+". If the user asks why you are stiff or quiet, say what is actually broken in plain words. Do not apologise repeatedly and do not invent a cause you cannot see.]";
-const BRAIDNOTE=(n,last)=>"\n\n[Braid room is live right now with "+n+" agent sessions. Most recent lines - "+(last||"(quiet)")+". This is background awareness of the work happening beside you: bring it up only if the user asks about Braid, the agents, or what is running. Never recite it unprompted.]";
+const BODYNOTE=a=>"[Body note: your body is reporting problems right now: "+a.join("; ")+". If asked why you are stiff or quiet, say what is actually broken in plain words. Do not apologise repeatedly and do not invent a cause you cannot see.]";
+const BRAIDNOTE=(n,last)=>"[Braid room is live right now with "+n+" agent sessions. Most recent lines - "+(last||"(quiet)")+". This is background awareness of the work happening beside you: bring it up only if asked about Braid, the agents, or what is running. Never recite it unprompted.]";
 const RIGWANT=["Hips","Spine","Spine1","Spine2","Neck","Head","LeftShoulder","LeftArm","LeftForeArm","LeftHand","RightShoulder","RightArm","RightForeArm","RightHand","LeftUpLeg","LeftLeg","LeftFoot","RightUpLeg","RightLeg","RightFoot"];
 const rigInfo={file:"",bones:0,matched:0,missing:[],pct:0};
 async function driveProbe(){
@@ -731,7 +726,7 @@ let localAvatarName="",clothInfo={pts:0,pct:0,max:0},lagTex=null,lagTex2=null,ha
 async function loadModel(){
   bodySex=await resolveBody();
   bodyEnergy=bodySex==="female"?1:0.78;
-  const chosen=localStorage.getItem("companionModel");
+  const chosen=ls.get("companionModel");
   let localUrl=null;
   if(chosen===IDB_LOCAL)localUrl=await localAvatarUrl();
   const urls=localUrl?[localUrl,"/static/rikku_mixamo.glb","/static/model.glb"]:chosen?["/static/"+chosen,"/static/model.glb"]:(bodySex==="male"?["/static/Soldier.glb","/static/model.glb"]:["/static/rikku_mixamo.glb","/static/model.glb","/static/Soldier.glb"]);
@@ -884,6 +879,7 @@ function setState(s){
   target.uListen=s==="listen"?1:0;
   target.uThink=s==="think"?1:0;
   target.uSpeak=s==="speak"?1:0;
+  const sb=document.getElementById("stopTalk");sb&&sb.classList.toggle("on",s==="think"||s==="speak");
 }
 let linked=false;
 setState("idle");
@@ -927,22 +923,22 @@ function motionPlay(name,layer,fade){motionMod?motionMod.motionPlay(name,layer,f
 function sendMotion(kind,val){motionMod?motionMod.sendMotion(kind,val):setTimeout(()=>motionMod&&motionMod.sendMotion(kind,val),600)}
 window.__motionPlay=motionPlay;window.__sendMotion=sendMotion;
 let composeClipImpl=null,composeStats=null;
-import("./static/xr-compose.js?t="+Date.now()).then(m=>{composeClipImpl=m.initCompose({THREE,getSkeleton:()=>skeleton,getRestQ:()=>restQ,getClips:()=>clips,setClips:c=>{clips=c},motionPlay,KEY,solidShot,onStats:(n,st)=>{composeStats={name:n,...st,at:Date.now()};vision.hold=Date.now()+20000}});modUp("compose")});
+import("./static/xr-compose.js?t="+Date.now()).then(m=>{composeClipImpl=m.initCompose({THREE,motionBase:()=>motionMod?motionMod.httpBase():location.origin,getSkeleton:()=>skeleton,getRestQ:()=>restQ,getClips:()=>clips,setClips:c=>{clips=c},motionPlay,KEY,solidShot,onStats:(n,st)=>{composeStats={name:n,...st,at:Date.now()};vision.hold=Date.now()+20000}});modUp("compose")});
 function composeClip(spec){composeClipImpl&&composeClipImpl(spec)}
 
 (async()=>{
   try{
     const sel=document.getElementById("modelSel");
     if(!sel)return;
-    const r=await fetch("/api/xr/models"+(KEY?"?key="+encodeURIComponent(KEY):""),{cache:"no-store"}).then(r=>r.json());
+    const r=await fetch("/api/xr/models"+KQ,{cache:"no-store"}).then(r=>r.json());
     for(const m of (r.models||[])){
       const o=document.createElement("option");
       let tag="";
-      try{const c=JSON.parse(localStorage.getItem("companionRig:"+m.file)||"null");if(c)tag=" · rig "+c.pct+"%"}catch(e){}
+      try{const c=JSON.parse(ls.get("companionRig:"+m.file)||"null");if(c)tag=" · rig "+c.pct+"%"}catch(e){}
       o.value=m.file;o.textContent="avatar: "+m.file.replace(/\.glb$/,"")+" ("+(m.size/1048576).toFixed(1)+"MB"+tag+")";
       sel.appendChild(o);
     }
-    const cur=localStorage.getItem("companionModel")||"";
+    const cur=ls.get("companionModel")||"";
     if(cur===IDB_LOCAL){
       const rec=await idbGet();
       const o=document.createElement("option");
@@ -953,7 +949,7 @@ function composeClip(spec){composeClipImpl&&composeClipImpl(spec)}
     }
     sel.value=cur;
     sel.onchange=()=>{
-      sel.value?localStorage.setItem("companionModel",sel.value):localStorage.removeItem("companionModel");
+      ls.set("companionModel",sel.value||null);
       location.reload();
     };
   }catch(e){}
@@ -965,22 +961,22 @@ function composeClip(spec){composeClipImpl&&composeClipImpl(spec)}
     if(f.size>120*1048576){say("that glb is over 120MB - too big for the browser store");return}
     try{
       await idbPut(await f.arrayBuffer(),f.name);
-      localStorage.setItem("companionModel",IDB_LOCAL);
+      ls.set("companionModel",IDB_LOCAL);
       say("stored "+f.name+" ("+(f.size/1048576).toFixed(1)+"MB) - reloading");
       setTimeout(()=>location.reload(),700);
     }catch(e){say("could not store that glb: "+(e&&e.message||e))}
   };
-  if(clr)clr.onclick=async()=>{await idbDel();localStorage.removeItem("companionModel");location.reload()};
+  if(clr)clr.onclick=async()=>{await idbDel();ls.set("companionModel",null);location.reload()};
 })();
 
 
 
 
 
-import("./static/xr-panels.js?t="+Date.now()).then(m=>{window.__panels=m.initPanels({KEY,getSid:()=>sid(),getRestQ:()=>restQ,sendMotion,motionLinked:()=>!!(motionMod&&motionMod.linked()),getVision:()=>vision,getIK:()=>ikMod,getRig:()=>rigInfo,getErrors:()=>errLog,getMotionState:()=>motionState,getMods:()=>[...modsUp],capture:()=>captureView("hud")});modUp("panels")});
-const panels={moves:n=>window.__panels&&window.__panels.moveStats?window.__panels.moveStats(n):null,recent:(m,n)=>window.__panels&&window.__panels.recentConvo?window.__panels.recentConvo(m,n):null,addConvo:(a,b)=>window.__panels&&window.__panels.addConvo(a,b),hud:()=>window.__panels&&window.__panels.hudState,cam:()=>window.__panels?window.__panels.getCam():{}};
+import("./static/xr-panels.js?t="+Date.now()).then(m=>{window.__panels=m.initPanels({KEY,getSid:()=>sid(),getRestQ:()=>restQ,sendMotion,motionLinked:()=>!!(motionMod&&motionMod.linked()),motionBase:()=>motionMod?motionMod.httpBase():location.origin,who,getBrain:()=>brainMod?brainMod.B:{},setBrain:k=>brainMod&&brainMod.setBrain(k),resetBrain:()=>brainMod&&brainMod.reset(),getVision:()=>vision,getIK:()=>ikMod,getRig:()=>rigInfo,getErrors:()=>errLog,getMotionState:()=>motionState,getMods:()=>[...modsUp],capture:()=>captureView("hud")});modUp("panels")});
+const panels={permit:(ev,ans)=>window.__panels?window.__panels.permit(ev,ans):ans(null),moves:n=>window.__panels&&window.__panels.moveStats?window.__panels.moveStats(n):null,recent:(m,n)=>window.__panels&&window.__panels.recentConvo?window.__panels.recentConvo(m,n):null,addConvo:(a,b)=>window.__panels&&window.__panels.addConvo(a,b),hud:()=>window.__panels&&window.__panels.hudState,cam:()=>window.__panels?window.__panels.getCam():{}};
 import("./static/xr-motion.js?t="+Date.now()).then(m=>{
-  motionMod=m.initMotion({THREE,getMixer:()=>mixer,getClips:()=>clips,getActIdle:()=>actIdle,setActIdle:a=>{actIdle=a},panels,state:motionState});
+  motionMod=m.initMotion({THREE,KEY,getMixer:()=>mixer,getClips:()=>clips,getActIdle:()=>actIdle,setActIdle:a=>{actIdle=a},panels,state:motionState});
   motionMod.connect();
   for(const q of motionBootQ)motionMod.motionPlay(...q);
   motionBootQ.length=0;
@@ -1012,63 +1008,51 @@ import("./static/xr-hud.js?t="+Date.now()).then(m=>{
   modUp("hud");
 });
 import("./static/xr-brain.js?t="+Date.now()).then(m=>{
-  brainMod=m.initBrain({KEY,getState:()=>state,setState,setLinked:v=>{linked=v;setState(state)},say,speak,panels,composeClip,sendMotion,onReach:doReach,onSession:id=>{modUp("sid:"+String(id).slice(0,8));if(window.__xrHud)window.__xrHud.setLiveSid(id)},onFeed:(kind,title,body)=>{if(window.__xrHud)window.__xrHud.live(kind,title,body)},onEvent:u=>{if(window.__xrHud)window.__xrHud.paintEvent(u)}});
+  brainMod=m.initBrain({KEY,getState:()=>state,setState,setLinked:v=>{linked=v;setState(state)},say,speak,hush:()=>voiceMod&&voiceMod.hush(),panels,composeClip,sendMotion,onReach:doReach,onSession:(id,d)=>{modUp("sid:"+String(id).slice(0,8));modUp("brain:"+(d&&d.brain||"?"));if(window.__xrHud)window.__xrHud.setLiveSid(id)},onEvent:u=>{if(window.__xrHud)window.__xrHud.paintEvent(u)},onPermit:(ev,answer)=>{const t=ev.tool||{};speak("I need your okay to use "+(t.title||"a tool")+".");panels.permit(ev,answer)},onError:d=>noteErr("brain",d.message)});
   modUp("brain");
   if(brainQ.length){brainQ.length=0;brainMod.connect()}
 });
 const vision={on:false,frames:0,last:0,err:"",src:"",hold:0};
-async function selfSnap(src){
-  const shot=solidShot();
-  if(!shot)return false;
-  try{
-    const r=await fetch("/api/xr/see"+(KEY?"?key="+encodeURIComponent(KEY):""),{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({jpeg:shot})});
-    if(!r.ok)throw new Error("see "+r.status);
-    vision.frames++;
-    vision.last=Date.now();
-    vision.err="";
-    vision.src=src||"self";
-    vision.hold=Date.now()+20000;
-    return true;
-  }catch(e){vision.err=String(e&&e.message||e);return false}
+const camLive=()=>{const c=panels.cam();return !!(c.stream&&c.video&&c.video.videoWidth)};
+async function postSee(url){
+  try{const r=await fetch("/api/xr/see"+KQ,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({jpeg:url})});if(!r.ok)throw new Error("see "+r.status);return true}catch(e){vision.err=String(e&&e.message||e);return false}
 }
-async function captureView(src){
-  const c=panels.cam();
-  if(!c.stream||!c.video||!c.video.videoWidth){vision.on=false;return selfSnap(src==="ask"?"self-ask":"self")}
-  vision.on=true;
+function shotOf(src,url){
+  if(!url)return null;
+  Object.assign(vision,{frames:vision.frames+1,last:Date.now(),err:"",src:src||"loop"});
+  if(/^self/.test(src||""))vision.hold=Date.now()+20000;
+  if(src==="hud"||src==="probe")postSee(url);
+  return url;
+}
+function selfSnap(src){return shotOf(src||"self",solidShot())}
+function captureView(src){
+  vision.on=camLive();
+  if(!vision.on)return selfSnap(/^(hud|probe)$/.test(src)?src:src==="ask"?"self-ask":"self");
   try{
-    const cv=document.createElement("canvas");
+    const c=panels.cam(),cv=document.createElement("canvas");
     const w=640,h=Math.round(c.video.videoHeight/c.video.videoWidth*640)||360;
     cv.width=w;cv.height=h;
     cv.getContext("2d").drawImage(c.video,0,0,w,h);
-    const r=await fetch("/api/xr/see"+(KEY?"?key="+encodeURIComponent(KEY):""),{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({jpeg:cv.toDataURL("image/jpeg",0.7)})});
-    if(!r.ok)throw new Error("see "+r.status);
-    vision.frames++;
-    vision.last=Date.now();
-    vision.err="";
-    vision.src=src||"loop";
-    return true;
-  }catch(e){vision.err=String(e&&e.message||e);return false}
+    return shotOf(src,cv.toDataURL("image/jpeg",0.7));
+  }catch(e){vision.err=String(e&&e.message||e);return null}
 }
-setInterval(()=>{const c=panels.cam();vision.on=!!(c.stream&&c.video&&c.video.videoWidth);if(vision.on&&Date.now()<vision.hold)return;if(vision.on&&Date.now()-vision.last>8000)captureView("loop")},4000);
+setInterval(()=>{vision.on=camLive()},4000);
+function stopAll(){const was=!!(brainMod&&brainMod.busy())||!!(voiceMod&&!voiceMod.idle());brainMod&&brainMod.cancel();voiceMod&&voiceMod.hush();if(state!=="listen")setState("idle");return was}
 async function ask(text,opts){
   opts=opts||{};
-  if(!brainMod||!brainMod.ready()){if(!opts.silent)say("link is still waking — try again in a second");return}
-  brainMod.begin();
+  if(!brainMod||!brainMod.ready()){if(!opts.silent)say("link is still waking — try again in a second");return opts.silent?{quiet:true}:null}
+  if(!opts.silent)voiceMod&&voiceMod.hush();
   const recap=window.__recapSent?null:(window.__recapSent=true,panels.recent());
   if(opts.silent){panels.addConvo("move","noticed: "+String(opts.label||"something").slice(0,60))}
   else{panels.addConvo("you",text);if(window.__xrHud)window.__xrHud.live("you","you",text);bumpReact("ack",0.55);say("…",text)}
   setState("think");
-  let out=text;
-  if(!window.__bodyPrimed){
-    window.__bodyPrimed=true;
-    out="[You are in the room with Anthony as a hologram person, not a helpdesk. Talk like you are standing there: short, warm, specific, contractions. Never mention this note, the HUD, tags, files, or how you work. At most one [[motion:NAME]] per reply, often none. [[gaze:user]] when you address him. Hello=wave_hello, yes=agree, no=dismissing_gesture, curious=look_over_shoulder, task=salute, sad=sad_pose, fired up=punch_jab, clap only if he starts a celebration. Stay standing; home is standing_w_briefcase_idle. Do not sit, lie down, crouch, or walk off the pad. Invent a pose only if he asks, via [[compose:name|ms:Bone=x,y,z|ms:rest]] whole degrees, rest 700ms after the last key.]\n\n"+text;
-  }
-  if(recap)out=RECAP(recap)+out;
+  const notes=[],images=[];
+  if(recap)notes.push(RECAP(recap));
   const ms=panels.moves();
   if(ms&&ms.turns>=4){
     const rate=ms.moves/ms.turns;
-    if(rate>0.6)out+=MOVENOTE("you have used "+ms.moves+" moves across your last "+ms.turns+" replies - that is more body than most conversations need, so let several replies pass with none");
-    else if(ms.topCount>=3)out+=MOVENOTE(ms.top+" has come up "+ms.topCount+" times lately - reach for something else or nothing at all");
+    if(rate>0.6)notes.push(MOVENOTE("you have used "+ms.moves+" moves across your last "+ms.turns+" replies - that is more body than most conversations need, so let several replies pass with none"));
+    else if(ms.topCount>=3)notes.push(MOVENOTE(ms.top+" has come up "+ms.topCount+" times lately - reach for something else or nothing at all"));
   }
   const ail=[];
   if(!(motionMod&&motionMod.linked()))ail.push("motion service link is down - clip playback will not reach you");
@@ -1076,29 +1060,27 @@ async function ask(text,opts){
   if(rigInfo.pct&&rigInfo.pct<80)ail.push("this avatar only matches "+rigInfo.pct+"% of the rig, missing "+rigInfo.missing.slice(0,3).join(", "));
   const recentErr=errLog.filter(e=>Date.now()-e.ts<300000);
   if(recentErr.length)ail.push(recentErr.length+" renderer error(s), latest "+recentErr[recentErr.length-1].src+": "+recentErr[recentErr.length-1].msg.slice(0,80));
-  if(ail.length)out+=BODYNOTE(ail);
+  if(ail.length)notes.push(BODYNOTE(ail));
   try{
-    const bz=await (await fetch("/api/xr/braid"+(KEY?"?key="+encodeURIComponent(KEY):""),{cache:"no-store"})).json();
+    const bz=await (await fetch("/api/xr/braid"+KQ,{cache:"no-store"})).json();
     if(bz&&bz.live){
       const last=(bz.transcript||[]).slice(-2).map(t=>(t.who||"?")+": "+String(t.text||"").replace(/\s+/g," ").slice(0,140)).join(" | ");
       const sig=bz.sessions+"|"+last;
-      if(sig!==braidSig){braidSig=sig;out+=BRAIDNOTE(bz.sessions,last)}
+      if(sig!==braidSig){braidSig=sig;notes.push(BRAIDNOTE(bz.sessions,last))}
     }
   }catch(e){}
-  const camOn=(()=>{const c=panels.cam();return !!(c.stream&&c.video&&c.video.videoWidth)})();
-  if(camOn){if(await captureView("ask"))out+=CAMNOTE}
+  if(camLive()){const u=captureView("ask");u&&images.push({url:u,label:"camera"})}
   if(composeStats&&Date.now()-composeStats.at<900000){
-    if(await selfSnap("self-ask"))out+=SELFNOTE;
+    const u=selfSnap("self-ask");u&&images.push({url:u,label:"self"});
     const c=composeStats;
-    out+="\n\n[Measured on your last invented move \""+c.name+"\": peak bone rotation "+c.peakDeg+"° on "+(c.peakBone||"?")+", hand travelled "+c.travelCm+" cm, "+c.dur+"s over "+c.keys+" keys."+((c.skipped&&c.skipped.length)?" IGNORED bones you are not allowed to drive: "+c.skipped.join(", ")+" - only Spine/Spine1/Spine2/Neck/Head/Shoulder/Arm/ForeArm/Hand/UpLeg/Leg/Foot are legal, Hips stays pinned so you do not slide off the stage.":"")+" Under 20° or 8 cm reads as nothing from across the room; 40-90° on the driving bone reads clearly; past 120° usually clips through the body. Use this number, not just the snapshot, when you decide whether to re-compose.]";
+    notes.push("[Measured on your last invented move \""+c.name+"\": peak bone rotation "+c.peakDeg+"° on "+(c.peakBone||"?")+", hand travelled "+c.travelCm+" cm, "+c.dur+"s over "+c.keys+" keys."+((c.skipped&&c.skipped.length)?" IGNORED bones you are not allowed to drive: "+c.skipped.join(", ")+" - only Spine/Spine1/Spine2/Neck/Head/Shoulder/Arm/ForeArm/Hand/UpLeg/Leg/Foot are legal, Hips stays pinned so you do not slide off the stage.":"")+" Under 20° or 8 cm reads as nothing from across the room; 40-90° on the driving bone reads clearly; past 120° usually clips through the body. Use this number, not just the snapshot, when you decide whether to re-compose.]");
     composeStats=null;
   }
-  const r=await brainMod.req("session/prompt",{sessionId:sid(),prompt:[{type:"text",text:out}]});
-  brainMod.flushSentences(true);
-  if(!voiceMod||voiceMod.idle())setState("idle");
-  const quiet=/\[\[\s*quiet\s*\]\]/i.test(brainMod.B.accum||"")||!(brainMod.B.accum||"").replace(/\[\[[^\]]*\]\]/g,"").trim();
-  if(opts.silent&&quiet)panels.addConvo("move","stayed quiet");
-  return opts.silent?{r,quiet}:r;
+  const r=await brainMod.ask(text,{percept:notes,images});
+  if(r&&r.error&&!opts.silent&&r.stop!=="cancelled")say("my link hiccuped: "+r.error);
+  if(state==="think"&&(!voiceMod||voiceMod.idle()))setState("idle");
+  if(opts.silent&&r&&r.quiet)panels.addConvo("move","stayed quiet");
+  return opts.silent?{r,quiet:!!(r&&r.quiet)}:r;
 }
 window.__ask=ask;
 /* ---------- senses: she notices you ---------- */
@@ -1108,27 +1090,49 @@ function paintSenses(S){if(!sensesBtn)return;const on=S&&S.on;sensesBtn.classLis
 import("./static/xr-senses.js?t="+Date.now()).then(m=>{
   const q=new URLSearchParams(location.search);
   const names=(q.get("names")||"").split(",").map(x=>x.trim()).filter(Boolean);
-  sensesMod=m.initSenses({KEY,panels,sendMotion,names,ask:t=>ask(t),react:(t,p)=>ask(t,{silent:true,label:p&&p.type}),speaking:()=>!!(voiceMod&&!voiceMod.idle()),thinking:()=>state==="think",log:t=>noteErr("senses",t),onState:paintSenses});
+  sensesMod=m.initSenses({KEY,panels,sendMotion,names,who,ask:t=>ask(t),react:(t,p)=>ask(t,{silent:true,label:p&&p.type}),speaking:()=>!!(voiceMod&&!voiceMod.idle()),thinking:()=>!!(brainMod&&brainMod.busy()),log:t=>noteErr("senses",t),onState:paintSenses});
   window.__senses=sensesMod;
   modUp("senses");
-  const want=q.get("senses")==="1"||localStorage.getItem("xr_senses")==="1";
+  const want=q.get("senses")==="1"||ls.get("xr_senses")==="1";
   if(want)setTimeout(()=>sensesMod.start(),1500);
 });
-if(sensesBtn)sensesBtn.addEventListener("click",()=>{if(!sensesMod)return;const S=sensesMod.state();if(S.on){sensesMod.stop();localStorage.setItem("xr_senses","0")}else{localStorage.setItem("xr_senses","1");sensesMod.start()}});
+if(sensesBtn)sensesBtn.addEventListener("click",()=>{if(!sensesMod)return;const S=sensesMod.state();if(S.on){sensesMod.stop();ls.set("xr_senses","0")}else{ls.set("xr_senses","1");sensesMod.start()}});
 
 /* ---------- ears ---------- */
 const talk=document.getElementById("talk");
 const typeBox=document.getElementById("typeBox");
-let rec=null,recOn=false,micGuard=0;
+let rec=null,recOn=false,micGuard=0,srBroken=false,voiceCaps=null,mrec=null;
+fetch("/api/companion/voice"+KQ,{cache:"no-store"}).then(r=>r.json()).then(v=>{voiceCaps=v}).catch(()=>{});
+function recDone(txt){
+  clearTimeout(micGuard);recOn=false;talk.classList.remove("rec");
+  txt?ask(txt):state==="listen"&&setState("idle");
+}
+async function startHubRec(){
+  if(!(voiceCaps&&voiceCaps.stt&&voiceCaps.stt.server)){say("no speech input on this browser and the hub has no whisper — type instead");return}
+  try{
+    const st=await navigator.mediaDevices.getUserMedia({audio:true}),chunks=[];
+    mrec=new MediaRecorder(st);
+    mrec.ondataavailable=e=>e.data&&e.data.size&&chunks.push(e.data);
+    mrec.onstop=async()=>{
+      st.getTracks().forEach(t=>t.stop());mrec=null;
+      if(!chunks.length)return recDone("");
+      say("…");
+      try{const r=await fetch("/api/xr/stt"+KQ,{method:"POST",headers:{"content-type":chunks[0].type||"audio/webm"},body:new Blob(chunks,{type:chunks[0].type||"audio/webm"})});const j=await r.json();recDone(r.ok?String(j.text||"").trim():"");r.ok||say("hub speech-to-text failed: "+(j.error||r.status))}catch(e){recDone("");noteErr("mic","stt: "+(e&&e.message||e))}
+    };
+    mrec.start();recOn=true;talk.classList.add("rec");bumpReact("ack",0.3);setState("listen");
+    clearTimeout(micGuard);micGuard=setTimeout(()=>{try{mrec&&mrec.stop()}catch(e){}},30000);
+  }catch(e){recDone("");say("mic unavailable: "+(e&&e.message||e))}
+}
 function startRec(){
   ensureAudio();
+  stopAll();
   if(!window.isSecureContext){
-    say("the mic is blocked on plain http — open http://localhost:2421/xr on the PC (or adb-reverse on Quest), or just type below");
+    say("the mic is blocked on plain http — open http://localhost:"+(location.port||80)+"/xr on this machine (or adb-reverse on Quest), or type");
     typeBox.focus();
     return;
   }
   const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
-  if(!SR){say("this browser has no speech input — type below instead");return}
+  if(!SR||srBroken)return startHubRec();
   rec=new SR();rec.lang="en-US";rec.interimResults=true;rec.continuous=false;
   let finalTxt="";
   rec.onresult=e=>{
@@ -1136,17 +1140,12 @@ function startRec(){
     for(const r of e.results){if(r.isFinal)finalTxt+=r[0].transcript;else interim+=r[0].transcript}
     say("",finalTxt||interim);
   };
-  rec.onend=()=>{
-    clearTimeout(micGuard);
-    recOn=false;talk.classList.remove("rec");
-    if(finalTxt.trim())ask(finalTxt.trim());
-    else if(state==="listen")setState("idle");
-  };
+  rec.onend=()=>recDone(finalTxt.trim());
   rec.onerror=e=>{
-    recOn=false;talk.classList.remove("rec");
-    if(state==="listen")setState("idle");
     const why=e&&e.error||"unknown";
-    if(why==="not-allowed"||why==="service-not-allowed")say("mic permission refused — allow it in the address bar, or type below");
+    recDone("");
+    if(why==="network"||why==="service-not-allowed"||why==="language-not-supported"){srBroken=true;say(voiceCaps&&voiceCaps.stt&&voiceCaps.stt.server?"browser speech is unavailable here — hold to talk again and the hub will transcribe":"browser speech is unavailable here ("+why+") — type instead")}
+    else if(why==="not-allowed")say("mic permission refused — allow it in the address bar, or type");
     else if(why!=="no-speech"&&why!=="aborted")say("mic error: "+why+" — typing still works");
   };
   recOn=true;talk.classList.add("rec");bumpReact("ack",0.3);setState("listen");
@@ -1154,18 +1153,17 @@ function startRec(){
   micGuard=setTimeout(()=>{
     if(!recOn)return;
     noteErr("mic","recognition never ended - clearing stuck listen state");
-    recOn=false;
-    talk.classList.remove("rec");
     try{rec&&rec.stop()}catch(e){}
-    if(state==="listen")setState("idle");
+    recDone("");
   },25000);
-  try{rec.start()}catch(e){recOn=false;talk.classList.remove("rec");setState("idle");noteErr("mic","start failed: "+(e&&e.message||e))}
+  try{rec.start()}catch(e){recDone("");noteErr("mic","start failed: "+(e&&e.message||e))}
 }
-function stopRec(){clearTimeout(micGuard);try{rec&&rec.stop()}catch(e){}}
+function stopRec(){clearTimeout(micGuard);try{mrec?mrec.stop():rec&&rec.stop()}catch(e){}}
 talk.addEventListener("pointerdown",e=>{e.preventDefault();if(!recOn)startRec()});
 talk.addEventListener("pointerup",e=>{e.preventDefault();stopRec()});
-addEventListener("keydown",e=>{if(e.code==="Space"&&!recOn&&!e.repeat&&document.activeElement!==typeBox){e.preventDefault();startRec()}});
+addEventListener("keydown",e=>{if(e.key==="Escape"){stopAll();return}if(e.code==="Space"&&!recOn&&!e.repeat&&document.activeElement!==typeBox){e.preventDefault();startRec()}});
 addEventListener("keyup",e=>{if(e.code==="Space"&&document.activeElement!==typeBox)stopRec()});
+document.getElementById("stopTalk").addEventListener("click",()=>stopAll());
 function sendTyped(){
   const t=typeBox.value.trim();
   if(!t)return;
@@ -1219,7 +1217,6 @@ function nudgeRig(dx,dz,dyaw){
   rig.position.x+=dx;rig.position.z+=dz;
   if(dyaw)rig.rotation.y+=dyaw;
 }
-const desk=document.getElementById("desk"),deskFrame=document.getElementById("deskFrame");
 function goRemote(){
   const home="/"+(KEY?"?key="+encodeURIComponent(KEY):"");
   const s=renderer.xr.getSession();
@@ -1232,7 +1229,7 @@ document.getElementById("btnPrev").onclick=()=>{
   rig.position.set(0,0,0);
   fitPreview();
   bumpReact("hi",1.2);
-  speak(bodySex==="male"?"Hey. I'm here — talk, or type below.":"Rao! I'm here. Talk to me, or type below.");
+  speak("Hey, I'm here. Talk to me.");
 };
 document.getElementById("btnAR").onclick=async()=>{
   const host=location.protocol+"//"+location.host;
@@ -1264,7 +1261,7 @@ document.getElementById("btnAR").onclick=async()=>{
       renderer.xr.setReferenceSpaceType(t.space);
       await renderer.xr.setSession(session);
       session.addEventListener("end",goRemote);
-      speak("Rao! I'm in your room now. Say hi!");
+      speak("I'm in your room now. Say hi!");
       btn.disabled=false;
       return;
     }catch(e){last=e}

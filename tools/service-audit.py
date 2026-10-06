@@ -1,7 +1,7 @@
 import re,json,sys,os,urllib.request
 root=os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 s=open(os.path.join(root,"motion_service.py"),encoding="utf-8").read()
-d=json.load(urllib.request.urlopen("http://127.0.0.1:2423/motion/clips",timeout=8))
+d=json.load(urllib.request.urlopen(os.environ.get("MOTION_CLIPS_URL") or "http://127.0.0.1:2423/motion/clips",timeout=8))
 live=set(d["clips"])
 def names(var,open_c,close_c):
     m=re.search(var+r'\s*=\s*\%s(.*?)\%s'%(open_c,close_c),s,re.S)

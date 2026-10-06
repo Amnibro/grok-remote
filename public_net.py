@@ -1,5 +1,5 @@
 """Public HTTPS origin for Grok Remote (Cloudflare tunnel or open 443), Amni-Chat style."""
-import json,os,re,shutil,subprocess,threading,time
+import json,os,re,shutil,signal,subprocess,threading,time
 from pathlib import Path
 def plugin_data_dir():
  base=os.environ.get("GROK_PLUGIN_DATA") or str(Path.home()/".grok"/"plugin-data"/"grok-remote")
@@ -240,9 +240,17 @@ def start_quick_tunnel(port=2421,timeout=22):
 _sup={"thread":None,"port":2421,"stop":False,"ts_tried":False}
 def _reap_other_quick_tunnels(port,keep_pid):
  """Drop leftover quick tunnels to this port. Leave a named --token tunnel alone."""
- if os.name!="nt":return
  port=int(port or 0);keep=int(keep_pid or 0)
  if port<=0:return
+ if os.name!="nt":
+  pat=re.compile(r"(?:^|\s)--url[ =]http://(?:127\.0\.0\.1|localhost):%d(?:/|\s|$)"%port)
+  for d in (os.listdir("/proc") if os.path.isdir("/proc") else []):
+   try:
+    if not d.isdigit() or int(d) in (keep,os.getpid(),getattr(_cf.get("proc"),"pid",0)) or os.stat("/proc/"+d).st_uid!=os.getuid():continue
+    c=[x.decode("utf-8","replace") for x in Path("/proc/%s/cmdline"%d).read_bytes().split(b"\0") if x];j=" ".join(c)
+    c and os.path.basename(c[0]).startswith("cloudflared") and "--token" not in j and pat.search(j) and os.kill(int(d),signal.SIGTERM)
+   except Exception:continue
+  return
  ps=(
   "Get-CimInstance Win32_Process -Filter \"Name='cloudflared.exe'\" | "
   "Where-Object { $_.ProcessId -ne %d -and $_.CommandLine -match '--url' -and "

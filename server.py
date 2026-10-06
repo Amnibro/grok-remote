@@ -1,7 +1,9 @@
 """Grok Remote: UI + multi-client WS hub (fan-out) + workspace FS API."""
-import os,sys,json,socket,argparse,asyncio,mimetypes,subprocess,shutil,re,time,uuid
+import os,sys,json,socket,argparse,asyncio,mimetypes,subprocess,shutil,re,time,uuid,inspect,signal,threading
 from pathlib import Path
 from work_board import WorkBoard,strip_ask
+from grok_remote_ctl import port_open,listen_pids_port,_proc_listen_inodes,_proc_pids_for_inodes,cmdline as proc_cmdline
+import grok_remote_ctl as ctl
 from urllib.parse import quote,unquote,urlparse
 ROOT=Path(__file__).resolve().parent
 try:
@@ -26,11 +28,11 @@ def plugin_data_dir():
  base=os.environ.get("GROK_PLUGIN_DATA") or str(Path.home()/".grok"/"plugin-data"/"grok-remote")
  p=Path(base);p.mkdir(parents=True,exist_ok=True)
  return p
-def atomic_write_text(path,text):
+def atomic_write_text(path,text,mode=0o666):
  path=Path(path);path.parent.mkdir(parents=True,exist_ok=True)
  tmp=path.with_name("%s.tmp-%d-%s"%(path.name,os.getpid(),uuid.uuid4().hex[:6]))
  try:
-  with open(tmp,"w",encoding="utf-8",newline="\n") as f:
+  with open(tmp,"w",encoding="utf-8",newline="\n",opener=lambda p,fl:os.open(p,fl,mode)) as f:
    f.write(text);f.flush()
    try:os.fsync(f.fileno())
    except Exception:pass
@@ -39,83 +41,58 @@ def atomic_write_text(path,text):
   try:
    if tmp.exists():tmp.unlink()
   except Exception:pass
-def atomic_write_json(path,obj,indent=2):
- atomic_write_text(path,json.dumps(obj,indent=indent,ensure_ascii=False))
-def lan_ip():
+def atomic_write_json(path,obj,indent=2,mode=0o666):
+ atomic_write_text(path,json.dumps(obj,indent=indent,ensure_ascii=False),mode=mode)
+_LAN={"t":0.0,"v":""}
+def lan_ip(ttl=30.0):
+ if _LAN["v"] and time.time()-_LAN["t"]<ttl:return _LAN["v"]
  try:
   with socket.socket(socket.AF_INET,socket.SOCK_DGRAM) as s:
-   s.connect(("8.8.8.8",80));return s.getsockname()[0]
- except Exception:return "127.0.0.1"
+   s.connect(("8.8.8.8",80));v=s.getsockname()[0]
+ except Exception:v="127.0.0.1"
+ _LAN.update(t=time.time(),v=v)
+ return v
+async def run_cmd(argv,cwd=None,timeout=12):
+ try:
+  p=await asyncio.create_subprocess_exec(*[str(x) for x in argv],cwd=str(cwd) if cwd else None,stdin=subprocess.DEVNULL,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+ except Exception as e:return None,str(e)
+ try:out,err=await asyncio.wait_for(p.communicate(),timeout)
+ except asyncio.TimeoutError:
+  p.kill();await p.wait();return None,"timed out after %ss"%timeout
+ return subprocess.CompletedProcess(argv,p.returncode,out.decode("utf-8","replace"),err.decode("utf-8","replace")),None
+def run_off(fn,*args):
+ return asyncio.get_event_loop().run_in_executor(None,fn,*args)
+def systemd_unit():
+ try:
+  u=next((x for x in reversed(Path("/proc/self/cgroup").read_text().strip().splitlines()[-1].split("/")) if x.endswith(".service")),"") if os.environ.get("INVOCATION_ID") and sys.platform.startswith("linux") else ""
+  return u if u and not u.startswith("user@") and subprocess.run(["systemctl","--user","show","-p","MainPID","--value",u],capture_output=True,text=True,timeout=5).stdout.strip()==str(os.getpid()) else ""
+ except Exception:return ""
+TASKS=set()
+def bg(coro):
+ t=asyncio.ensure_future(coro);TASKS.add(t);t.add_done_callback(TASKS.discard)
+ return t
+def _fits(fn,**kw):
+ try:ps=inspect.signature(fn).parameters
+ except (TypeError,ValueError):return {}
+ return kw if any(p.kind==p.VAR_KEYWORD for p in ps.values()) else {k:v for k,v in kw.items() if k in ps}
 def find_grok():
  for p in (Path.home()/".grok"/"bin"/"grok.exe",Path.home()/".grok"/"bin"/"grok",shutil.which("grok") or ""):
   if p and Path(p).is_file():return str(Path(p))
  return None
-def port_open(port:int,host="127.0.0.1",timeout=0.2):
- try:
-  with socket.create_connection((host,int(port)),timeout=timeout):
-   return True
- except Exception:
-  return False
-def _proc_listen_inodes(port:int):
- inodes=set()
- for fn in ("/proc/net/tcp","/proc/net/tcp6"):
-  try:
-   with open(fn,encoding="ascii",errors="replace") as f:
-    next(f,None)
-    for line in f:
-     parts=line.split()
-     if len(parts)<10 or parts[3]!="0A":continue
-     try:
-      if int(parts[1].rsplit(":",1)[1],16)!=port:continue
-     except Exception:continue
-     if parts[9]!="0":inodes.add(parts[9])
-  except Exception:pass
- return inodes
-def _proc_pids_for_inodes(inodes):
- pids=set()
- if not inodes:return pids
- want={"socket:[%s]"%i for i in inodes}
- try:names=os.listdir("/proc")
- except Exception:return pids
- for d in names:
-  if not d.isdigit():continue
-  fd_dir="/proc/%s/fd"%d
-  try:fds=os.listdir(fd_dir)
-  except OSError:continue
-  for fd in fds:
-   try:
-    if os.readlink(fd_dir+"/"+fd) in want:pids.add(int(d));break
-   except OSError:continue
- return pids
-def listen_pids_port(port:int,exclude_self=True):
- pids=set();me=os.getpid();port=int(port)
- try:
-  if os.name=="nt":
-   out=subprocess.run(["netstat","-ano"],capture_output=True,text=True,timeout=8,encoding="utf-8",errors="replace")
-   for line in (out.stdout or "").splitlines():
-    if "LISTENING" not in line:continue
-    parts=line.split()
-    if len(parts)<5:continue
-    try:
-     if int(parts[1].rsplit(":",1)[1])!=port:continue
-     pid=int(parts[-1])
-    except Exception:continue
-    if pid>0:pids.add(pid)
-  elif os.path.isdir("/proc/net"):
-   inodes=_proc_listen_inodes(port)
-   pids=_proc_pids_for_inodes(inodes)
-   if inodes and not pids and shutil.which("ss"):
-    out=subprocess.run(["ss","-ltnpH","sport = :%d"%port],capture_output=True,text=True,timeout=5,encoding="utf-8",errors="replace")
-    pids={int(x) for x in re.findall(r"pid=(\d+)",out.stdout or "")}
-  elif shutil.which("lsof"):
-   out=subprocess.run(["lsof","-nP","-iTCP:%d"%port,"-sTCP:LISTEN","-t"],capture_output=True,text=True,timeout=5,encoding="utf-8",errors="replace")
-   pids={int(x) for x in (out.stdout or "").split() if x.strip().isdigit()}
- except Exception:pass
- if exclude_self:pids.discard(me)
- return sorted(p for p in pids if p>0)
 AGENT_PROC={"proc":None}
-def _agent_pidfile():
- return plugin_data_dir()/"agent.pid"
+def _agent_pidfile(port=None):
+ return plugin_data_dir()/("agent-%d.pid"%int(port) if port else "agent.pid")
+def _agent_pidfiles(port):
+ out=[]
+ for f in (_agent_pidfile(port),_agent_pidfile()):
+  try:d=json.loads(f.read_text(encoding="utf-8"))
+  except Exception:continue
+  int(d.get("port") or 0)==int(port) and out.append((f,int(d.get("pid") or 0)))
+ return out
+def _is_agent_pid(pid:int,port:int):
+ try:c=subprocess.run(["tasklist","/FI","PID eq %d"%pid,"/NH","/FO","CSV"],capture_output=True,text=True,timeout=5,encoding="utf-8",errors="replace").stdout if os.name=="nt" else proc_cmdline(pid)
+ except Exception:c=""
+ return "grok" in c.lower() if os.name=="nt" else bool("grok" in c and re.search(r"\bserve\b",c) and re.search(r":%d(?!\d)"%int(port),c))
 def _pid_alive(pid:int):
  pr=AGENT_PROC.get("proc")
  if pr is not None and pr.pid==pid:return pr.poll() is None
@@ -183,25 +160,23 @@ def write_run_agent_cmd(secret:str,agent_port:int,cwd:str,use_leader=None):
  body="@echo off\r\ncd /d \"%s\"\r\nset GROK_AGENT_SECRET=%s\r\n\"%s\" agent --always-approve %s serve --bind 127.0.0.1:%d --secret %s >> \"%s\" 2>&1\r\n"%(cwd_s,secret,grok,flag,agent_port,secret,agent_log)
  cmd_path.write_text(body,encoding="utf-8",errors="replace")
  return cmd_path
-def agent_pidfile_pid():
- try:
-  d=json.loads(_agent_pidfile().read_text(encoding="utf-8"))
-  return int(d.get("pid") or 0)
- except Exception:return 0
+def agent_pidfile_pid(port:int):
+ return next((p for _,p in _agent_pidfiles(port) if p>0 and _pid_alive(p) and _is_agent_pid(p,port)),0)
 def stop_agent_process(agent_port:int,grace=3.0):
  pids=set()
  pr=AGENT_PROC.get("proc")
  if pr is not None and pr.poll() is None:pids.add(pr.pid)
- pf=agent_pidfile_pid()
- if pf and _pid_alive(pf):pids.add(pf)
+ pf=agent_pidfile_pid(agent_port)
+ if pf:pids.add(pf)
  pids.update(listen_pids_port(agent_port,exclude_self=True))
  out=kill_pids_list(sorted(pids),grace=grace) if pids else []
  if pr is not None:
   try:pr.wait(timeout=1)
   except Exception:pass
  AGENT_PROC["proc"]=None
- try:_agent_pidfile().unlink()
- except Exception:pass
+ for f,_ in _agent_pidfiles(agent_port):
+  try:f.unlink()
+  except Exception:pass
  return out
 def start_agent_process(secret:str,agent_port:int,cwd:str,force=False):
  if not force and (port_open(agent_port) or listen_pids_port(agent_port,exclude_self=False)):
@@ -224,7 +199,7 @@ def start_agent_process(secret:str,agent_port:int,cwd:str,force=False):
  proc=subprocess.Popen([grok,"agent","--always-approve","--no-leader","serve","--bind","127.0.0.1:%d"%int(agent_port),"--secret",str(secret)],
   cwd=str(cwd),stdout=logf,stderr=logf,stdin=subprocess.DEVNULL,env=env,close_fds=(sys.platform!="win32"),**kw)
  AGENT_PROC["proc"]=proc
- try:atomic_write_json(_agent_pidfile(),{"pid":proc.pid,"port":int(agent_port),"started":time.time()})
+ try:atomic_write_json(_agent_pidfile(agent_port),{"pid":proc.pid,"port":int(agent_port),"started":time.time()})
  except Exception:pass
  print("[boot] spawned grok agent serve :%d pid=%d"%(int(agent_port),proc.pid),flush=True)
  return grok
@@ -983,10 +958,12 @@ def make_auth_middleware(token:str,allow=None):
   if path in ("/health","/health/deep","/w","/api/pair/unlock"):return await handler(request)
   explicit=_ok(request.query.get("key")) or _ok(request.headers.get("X-Grok-Remote-Key"))
   cookie=_ok(request.cookies.get(UI_KEY_COOKIE))
-  try:hosts,origins=allow() if allow else (set(),set())
-  except Exception:hosts,origins=set(),set()
   origin=request.headers.get("Origin")
-  origin_ok=origin is None or origin_allowed(origin,hosts,origins)
+  for miss in (False,True):
+   try:hosts,origins=allow(**_fits(allow,miss=miss)) if allow else (set(),set())
+   except Exception:hosts,origins=set(),set()
+   origin_ok=origin is None or origin_allowed(origin,hosts,origins)
+   if not allow or "miss" not in _fits(allow,miss=1) or origin_ok and host_allowed(request.host,hosts):break
   sensitive=path=="/ws" or (path.startswith("/api/") and request.method not in ("GET","HEAD","OPTIONS"))
   if sensitive and not explicit and not origin_ok:
    print("[auth] refused cross-origin %s %s origin=%s"%(request.method,path,str(origin)[:80]),flush=True)
@@ -1079,10 +1056,8 @@ def launch_open_target(kind,target):
   return
  if os.name=="nt":
   os.startfile(target)
- elif sys.platform=="darwin":
-  subprocess.Popen(["open",target])
  else:
-  subprocess.Popen(["xdg-open",target])
+  threading.Thread(target=subprocess.Popen(["open" if sys.platform=="darwin" else "xdg-open",target],start_new_session=True,stdin=subprocess.DEVNULL,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL).wait,daemon=True).start()
 class HubTerminal:
  def __init__(self,tid,proc,limit=1_048_576):
   self.id=tid
@@ -1114,7 +1089,7 @@ class HubTerminal:
  async def _wait_proc(self):
   try:
    code=await self.proc.wait()
-   self.exit_code=code
+   self.exit_code,self.signal=(None,next((s.name for s in signal.Signals if s.value==-code),"SIG%d"%-code)) if code is not None and code<0 and os.name!="nt" else (code,None)
   except Exception:
    self.exit_code=-1
   finally:
@@ -1132,7 +1107,7 @@ class HubTerminal:
   return {"exitCode":self.exit_code,"signal":self.signal}
  async def kill(self):
   if self.proc.returncode is None:
-   try:self.proc.kill()
+   try:os.killpg(self.proc.pid,signal.SIGKILL) if os.name!="nt" and os.getpgid(self.proc.pid)==self.proc.pid else self.proc.kill()
    except Exception:pass
    try:await asyncio.wait_for(self.proc.wait(),timeout=3)
    except Exception:pass
@@ -1287,9 +1262,7 @@ class AgentHub:
   self._last_agent_spawn=now
   print("[hub] %s"%("agent failed its probe — kill + respawn grok agent serve" if force else "agent port dead — spawning grok agent serve"),flush=True)
   loop=asyncio.get_event_loop()
-  try:
-   try:await loop.run_in_executor(None,lambda:fn(force=bool(force)))
-   except TypeError:await loop.run_in_executor(None,fn)
+  try:await loop.run_in_executor(None,lambda:fn(**_fits(fn,force=bool(force))))
   except Exception as e:print("[hub] agent respawn failed:",e,flush=True)
  def start_watch(self):
   if self._watch_task and not self._watch_task.done():return
@@ -1699,8 +1672,7 @@ class AgentHub:
     print("[hub] healed %d stale work job(s) on agent connect"%n,flush=True)
     self._schedule_work_push()
   except Exception as e:print("[hub] heal on connect:",e,flush=True)
-  asyncio.create_task(self._notify_hub_state(True))
-  asyncio.create_task(self._learn_pong(ws))
+  bg(self._notify_hub_state(True));bg(self._learn_pong(ws))
  async def _close_unlocked(self,keep_init=False):
   self._alive=False
   reader,agent,sess=self._reader,self._agent,self._session
@@ -1779,7 +1751,7 @@ class AgentHub:
   finally:
    if not cancelled and self._agent is ws:
     print("[hub] upstream closed · watcher retries every 2s while clients wait",flush=True)
-    asyncio.get_event_loop().create_task(self._upstream_lost(ws))
+    bg(self._upstream_lost(ws))
  async def _upstream_lost(self,ws):
   if self._agent is not ws:return
   await self._close_unlocked(keep_init=False)
@@ -1841,14 +1813,14 @@ class AgentHub:
     for e in env_list:
      if isinstance(e,dict) and e.get("name"):env[str(e["name"])]=str(e.get("value") or "")
     work=cwd if cwd and Path(str(cwd)).is_dir() else None
-    creation=getattr(subprocess,"CREATE_NO_WINDOW",0) if sys.platform=="win32" else 0
+    kw={"creationflags":getattr(subprocess,"CREATE_NO_WINDOW",0)} if sys.platform=="win32" else {"start_new_session":True}
     argv=[str(a) for a in args]
     if argv:
-     proc=await asyncio.create_subprocess_exec(cmd,*argv,cwd=work,env=env,stdout=asyncio.subprocess.PIPE,stderr=asyncio.subprocess.PIPE,creationflags=creation)
+     proc=await asyncio.create_subprocess_exec(cmd,*argv,cwd=work,env=env,stdout=asyncio.subprocess.PIPE,stderr=asyncio.subprocess.PIPE,**kw)
     elif sys.platform=="win32":
-     proc=await asyncio.create_subprocess_exec("powershell.exe","-NoProfile","-NonInteractive","-Command",cmd,cwd=work,env=env,stdout=asyncio.subprocess.PIPE,stderr=asyncio.subprocess.PIPE,creationflags=creation)
+     proc=await asyncio.create_subprocess_exec("powershell.exe","-NoProfile","-NonInteractive","-Command",cmd,cwd=work,env=env,stdout=asyncio.subprocess.PIPE,stderr=asyncio.subprocess.PIPE,**kw)
     else:
-     proc=await asyncio.create_subprocess_shell(cmd,cwd=work,env=env,stdout=asyncio.subprocess.PIPE,stderr=asyncio.subprocess.PIPE)
+     proc=await asyncio.create_subprocess_shell(cmd,cwd=work,env=env,stdout=asyncio.subprocess.PIPE,stderr=asyncio.subprocess.PIPE,**kw)
     tid=self._next_term_id()
     term=HubTerminal(tid,proc,limit=limit)
     self._terms[tid]=term
@@ -1869,7 +1841,7 @@ class AgentHub:
     async def _later():
      try:await self._reply_agent(rid,await term.wait_exit())
      except Exception as e:await self._reply_agent(rid,error={"code":-32000,"message":str(e)[:400]})
-    asyncio.create_task(_later())
+    bg(asyncio.create_task(_later()))
     return True
    if method=="terminal/kill":
     tid=str(params.get("terminalId") or "")
@@ -1955,7 +1927,7 @@ class AgentHub:
     await asyncio.sleep(0.25)
    finally:pend.discard(key)
    await self.sessions_changed(sid,reason)
-  try:asyncio.get_event_loop().create_task(_later())
+  try:bg(_later())
   except Exception:pend.discard(key)
  async def sessions_changed(self,sid,reason):
   invalidate_session_index()
@@ -2263,7 +2235,7 @@ class AgentHub:
      if orig is not None:
       out=dict(res);out["id"]=orig;out.setdefault("jsonrpc","2.0")
       await self._send_client(client,_jd(out))
-    asyncio.create_task(_dup())
+    bg(_dup())
     return
    self._new_reqs[gr_req]={"fut":_mkfut(),"t":time.time()}
   self._prompt_mark(gr_pid)
@@ -2292,7 +2264,7 @@ class AgentHub:
      else:await self._reply_err(client,orig,"session/load still in flight")
     if lent["res"] is not None or not lent["ev"].is_set():
      if not lent["ev"].is_set():lent.setdefault("clients",set()).add(client)
-     asyncio.create_task(_join())
+     bg(_join())
      return
    wait_load=method=="session/prompt" and lent is not None and not lent["ev"].is_set()
    if method=="session/load" and sid:
@@ -2318,7 +2290,7 @@ class AgentHub:
      await self._reply_err(client,orig,str(e) or "send failed")
      return
     lim=RPC_REPLY_TIMEOUT.get(method)
-    if lim:asyncio.create_task(self._rpc_expire(nid,lim,method))
+    if lim:bg(self._rpc_expire(nid,lim,method))
    if method=="session/new":
     print("[hub] session/new · cwd=%s"%str((params or {}).get("cwd") or "")[:80],flush=True)
    if method=="session/prompt":
@@ -2334,7 +2306,7 @@ class AgentHub:
       except Exception as e:print("[hub] att ingest:",e,flush=True)
      self.work.note_prompt(sid,"\n".join(bits),cwd=str((params or {}).get("cwd") or ""))
     except Exception:pass
-   if method in ("session/load","session/prompt","session/new"):asyncio.create_task(_go())
+   if method in ("session/load","session/prompt","session/new"):bg(_go())
    else:await _go()
    return
   if orig is not None and not method:
@@ -2472,7 +2444,6 @@ async def main_async(a):
   from aiohttp import web,WSMsgType,ClientSession,ClientTimeout
  agent_host=a.agent_host or "127.0.0.1"
  agent_ws="ws://%s:%d/ws?server-key=%s"%(agent_host,a.agent_port,a.secret)
- lan=lan_ip()
  work_root=Path(a.cwd).expanduser().resolve()
  state={"cwd":str(work_root),"fs_root":str(work_root)}
  hub=AgentHub(agent_ws)
@@ -2484,9 +2455,16 @@ async def main_async(a):
  hub.meta=meta
  loops=RemoteLoopManager(hub,plugin_data_dir()/"loops.json")
  keyq=("?key=%s"%a.secret) if a.secret else ""
- cfg={"agent_host":agent_host,"agent_port":a.agent_port,"secret":"(held server-side)","cwd":state["cwd"],"fsRoot":state["fs_root"],"ws_url":"ws://%s:%d/ws"%(lan,a.port),"ws_path":"/ws","ui":"http://%s:%d/%s"%(lan,a.port,keyq),"watch":"http://%s:%d/watch%s"%(lan,a.port,keyq),"lan_ip":lan,"proxy":True,"hub":True,"ide":True,"auth":bool(a.secret),"tailscale_ip":"","tailscale_url":"","https_url":"","away_url":"","serve":False,"public_url":"","public_origin":"","features":["fs","ide","review","multi-client-hub","skills-scan","git","project-context","stop-turn","todos","voice-tts","voice-go","xr-ar","watch-companion","msg-queue","remote-loop","effort","work-board","att-store","pwa","public-https","nostr-inbox"]}
- try:(ROOT/"runtime-config.json").write_text(json.dumps(cfg,indent=2),encoding="utf-8")
- except Exception:pass
+ cfg={"agent_host":agent_host,"agent_port":a.agent_port,"secret":"(held server-side)","cwd":state["cwd"],"fsRoot":state["fs_root"],"ws_path":"/ws","lan_ip":"","proxy":True,"hub":True,"ide":True,"auth":bool(a.secret),"tailscale_ip":"","tailscale_url":"","https_url":"","away_url":"","serve":False,"public_url":"","public_origin":"","features":["fs","ide","review","multi-client-hub","skills-scan","git","project-context","stop-turn","todos","voice-tts","voice-go","xr-ar","watch-companion","msg-queue","remote-loop","effort","work-board","att-store","pwa","public-https","nostr-inbox"]}
+ def _lan():
+  ip=lan_ip()
+  if cfg.get("lan_ip")==ip:return ip
+  cfg.update(lan_ip=ip,ws_url="ws://%s:%d/ws"%(ip,a.port),ui="http://%s:%d/%s"%(ip,a.port,keyq),watch="http://%s:%d/watch%s"%(ip,a.port,keyq));_allow["t"]=0.0;_allow["st"]=0.0
+  try:atomic_write_json(ROOT/"runtime-config.json",cfg,mode=0o600);atomic_write_text(ROOT/"connect.url","http://%s:%d/%s\n"%(ip,a.port,("?key=%s&auto=1"%a.secret) if a.secret else "?auto=1"),mode=0o600)
+  except Exception as e:print("[cfg] runtime-config write failed:",e,flush=True)
+  return ip
+ _allow={"t":0.0,"st":0.0,"v":(set(),set()),"static":None}
+ _lan()
  def root_path():
   return Path(state["fs_root"]).expanduser().resolve()
  def safe_path(raw):
@@ -2507,32 +2485,6 @@ async def main_async(a):
   p=WEB/"xr.html"
   if not p.is_file():raise web.HTTPNotFound()
   return web.FileResponse(p,headers={"Cache-Control":"no-store"})
- async def xr_tts(request):
-  try:body=await request.json()
-  except Exception:raise web.HTTPBadRequest(text="json required")
-  text=str(body.get("text") or "").strip()[:2000]
-  if not text:raise web.HTTPBadRequest(text="text required")
-  voice=str(body.get("voice") or "en-US-AvaNeural").strip()
-  try:
-   import edge_tts
-   buf=bytearray()
-   async for chunk in edge_tts.Communicate(text,voice,rate="+12%",pitch="+16Hz").stream():
-    if chunk["type"]=="audio":buf.extend(chunk["data"])
-   return web.Response(body=bytes(buf),content_type="audio/mpeg",headers={"Cache-Control":"no-store"})
-  except Exception as e:
-   return web.json_response({"ok":False,"error":str(e)[:200]},status=500)
- async def xr_see(request):
-  try:body=await request.json()
-  except Exception:raise web.HTTPBadRequest(text="json required")
-  data=str(body.get("jpeg") or "")
-  if not data.startswith("data:image/jpeg;base64,"):raise web.HTTPBadRequest(text="jpeg dataurl required")
-  import base64
-  raw=base64.b64decode(data.split(",",1)[1])
-  if len(raw)>2_000_000:raise web.HTTPBadRequest(text="too large")
-  cwd=str(body.get("cwd") or state["cwd"] or ".")
-  p=os.path.join(cwd,"companion_view.jpg")
-  with open(p,"wb") as f:f.write(raw)
-  return web.json_response({"ok":True,"path":p},headers={"Cache-Control":"no-store"})
  async def xr_models(request):
   out=[]
   try:
@@ -2561,7 +2513,7 @@ async def main_async(a):
  async def watch_pin_new(request):
   pin="%06d"%(int.from_bytes(os.urandom(4),"big")%1000000)
   watch_pins[pin]=time.time()+300
-  return web.json_response({"ok":True,"pin":pin,"ttl":300,"open":"http://%s:%d/w"%(lan_ip(),a.port)},headers={"Cache-Control":"no-store"})
+  return web.json_response({"ok":True,"pin":pin,"ttl":300,"open":"http://%s:%d/w"%(_lan(),a.port)},headers={"Cache-Control":"no-store"})
  async def watch_pin_page(request):
   now=time.time()
   for k in [k for k,v in list(watch_pins.items()) if v<now]:watch_pins.pop(k,None)
@@ -2592,7 +2544,7 @@ async def main_async(a):
  def _apply_net_cfg(snap=None):
   try:
    from remote_auth import tailscale_snapshot
-   snap=snap if snap is not None else tailscale_snapshot(a.port)
+   snap=snap if snap is not None else tailscale_snapshot(a.port,wait=False)
   except Exception:
    snap={}
   ts=str((snap or {}).get("ip") or "")
@@ -2619,10 +2571,8 @@ async def main_async(a):
   cfg["tailscale_dns"]=dns
   return snap
  async def config(request):
-  cfg["cwd"]=state["cwd"];cfg["fsRoot"]=state["fs_root"];cfg["clients"]=len(hub.clients)
-  try:
-   from remote_auth import tailscale_snapshot
-   _apply_net_cfg(tailscale_snapshot(a.port,wait=False))
+  cfg["cwd"]=state["cwd"];cfg["fsRoot"]=state["fs_root"];cfg["clients"]=len(hub.clients);_lan()
+  try:_apply_net_cfg()
   except Exception:pass
   out=public_safe_cfg(cfg) if request_is_public(request) else cfg
   return web.json_response(out,headers={"Cache-Control":"no-store"})
@@ -2651,7 +2601,7 @@ async def main_async(a):
   body={"ok":True,"ui":True,"ready":bool(hub_up and ag),"hub_up":hub_up,"agent_listening":bool(ag)}
   if request_is_public(request):
    return web.json_response(body,headers={"Cache-Control":"no-store"})
-  body.update({"agent_ws_local":"ws://%s:%d/ws"%(agent_host,a.agent_port),"detail":"","cwd":state["cwd"],"hub_clients":len(hub.clients),"hub_err":getattr(hub,"_last_err","") or "","init_cached":bool(getattr(hub,"_init_done",False))})
+  body.update({"agent_ws_local":"ws://%s:%d/ws"%(agent_host,a.agent_port),"detail":"","cwd":state["cwd"],"hub_clients":len(hub.clients),"remote_clients":sum(1 for c in hub.clients if getattr(c,"_remote",False)),"remote_seen":(plugin_data_dir()/"remote-seen").exists(),"hub_err":getattr(hub,"_last_err","") or "","init_cached":bool(getattr(hub,"_init_done",False))})
   return web.json_response(body,headers={"Cache-Control":"no-store"})
  async def health_deep(request):
   ok=False;detail=""
@@ -2666,7 +2616,7 @@ async def main_async(a):
   body={"ok":ok,"hub_up":hub_up}
   if request_is_public(request):
    return web.json_response(body,headers={"Cache-Control":"no-store"})
-  body.update({"agent_ws_local":"ws://%s:%d/ws"%(agent_host,a.agent_port),"detail":detail,"cwd":state["cwd"],"hub_clients":len(hub.clients),"hub_err":getattr(hub,"_last_err","") or "","init_cached":bool(getattr(hub,"_init_done",False))})
+  body.update({"agent_ws_local":"ws://%s:%d/ws"%(agent_host,a.agent_port),"detail":detail,"cwd":state["cwd"],"hub_clients":len(hub.clients),"remote_clients":sum(1 for c in hub.clients if getattr(c,"_remote",False)),"remote_seen":(plugin_data_dir()/"remote-seen").exists(),"hub_err":getattr(hub,"_last_err","") or "","init_cached":bool(getattr(hub,"_init_done",False))})
   return web.json_response(body,headers={"Cache-Control":"no-store"})
  async def pair(request):
   if not _peer_loopback(request):
@@ -2682,7 +2632,7 @@ async def main_async(a):
    net=tailscale_snapshot(a.port,ttl=8)
    p=load_public_origin(a.port)
    if p:net["public"]=p.get("origin") or ""
-   addrs=addresses(a.port,a.secret,public_host=pub,net=net)
+   addrs=[] if u else addresses(a.port,a.secret,public_host=pub,net=net)
    pin="";npub=""
    try:
     from public_net import pair_pin
@@ -2705,12 +2655,13 @@ async def main_async(a):
   p=WEB/"sw.js"
   if not p.is_file():raise web.HTTPNotFound()
   return web.FileResponse(p,headers={"Content-Type":"application/javascript; charset=utf-8","Cache-Control":"no-cache","Service-Worker-Allowed":"/"})
+ _reach_cache={}
  def _net_public(snap,include_key=False):
   ts=str((snap or {}).get("ip") or "")
   dns=str((snap or {}).get("dns") or "").strip()
   serve=bool((snap or {}).get("serve"))
   q=("?key=%s&auto=1"%a.secret) if include_key and a.secret else "?auto=1"
-  lan_url=("http://%s:%d/%s"%(lan,a.port,q)) if lan else ""
+  lan=_lan();lan_url=("http://%s:%d/%s"%(lan,a.port,q)) if lan else ""
   ts_url=("http://%s:%d/%s"%(ts,a.port,q)) if ts else ""
   https_url=("https://%s/%s"%(dns,q)) if dns and serve else ""
   pub_origin="";pub_url="";tun={}
@@ -2722,18 +2673,19 @@ async def main_async(a):
    elif pub_origin:pub_url=pub_origin+"/?auto=1"
    tun=tunnel_status()
   except Exception:pass
-  away=pub_url or https_url or ts_url
-  return {"ok":True,"lan_ip":lan,"port":a.port,"tailscale_ip":ts,"tailscale_dns":dns,"serve":serve,"https":bool(https_url or (pub_origin and pub_origin.startswith("https://"))),"lan_url":lan_url,"tailscale_url":ts_url,"https_url":https_url,"public_origin":pub_origin,"public_url":pub_url,"away_url":away,"tunnel":tun}
+  reach=_reach_cache.get("v") if time.time()-_reach_cache.get("t",0)<15 else None
+  if reach is None:
+   try:reach=ctl.firewall_status(a.port,lan)
+   except Exception as e:reach={"kind":"unknown","error":str(e)[:120]}
+   _reach_cache.update(t=time.time(),v=reach)
+  mesh=str(reach.get("mesh_ip") or "");mesh_url=("http://%s:%d/%s"%(mesh,a.port,q)) if mesh and mesh!=ts else ""
+  away=pub_url or https_url or ts_url or mesh_url
+  return {"ok":True,"reach":reach,"mesh_ip":mesh,"mesh_url":mesh_url,"lan_ip":lan,"port":a.port,"tailscale_ip":ts,"tailscale_dns":dns,"serve":serve,"https":bool(https_url or (pub_origin and pub_origin.startswith("https://"))),"lan_url":lan_url,"tailscale_url":ts_url,"https_url":https_url,"public_origin":pub_origin,"public_url":pub_url,"away_url":away,"tunnel":tun}
  async def net_get(request):
   if request_is_public(request):
    return web.json_response({"ok":True,"https":True},headers={"Cache-Control":"no-store"})
-  try:
-   from remote_auth import tailscale_snapshot
-   snap=tailscale_snapshot(a.port)
-  except Exception:
-   snap={}
-  try:_apply_net_cfg(snap)
-  except Exception:pass
+  try:snap=_apply_net_cfg()
+  except Exception:snap={}
   return web.json_response(_net_public(snap,include_key=_peer_loopback(request)),headers={"Cache-Control":"no-store"})
  async def net_tailscale_serve(request):
   if not _peer_loopback(request):
@@ -2829,14 +2781,18 @@ async def main_async(a):
   resp.set_cookie(UI_KEY_COOKIE,a.secret,**kw)
   return resp
  async def qr_get(request):
-  if not _peer_loopback(request):
+  u=(request.query.get("u") or "").strip()[:2048]
+  if not u and not _peer_loopback(request):
    raise web.HTTPForbidden(text="qr is loopback-only")
+  if u and not re.match(r"^https?://",u):raise web.HTTPBadRequest(text="u must be an http(s) url")
   from pairing import qr_svg,addresses
   from public_net import named_public_raw,live_tunnel_url
-  pub=named_public_raw() or live_tunnel_url() or ""
-  addrs=addresses(a.port,a.secret,public_host=pub)
-  url=(addrs[0].get("url") if addrs else "") or ""
-  svg=qr_svg(url) if url else ""
+  from remote_auth import tailscale_snapshot
+  def _qr():
+   addrs=addresses(a.port,a.secret,public_host=named_public_raw() or live_tunnel_url() or "",net=tailscale_snapshot(a.port,wait=False))
+   url=u or (addrs[0].get("url") if addrs else "") or ""
+   return qr_svg(url) if url else ""
+  svg=await asyncio.get_event_loop().run_in_executor(None,_qr)
   return web.Response(text=svg or "<svg xmlns='http://www.w3.org/2000/svg'></svg>",content_type="image/svg+xml",headers={"Cache-Control":"no-store"})
  async def nostr_get(request):
   if not _peer_loopback(request):
@@ -3130,7 +3086,7 @@ async def main_async(a):
      r=await hub.call_rpc(m,{"sessionId":sid,"title":title},timeout=5.0)
      if isinstance(r,dict) and "error" not in r:return
     except Exception:pass
-  asyncio.create_task(_agent_rename())
+  bg(_agent_rename())
   await hub.sessions_changed(sid,"rename")
   agent_title=""
   try:
@@ -3216,18 +3172,6 @@ async def main_async(a):
  async def voice_status(_):
   key=xai_api_key()
   return web.json_response({"ok":True,"tts":bool(key),"stt":"browser","provider":"xai" if key else "browser-fallback","voices":["eve","ara","leo","rex","sal","luna","orion","helix"],"hint":None if key else "Set XAI_API_KEY for real Grok voice (else browser speechSynthesis)"},headers={"Cache-Control":"no-store"})
- async def companion_state(_):
-  """Quiet same-origin probe for the optional motion service on :2423."""
-  try:
-   timeout=ClientTimeout(total=.6,connect=.25,sock_connect=.25,sock_read=.35)
-   async with ClientSession(timeout=timeout) as sess:
-    async with sess.get("http://127.0.0.1:2423/motion/state") as resp:
-     if resp.status!=200:raise RuntimeError("HTTP "+str(resp.status))
-     data=await resp.json(content_type=None)
-     if not isinstance(data,dict):data={}
-     return web.json_response({"available":True,**data},headers={"Cache-Control":"no-store"})
-  except Exception:
-   return web.json_response({"available":False},headers={"Cache-Control":"no-store"})
  async def companion_env(_):
   """What is in front of the user right now: foreground window, agent work state, clock. Loopback/authed only (auth_mw)."""
   try:
@@ -3241,7 +3185,7 @@ async def main_async(a):
    return web.json_response({"ok":False,"error":str(e)[:200]},status=500,headers={"Cache-Control":"no-store"})
  async def tts_proxy(request):
   key=xai_api_key()
-  if not key:return web.json_response({"ok":False,"error":"XAI_API_KEY not set — browser fallback only"},status=503)
+  if not key:return await comp.tts(request)
   try:body=await request.json()
   except Exception:body={}
   text=str(body.get("text") or body.get("input") or "").strip()
@@ -3265,23 +3209,17 @@ async def main_async(a):
      return web.Response(body=data,headers={"Content-Type":resp.headers.get("Content-Type","audio/mpeg"),"Cache-Control":"no-store","X-Voice-Id":voice_id})
   except Exception as e:
    return web.json_response({"ok":False,"error":str(e)[:300]},status=502)
- def run_git(args,cwd,timeout=12):
+ async def run_git(args,cwd,timeout=12):
   git=shutil.which("git")
-  if not git:return None,"git not found"
-  try:
-   p=subprocess.run([git,*args],cwd=str(cwd),capture_output=True,text=True,timeout=timeout,encoding="utf-8",errors="replace")
-   return p,None
-  except Exception as e:return None,str(e)
+  return await run_cmd([git,*args],cwd=cwd,timeout=timeout) if git else (None,"git not found")
  async def git_status(request):
   root=root_path()
-  p,err=run_git(["rev-parse","--is-inside-work-tree"],root)
+  p,err=await run_git(["rev-parse","--is-inside-work-tree"],root)
   if err:return web.json_response({"ok":False,"error":err,"git":False})
   if not p or p.returncode!=0:return web.json_response({"ok":True,"git":False,"root":str(root)})
-  branch_p,_=run_git(["rev-parse","--abbrev-ref","HEAD"],root)
+  (branch_p,_),(short_p,_),(st_p,_)=await asyncio.gather(run_git(["rev-parse","--abbrev-ref","HEAD"],root),run_git(["rev-parse","--short","HEAD"],root),run_git(["status","--porcelain","-b"],root))
   branch=(branch_p.stdout.strip() if branch_p and branch_p.returncode==0 else "?")
-  short_p,_=run_git(["rev-parse","--short","HEAD"],root)
   sha=(short_p.stdout.strip() if short_p and short_p.returncode==0 else "")
-  st_p,_=run_git(["status","--porcelain","-b"],root)
   lines=(st_p.stdout.splitlines() if st_p else [])
   head=lines[0] if lines else ""
   files=[ln for ln in lines[1:] if ln.strip()]
@@ -3298,14 +3236,14 @@ async def main_async(a):
   args=["diff","--no-color"]
   if staged:args.append("--cached")
   if path:args+=["--",path]
-  p,err=run_git(args,root,timeout=20)
+  p,err=await run_git(args,root,timeout=20)
   if err:return web.json_response({"ok":False,"error":err})
   text=(p.stdout if p else "")[:200000]
   return web.json_response({"ok":True,"path":path,"staged":staged,"diff":text,"code":p.returncode if p else -1},headers={"Cache-Control":"no-store"})
  async def git_log(request):
   root=root_path()
   n=min(30,max(1,int(request.rel_url.query.get("n") or 12)))
-  p,err=run_git(["log","-"+str(n),"--pretty=format:%h%x09%ad%x09%s","--date=short"],root)
+  p,err=await run_git(["log","-"+str(n),"--pretty=format:%h%x09%ad%x09%s","--date=short"],root)
   if err:return web.json_response({"ok":False,"error":err,"commits":[]})
   commits=[]
   for ln in (p.stdout.splitlines() if p else []):
@@ -3323,7 +3261,7 @@ async def main_async(a):
      text=p.read_text(encoding="utf-8",errors="replace")
      found.append({"name":n,"rel":n,"size":len(text),"preview":text[:4000]})
     except Exception:pass
-  git_p,_=run_git(["rev-parse","--abbrev-ref","HEAD"],root)
+  git_p,_=await run_git(["rev-parse","--abbrev-ref","HEAD"],root)
   branch=git_p.stdout.strip() if git_p and git_p.returncode==0 else None
   return web.json_response({"ok":True,"root":str(root),"branch":branch,"files":found},headers={"Cache-Control":"no-store"})
  def listen_pids(port:int):
@@ -3331,16 +3269,16 @@ async def main_async(a):
  def kill_pids(pids):
   return kill_pids_list(pids)
  async def stack_status(request):
-  ui=listen_pids(a.port);ag=listen_pids(a.agent_port)
+  ui,ag=await asyncio.gather(run_off(listen_pids,a.port),run_off(listen_pids,a.agent_port))
   hub_up=hub._agent is not None and not getattr(hub._agent,"closed",True)
-  return web.json_response({"ok":True,"ui_port":a.port,"agent_port":a.agent_port,"ui_pids":ui,"agent_pids":ag,"self_pid":os.getpid(),"lan":lan,"cwd":state["cwd"],"hub_up":hub_up,"hub_err":getattr(hub,"_last_err","") or "","agent_listening":bool(ag)},headers={"Cache-Control":"no-store"})
+  return web.json_response({"ok":True,"ui_port":a.port,"agent_port":a.agent_port,"ui_pids":ui,"agent_pids":ag,"self_pid":os.getpid(),"lan":_lan(),"cwd":state["cwd"],"hub_up":hub_up,"hub_err":getattr(hub,"_last_err","") or "","agent_listening":bool(ag)},headers={"Cache-Control":"no-store"})
  async def stack_stop(request):
   keep_agent=False
   try:
    body=await request.json()
    keep_agent=bool(body.get("keep_agent"))
   except Exception:pass
-  agent_pids=[] if keep_agent else listen_pids(a.agent_port)
+  agent_pids=[] if keep_agent else await run_off(listen_pids,a.agent_port)
   self_pid=os.getpid()
   try:
    from public_net import stop_quick_tunnel
@@ -3354,33 +3292,34 @@ async def main_async(a):
    await asyncio.sleep(0.35)
    try:await hub.close()
    except Exception:pass
-   if agent_pids:kill_pids(agent_pids)
+   if agent_pids:await run_off(kill_pids,agent_pids)
    await asyncio.sleep(0.15)
-   try:os._exit(0)
-   except Exception:
-    try:sys.exit(0)
-    except Exception:pass
-  asyncio.create_task(_shutdown())
-  return web.json_response({"ok":True,"stopping":True,"self_pid":self_pid,"agent_pids":agent_pids,"message":"Remote UI stopping; agent serve will stop unless keep_agent"})
+   if unit:
+    signal.signal(signal.SIGTERM,signal.SIG_IGN)
+    try:subprocess.Popen(["systemctl","--user","stop",unit],start_new_session=True,stdin=subprocess.DEVNULL,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+    except Exception as e:print("[stack] systemctl stop %s: %s"%(unit,e),flush=True)
+   os._exit(97 if os.environ.get("INVOCATION_ID") else 0)
+  unit=await run_off(systemd_unit);bg(_shutdown())
+  return web.json_response({"ok":True,"stopping":True,"self_pid":self_pid,"agent_pids":agent_pids,"unit":unit or None,"message":"Remote UI stopping; agent serve will stop unless keep_agent"})
  async def stack_start(request):
   body={}
   try:body=await request.json()
   except Exception:pass
   force=bool(body.get("force") or body.get("restart"))
   cwd=str(body.get("cwd") or state["cwd"] or a.cwd)
-  agent_up=bool(listen_pids_port(a.agent_port,exclude_self=False))
+  agent_up=bool(await run_off(listen_pids_port,a.agent_port,False))
   killed=[];started=False;msg="";attempts=[]
   async def spawn_agent(reason):
    nonlocal killed,started,msg
    hard=reason in ("force","hub-auth-retry")
    if hard:
-    killed=claim_port(a.agent_port,"agent")
+    killed=await run_off(claim_port,a.agent_port,"agent")
     try:await hub.close()
     except Exception:pass
     await asyncio.sleep(0.25)
-   start_agent_process(a.secret,a.agent_port,cwd,force=hard)
+   await run_off(lambda:start_agent_process(a.secret,a.agent_port,cwd,force=hard))
    started=True
-   ok_listen=await asyncio.get_event_loop().run_in_executor(None,lambda:wait_port(a.agent_port,24))
+   ok_listen=await run_off(wait_port,a.agent_port,24)
    attempts.append({"reason":reason,"listen":ok_listen,"killed":killed})
    if not ok_listen:
     raise RuntimeError("agent did not bind :%d after %s"%(a.agent_port,reason))
@@ -3394,40 +3333,61 @@ async def main_async(a):
     up=await hub.ensure(retries=10,delay=0.4)
    if not up:
     err=getattr(hub,"_last_err","") or "hub could not open agent websocket"
-    return web.json_response({"ok":False,"error":err,"message":msg,"killed":killed,"started":started,"attempts":attempts,"agent_pids":listen_pids_port(a.agent_port,exclude_self=False),"hub_up":False,"hub_err":err,"hint":"Secret mismatch is usually fixed by force-restart (already attempted). Check logs/agent.log"},status=503)
-   return web.json_response({"ok":True,"message":msg or "agent ready","killed":killed,"started":started,"attempts":attempts,"agent_pids":listen_pids_port(a.agent_port,exclude_self=False),"hub_up":True,"hub_err":""})
+    return web.json_response({"ok":False,"error":err,"message":msg,"killed":killed,"started":started,"attempts":attempts,"agent_pids":await run_off(listen_pids_port,a.agent_port,False),"hub_up":False,"hub_err":err,"hint":"Secret mismatch is usually fixed by force-restart (already attempted). Check logs/agent.log"},status=503)
+   return web.json_response({"ok":True,"message":msg or "agent ready","killed":killed,"started":started,"attempts":attempts,"agent_pids":await run_off(listen_pids_port,a.agent_port,False),"hub_up":True,"hub_err":""})
   except Exception as e:
    return web.json_response({"ok":False,"error":str(e),"killed":killed,"started":started,"attempts":attempts,"hub_err":getattr(hub,"_last_err","") or ""},status=500)
+ plat="win" if os.name=="nt" else "mac" if sys.platform=="darwin" else "linux"
+ def _ctl(*args,timeout=120):
+  return run_cmd([sys.executable,ROOT/"grok_remote_ctl.py",*[x for x in args if x]],cwd=ROOT,timeout=timeout)
  async def stack_shortcut(request):
-  script=ROOT/"scripts"/"install-shortcut.ps1"
-  if not script.is_file():
-   return web.json_response({"ok":False,"error":"install-shortcut.ps1 missing"},status=404)
-  try:
-   p=subprocess.run(["powershell","-NoProfile","-ExecutionPolicy","Bypass","-File",str(script)],capture_output=True,text=True,timeout=30,encoding="utf-8",errors="replace")
-   return web.json_response({"ok":p.returncode==0,"code":p.returncode,"out":(p.stdout or "")[-2000:],"err":(p.stderr or "")[-1000:]})
-  except Exception as e:
-   return web.json_response({"ok":False,"error":str(e)},status=500)
+  try:b=dict(await request.json())
+  except Exception:b={}
+  p,err=await _ctl("install","--json","--pin" if b.get("pin") else "","--autostart" if b.get("autostart") else "","--cwd",state["cwd"])
+  out=(p.stdout if p else "") or ""
+  if plat=="win" or not p:return web.json_response({"ok":bool(p) and p.returncode==0,"code":p.returncode if p else -1,"hint":out[-2000:] or ctl.pin_hint(),"error":err or (p.stderr[-1000:] if p and p.returncode else "")},status=200 if p else 500)
+  try:res=json.loads(out)
+  except Exception:res={"ok":False,"error":(p.stderr or out)[-1000:]}
+  res["ok"]=bool(res.get("ok")) and p.returncode==0
+  return web.json_response(res,status=200 if res["ok"] else 500)
+ def _install_state():
+  c=ctl.cfg_load();u=ctl.unit_name();k=ctl.desktop_kind()
+  lnk=Path(os.environ.get("APPDATA") or Path.home())/"Microsoft"/"Windows"/"Start Menu"/"Programs"/"Grok Remote"/"Grok Remote.lnk"
+  return {"ok":True,"platform":plat,"desktop":k,"installed":ctl.DESKTOP_FILE.is_file() if plat=="linux" else (ctl.BIN/ctl.APP).exists() if plat=="mac" else lnk.is_file(),"pinned":ctl.pinned() if plat=="linux" else None,"can_pin":plat=="linux" and k in ("kde","gnome","cinnamon"),"autostart":bool(c.get("autostart")),"boot":bool(c.get("autostart_on_boot")) or bool(plat=="linux" and u and ctl.has_systemd() and ctl.systemctl("is-enabled","--quiet",u)),"unit":u or None,"hint":ctl.pin_hint()}
+ async def stack_install(request):
+  return web.json_response(await run_off(_install_state),headers={"Cache-Control":"no-store"})
+ async def stack_pin(request):
+  try:b=dict(await request.json())
+  except Exception:b={}
+  p,err=await _ctl("pin","" if b.get("on",True) else "--off",timeout=60)
+  st=await run_off(_install_state)
+  return web.json_response({**st,"ok":bool(p) and p.returncode==0,"message":((p.stdout or "")+(p.stderr or "")).strip()[-1000:] if p else err},status=200 if p and p.returncode in (0,2) else 500,headers={"Cache-Control":"no-store"})
  async def ws_proxy(request):
   client=web.WebSocketResponse(heartbeat=45,max_msg_size=16*1024*1024,autoping=True)
+  client._remote=not request_is_loopback(request)
   await client.prepare(request)
+  if client._remote and not (plugin_data_dir()/"remote-seen").exists():
+   try:(plugin_data_dir()/"remote-seen").write_text(str(int(time.time())))
+   except Exception:pass
   await hub.handle_client(client)
   return client
- _allow={"t":0.0,"v":(set(),set()),"static":None}
- def allowed_hosts():
+ def allowed_hosts(miss=False):
   now=time.time()
-  if now-_allow["t"]<20 and _allow["static"] is not None:return _allow["v"]
+  miss=miss and now-_allow["st"]>=5
+  if now-_allow["t"]<20 and _allow["static"] is not None and not miss:return _allow["v"]
   port=int(a.port)
-  if _allow["static"] is None:
-   names={"127.0.0.1","localhost","[::1]",lan}
+  if _allow["static"] is None or miss or now-_allow["st"]>=60:
+   lan_ip(0 if miss else 30);names={"127.0.0.1","localhost","[::1]",_lan()};_allow["st"]=now
    if a.bind and a.bind not in ("0.0.0.0","::"):names.add(a.bind)
    try:
     from pairing import _hostips
     names.update(_hostips())
    except Exception:pass
-   if os.name!="nt" and shutil.which("ip"):
+   ifcmd=["ip","-o","addr","show"] if shutil.which("ip") else (["ifconfig"] if shutil.which("ifconfig") else None)
+   if os.name!="nt" and ifcmd:
     try:
-     out=subprocess.run(["ip","-o","addr","show"],capture_output=True,text=True,timeout=3).stdout or ""
-     for m in re.finditer(r"\binet6?\s+([0-9a-fA-F:.]+)/",out):
+     out=subprocess.run(ifcmd,capture_output=True,text=True,timeout=3).stdout or ""
+     for m in re.finditer(r"\binet6?\s+([0-9a-fA-F:.]+)[/%\s]",out):
       ip=m.group(1)
       if ip.lower().startswith("fe80"):continue
       names.add("[%s]"%ip if ":" in ip else ip)
@@ -3464,6 +3424,7 @@ async def main_async(a):
   _allow["v"]=(hosts,origins);_allow["t"]=now
   return _allow["v"]
  app=web.Application(client_max_size=32*1024*1024,middlewares=[make_auth_middleware(a.secret,allow=allowed_hosts)])
+ comp=__import__("companion").setup(app,data=plugin_data_dir(),state=state,agent_ws=agent_ws,agent_port=a.agent_port,origin_ok=lambda o:origin_allowed(o,*allowed_hosts()),secret=a.secret)
  app.router.add_get("/",index)
  app.router.add_get("/index.html",index)
  app.router.add_get("/watch",watch_page)
@@ -3471,8 +3432,6 @@ async def main_async(a):
  app.router.add_get("/w",watch_pin_page)
  app.router.add_post("/api/watch/pin",watch_pin_new)
  app.router.add_get("/xr",xr_page)
- app.router.add_post("/api/xr/tts",xr_tts)
- app.router.add_post("/api/xr/see",xr_see)
  app.router.add_get("/api/xr/models",xr_models)
  app.router.add_get("/api/xr/braid",xr_braid)
  app.router.add_get("/config.json",config)
@@ -3515,7 +3474,6 @@ async def main_async(a):
  app.router.add_get("/api/session/react",session_react_get)
  app.router.add_post("/api/session/react",session_react_set)
  app.router.add_get("/api/voice/status",voice_status)
- app.router.add_get("/api/companion/state",companion_state)
  app.router.add_get("/api/companion/env",companion_env)
  app.router.add_post("/api/tts",tts_proxy)
  app.router.add_get("/api/git/status",git_status)
@@ -3526,6 +3484,8 @@ async def main_async(a):
  app.router.add_post("/api/stack/stop",stack_stop)
  app.router.add_post("/api/stack/start",stack_start)
  app.router.add_post("/api/stack/shortcut",stack_shortcut)
+ app.router.add_get("/api/stack/install",stack_install)
+ app.router.add_post("/api/stack/pin",stack_pin)
  async def loops_list(request):
   sid=(request.rel_url.query.get("sessionId") or "").strip() or None
   return web.json_response({"ok":True,"jobs":loops.list_jobs(sid)},headers={"Cache-Control":"no-store"})
@@ -3574,7 +3534,7 @@ async def main_async(a):
   return web.json_response({"ok":True,"effort":effort,"modelId":model,"result":res.get("result") if res else None})
  async def actor_list(_):
   mod=load_actor_mod()
-  if not mod:return web.json_response({"ok":False,"error":"grok-actor plugin not found"},status=501)
+  if not mod:return web.json_response({"ok":True,"available":False,"effective":None,"presets":[],"error":"grok-actor plugin not found"})
   try:
    presets=[actor_preset_public(p) for p in mod.list_presets()]
   except Exception as e:
@@ -3591,7 +3551,7 @@ async def main_async(a):
   return restore
  async def actor_show(request):
   mod=load_actor_mod()
-  if not mod:return web.json_response({"ok":False,"error":"grok-actor plugin not found"},status=501)
+  if not mod:return web.json_response({"ok":True,"available":False,"effective":None,"presets":[],"error":"grok-actor plugin not found"})
   sid=str(request.rel_url.query.get("sessionId") or "").strip()
   restore=_actor_sid_ctx(sid)
   try:
@@ -3641,7 +3601,7 @@ async def main_async(a):
   return web.json_response({"ok":True,"cleared":cleared},headers={"Cache-Control":"no-store"})
  async def actor_get(request):
   mod=load_actor_mod()
-  if not mod:return web.json_response({"ok":False,"error":"grok-actor plugin not found"},status=501)
+  if not mod:return web.json_response({"ok":True,"available":False,"effective":None,"presets":[],"error":"grok-actor plugin not found"})
   pid=str(request.rel_url.query.get("id") or request.rel_url.query.get("preset") or "").strip()
   if not pid:raise web.HTTPBadRequest(text="id required")
   try:pr=mod.load_preset(pid)
@@ -3774,9 +3734,9 @@ async def main_async(a):
  app.router.add_post("/api/actor/invent",actor_invent)
  app.router.add_get("/api/rx-temp",rx_temp_get)
  app.router.add_post("/api/rx-temp",rx_temp_set)
- print("Grok Remote UI+hub   http://%s:%d/%s"%(lan,a.port,keyq),flush=True)
+ print("Grok Remote UI+hub   http://%s:%d/%s"%(_lan(),a.port,keyq),flush=True)
  print("Pair on this PC      http://127.0.0.1:%d/pair"%a.port,flush=True)
- print("Multi-client WS      ws://%s:%d/ws  -> shared agent %s:%d"%(lan,a.port,agent_host,a.agent_port),flush=True)
+ print("Multi-client WS      ws://%s:%d/ws  -> shared agent %s:%d"%(_lan(),a.port,agent_host,a.agent_port),flush=True)
  if a.secret:print("Access key required   paired link above carries it once; unauthenticated requests get 401",flush=True)
  print("Workspace            %s"%state["cwd"],flush=True)
  runner=web.AppRunner(app);await runner.setup()
@@ -3804,7 +3764,7 @@ async def main_async(a):
   site=web.TCPSite(runner,a.bind,a.port)
   await site.start()
  local_agent=str(a.agent_host) in ("127.0.0.1","localhost","::1")
- if local_agent:
+ if local_agent and a.ensure_agent:
   hub.spawn_agent=lambda force=False:start_agent_process(a.secret,a.agent_port,state["cwd"],force=force)
  async def _boot_agent():
   try:
@@ -3825,7 +3785,7 @@ async def main_async(a):
    except (NotImplementedError,RuntimeError,ValueError):pass
  except Exception:pass
  try:
-  asyncio.create_task(_boot_agent())
+  bg(_boot_agent())
   loops.start_all()
   hub.start_watch()
   print("[loop] restored %d job(s)"%len(loops.jobs),flush=True)
@@ -3893,7 +3853,7 @@ async def main_async(a):
   try:await asyncio.wait_for(hub.close(),5)
   except Exception:pass
   if local_agent and os.environ.get("GROK_REMOTE_KEEP_AGENT")!="1":
-   mine=AGENT_PROC.get("proc") is not None or agent_pidfile_pid()>0
+   mine=AGENT_PROC.get("proc") is not None or agent_pidfile_pid(a.agent_port)>0
    if mine and not busy:
     try:
      k=await asyncio.get_event_loop().run_in_executor(None,lambda:stop_agent_process(a.agent_port))
@@ -3913,14 +3873,14 @@ def main():
  ap.add_argument("--ensure-agent",action="store_true",help="start agent serve if not listening")
  a=ap.parse_args()
  try:
-  if Path(a.cwd).resolve()==ROOT:print(f"WARN: --cwd is the hub's own folder ({ROOT}); real chats live elsewhere and the rail files them under the parent folder name. Pass --cwd <workspace> (ensure-running.ps1 -Cwd).",file=sys.stderr)
+  if Path(a.cwd).resolve()==ROOT:print(f"WARN: --cwd is the hub's own folder ({ROOT}); real chats live elsewhere and the rail files them under the parent folder name. Pass --cwd <workspace> ({'ensure-running.ps1 -Cwd' if os.name=='nt' else 'grok-remote start --cwd'}).",file=sys.stderr)
  except Exception:pass
  if not a.secret:
   print("ERROR: --secret or GROK_AGENT_SECRET required",file=sys.stderr);sys.exit(2)
  if a.claim_ports or os.environ.get("GROK_REMOTE_CLAIM_PORTS")=="1":
   claim_port(a.port,"ui")
   claim_port(a.agent_port,"agent")
- a.ensure_agent=bool(a.ensure_agent or os.environ.get("GROK_REMOTE_ENSURE_AGENT","1")!="0")
+ a.ensure_agent=os.environ.get("GROK_REMOTE_ENSURE_AGENT","1")!="0"
  try:asyncio.run(main_async(a))
  except KeyboardInterrupt:pass
 if __name__=="__main__":main()

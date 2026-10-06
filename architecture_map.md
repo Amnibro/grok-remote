@@ -1,5 +1,10 @@
 # Grok Remote — architecture map
 
+**Updated:** 2026-10-06 · v1.11.0
+- `grok_remote_ctl.py` is the one control CLI (also imported by server.py for port/pid helpers). `/api/stack/install|shortcut|pin` and `/api/net.reach` call into it.
+- `web/theme-tokens.css` is the only token source; overlays go through `Overlay.open` / `uiDialog`.
+- Companion brains: `brains/` + `companion.py` (`ws /api/companion/brain`, `/api/companion/*`, `/api/xr/tts|stt|see`, `/motion/*`, `/pose`).
+
 **Updated:** 2026-09-23 · v1.10.0 audit contract
 - Session meta (titles, archive) is hub-owned: `plugin-data/grok-remote/session_meta.json`. Never write the agent's `summary.json`.
 - Ids: resolve at the edge (`resolve_sid`), compare exactly. Missing sessionId filled only when one session is in flight.

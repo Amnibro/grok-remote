@@ -1,4 +1,4 @@
-import io,socket,subprocess,sys
+import io,os,re,shutil,socket,subprocess,sys
 def _probe(target):
  s=socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
  try:
@@ -77,29 +77,34 @@ def ensure_segno():
   import segno;return True
  except ImportError:pass
  if _SEGNO["tried"]:return _SEGNO["ok"]
- _SEGNO["tried"]=True
- if str(__import__("os").environ.get("GROK_REMOTE_NO_PIP") or "")=="1":return False
+ _SEGNO.update(tried=True,ok=bool(shutil.which("qrencode")))
+ if _SEGNO["ok"] or str(os.environ.get("GROK_REMOTE_NO_PIP") or "")=="1":return _SEGNO["ok"]
  try:
   subprocess.run([sys.executable,"-m","pip","install","-q","segno"],timeout=60,check=False,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
   import importlib;importlib.invalidate_caches();import segno;_SEGNO["ok"]=True;return True
  except Exception:return False
+def _qrencode(url,*fmt):
+ q=shutil.which("qrencode")
+ try:return subprocess.run([q,"-l","M","-m","4",*fmt,"-o","-",url],capture_output=True,timeout=10).stdout.decode("utf-8","replace") if q else ""
+ except Exception:return ""
 def qr_svg(url,scale=8):
  try:
-  import segno,re
-  b=io.BytesIO();segno.make(url,error="m").save(b,kind="svg",scale=scale,border=4,dark="#000000",light="#ffffff")
-  s=b.getvalue().decode("utf-8")
-  s=s.replace('<?xml version="1.0" encoding="utf-8"?>',"",1).strip()
+  import segno
+  b=io.BytesIO();segno.make(url,error="m").save(b,kind="svg",scale=scale,border=4,dark="#000000",light="#ffffff");s=b.getvalue().decode("utf-8")
+ except ImportError:s=_qrencode(url,"-t","SVG","-s",str(scale))
+ except Exception:return ""
+ try:
+  s=re.sub(r'<!--.*?-->',"",re.sub(r'<\?xml[^>]*\?>',"",s,count=1),flags=re.S).replace('preserveAspectRatio="none"',"").strip()
   m=re.search(r'\bwidth="(\d+(?:\.\d+)?)"[^>]*\bheight="(\d+(?:\.\d+)?)"',s)
-  if m and "viewBox" not in s:
-   s=s.replace("<svg ","<svg viewBox=\"0 0 %s %s\" preserveAspectRatio=\"xMidYMid meet\" "%(m.group(1),m.group(2)),1)
-  elif "preserveAspectRatio" not in s:
-   s=s.replace("<svg ","<svg preserveAspectRatio=\"xMidYMid meet\" ",1)
-  return s
+  s=s.replace("<svg ","<svg viewBox=\"0 0 %s %s\" preserveAspectRatio=\"xMidYMid meet\" "%(m.group(1),m.group(2)),1) if m and "viewBox" not in s else s.replace("<svg ","<svg preserveAspectRatio=\"xMidYMid meet\" ",1) if "preserveAspectRatio" not in s else s
+  return s if "<svg" in s else ""
  except Exception:return ""
 def qr_terminal(url,out=None):
  try:
   import segno
   segno.make(url,error="m").terminal(out=out or sys.stdout,compact=True);return True
+ except ImportError:
+  t=_qrencode(url,"-t","UTF8");(out or sys.stdout).write(t);return bool(t)
  except Exception:return False
 def utf8_stdout():
  for s in (sys.stdout,sys.stderr):
@@ -216,7 +221,7 @@ def page(addrs,cwd="",have_qr=True,port=2421,net=None,pin="",npub=""):
   "<li>Open your phone browser and type the link printed under a code.</li>"
   "<li>Use <b>Wi-Fi</b> when the phone is on the same network as this PC.</li>"
   "<li>Use the <b>Internet</b> code (Cloudflare / 443) when you are away. Meshnet still works if both devices are on Tailscale.</li>"
-  "<li>Nothing loads at all? Windows Firewall is likely blocking it - rerun the launcher and accept the prompt.</li>"
+  "<li>Nothing loads at all? A firewall is likely blocking the hub port - on Windows rerun the launcher and accept the prompt; on Linux or macOS run <code>grok-remote doctor</code> for the exact fix.</li>"
   "</ol></div></div>"
   "<script>document.addEventListener('click',function(e){var b=e.target.closest('button[data-u]');if(!b)return;"
   "navigator.clipboard.writeText(b.dataset.u).then(function(){var t=b.textContent;b.textContent='Copied';setTimeout(function(){b.textContent=t},1400)})});"

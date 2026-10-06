@@ -3,6 +3,7 @@ export function initPanels(ctx){
   const hudState={base:"?",gesture:"-",gaze:"-",seq:0,cam:"off"};
   let camStream=null,camVideo=null;
   const guard=e=>!(e.target&&e.target.matches&&e.target.matches("input"));
+  const mbase=()=>ctx.motionBase?ctx.motionBase():location.origin,kq=KEY?"?key="+encodeURIComponent(KEY):"",who=()=>(ctx.who&&ctx.who())||"they";
   const host=document.getElementById("xrui")||document.body;
   const mk=(css,html,cls)=>{const d=document.createElement("div");d.className="xr-sheet"+(cls?" "+cls:"");d.style.cssText=css;if(html)d.innerHTML=html;host.appendChild(d);return d};
   const mhud=mk("top:44px;right:12px;font:11px var(--font-mono);padding:8px 10px;z-index:50;white-space:pre;display:none;color:var(--mut)");
@@ -76,7 +77,7 @@ export function initPanels(ctx){
     for(const e of recent){
       const b=document.createElement("div");
       const n=(e.t||"").length;
-      b.style.cssText="flex:1;min-width:2px;border-radius:1px;background:"+(COLOR[e.w]||"#456")+";height:"+(4+Math.round(18*n/peak))+"px;opacity:"+(e.w==="move"?0.95:0.7);
+      b.style.cssText="flex:1;min-width:2px;border-radius:1px;background:"+(COLOR[e.w]||"var(--line)")+";height:"+(4+Math.round(18*n/peak))+"px;opacity:"+(e.w==="move"?0.95:0.7);
       b.title=(e.w==="you"?"you: ":e.w==="move"?"move ":"her: ")+String(e.t||"").slice(0,120);
       st.appendChild(b);
     }
@@ -106,7 +107,7 @@ export function initPanels(ctx){
     if(jboxLoaded)return;
     jboxLoaded=true;
     try{
-      const r=await fetch("http"+(location.protocol==="https:"?"s":"")+"://"+location.hostname+":2423/motion/clips").then(r=>r.json());
+      const r=await fetch(mbase()+"/motion/clips").then(r=>r.json());
       let ix={};
       try{ix=(await (await fetch("/static/clip_index.json",{cache:"no-store"})).json()).clips||{}}catch(e){}
       const TC={calm:"var(--mut)",moderate:"var(--tx)",lively:"var(--gold)",explosive:"var(--bad)"};
@@ -138,7 +139,7 @@ export function initPanels(ctx){
       bl.innerHTML="";
       for(const t of (r.transcript||[])){
         const d=document.createElement("div");
-        d.style.cssText="margin:5px 0;line-height:1.3;color:"+(t.who==="Anthony"?"var(--you)":"var(--tx)");
+        d.style.cssText="margin:5px 0;line-height:1.3;color:"+(t.who===who()?"var(--you)":"var(--tx)");
         d.textContent=(t.who?t.who+": ":"")+t.text;
         bl.appendChild(d);
       }
@@ -172,21 +173,48 @@ export function initPanels(ctx){
     const dot=ok=>ok?"🟢":"🔴";
     await measureMods();
     let ms=null,clipN=0,braid={live:false};
-    try{ms=await fetch("http"+(location.protocol==="https:"?"s":"")+"://"+location.hostname+":2423/motion/state").then(r=>r.json())}catch(e){}
-    try{const c=await fetch("http"+(location.protocol==="https:"?"s":"")+"://"+location.hostname+":2423/motion/clips").then(r=>r.json());clipN=(c.clips||[]).length}catch(e){}
+    try{ms=await fetch(mbase()+"/motion/state").then(r=>r.json())}catch(e){}
+    try{const c=await fetch(mbase()+"/motion/clips").then(r=>r.json());clipN=(c.clips||[]).length}catch(e){}
     try{braid=await fetch("/api/xr/braid"+(KEY?"?key="+encodeURIComponent(KEY):""),{cache:"no-store"}).then(r=>r.json())}catch(e){}
     vpanel.textContent=
 "CODE MAP · companion stack\n──────────────────────────────\n"+
-dot(true)+" hub server.py         :2421\n   ├─ /xr renderer (this page)\n   ├─ /api/xr/tts   edge-tts voice\n   ├─ /api/xr/see   her eyes+self-view\n   ├─ /api/xr/models GLB selector\n   └─ /api/xr/braid  Braid bridge "+dot(!!(braid&&braid.live))+"\n"+
-dot(!!ms)+" motion_service.py     :2423\n   ├─ clips store     "+clipN+" moves\n   ├─ ws /pose        "+(ms?ms.clients:0)+" renderer(s)\n   └─ base: "+(ms?ms.base:"?")+"\n"+
-dot(!!getSid())+" brain session (grok)  "+((getSid()||"").slice(0,8)||"down")+"\n"+
+dot(true)+" hub server.py         :2421\n   ├─ /xr renderer (this page)\n   ├─ /api/xr/tts   edge → piper → espeak\n   ├─ /api/xr/see   her eyes+self-view\n   ├─ /api/xr/models GLB selector\n   └─ /api/xr/braid  Braid bridge "+dot(!!(braid&&braid.live))+"\n"+
+dot(!!ms)+" motion_service.py     "+(mbase()===location.origin?"via hub":"direct :2423")+"\n   ├─ clips store     "+clipN+" moves\n   ├─ ws /pose        "+(ms?ms.clients:0)+" renderer(s)\n   └─ base: "+(ms?ms.base:"?")+"\n"+
+dot(!!getSid())+" brain ("+((ctx.getBrain&&ctx.getBrain().label)||"?")+")  "+((getSid()||"").slice(0,8)||"down")+"\n"+
 dot(!!getRestQ())+" body: "+rigLine()+"\n   feedback: perform → snapshot → refine\n"+
 (modSizes?modSizes.map(x=>"   · "+x.m.padEnd(15)+String(x.lines).padStart(4)+" lines  "+x.kb+"kb").join("\n")+"\n":"")+
 dot(!!(ctx.getVision&&ctx.getVision().on))+" vision: "+visionLine()+"\n   companion_view.jpg ← camera + self-view\n"+
 dot(!!(ctx.getIK&&ctx.getIK()&&ctx.getIK().state.weight>0))+" arm IK: "+ikLine()+"\n"+
-dot(!(ctx.getErrors&&ctx.getErrors().length))+" errors: "+errLine()+"\n──────────────────────────────\nkeys: [b]raid [j]ukebox [t]ranscript [h]ud [c]am [v]map [x]snap";
+dot(!(ctx.getErrors&&ctx.getErrors().length))+" errors: "+errLine()+"\n──────────────────────────────\nkeys: [k]brain [b]raid [j]ukebox [t]ranscript [h]ud [c]am [v]map [x]snap";
+  }
+  const brainSheet=mk("top:44px;left:50%;transform:translateX(-50%);width:320px;max-width:94vw;padding:12px;z-index:53;display:none","");
+  const chip=(txt,fn,css)=>{const b=document.createElement("button");b.className="xr-chip";b.style.cssText=css||"";b.textContent=txt;b.onclick=fn;return b};
+  async function brainRefresh(){
+    let j={brains:[]};
+    try{j=await (await fetch("/api/companion/brains"+kq,{cache:"no-store"})).json()}catch(e){}
+    const cur=(ctx.getBrain&&ctx.getBrain())||{},v=j.voice||{},tts=Object.keys(v.tts||{}).filter(k=>v.tts[k]);
+    brainSheet.innerHTML="<div style='font-weight:650;font-size:11px;letter-spacing:.08em;color:var(--mut);margin-bottom:8px'>BRAIN</div>";
+    for(const b of j.brains||[]){const x=chip((b.kind===cur.brain?"● ":"")+(b.label||b.kind)+(b.ok?"":" · "+b.why),()=>{ctx.setBrain&&ctx.setBrain(b.kind);brainSheet.style.display="none"},"display:block;width:100%;text-align:left;margin:4px 0;opacity:"+(b.ok?1:.55));x.disabled=!b.ok;brainSheet.appendChild(x)}
+    brainSheet.appendChild(chip("new conversation",()=>{ctx.resetBrain&&ctx.resetBrain();brainSheet.style.display="none"},"margin-top:6px"));
+    const n=document.createElement("div");n.style.cssText="margin-top:8px;color:var(--mut);font-size:11px";n.textContent="voice: "+(tts.concat("browser").join(" → "))+" · ears: "+(v.stt&&v.stt.server?"browser, hub whisper fallback":"browser only");brainSheet.appendChild(n);
+  }
+  const permSheet=mk("left:50%;bottom:150px;transform:translateX(-50%);width:340px;max-width:94vw;padding:12px;z-index:60;display:none","");
+  function permit(ev,answer){
+    const t=ev.tool||{},opts=ev.options&&ev.options.length?ev.options:[{id:"allow",name:"Allow",kind:"allow_once"},{id:"deny",name:"Deny",kind:"reject_once"}];
+    const deny=(opts.find(o=>/^reject/.test(o.kind||""))||{}).id||null;
+    let done=false,tm=0;
+    const close=opt=>{if(done)return;done=true;clearTimeout(tm);permSheet.style.display="none";answer(opt)};
+    permSheet.innerHTML="";
+    const h=document.createElement("div");h.style.cssText="font-weight:650;margin-bottom:6px";h.textContent="Allow "+(t.title||"this tool")+"?";
+    const b=document.createElement("div");b.style.cssText="font:11px var(--font-mono);color:var(--mut);white-space:pre-wrap;word-break:break-word;margin-bottom:8px";b.textContent=t.input||t.kind||"";
+    permSheet.append(h,b);
+    for(const o of opts)permSheet.appendChild(chip(o.name||o.id,()=>close(o.id),"margin:0 6px 6px 0"+(/^allow/.test(o.kind||"")?";background:var(--acc);color:var(--bg);border-color:var(--acc)":"")));
+    tm=setTimeout(()=>close(deny),ctx.permitMs||40000);
+    permSheet.style.display="block";
+    return close;
   }
   function doKey(k){
+    if(k==="k"){const on=brainSheet.style.display==="none";brainSheet.style.display=on?"block":"none";on&&brainRefresh()}
     if(k==="h")mhud.style.display=mhud.style.display==="none"?"block":"none";
     if(k==="c")toggleCam();
     if(k==="x"&&ctx.capture)ctx.capture();
@@ -196,7 +224,7 @@ dot(!(ctx.getErrors&&ctx.getErrors().length))+" errors: "+errLine()+"\n───
     if(k==="v"){const on=vpanel.style.display==="none";vpanel.style.display=on?"block":"none";if(on){codeMapRefresh();vTimer=setInterval(codeMapRefresh,6000)}else if(vTimer){clearInterval(vTimer);vTimer=null}}
   }
   addEventListener("keydown",e=>{if(guard(e))doKey(e.key)});
-  const KEYS=[["h","hud"],["t","talk"],["j","moves"],["b","braid"],["v","map"],["c","cam"],["x","snap"]];
+  const KEYS=[["k","brain"],["h","hud"],["t","talk"],["j","moves"],["b","braid"],["v","map"],["c","cam"],["x","snap"]];
   const bar=document.createElement("div");
   bar.style.cssText="display:none;gap:6px;z-index:52;flex-wrap:wrap;justify-content:center;max-width:96vw;pointer-events:auto;order:-1";
   const hud=document.getElementById("hud");
@@ -219,7 +247,7 @@ dot(!(ctx.getErrors&&ctx.getErrors().length))+" errors: "+errLine()+"\n───
     const rows=convoLog.filter(e=>e.w!=="move"&&e.ts&&e.ts>cut);
     if(rows.length<2)return null;
     const last=rows.slice(-(n||6));
-    return {lines:last.map(e=>(e.w==="you"?"Anthony":"you")+": "+String(e.t||"").replace(/\s+/g," ").slice(0,180)),ageMin:Math.round((Date.now()-rows[rows.length-1].ts)/60000)};
+    return {lines:last.map(e=>(e.w==="you"?who():"you")+": "+String(e.t||"").replace(/\s+/g," ").slice(0,180)),ageMin:Math.round((Date.now()-rows[rows.length-1].ts)/60000)};
   }
   function moveStats(n){
     const win=convoLog.slice(-(n||24));
@@ -230,5 +258,5 @@ dot(!(ctx.getErrors&&ctx.getErrors().length))+" errors: "+errLine()+"\n───
     const top=Object.keys(tally).sort((a,b)=>tally[b]-tally[a])[0]||"";
     return {turns,moves:moves.length,top,topCount:tally[top]||0,last:moves[moves.length-1]||""};
   }
-  return {addConvo,hudState,recentConvo,moveStats,doKey,showBar,touchBar:bar,getCam:()=>({stream:camStream,video:camVideo})};
+  return {addConvo,hudState,recentConvo,moveStats,doKey,showBar,permit,brainRefresh,touchBar:bar,getCam:()=>({stream:camStream,video:camVideo})};
 }

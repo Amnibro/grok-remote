@@ -38,8 +38,9 @@ export function initMotion(ctx){
       [...new Set(names)].forEach(n=>{if(n)warm(n)});
     }).catch(()=>{});
   }
-  const httpBase=()=>"http"+(location.protocol==="https:"?"s":"")+"://"+location.hostname+":2423";
-  const wsBase=()=>location.protocol.replace("http","ws")+"//"+location.hostname+":2423";
+  const direct="http"+(location.protocol==="https:"?"s":"")+"://"+location.hostname+":2423",kq=ctx.KEY?"?key="+encodeURIComponent(ctx.KEY):"";
+  let base=location.origin,wsFails=0;
+  const httpBase=()=>base;
   const linked=()=>!!(mws&&mws.readyState===1);
   function findClip(n){n=(n||"").toLowerCase();const cl=getClips();return cl.find(c=>c.name.toLowerCase()===n)||null}
   /* GLB clips carry a correct Hips.position (z about -1.0 standing, -0.4 crouched); every
@@ -211,7 +212,9 @@ export function initMotion(ctx){
     fetch(httpBase()+"/motion/"+(kind==="gaze"?"gaze":"play"),{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(kind==="gaze"?{target:val.trim()}:{clip:val.trim()})}).catch(()=>{});
   }
   function connect(){
-    try{mws=new WebSocket(wsBase()+"/pose")}catch(e){setTimeout(connect,5000);return}
+    let opened=false;
+    try{mws=new WebSocket(base.replace(/^http/,"ws")+"/pose"+(base===location.origin?kq:""))}catch(e){setTimeout(connect,5000);return}
+    mws.onopen=()=>{opened=true;wsFails=0};
     mws.onmessage=ev=>{
       let d;
       try{d=JSON.parse(ev.data)}catch(e){return}
@@ -226,12 +229,12 @@ export function initMotion(ctx){
       }
       if(d.type==="gaze"){state.gazeTarget=d.target;state.gazeUntil=performance.now()+2800;if(hud){hud.gaze=d.target;hud.seq=d.seq||hud.seq}}
     };
-    mws.onclose=()=>setTimeout(connect,3000);
+    mws.onclose=()=>{if(!opened&&++wsFails>=2){base=base===location.origin?direct:location.origin;wsFails=0}setTimeout(connect,3000)};
     mws.onerror=()=>{try{mws.close()}catch(e){}};
   }
   function flushPending(){const q=pendingPlays.splice(0);for(const p of q)motionPlay(...p)}
   warm(HOME).then(ok=>{if(ok&&!getActIdle())motionPlay(HOME,"base",0.35)});
   ["talking_on_phone","guitar_playing","agree","look_over_shoulder","waist_side_stretch","hand_on_heart","surprised","dismissing_gesture","point_ahead","salute","module_check","sun_salute","bow_apology","excited_bounce","machinamachina_spark","chin_think","blow_kiss","standing_clap","wave_hello","interact"].forEach(n=>warm(n));
   warmPool();
-  return {motionPlay,sendMotion,connect,flushPending,findClip,linked,state};
+  return {motionPlay,sendMotion,connect,flushPending,findClip,linked,state,httpBase};
 }

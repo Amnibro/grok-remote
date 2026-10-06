@@ -30,11 +30,16 @@ class WorkBoard:
  def att_root(self):
   return str(Path(self.path).parent/"att")
  def _cx(self):
-  c=sqlite3.connect(self.path,timeout=8,isolation_level=None)
-  c.row_factory=sqlite3.Row
-  c.execute("PRAGMA journal_mode=WAL")
-  c.execute("PRAGMA synchronous=NORMAL")
+  c=self.__dict__.get("_c")
+  if c is None:
+   c=self._c=sqlite3.connect(self.path,timeout=8,isolation_level=None,check_same_thread=False)
+   c.row_factory=sqlite3.Row
+   c.execute("PRAGMA journal_mode=WAL")
+   c.execute("PRAGMA synchronous=NORMAL")
   return c
+ def close(self):
+  with self._l:
+   c=self.__dict__.pop("_c",None);c is not None and c.close()
  def _init(self):
   with self._l:
    c=self._cx()
@@ -53,7 +58,7 @@ CREATE INDEX IF NOT EXISTS ix_atts_sid ON atts(sid,at);
 CREATE INDEX IF NOT EXISTS ix_atts_id ON atts(id);
 CREATE UNIQUE INDEX IF NOT EXISTS ix_atts_sha ON atts(sid,sha);
 """)
-   finally:c.close()
+   finally:c.in_transaction and c.rollback()
  def _migrate_atts(self,c):
   pk={r[1] for r in c.execute("PRAGMA table_info(atts)").fetchall() if r[5]}
   if pk=={"sid","id"}:return
@@ -92,7 +97,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS ix_atts_sha ON atts(sid,sha);
     self._job(c,sid)
     if ask:c.execute("INSERT INTO asks(sid,text,at,acked) VALUES(?,?,?,0)",(sid,ask,now))
     c.execute("UPDATE jobs SET last_user=COALESCE(NULLIF(?,''),last_user),last_user_at=?,phase=?,detail=?,running=1,title=COALESCE(NULLIF(?,''),title),cwd=COALESCE(NULLIF(?,''),cwd),updated=? WHERE sid=?",(ask,now,"waiting",ask[:80] if ask else "prompt",title or "",cwd or "",now,sid))
-   finally:c.close()
+   finally:c.in_transaction and c.rollback()
   return True
  def note_update(self,sid,upd,meta=None):
   sid=str(sid or "").strip()
@@ -135,7 +140,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS ix_atts_sha ON atts(sid,sha);
       c.execute("UPDATE jobs SET phase=?,detail=?,running=1,updated=? WHERE sid=?",("tools","command running",now,sid))
      else:
       self._idle_if_clear(c,sid,now)
-   finally:c.close()
+   finally:c.in_transaction and c.rollback()
   return True
  def note_queue(self,sid,entries,running_id=None):
   sid=str(sid or "").strip()
@@ -157,7 +162,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS ix_atts_sha ON atts(sid,sha);
      if not self._open_n(c,sid):
       ph=str((c.execute("SELECT phase FROM jobs WHERE sid=?",(sid,)).fetchone() or ["idle"])[0] or "")
       if ph in ("waiting","tools","thinking","responding"):self._idle_if_clear(c,sid,now)
-   finally:c.close()
+   finally:c.in_transaction and c.rollback()
   return True
  def mark_cancel(self,sid):
   sid=str(sid or "").strip()
@@ -169,7 +174,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS ix_atts_sha ON atts(sid,sha);
     c.execute("UPDATE jobs SET running=0,phase=?,detail=?,updated=? WHERE sid=?",("idle","cancelled",now,sid))
     c.execute("UPDATE tools SET status=?,updated=? WHERE sid=? AND lower(COALESCE(status,'')) NOT IN ('completed','failed','error','cancelled','canceled')",("cancelled",now,sid))
     c.execute("UPDATE asks SET acked=1 WHERE sid=? AND acked=0",(sid,))
-   finally:c.close()
+   finally:c.in_transaction and c.rollback()
   return True
  def note_turn_end(self,sid,ok=True,detail=""):
   sid=str(sid or "").strip()
@@ -185,7 +190,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS ix_atts_sha ON atts(sid,sha);
      c.execute("UPDATE asks SET acked=1 WHERE sid=? AND acked=0",(sid,))
     elif not self._idle_if_clear(c,sid,now):
      c.execute("UPDATE jobs SET phase=?,detail=?,updated=? WHERE sid=?",("tools","command running",now,sid))
-   finally:c.close()
+   finally:c.in_transaction and c.rollback()
   return True
  def _close_tools(self,c,sid,now,status):
   c.execute("UPDATE tools SET status=?,updated=? WHERE sid=? AND lower(COALESCE(status,'')) NOT IN ('completed','failed','error','cancelled','canceled')",(status,now,sid))
@@ -200,7 +205,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS ix_atts_sha ON atts(sid,sha);
     self._close_tools(c,sid,now,"failed")
     c.execute("UPDATE jobs SET running=0,phase=?,detail=?,updated=? WHERE sid=?",("failed",str(detail or "failed")[:120],now,sid))
     c.execute("UPDATE asks SET acked=1 WHERE sid=? AND acked=0",(sid,))
-   finally:c.close()
+   finally:c.in_transaction and c.rollback()
   return True
  def reset_running(self,keep=(),detail="interrupted"):
   keep={str(x) for x in (keep or ()) if x}
@@ -217,7 +222,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS ix_atts_sha ON atts(sid,sha);
      n+=1
     for r in list(c.execute("SELECT DISTINCT sid FROM tools WHERE lower(COALESCE(status,'')) NOT IN ('completed','failed','error','cancelled','canceled')").fetchall()):
      if r["sid"] not in keep:self._close_tools(c,r["sid"],now,"cancelled")
-   finally:c.close()
+   finally:c.in_transaction and c.rollback()
   return n
  def heal(self,sid=None,inflight=None):
   now=time.time()
@@ -265,7 +270,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS ix_atts_sha ON atts(sid,sha);
      self._idle_if_clear(c,s,now)
      n+=1
     return n
-   finally:c.close()
+   finally:c.in_transaction and c.rollback()
  def snapshot(self,sid=None,inflight=None):
   self.heal(sid,inflight=inflight)
   with self._l:
@@ -283,7 +288,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS ix_atts_sha ON atts(sid,sha);
      d["running"]=bool(d.get("running"))
      out.append(d)
     return out
-   finally:c.close()
+   finally:c.in_transaction and c.rollback()
  def save_att(self,sid,name,mime,raw,text_key=""):
   sid=str(sid or "").strip()
   if not sid or not raw:return None
@@ -309,7 +314,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS ix_atts_sha ON atts(sid,sha);
    try:
     c.execute("INSERT OR IGNORE INTO atts(id,sid,name,mime,path,sha,text_key,at) VALUES(?,?,?,?,?,?,?,?)",(aid,sid,str(name or "file")[:180],mime,str(dest),sha,key,now))
     if key:c.execute("UPDATE atts SET text_key=COALESCE(NULLIF(?,''),text_key) WHERE sid=? AND id=?",(key,sid,aid))
-   finally:c.close()
+   finally:c.in_transaction and c.rollback()
   return {"id":aid,"sid":sid,"name":str(name or "file"),"mime":mime,"url":"/api/att/"+aid,"sha":sha,"text_key":key}
  def ingest_prompt(self,sid,blocks):
   sid=str(sid or "").strip()
@@ -343,7 +348,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS ix_atts_sha ON atts(sid,sha);
    try:
     rows=c.execute("SELECT id,sid,name,mime,text_key,at FROM atts WHERE sid=? ORDER BY at ASC",(sid,)).fetchall()
     return [{"id":r["id"],"sid":r["sid"],"name":r["name"],"mime":r["mime"],"text_key":r["text_key"],"at":r["at"],"url":"/api/att/"+r["id"]} for r in rows]
-   finally:c.close()
+   finally:c.in_transaction and c.rollback()
  def get_att(self,aid):
   aid=str(aid or "").strip()
   if not aid:return None
@@ -352,4 +357,4 @@ CREATE UNIQUE INDEX IF NOT EXISTS ix_atts_sha ON atts(sid,sha);
    try:
     r=c.execute("SELECT * FROM atts WHERE id=? ORDER BY at DESC",(aid,)).fetchone()
     return dict(r) if r else None
-   finally:c.close()
+   finally:c.in_transaction and c.rollback()

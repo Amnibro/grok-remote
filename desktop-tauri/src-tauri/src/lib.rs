@@ -27,9 +27,19 @@ fn plugin_root() -> PathBuf {
     home().join(".grok").join("plugins").join("grok-remote")
 }
 fn repo_root() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("..")
-        .join("..")
+    let built = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..").join("..");
+    let exe_dirs = std::env::current_exe()
+        .ok()
+        .map(|e| e.ancestors().skip(1).take(5).map(PathBuf::from).collect::<Vec<_>>())
+        .unwrap_or_default();
+    std::env::var("GROK_REMOTE_ROOT")
+        .ok()
+        .map(PathBuf::from)
+        .into_iter()
+        .chain([built.clone(), plugin_root()])
+        .chain(exe_dirs)
+        .find(|d| d.join("server.py").is_file())
+        .unwrap_or(built)
 }
 #[cfg(windows)]
 fn ensure_script() -> Option<PathBuf> {
@@ -121,46 +131,37 @@ fn served_ui_is_current(ui_port: u16) -> bool {
     stream.read_to_string(&mut response).is_ok() && response.contains(&marker)
 }
 #[cfg(not(windows))]
-const HUB_UNIT: &str = "amni-grok-remote.service";
-#[cfg(not(windows))]
-fn systemctl_user(action: &str) -> bool {
-    Command::new("systemctl")
-        .args(["--user", action, HUB_UNIT])
-        .status()
-        .map(|s| s.success())
-        .unwrap_or(false)
-}
-#[cfg(not(windows))]
-fn restart_repo_ui() -> bool {
-    systemctl_user("restart")
-}
-#[cfg(not(windows))]
-fn spawn_stack() {
-    if systemctl_user("start") {
-        return;
-    }
-    let script = repo_root().join("start.sh");
+fn ctl(args: &[&str]) -> bool {
+    let script = repo_root().join("grok_remote_ctl.py");
     if !script.is_file() {
-        return;
+        return false;
     }
-    let cwd = std::env::var("GROK_REMOTE_CWD")
-        .unwrap_or_else(|_| home().join("ai").to_string_lossy().into_owned());
+    let _ = std::fs::create_dir_all(repo_root().join("logs"));
     let log = std::fs::OpenOptions::new()
         .create(true)
         .append(true)
         .open(repo_root().join("logs").join("desktop-hub.log"));
-    let mut cmd = Command::new("sh");
-    cmd.arg(&script)
-        .args(["--port", "2421", "--agent-port", "2419", "--cwd", &cwd])
-        .current_dir(repo_root())
-        .env("GROK_PROJECT_DIR", &cwd)
-        .stdin(std::process::Stdio::null());
+    let mut cmd = Command::new("python3");
+    cmd.arg(&script).args(args).current_dir(repo_root()).stdin(std::process::Stdio::null());
     if let Ok(f) = log {
         if let Ok(f2) = f.try_clone() {
             cmd.stdout(f).stderr(f2);
         }
     }
-    let _ = cmd.spawn();
+    cmd.status().map(|s| s.success()).unwrap_or(false)
+}
+#[cfg(not(windows))]
+fn restart_repo_ui() -> bool {
+    ctl(&["restart"])
+}
+#[cfg(not(windows))]
+fn spawn_stack() {
+    let cwd = std::env::var("GROK_REMOTE_CWD").unwrap_or_default();
+    let mut args = vec!["start", "--force", "--reason", "desktop"];
+    if !cwd.is_empty() {
+        args.extend(["--cwd", cwd.as_str()]);
+    }
+    let _ = ctl(&args);
 }
 #[cfg(windows)]
 fn restart_repo_ui() -> bool {

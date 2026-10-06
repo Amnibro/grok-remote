@@ -1,3 +1,30 @@
+## 2026-10-06 v1.11.0 phones connect, Amni-Scient look, Linux first-class, companion brains
+### Phone access
+- Connect phone is a first-class sheet (rail icon, top-bar pill, first deck row, setup card): big QR, Copy/Share, Same Wi-Fi / Away tabs (public, Tailscale, Meshnet), live device count.
+- The hub diagnoses its own reachability: `/api/net` returns `reach` (ufw/firewalld state, LAN and meshnet allowed, exact fix) and `mesh_url`. `grok-remote firewall [--open]` checks and fixes it.
+- LAN IP is resolved lazily (30 s cache) instead of once at boot; a user unit that starts before the network no longer hands phones a 127.0.0.1 link. Allowed hosts refresh every 60 s and on a miss.
+- `/api/qr` falls back to `qrencode` when `segno` is missing (PEP 668 distros).
+### Look
+- Amni-Scient (gold on ink, Archivo) is the default for fresh installs; Grok greyscale stays one tap away. One token file (`theme-tokens.css`) feeds the main UI, watch and companion pages.
+- One overlay primitive for every menu, sheet and popover: Esc closes one layer, outside-click, focus in/out, arrow keys, themed dialogs instead of alert/prompt/confirm.
+- Retro skin fonts and Win95 square corners apply; duplicate Start/Stop/theme controls removed; session rows get a touch menu; "+" is an attach menu.
+- Phone layout: 44 px targets, safe-area insets, composer above the keyboard, Sessions back button.
+### Install, pin, Linux
+- `grok_remote_ctl.py` (`grok-remote`): start, stop, restart, status, url --qr, open, install --pin, pin, autostart on|boot|off, uninstall, firewall, doctor. Windows delegates to the existing scripts.
+- Install prompt + Install app sheet: app-menu launcher, taskbar pin (KDE Plasma, GNOME, Cinnamon), start at login (systemd user unit, LaunchAgent, logon task).
+- `start.sh` uses distro aiohttp or builds a private venv (no more `pip --user` on externally managed Pythons). The SessionStart hook, `/remote*` commands and skill run on Linux and macOS.
+- The Tauri app finds its root at runtime and drives the hub through the ctl instead of a hardcoded unit name.
+### Hub fixes
+- Agent pidfile is per port and verified by cmdline before any kill (a second hub could kill the production agent).
+- UI Stop under systemd really stops (exit 97 + `systemctl --user stop`).
+- Git, stack and tailscale work moved off the event loop; one persistent sqlite connection for the work board; background tasks hold strong refs.
+- Terminals run in their own session and kill the whole process group; Linux reaps stray quick tunnels; secret-bearing files are written 0600.
+- `GROK_REMOTE_ENSURE_AGENT=0` fully disables agent auto-spawn.
+### Companion
+- `/xr` loads again (duplicate `const desk` stopped the page script).
+- Brain adapter (`brains/`, `companion.py`, `ws /api/companion/brain`): Grok (default), Claude Code (`claude -p` stream-json, read-only tools by default, permission prompts spoken/HUD), or any stdio ACP agent.
+- Turn timeouts, reconnect backoff, cancel and barge-in (talk, Esc, STOP); the idle dwell ratchet is undone (dwell 24-32 s, wakes 4-30 s) and range-tested.
+- Voice: edge-tts, then piper, then espeak-ng, then browser; optional server STT (faster-whisper). Motion service is started and proxied by the hub. `companion_env` works on Linux (idle via D-Bus/loginctl, window via kdotool/hyprctl/swaymsg/xdotool).
 ## 2026-09-23 v1.10.0 audit: security, lock-ups, duplicate sends, mixed chats, new chats, names, filters, Linux
 A five-way audit found ~90 defects; this release fixes all of them. Tests: `tests/test_audit_server.py` (33, all pass; 29 fail on the old server), `tests/test_client_audit.mjs` (75/75; the old page passes 14/65), plus the existing suites.
 ### Security

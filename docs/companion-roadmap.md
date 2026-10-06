@@ -5,10 +5,10 @@ Goal: an AI that inhabits a body, notices you, and acts on what it notices. Halo
 ## Where we are (2026-09-03)
 
 Shipped and working on `/xr`:
-- Body: rigged model, idle life (briefcase/guitar/phone bases), 8 authored gestures plus Mixamo takes, gaze targets, cloth/hair deform. Motion service on :2423 owns the chain.
-- Voice: edge-tts out, push-to-talk SpeechRecognition in.
-- Brain: her own agent session over the hub; `[[motion:]]`, `[[gaze:]]`, `[[compose:]]` tags drive the body from her words.
-- Vision (half): a camera or self-render frame is saved to `companion_view.jpg` and she is told about it when you ask. She never looks on her own.
+- Body: rigged model, idle life (briefcase/guitar/phone bases), 8 authored gestures plus Mixamo takes, gaze targets, cloth/hair deform. Motion service owns the chain; since 2026-10-06 the hub starts it on demand and proxies it same-origin.
+- Voice: edge-tts → piper → espeak-ng → browser speech out; push-to-talk SpeechRecognition in, with MediaRecorder → `/api/xr/stt` (faster-whisper) when the browser has no working speech service.
+- Brain: pluggable (`brains/`): Grok by default, Claude Code (stream-json, conservative tools, permission prompts), or any stdio ACP agent. `[[motion:]]`, `[[gaze:]]`, `[[reach:]]`, `[[compose:]]` tags drive the body from her words. Briefing is built server-side from the real clip library and the configured user.
+- Vision (half): camera or self-render frames ride the turn as image blocks when the brain takes images (file fallback otherwise). She never looks on her own.
 
 The gap: every single thing she does starts with you typing or holding the mic. She has no senses of her own and no reason to act between turns. That is the difference between a puppet and a person in the room.
 
@@ -30,7 +30,8 @@ The gap: every single thing she does starts with you typing or holding the mic. 
 ## Rung 2 candidates (pick by what annoys you first)
 
 - Face detection instead of motion so a cat does not count as you (Chrome `FaceDetector` where present, MediaPipe otherwise).
-- Barge-in: stop her speaking the moment you start talking.
+- ~~Barge-in~~ shipped 2026-10-06: talking (HOLD·TALK/Space), Esc, or STOP cancels the turn and silences her.
+- Confirm-gated actions: shipped for Claude and ACP brains (tool permission → spoken ask + approve/deny chip, deny on timeout). Grok still runs `--always-approve`.
 - Memory file per companion session and a nightly summary she reads at first greeting.
 - Screen awareness: she gets a downscaled screenshot of the foreground window on `focus_change` so "what am I looking at" works.
 - Quest: hand-tracking gestures as percepts (wave back, point at her).

@@ -1,5 +1,5 @@
 """Grok Remote access control: password + TOTP 2FA + session tokens."""
-import base64,hashlib,hmac,json,os,secrets,struct,time
+import base64,hashlib,hmac,json,os,secrets,struct,threading,time
 from pathlib import Path
 def data_dir():
  base=os.environ.get("GROK_PLUGIN_DATA") or str(Path.home()/".grok"/"plugin-data"/"grok-remote")
@@ -131,12 +131,17 @@ def _ts_run(args,timeout=2.5):
  except Exception:
   return None
 _ts_cache={"t":0,"v":None}
+_ts_bg={"busy":False}
+def _ts_refresh(port):
+ try:tailscale_snapshot(port)
+ finally:_ts_bg["busy"]=False
 def tailscale_snapshot(port=2421,ttl=30,wait=True):
  now=time.time()
  hit=_ts_cache.get("v")
  if hit is not None and now-float(_ts_cache.get("t") or 0)<ttl:
   return dict(hit)
  if not wait:
+  _ts_bg.get("busy") or (_ts_bg.update(busy=True),threading.Thread(target=_ts_refresh,args=(port,),daemon=True).start())
   return dict(hit) if hit is not None else {"ip":"","dns":"","serve":False,"https":False,"ok":False,"port":int(port or 2421)}
  out={"ip":"","dns":"","serve":False,"https":False,"ok":False}
  try:

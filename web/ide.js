@@ -1,4 +1,5 @@
 (function(){
+function dlg(k,a,b,o){const D=window.grokDialog;return D?D[k](a,b,o):Promise.resolve(k==="prompt"?prompt(a,b||""):k==="confirm"?confirm(a):(alert(a),true))}
 function safeParse(raw,fallback){
  try{
   if(raw==null||raw==="")return fallback;
@@ -167,8 +168,8 @@ function noteAgentFiles(paths,meta){
   paintTabs();
  }
 }
-function closeTab(rel){
- if(state.dirty[rel]&&!confirm("Discard unsaved changes to "+rel+"?"))return;
+async function closeTab(rel){
+ if(state.dirty[rel]&&!await dlg("confirm","Discard unsaved changes to "+rel+"?",{title:"Close tab",ok:"Discard",danger:true}))return;
  state.tabs=state.tabs.filter(x=>x.rel!==rel);
  delete state.dirty[rel];
  if(state.active===rel){
@@ -265,7 +266,7 @@ async function pickRoot(){
   notify("workspace "+p);
   return;
  }
- const p=prompt("Workspace folder path on the PC",state.root||"");
+ const p=await dlg("prompt","Workspace folder path on the PC",state.root||"",{title:"Open folder",ok:"Open"});
  if(!p)return;
  await api.post("/api/fs/root",{path:p});
  state.tabs=[];state.dirty={};state.active=null;

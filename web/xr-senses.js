@@ -29,21 +29,22 @@ export function motionScore(prev,cur,w,h){
  return n?acc/n:0;
 }
 export function situation(p,env,mem){
- const fg=env&&env.foreground&&env.foreground.title?` He is looking at "${env.foreground.title.slice(0,70)}".`:"";
+ const who=mem&&mem.who||"They";
+ const fg=env&&env.foreground&&env.foreground.title?` ${who} is looking at "${env.foreground.title.slice(0,70)}".`:"";
  const w=env&&env.work||{};
  const busy=w.running?` ${w.running} agent job${w.running>1?"s":""} running (${(w.running_titles||[]).join("; ").slice(0,120)}).`:"";
  const heard=mem&&mem.overheard&&mem.overheard.length?` Overheard lately: ${mem.overheard.slice(-3).map(x=>'"'+x.slice(0,60)+'"').join(", ")}.`:"";
  const base={
-  arrive:"Anthony just came into view after being away.",
-  return:"Anthony just came back after being away a while.",
-  leave:"Anthony just left the room.",
+  arrive:`${who} just came into view after being away.`,
+  return:`${who} just came back after being away a while.`,
+  leave:`${who} just left the room.`,
   work_done:`A job you were running just finished: ${((p.titles&&p.titles.length?p.titles:w.just_finished)||[]).join("; ").slice(0,120)||"(untitled)"}.`,
   work_error:`A tool just failed: ${p.tool||(w.latest_tool?w.latest_tool.title:"(unknown)")}.`,
-  ask_open:`One of your jobs is waiting on him: ${(w.open_asks||[]).map(a=>a.text).join(" | ").slice(0,160)}.`,
-  long_silence:"It has been quiet for twenty minutes while he sat there working.",
-  overheard_name:`He said your name to someone else, or muttered it: "${String(p.text||"").slice(0,120)}".`
+  ask_open:`One of your jobs is waiting on ${who}: ${(w.open_asks||[]).map(a=>a.text).join(" | ").slice(0,160)}.`,
+  long_silence:`It has been quiet for twenty minutes while ${who} sat there working.`,
+  overheard_name:`${who} said your name to someone else, or muttered it: "${String(p.text||"").slice(0,120)}".`
  }[p.type]||`Something happened: ${p.type}.`;
- return `[Situation, ${env&&env.clock?env.clock+", ":""}not a message from him: ${base}${fg}${busy}${heard} React as the person in the room would, in one or two short spoken sentences, or reply exactly [[quiet]] if a real person would stay silent here. Do not describe this note.]`;
+ return `[Situation, ${env&&env.clock?env.clock+", ":""}not a message from ${who}: ${base}${fg}${busy}${heard} React as the person in the room would, in one or two short spoken sentences, or reply exactly [[quiet]] if a real person would stay silent here. Do not describe this note.]`;
 }
 export function initSenses(ctx){
  const {ask,react,panels,sendMotion,speaking,thinking,KEY,names,log,onState}=ctx;
@@ -71,7 +72,7 @@ export function initSenses(ctx){
   if(p.type!=="arrive"&&p.type!=="return"&&S.present===false)return;
   if(!S.budget.ok(now)){say("senses: budget held "+p.type);return}
   S.budget.spend(now);S.stats.deliberate++;
-  const text=situation(p,S.env,{overheard:S.overheard});
+  const text=situation(p,S.env,{overheard:S.overheard,who:ctx.who&&ctx.who()});
   try{
    const out=await react(text,p);
    if(out&&out.quiet)S.stats.quiet++;

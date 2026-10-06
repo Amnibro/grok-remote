@@ -7,9 +7,78 @@ Restart any box alone; every link reconnects itself.
 | Process | Port | File | Restart behavior |
 |---|---|---|---|
 | Hub | :2421 | server.py (supervisor cmd loop) | supervisor relaunches in ~20-60s; renderer retries ws |
-| Motion service | :2423 | motion_service.py | renderer /pose ws reconnects <4s, base state replays |
+| Motion service | :2423 (127.0.0.1 when hub-launched) | motion_service.py | hub starts it on demand (first `/pose` or `/motion/*` hit), logs to `<plugin-data>/logs/motion.log`, stops it on shutdown; renderer reaches it same-origin through the hub and falls back to direct :2423 |
+| Brain | in-hub | companion.py + brains/ | `/api/companion/brain` ws; renderer reconnects with 1-15 s backoff, sessions persist in `<plugin-data>/companion_state.json` |
 | Renderer | browser | web/xr.html + modules | refresh-only; holds last pose through service blips |
 | Braid | :8788 | separate product | bridged read-only via hub proxy |
+
+## Brains (2026-10-06)
+
+The companion no longer speaks ACP from the browser. `companion.py` owns a normalized brain
+protocol and `brains/` holds the adapters, so the same body can be driven by Grok, Claude
+Code, or any ACP agent.
+
+| Kind | Adapter | Transport | Images | Resume | Permissions |
+|---|---|---|---|---|---|
+| `grok` (default) | `brains/acp.py:GrokAcp` | second ACP websocket to the grok agent (`ws://agent/ws?server-key=…`) | if the agent advertises `promptCapabilities.image` | `session/load` | agent runs `--always-approve` |
+| `claude` | `brains/claude.py:Claude` | persistent `claude -p --input-format stream-json --output-format stream-json --verbose --include-partial-messages --permission-prompt-tool stdio` per session | yes (base64 blocks) | `--resume <sid>` (transcript checked under `~/.claude/projects`) | `can_use_tool` control requests become HUD/voice prompts |
+| `acp-stdio` | `brains/acp.py:Acp` | any stdio ACP agent (`acp_cmd`, default `npx -y @zed-industries/claude-code-acp`) | per agent caps | per agent caps | `session/request_permission` becomes a HUD/voice prompt |
+
+Claude defaults are conservative: `--tools Read,Glob,Grep,WebSearch,WebFetch`, the same list
+in `--allowedTools`, and `Bash,Edit,Write,NotebookEdit,MultiEdit` in `--disallowedTools`.
+Adding a tool to `claude_tools` makes it available but still asks (unless it is also listed in
+`claude_allowed`); Claude Code itself auto-approves read-only shell commands such as `echo`.
+The briefing goes in through `--append-system-prompt`; parent `CLAUDE_CODE_*` env vars are
+scrubbed so a hub launched from inside Claude Code does not inherit its session.
+
+Brain interface (`brains/base.py`): `start()`, `new_session(cwd)`, `load_session(sid,cwd)`,
+`prompt(sid,blocks)` (async iterator), `cancel(sid)`, `permit(id,option)`, `close()`,
+`caps {image,load,system}`. Normalized events:
+`{type:"text",delta}` `{type:"thought",delta}` `{type:"tool",id,title,kind,status,input}`
+`{type:"permission",id,tool,options}` `{type:"error",message}` `{type:"done",stop_reason}`.
+A dead agent process or socket ends every open turn with `error` + `done`; an unanswered
+permission is denied after `permission_timeout` (45 s).
+
+`ws /api/companion/brain` (same auth as `/api`, plus an Origin check unless `?key=` is used):
+client → `{op:"hello",brain?,sid?,fresh?}` `{op:"say",turn,text,percept:[…],images:[dataURL|{url,label}]}`
+`{op:"cancel"}` `{op:"permit",id,option}`; server → `{type:"session",sid,brain,label,caps,user,body}`
+then the normalized events, each tagged with the client's `turn` so late events from a
+cancelled turn are dropped. A new `say` cancels the previous turn first.
+
+Prompt assembly is server-side: the first turn of a session gets the briefing (or it rides
+the system prompt for Claude), then the user text, then the percept notes the renderer
+measured (recap, pacing, body faults, Braid, compose metrics). Images go as real image
+blocks when the brain supports them; otherwise the first one is written to
+`<plugin-data>/companion_view.jpg` and a note tells the agent where to look.
+
+Other endpoints: `GET /api/companion/brains` (availability: grok port, claude on PATH, npx),
+`GET|POST /api/companion/config` (the `companion` section of
+`<plugin-data>/config.json`: `brain, user_name, persona, body, cwd, acp_cmd, claude_cmd,
+claude_model, claude_tools, claude_allowed, claude_args, permission_mode, permission_timeout,
+turn_timeout, edge_voice, piper_model, piper_cmd, espeak_voice, espeak_speed, espeak_pitch,
+stt_model, stt_lang`; POST closes running brains so the change applies on the next hello),
+`GET /api/companion/briefing`, `GET /api/companion/voice`.
+
+Briefing: built by `companion.briefing()` from the configured user (config `user_name`, else
+the account's real name, else `$USER`), optional `persona`, the playable clip library from
+`clips/` grouped by `clip_index.json` tier (prop clips and refused ground/travel clips are left
+out), the mood words, and the full tag grammar including `[[reach:]]` and `[[quiet]]`.
+Body (female/male) is a config choice now; the old preset-id regex is gone.
+
+Voice: `/api/xr/tts` tries edge-tts → piper (only with a real `piper_model` and either
+`piper.voice` or `piper_cmd`) → espeak-ng (`en-us+f3`/`en-us+m3`, WAV with fixed RIFF sizes)
+→ 503, and the renderer falls back to `speechSynthesis` (skipping the server for 60 s after a
+503). `/api/tts` uses the same chain when no xAI key is set. Ears: Web Speech first; when it is
+missing or fails with `network`/`service-not-allowed` (Arch Chromium), push-to-talk records with
+MediaRecorder and posts to `/api/xr/stt` (ffmpeg → faster-whisper, 501 when not installed).
+
+Reliability in `web/xr-brain.js`: every turn has a timeout (240 s) and resolves on socket
+close, so `ask()` cannot hang in "think"; the hello has a 30 s timeout; reconnect backs off
+1→15 s; repeated identical deltas are kept; tool events reach the HUD; `cancel()` sends
+`session/cancel` and flushes the TTS queue. Barge-in: pressing HOLD·TALK/Space, Esc, or the
+STOP chip cancels the turn and silences her. The brain chip (`k`) picks the brain (persisted
+in `grok_companion_brain`) or starts a new conversation; the old `grok_xr_companion_sid` is
+offered once to the server for migration and then removed.
 
 ## Renderer modules (web/)
 
@@ -198,11 +267,11 @@ Verified with the fake camera running: compose at 16:24:18 wrote a 6011-byte pos
 frame count stayed put through 16:24:28 with the hold active, and at 16:24:30 the loop
 resumed and wrote an 8450-byte camera frame.
 
-`captureView(src)` in the shell grabs a 640px frame from the passthrough camera and POSTs it
-to `/api/xr/see`, which writes `companion_view.jpg` into the hub's cwd. It runs three ways:
-on every `ask()` (and appends a line to the prompt telling her the frame is fresh), from a
-4s watchdog that re-captures whenever the last frame is older than 8s, and on the `[x]` key
-for a manual snap. `vision {on,frames,last,err,src}` is surfaced in the debug HUD and the
+`captureView(src)` in the shell grabs a 640px frame from the passthrough camera and returns it
+as a data URL. Since 2026-10-06 it rides the turn itself: `ask()` sends it in `images` and the
+server attaches it as an image block (or, for brains without image input, writes
+`<plugin-data>/companion_view.jpg` and tells the agent). The 8 s watchdog that rewrote the file
+is gone; the `[x]` key still posts a manual snap to `/api/xr/see`. `vision {on,frames,last,err,src}` is surfaced in the debug HUD and the
 code map, so a stale or failing eye is visible instead of silent.
 
 Testing it needs Chrome's fake camera: `--use-fake-device-for-media-stream
@@ -340,6 +409,14 @@ the built clip frame-accurate, layer any library clip underneath at a blend weig
 `bake blend` samples the blended result at 20fps into a new saved clip.
 
 ## Idle drift and life beats
+
+Timing is named constants in `motion_service.py` (2026-10-06, after an unattended loop had
+ratcheted them to a 271 s dwell and 4-536 s wakes, which left her looking frozen):
+`WAKE = (4, 30)` s between beat checks, `IDLE_DWELL` 24-32 s of quiet before a life beat,
+`GAZE = (18, 40)` s between gaze wanders on their own clock, and `DRIFT = (70, 150)` s that a
+base must hold before a life beat may hop to another idle. `tests/test_ui_chrome.py` bounds
+them behaviorally (dwell 10-60 s, wake max ≤ 60 s, gaze ≤ 60 s, drift ≤ 180 s) instead of
+asserting literal values, so a loop cannot ratchet them again.
 
 Her base had been `standing_w_briefcase_idle` on infinite loop — the alive loop only wandered
 her gaze, so the body underneath never changed. `alive_loop` now also drifts the base every
@@ -1126,7 +1203,7 @@ Every UAL clip named `*_loop` is a one-shot segment despite the name; playing it
 snaps 70-129° at the wrap, once per cycle. All 33 seamless clips in the library are
 Mixamo-baked (~0.04°).
 
-`IDLES` is `["standing_w_briefcase_idle", "talking_on_phone", "guitar_playing"]` — all Mixamo, seam ~0°. After a prop idle, `pick_chain` hops to the other unused prop 28% of the time, else HOME. `IDLE_DWELL` is 16s briefcase / 16s phone / 14s guitar. Additive gaze is skipped while `gestureHold` is live so Mixamo head motion is not overwritten.
+`IDLES` is `["standing_w_briefcase_idle", "talking_on_phone", "guitar_playing"]` — all Mixamo, seam ~0°. After a prop idle, `pick_chain` hops to the other unused prop 28% of the time, else HOME. `IDLE_DWELL` is 28s briefcase / 24s phone / 32s guitar; base hops wait for `DRIFT`. Additive gaze is skipped while `gestureHold` is live so Mixamo head motion is not overwritten.
 The idle-drift feature had been making her *worse* since it was added, twitching every 2.5 s
 whenever it drifted to `idle_loop`.
 
@@ -1341,26 +1418,31 @@ confirm the gesture changed.
 ## Hub endpoints (server.py)
 
 - `/xr` — renderer page (no-store)
-- `/api/xr/tts` — edge-tts voice (rate +12%, pitch +16Hz)
-- `/api/xr/see` — saves a jpeg to `<cwd>/companion_view.jpg` (camera eyes + compose self-view)
+- `/api/xr/tts` — edge-tts → piper → espeak-ng → 503 (header `X-TTS-Backend`)
+- `/api/xr/stt` — push-to-talk audio → ffmpeg → faster-whisper (501 if absent)
+- `/api/xr/see` — saves a jpeg to `<plugin-data>/companion_view.jpg` (manual `[x]` snap)
+- `/api/companion/brain` (ws), `/api/companion/brains`, `/api/companion/config`,
+  `/api/companion/briefing`, `/api/companion/voice`, `/api/companion/state`
+- `/motion/*` and `ws /pose` — same-origin proxy to the motion service (starts it on demand)
 - `/api/xr/models` — GLB list for the avatar selector (any Mixamo-rigged GLB in web/ appears)
 - `/api/xr/braid` — proxies Braid :8788 /api/state + /api/sessions
 
-## Motion service (:2423)
+## Motion service (:2423, or `GROK_REMOTE_MOTION_PORT`; `MOTION_PORT`/`MOTION_HOST` when run directly)
 
 - clips/ store: ~100 clip JSONs (three AnimationClip.toJSON format). Baked Mixamo set +
   hand-authored gestures + her own compose inventions.
 - `POST /motion/play {clip,layer,fade}` — emote aliases resolve; travel/transition clips
   are refused as gestures (root yaw = rotate-freeze-teleport); base set loops.
-- `ws /pose` — broadcast play/gaze/state to renderers; alive-loop wanders her gaze 18-40s.
+- `ws /pose` — broadcast play/gaze/state to renderers; alive-loop wanders her gaze every 18-40 s (`GAZE`).
 - All baked clips are root-motion-frozen (Hips X/Z pinned) — she performs in place.
 
 ## The AI's control surface
 
 Inline tags in her speech, stripped before TTS: `[[motion:clip]]`, `[[emote:name]]`,
-`[[gaze:dir]]`, `[[compose:...]]`. Session briefing (first prompt) carries the library,
-a mood guide, restraint rules, and the feedback-loop instructions (view companion_view.jpg
-at the start of the next reply after composing; re-compose under the same name to refine).
+`[[gaze:dir]]`, `[[reach:...]]`, `[[compose:...]]`, `[[quiet]]`. The session briefing is built
+server-side by `companion.briefing()` (see Brains) and carries the tiered library, mood words,
+restraint rules and the tag grammar; after composing, the next turn carries a self-render image
+and the measured amplitude so she can re-compose under the same name to refine.
 
 ## Known rules
 
