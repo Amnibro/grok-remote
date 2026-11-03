@@ -2,7 +2,7 @@
 
 **Drive [Grok Build](https://x.ai) from your phone or browser** — live sessions, tools, history, and control on the same network as your PC.
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-lightgrey.svg)](./LICENSE)
+[![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](./LICENSE)
 [![Release](https://img.shields.io/github/v/release/Amnibro/grok-remote?label=release)](https://github.com/Amnibro/grok-remote/releases)
 [![Theme](https://img.shields.io/badge/default%20theme-Grok%20greyscale-111)](#themes)
 
@@ -13,7 +13,7 @@
 | **Default theme** | **Grok** (full greyscale) · dark |
 | **Safe demo** | `http://host:2421/?demo=1` — no real chats, no agent |
 | **Companion** | Optional `/xr` hologram — off until Settings → Apps → Companion |
-| **License** | MIT |
+| **License** | AGPL-3.0 |
 
 Companion model: [High Poly Rikku](https://skfb.ly/pIrZ9) by HumanContraband, CC BY 4.0. Clip JSON under `clips/` is Mixamo-baked motion for that rig.
 
@@ -261,4 +261,4 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md) and [architecture_map.md](./architectur
 
 ## License
 
-MIT — see [LICENSE](./LICENSE).
+Copyright (c) 2026 Amniscient, LLC. Licensed under the GNU Affero General Public License v3.0; see [LICENSE](./LICENSE). Versions published before 2026-11-03 were released under MIT.

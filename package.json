@@ -7,7 +7,7 @@
                        "type":  "git",
                        "url":  "git+https://github.com/Amnibro/grok-remote.git"
                    },
-    "license":  "MIT",
+    "license":  "AGPL-3.0-only",
     "scripts":  {
                     "shots":  "node scripts/capture-screenshots.mjs",
                     "start":  "powershell -NoProfile -File ./start.ps1"
